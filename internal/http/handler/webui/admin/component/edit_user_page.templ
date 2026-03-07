@@ -1,0 +1,90 @@
+package component
+
+import (
+	formx "github.com/bornholm/go-x/templx/form"
+	"github.com/bornholm/xolo/internal/core/model"
+	commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/bornholm/xolo/templx/form/renderer/templui"
+)
+
+type EditUserPageVModel struct {
+	AppLayoutVModel commonComp.AppLayoutVModel
+	User            model.User
+	UserForm        *formx.Form
+}
+
+templ EditUserPage(vmodel EditUserPageVModel) {
+	@commonComp.AppLayout(vmodel.AppLayoutVModel,
+		commonComp.WithTitle("Modifier l'utilisateur"),
+		commonComp.WithScripts(templui.Script()),
+	) {
+		<div class="space-y-6">
+			<!-- Header with back button and title -->
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-4">
+					<a href={ commonComp.BaseURL(ctx, commonComp.WithPath("/admin/users")) } class="inline-flex items-center justify-center rounded-md border border-input bg-background px-2 py-2 text-sm font-medium shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 cursor-pointer">
+						@icon.ArrowLeft(icon.Props{Class: "h-4 w-4"})
+					</a>
+					<h1 class="text-2xl font-semibold">Modifier l'utilisateur</h1>
+				</div>
+			</div>
+			<!-- User Info (read-only) -->
+			<div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+				<div class="flex flex-col space-y-1.5 p-6">
+					<h3 class="text-lg font-semibold">
+						@icon.User(icon.Props{Class: "h-4 w-4 inline mr-2"})
+						Informations utilisateur
+					</h3>
+				</div>
+				<div class="p-6 pt-0 space-y-4">
+					<div class="space-y-2">
+						<label class="text-sm font-medium">Nom d'affichage</label>
+						<div class="p-3 rounded-md border bg-muted/50">{ vmodel.User.DisplayName() }</div>
+					</div>
+					<div class="space-y-2">
+						<label class="text-sm font-medium">Email</label>
+						<div class="p-3 rounded-md border bg-muted/50">{ vmodel.User.Email() }</div>
+					</div>
+					<div class="space-y-2">
+						<label class="text-sm font-medium">Fournisseur</label>
+						<div class="p-3 rounded-md border bg-muted/50">{ vmodel.User.Provider() }</div>
+					</div>
+					<div class="space-y-2">
+						<label class="text-sm font-medium">Sujet</label>
+						<div class="p-3 rounded-md border bg-muted/50">{ vmodel.User.Subject() }</div>
+					</div>
+				</div>
+			</div>
+			<!-- Editable Settings -->
+			<div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+				<div class="flex flex-col space-y-1.5 p-6">
+					<h3 class="text-lg font-semibold">
+						@icon.Settings(icon.Props{Class: "h-4 w-4 inline mr-2"})
+						Paramètres modifiables
+					</h3>
+				</div>
+				<div class="p-6 pt-0">
+					@formx.FormWrapper(vmodel.UserForm, commonComp.BaseURL(ctx, commonComp.WithPath("/admin/users/"+string(vmodel.User.ID())+"/edit")), "POST") {
+						<!-- Action buttons -->
+						<div class="flex items-center gap-2 pt-2">
+							<button
+								type="submit"
+								class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 h-10 rounded-md px-4 cursor-pointer"
+							>
+								@icon.Save()
+								<span>Enregistrer</span>
+							</button>
+							<a
+								href={ commonComp.BaseURL(ctx, commonComp.WithPath("/admin/users")) }
+								class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 cursor-pointer"
+							>
+								Annuler
+							</a>
+						</div>
+					}
+				</div>
+			</div>
+		</div>
+	}
+}

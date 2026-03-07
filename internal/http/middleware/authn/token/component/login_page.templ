@@ -1,0 +1,56 @@
+package component
+
+import (
+	"github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	templuicard "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	templuiicon "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"strings"
+)
+
+type LoginPageVModel struct {
+	AllowedOrigins []string
+}
+
+// LoginPage renders a centered card layout for token-based authentication (desktop app).
+templ LoginPage(vmodel LoginPageVModel) {
+	@component.Page(component.WithTitle("Authentification")) {
+		<div class="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+			@templuicard.Card(templuicard.Props{Class: "w-full max-w-sm"}) {
+				@templuicard.Header(templuicard.HeaderProps{Class: "text-center space-y-2"}) {
+					<div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+						@templuiicon.BookOpen(templuiicon.Props{Class: "h-6 w-6 text-primary"})
+					</div>
+					@templuicard.Title() {
+						Xolo
+					}
+					@templuicard.Description() {
+						Veuillez vous authentifier
+					}
+				}
+				@templuicard.Content(templuicard.ContentProps{Class: "space-y-4"}) {
+					<form hx-boost="false" action={ component.CurrentURL(ctx) } method="post" id="loginForm">
+						<input type="hidden" name="token" id="tokenInput"/>
+					</form>
+					<script type="text/javascript" data-allowed-origins={ strings.Join(vmodel.AllowedOrigins, ",") }>
+				      (function() {
+				        const parentWindow = window.parent;
+				        if (!parentWindow) return;
+
+				        const allowedOrigins = document.currentScript.dataset.allowedOrigins.split(',')
+
+				        window.addEventListener("message", (event) => {
+									if (allowedOrigins.indexOf(event.origin) === -1) return;
+									const data = JSON.parse(event.data);
+				          if (!data.token) return
+				          document.getElementById("tokenInput").value = data.token;
+				          document.getElementById("loginForm").requestSubmit();
+								}, false);
+
+				        parentWindow.postMessage(JSON.stringify({"action": "login"}), "*")
+				      }())
+				    </script>
+				}
+			}
+		</div>
+	}
+}

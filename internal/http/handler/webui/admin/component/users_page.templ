@@ -1,0 +1,151 @@
+package component
+
+import (
+	"github.com/bornholm/xolo/internal/core/model"
+	commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/pagination"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
+	"strconv"
+)
+
+type UsersPageVModel struct {
+	AppLayoutVModel commonComp.AppLayoutVModel
+	Users           []model.User
+	CurrentPage     int
+	PageSize        int
+	TotalUsers      int
+}
+
+templ UsersPage(vmodel UsersPageVModel) {
+	@commonComp.AppLayout(vmodel.AppLayoutVModel, commonComp.WithTitle("Utilisateurs")) {
+		<div class="space-y-6">
+			<!-- Header -->
+			<div class="flex items-center justify-between">
+				<div>
+					<h1 class="text-2xl font-semibold">Utilisateurs</h1>
+					<p class="text-sm text-muted-foreground">
+						{ strconv.Itoa(vmodel.TotalUsers) } utilisateur(s) au total
+					</p>
+				</div>
+			</div>
+			if len(vmodel.Users) == 0 {
+				<div class="rounded-lg border border-border p-6 text-center">
+					<div class="flex flex-col items-center gap-2">
+						@icon.Info(icon.Props{Class: "h-8 w-8 text-muted-foreground"})
+						<p class="text-muted-foreground">Aucun utilisateur trouvé.</p>
+					</div>
+				</div>
+			} else {
+				@card.Card() {
+					@card.Content() {
+						@table.Table() {
+							@table.Header() {
+								@table.Head() {
+									Nom d'affichage
+								}
+								@table.Head() {
+									Email
+								}
+								@table.Head() {
+									Fournisseur
+								}
+								@table.Head() {
+									Rôles
+								}
+								@table.Head() {
+									Statut
+								}
+								@table.Head() {
+									Actions
+								}
+							}
+							@table.Body() {
+								for _, user := range vmodel.Users {
+									@table.Row() {
+										@table.Cell() {
+											{ user.DisplayName() }
+										}
+										@table.Cell() {
+											{ user.Email() }
+										}
+										@table.Cell() {
+											{ user.Provider() }
+										}
+										@table.Cell() {
+											<div class="flex flex-wrap gap-1">
+												for _, role := range user.Roles() {
+													@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
+														{ role }
+													}
+												}
+											</div>
+										}
+										@table.Cell() {
+											if user.Active() {
+												@badge.Badge(badge.Props{Variant: badge.VariantDefault}) {
+													<span>Actif</span>
+												}
+											} else {
+												@badge.Badge(badge.Props{Variant: badge.VariantDestructive}) {
+													<span>Inactif</span>
+												}
+											}
+										}
+										@table.Cell() {
+											@editUserButton(user)
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+				@usersPagination(vmodel)
+			}
+		</div>
+	}
+}
+
+templ editUserButton(user model.User) {
+	@button.Button(button.Props{
+		Href:    string(commonComp.BaseURL(ctx, commonComp.WithPath("/admin/users", string(user.ID()), "edit"))),
+		Size:    button.SizeSm,
+		Variant: button.VariantDefault,
+	}) {
+		@icon.Pencil(icon.Props{Class: "h-4 w-4"})
+		<span>Modifier</span>
+	}
+}
+
+templ usersPagination(vmodel UsersPageVModel) {
+	{{ totalPages := (vmodel.TotalUsers + vmodel.PageSize - 1) / vmodel.PageSize }}
+	{{ paginator := pagination.CreatePagination(vmodel.CurrentPage, totalPages, 5) }}
+	@pagination.Pagination() {
+		@pagination.Content() {
+			@pagination.Previous(pagination.PreviousProps{
+				Href:     string(commonComp.CurrentURL(ctx, commonComp.WithValues("page", strconv.Itoa(vmodel.CurrentPage-1)))),
+				Disabled: !paginator.HasPrevious,
+				Label:    "Précédent",
+			})
+			for _, page := range paginator.Pages {
+				@pagination.Item() {
+					@pagination.Link(pagination.LinkProps{
+						Href:     string(commonComp.CurrentURL(ctx, commonComp.WithValues("page", strconv.Itoa(page)))),
+						IsActive: page == vmodel.CurrentPage,
+					}) {
+						{ strconv.Itoa(page) }
+					}
+				}
+			}
+			@pagination.Next(pagination.NextProps{
+				Href:     string(commonComp.CurrentURL(ctx, commonComp.WithValues("page", strconv.Itoa(vmodel.CurrentPage+1)))),
+				Disabled: !paginator.HasNext,
+				Label:    "Suivant",
+			})
+		}
+	}
+}

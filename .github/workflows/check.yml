@@ -1,0 +1,37 @@
+name: check
+
+on:
+  push:
+    branches: ["main", "desktop"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build:
+    env:
+      CGO_ENABLED: 0
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.23"
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y openjdk-21-jdk tesseract-ocr tesseract-ocr-fra tesseract-ocr-eng
+
+      - name: Test
+        run: go test ./...
+
+      - uses: goreleaser/goreleaser-action@v4
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --clean --snapshot ${{ env.flags }}
+        env:
+          REPO_OWNER: ${{ github.actor }}

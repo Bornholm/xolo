@@ -1,0 +1,48 @@
+package component
+
+import (
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+)
+
+type ErrorPageVModel struct {
+	Message string
+	Links   []LinkItem
+}
+
+type LinkItem struct {
+	URL   string
+	Label string
+}
+
+templ ErrorPage(vmodel ErrorPageVModel) {
+	@Page(WithTitle("Erreur")) {
+		<div class="flex min-h-[calc(100vh-4rem)] items-center justify-center max-w-3xl p-4 mx-auto">
+			@alert.Alert(alert.Props{Variant: alert.VariantDestructive}) {
+				@alert.Title() {
+					<div class="flex items-center gap-2">
+						@icon.CircleAlert()
+						<span>Erreur</span>
+					</div>
+				}
+				@alert.Description() {
+					<div class="space-y-4">
+						<p>{ vmodel.Message }</p>
+						if len(vmodel.Links) > 0 {
+							<div class="flex flex-wrap items-center gap-2">
+								for _, l := range vmodel.Links {
+									<a
+										href={ templ.SafeURL(l.URL) }
+										class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 h-9 px-4 py-2"
+									>
+										{ l.Label }
+									</a>
+								}
+							</div>
+						}
+					</div>
+				}
+			}
+		</div>
+	}
+}

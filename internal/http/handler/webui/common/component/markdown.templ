@@ -1,0 +1,31 @@
+package component
+
+import (
+	"bytes"
+
+	"github.com/pkg/errors"
+	"github.com/yuin/goldmark"
+)
+
+// Markdown renders markdown content with default prose styling.
+templ Markdown(source string) {
+	<div class="prose [&>p]:my-4 [&>ul]:my-4 [&>ol]:my-4 [&>li]:my-2 [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-4 [&_ol]:pl-4">
+		@templ.Raw(convert(source))
+	</div>
+}
+
+// MarkdownWithVariants renders markdown content with customizable prose styling.
+templ MarkdownWithVariants(source string, class string) {
+	<div class={ "prose", class }>
+		@templ.Raw(convert(source))
+	</div>
+}
+
+func convert(source string) (string, error) {
+	var buf bytes.Buffer
+	if err := goldmark.Convert([]byte(source), &buf); err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	return buf.String(), nil
+}

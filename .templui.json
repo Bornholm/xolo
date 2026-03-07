@@ -1,0 +1,7 @@
+{
+  "componentsDir": "internal/http/handler/webui/templui/component",
+  "utilsDir": "internal/http/handler/webui/templui/utils",
+  "moduleName": "github.com/bornholm/xolo",
+  "jsDir": "internal/http/handler/webui/common/assets/js",
+  "jsPublicPath": "/assets/js"
+}

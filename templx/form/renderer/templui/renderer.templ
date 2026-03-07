@@ -1,0 +1,238 @@
+package templui
+
+import (
+	"github.com/bornholm/go-x/templx/form"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/checkbox"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/label"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/popover"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/textarea"
+)
+
+var rendererHandle = templ.NewOnceHandle()
+
+templ Script() {
+	@rendererHandle.Once() {
+		@selectbox.Script()
+		@popover.Script()
+	}
+}
+
+// Input renders a standard text input field using TemplUI components.
+templ Input(fieldCtx form.FieldContext) {
+	<div class="space-y-2">
+		if fieldCtx.Label != "" {
+			@label.Label(label.Props{}) {
+				{ fieldCtx.Label }
+				if fieldCtx.Required {
+					<span class="text-destructive">*</span>
+				}
+			}
+		}
+		@input.Input(input.Props{
+			ID:          fieldCtx.Name,
+			Name:        fieldCtx.Name,
+			Type:        input.Type(fieldCtx.Type),
+			Value:       getFirstValue(fieldCtx.Value),
+			Placeholder: fieldCtx.Placeholder,
+			Disabled:    isDisabled(fieldCtx),
+			Class:       errorClass(fieldCtx),
+			HasError:    fieldCtx.Error != "",
+			Attributes:  extraAttrs(fieldCtx),
+		})
+		if fieldCtx.Description != "" && fieldCtx.Error == "" {
+			<p class="text-sm text-muted-foreground">{ fieldCtx.Description }</p>
+		}
+		if fieldCtx.Error != "" {
+			<p class="text-sm text-destructive">{ fieldCtx.Error }</p>
+		}
+	</div>
+}
+
+// Textarea renders a textarea field using TemplUI components.
+templ Textarea(fieldCtx form.FieldContext) {
+	<div class="space-y-2">
+		if fieldCtx.Label != "" {
+			@label.Label(label.Props{}) {
+				{ fieldCtx.Label }
+				if fieldCtx.Required {
+					<span class="text-destructive">*</span>
+				}
+			}
+		}
+		@textarea.Textarea(textarea.Props{
+			ID:          fieldCtx.Name,
+			Name:        fieldCtx.Name,
+			Value:       getFirstValue(fieldCtx.Value),
+			Placeholder: fieldCtx.Placeholder,
+			Disabled:    isDisabled(fieldCtx),
+			HasError:    fieldCtx.Error != "",
+			AutoResize:  true,
+			Attributes:  extraAttrs(fieldCtx),
+		})
+		if fieldCtx.Description != "" && fieldCtx.Error == "" {
+			<p class="text-sm text-muted-foreground">{ fieldCtx.Description }</p>
+		}
+		if fieldCtx.Error != "" {
+			<p class="text-sm text-destructive">{ fieldCtx.Error }</p>
+		}
+	</div>
+}
+
+var selectHandle = templ.NewOnceHandle()
+
+// Select renders a select dropdown using TemplUI components.
+templ Select(fieldCtx form.FieldContext) {
+	{{ _, isMultiple := fieldCtx.Attributes["multiple"] }}
+	<div class="space-y-2">
+		if fieldCtx.Label != "" {
+			@label.Label(label.Props{
+				For: fieldCtx.Name + "-trigger",
+			}) {
+				{ fieldCtx.Label }
+				if fieldCtx.Required {
+					<span class="text-destructive">*</span>
+				}
+			}
+		}
+		@selectbox.SelectBox(selectbox.Props{
+			Multiple: isMultiple,
+		}) {
+			@selectbox.Trigger(selectbox.TriggerProps{
+				ID:       fieldCtx.Name + "-trigger",
+				Disabled: isDisabled(fieldCtx),
+				Name:     fieldCtx.Name,
+				HasError: fieldCtx.Error != "",
+				Multiple: isMultiple,
+			}) {
+				@selectbox.Value(selectbox.ValueProps{
+					Placeholder: fieldCtx.Placeholder,
+				}) {
+					{ getSelectedLabel(fieldCtx) }
+				}
+			}
+			@selectbox.Content(selectbox.ContentProps{}) {
+				for _, opt := range form.GetSelectOptions(fieldCtx, nil) {
+					@selectbox.Item(selectbox.ItemProps{
+						Value:    opt.Value,
+						Selected: isSelected(fieldCtx, opt.Value),
+					}) {
+						{ opt.Label }
+					}
+				}
+			}
+		}
+		if fieldCtx.Description != "" && fieldCtx.Error == "" {
+			<p class="text-sm text-muted-foreground">{ fieldCtx.Description }</p>
+		}
+		if fieldCtx.Error != "" {
+			<p class="text-sm text-destructive">{ fieldCtx.Error }</p>
+		}
+	</div>
+}
+
+// Checkbox renders a checkbox field using TemplUI components.
+templ Checkbox(fieldCtx form.FieldContext) {
+	<div class="space-y-2">
+		<div class="flex items-center gap-2">
+			@checkbox.Checkbox(checkbox.Props{
+				ID:       fieldCtx.Name,
+				Name:     fieldCtx.Name,
+				Value:    "true",
+				Checked:  isChecked(fieldCtx),
+				Disabled: isDisabled(fieldCtx),
+			})
+			<label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+				{ fieldCtx.Label }
+			</label>
+		</div>
+		if fieldCtx.Description != "" && fieldCtx.Error == "" {
+			<p class="text-sm text-muted-foreground">{ fieldCtx.Description }</p>
+		}
+		if fieldCtx.Error != "" {
+			<p class="text-sm text-destructive">{ fieldCtx.Error }</p>
+		}
+	</div>
+}
+
+// FileInput renders a file input field using TemplUI components.
+templ FileInput(fieldCtx form.FieldContext) {
+	<div class="space-y-2">
+		if fieldCtx.Label != "" {
+			@label.Label(label.Props{}) {
+				{ fieldCtx.Label }
+				if fieldCtx.Required {
+					<span class="text-destructive">*</span>
+				}
+			}
+		}
+		@input.Input(input.Props{
+			ID:         fieldCtx.Name,
+			Name:       fieldCtx.Name,
+			Type:       input.TypeFile,
+			Class:      errorClass(fieldCtx),
+			HasError:   fieldCtx.Error != "",
+			Attributes: extraAttrs(fieldCtx),
+		})
+		if fieldCtx.Description != "" && fieldCtx.Error == "" {
+			<p class="text-sm text-muted-foreground">{ fieldCtx.Description }</p>
+		}
+		if fieldCtx.Error != "" {
+			<p class="text-sm text-destructive">{ fieldCtx.Error }</p>
+		}
+	</div>
+}
+
+// Hidden renders a hidden input field.
+templ Hidden(fieldCtx form.FieldContext) {
+	<input
+		type="hidden"
+		name={ fieldCtx.Name }
+		value={ getFirstValue(fieldCtx.Value) }
+	/>
+}
+
+// Helper functions
+
+// getFirstValue returns the first value from the slice or empty string.
+func getFirstValue(values []string) string {
+	if len(values) > 0 {
+		return values[0]
+	}
+	return ""
+}
+
+// isDisabled checks if the field should be disabled.
+func isDisabled(ctx form.FieldContext) bool {
+	if disabled, ok := ctx.Attributes["disabled"].(bool); ok && disabled {
+		return true
+	}
+	return false
+}
+
+// isChecked checks if the checkbox should be checked.
+func isChecked(ctx form.FieldContext) bool {
+	if len(ctx.Value) > 0 && ctx.Value[0] == "true" {
+		return true
+	}
+	return false
+}
+
+// getSelectedLabel returns the label for the selected option.
+func getSelectedLabel(ctx form.FieldContext) string {
+	options := form.GetSelectOptions(ctx, nil)
+	currentValue := getFirstValue(ctx.Value)
+	for _, opt := range options {
+		if opt.Value == currentValue {
+			return opt.Label
+		}
+	}
+	return ""
+}
+
+// isSelected checks if an option is selected.
+func isSelected(ctx form.FieldContext, optionValue string) bool {
+	currentValue := getFirstValue(ctx.Value)
+	return currentValue == optionValue
+}

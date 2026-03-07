@@ -1,0 +1,376 @@
+package component
+
+import (
+	"fmt"
+	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/bornholm/xolo/internal/core/port"
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/chart"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/pagination"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
+)
+
+type OrgUsage struct {
+	Membership  model.Membership
+	Quota       *model.EffectiveQuota
+	DailyCost   int64
+	MonthlyCost int64
+	YearlyCost  int64
+	Currency    string
+}
+
+type ModelUsage struct {
+	Model     model.LLMModel
+	Org       model.Organization
+	Aggregate *port.UsageAggregate
+}
+
+type DisplayUsageRecord struct {
+	Record          model.UsageRecord
+	DisplayCost     int64
+	DisplayCurrency string
+	Converted       bool
+}
+
+type DashboardPageVModel struct {
+	AppLayoutVModel common.AppLayoutVModel
+	OrgUsages       []OrgUsage
+	Aggregate       *port.UsageAggregate
+	Records         []DisplayUsageRecord
+	Orgs            map[model.OrgID]model.Organization
+	Range           string
+	Page            int
+	HasNext         bool
+	ChartPerDay     []ProfileChartDataPoint
+	ChartPerModel   []ProfileChartDataPoint
+}
+
+func dashMaxFloat(a, b float64) float64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func usagePercent(used int64, budget *int64) int {
+	if budget == nil || *budget == 0 {
+		return 0
+	}
+	pct := int(used * 100 / *budget)
+	if pct > 100 {
+		return 100
+	}
+	return pct
+}
+
+templ DashboardPage(vmodel DashboardPageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithScripts(chart.Script())) {
+		<div class="space-y-6">
+			<!-- Header + period selector -->
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-4">
+					@icon.ChartBar(icon.Props{Class: "h-8 w-8"})
+					<h1 class="text-2xl font-semibold">Usage</h1>
+				</div>
+				<form method="GET" class="flex items-center gap-2">
+					<label class="text-sm text-muted-foreground">Période :</label>
+					<select name="range" onchange="this.form.submit()" class="h-9 rounded-md border border-input bg-background px-3 text-sm">
+						for _, opt := range []struct{ Value, Label string }{
+							{"1d", "Dernier jour"},
+							{"7d", "7 derniers jours"},
+							{"30d", "30 derniers jours"},
+							{"90d", "3 derniers mois"},
+							{"180d", "6 derniers mois"},
+							{"365d", "Dernière année"},
+						} {
+							if vmodel.Range == opt.Value || (vmodel.Range == "" && opt.Value == "7d") {
+								<option value={ opt.Value } selected>{ opt.Label }</option>
+							} else {
+								<option value={ opt.Value }>{ opt.Label }</option>
+							}
+						}
+					</select>
+				</form>
+			</div>
+			<!-- Summary cards -->
+			if vmodel.Aggregate != nil {
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+					@card.Card() {
+						@card.Header() {
+							@card.Title() {
+								Requêtes
+							}
+						}
+						@card.Content() {
+							<p class="text-3xl font-bold">{ fmt.Sprintf("%d", vmodel.Aggregate.TotalRequests) }</p>
+						}
+					}
+					@card.Card() {
+						@card.Header() {
+							@card.Title() {
+								Coût total
+							}
+						}
+						@card.Content() {
+							if vmodel.Aggregate.TotalCost == 0 {
+								<p class="text-3xl font-bold">—</p>
+							} else {
+								<p class="text-3xl font-bold">{ formatCost(vmodel.Aggregate.TotalCost, vmodel.Aggregate.Currency) }</p>
+							}
+						}
+					}
+					@card.Card() {
+						@card.Header() {
+							@card.Title() {
+								Tokens totaux
+							}
+						}
+						@card.Content() {
+							<p class="text-3xl font-bold">{ fmt.Sprintf("%d", vmodel.Aggregate.TotalTokens) }</p>
+						}
+					}
+				</div>
+			}
+			<!-- Per-org quota doughnut charts -->
+			for _, ou := range vmodel.OrgUsages {
+				@card.Card() {
+					@card.Header() {
+						@card.Title() {
+							@icon.Building2(icon.Props{Class: "h-5 w-5 inline mr-2"})
+							if ou.Membership.Org() != nil {
+								{ ou.Membership.Org().Name() }
+							} else {
+								{ string(ou.Membership.OrgID()) }
+							}
+						}
+					}
+					@card.Content() {
+						if ou.Quota == nil {
+							<p class="text-sm text-muted-foreground">Aucun quota défini (utilisation illimitée).</p>
+						} else {
+							{{ trueVal := true }}
+							<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+								if ou.Quota.DailyBudget != nil {
+									<div class="space-y-2">
+										{{ spent := float64(ou.DailyCost) / 1_000_000 }}
+										{{ budget := float64(*ou.Quota.DailyBudget) / 1_000_000 }}
+										{{ remaining := dashMaxFloat(0, budget-spent) }}
+										@chart.Chart(chart.Props{
+											Variant:     chart.VariantDoughnut,
+											ShowLegend:  false,
+											BeginAtZero: &trueVal,
+											Class:       "h-36",
+											Data: chart.Data{
+												Labels: []string{"Utilisé", "Disponible"},
+												Datasets: []chart.Dataset{{
+													Data:            []float64{spent, remaining},
+													BackgroundColor: []string{"rgba(239,68,68,0.8)", "rgba(34,197,94,0.8)"},
+													BorderWidth:     0,
+												}},
+											},
+										})
+										<p class="text-xs text-center text-muted-foreground">
+											Aujourd'hui : { formatCost(ou.DailyCost, ou.Currency) } / { formatCost(*ou.Quota.DailyBudget, ou.Currency) }
+										</p>
+									</div>
+								}
+								if ou.Quota.MonthlyBudget != nil {
+									<div class="space-y-2">
+										{{ spent := float64(ou.MonthlyCost) / 1_000_000 }}
+										{{ budget := float64(*ou.Quota.MonthlyBudget) / 1_000_000 }}
+										{{ remaining := dashMaxFloat(0, budget-spent) }}
+										@chart.Chart(chart.Props{
+											Variant:     chart.VariantDoughnut,
+											ShowLegend:  false,
+											BeginAtZero: &trueVal,
+											Class:       "h-36",
+											Data: chart.Data{
+												Labels: []string{"Utilisé", "Disponible"},
+												Datasets: []chart.Dataset{{
+													Data:            []float64{spent, remaining},
+													BackgroundColor: []string{"rgba(239,68,68,0.8)", "rgba(34,197,94,0.8)"},
+													BorderWidth:     0,
+												}},
+											},
+										})
+										<p class="text-xs text-center text-muted-foreground">
+											Ce mois : { formatCost(ou.MonthlyCost, ou.Currency) } / { formatCost(*ou.Quota.MonthlyBudget, ou.Currency) }
+										</p>
+									</div>
+								}
+								if ou.Quota.YearlyBudget != nil {
+									<div class="space-y-2">
+										{{ spent := float64(ou.YearlyCost) / 1_000_000 }}
+										{{ budget := float64(*ou.Quota.YearlyBudget) / 1_000_000 }}
+										{{ remaining := dashMaxFloat(0, budget-spent) }}
+										@chart.Chart(chart.Props{
+											Variant:     chart.VariantDoughnut,
+											ShowLegend:  false,
+											BeginAtZero: &trueVal,
+											Class:       "h-36",
+											Data: chart.Data{
+												Labels: []string{"Utilisé", "Disponible"},
+												Datasets: []chart.Dataset{{
+													Data:            []float64{spent, remaining},
+													BackgroundColor: []string{"rgba(239,68,68,0.8)", "rgba(34,197,94,0.8)"},
+													BorderWidth:     0,
+												}},
+											},
+										})
+										<p class="text-xs text-center text-muted-foreground">
+											Cette année : { formatCost(ou.YearlyCost, ou.Currency) } / { formatCost(*ou.Quota.YearlyBudget, ou.Currency) }
+										</p>
+									</div>
+								}
+							</div>
+						}
+					}
+				}
+			}
+			<!-- Bar charts: cost per day and per model -->
+			if len(vmodel.ChartPerDay) > 0 || len(vmodel.ChartPerModel) > 0 {
+				{{ trueVal := true }}
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+					if len(vmodel.ChartPerDay) > 0 {
+						@card.Card() {
+							@card.Header() {
+								@card.Title() {
+									Coût par jour
+								}
+							}
+							@card.Content() {
+								@chart.Chart(chart.Props{
+									Variant:     chart.VariantBar,
+									ShowXLabels: true,
+									ShowYLabels: true,
+									ShowYGrid:   true,
+									ShowLegend:  false,
+									BeginAtZero: &trueVal,
+									Class:       "h-64",
+									Data: chart.Data{
+										Labels: profileChartLabels(vmodel.ChartPerDay),
+										Datasets: []chart.Dataset{{
+											Label:           "Coût",
+											Data:            profileChartValues(vmodel.ChartPerDay),
+											BackgroundColor: "rgba(99,102,241,0.8)",
+										}},
+									},
+								})
+							}
+						}
+					}
+					if len(vmodel.ChartPerModel) > 0 {
+						@card.Card() {
+							@card.Header() {
+								@card.Title() {
+									Coût par modèle
+								}
+							}
+							@card.Content() {
+								@chart.Chart(chart.Props{
+									Variant:     chart.VariantBar,
+									ShowXLabels: true,
+									ShowYLabels: true,
+									ShowYGrid:   true,
+									ShowLegend:  false,
+									BeginAtZero: &trueVal,
+									Class:       "h-64",
+									Data: chart.Data{
+										Labels: profileChartLabels(vmodel.ChartPerModel),
+										Datasets: []chart.Dataset{{
+											Label:           "Coût",
+											Data:            profileChartValues(vmodel.ChartPerModel),
+											BackgroundColor: "rgba(20,184,166,0.8)",
+										}},
+									},
+								})
+							}
+						}
+					}
+				</div>
+			}
+			<!-- Usage records table -->
+			if len(vmodel.Records) > 0 {
+				@card.Card() {
+					@card.Content() {
+						@table.Table() {
+							@table.Header() {
+								@table.Head() {
+									Organisation
+								}
+								@table.Head() {
+									Modèle
+								}
+								@table.Head() {
+									Tokens prompt
+								}
+								@table.Head() {
+									Tokens compl.
+								}
+								@table.Head() {
+									Coût
+								}
+								@table.Head() {
+									Date
+								}
+							}
+							@table.Body() {
+								for _, dr := range vmodel.Records {
+									@table.Row() {
+										@table.Cell() {
+											if org, ok := vmodel.Orgs[dr.Record.OrgID()]; ok {
+												{ org.Name() }
+											} else {
+												{ string(dr.Record.OrgID()) }
+											}
+										}
+										@table.Cell() {
+											{ dr.Record.ProxyModelName() }
+										}
+										@table.Cell() {
+											{ fmt.Sprintf("%d", dr.Record.PromptTokens()) }
+										}
+										@table.Cell() {
+											{ fmt.Sprintf("%d", dr.Record.CompletionTokens()) }
+										}
+										@table.Cell() {
+											if dr.Converted {
+												<span
+													title={ formatCost(dr.Record.Cost(), dr.Record.Currency()) }
+													class="cursor-help underline decoration-dotted"
+												>
+													{ formatCost(dr.DisplayCost, dr.DisplayCurrency) }
+												</span>
+											} else {
+												{ formatCost(dr.DisplayCost, dr.DisplayCurrency) }
+											}
+										}
+										@table.Cell() {
+											{ dr.Record.CreatedAt().Format("2006-01-02 15:04") }
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+				@pagination.Pagination() {
+					@pagination.Content() {
+						@pagination.Previous(pagination.PreviousProps{
+							Href:     common.BaseURLString(ctx, common.WithPath("/usage"), common.WithValues("range", vmodel.Range, "page", fmt.Sprintf("%d", vmodel.Page-1))),
+							Disabled: vmodel.Page <= 1,
+							Label:    "Précédent",
+						})
+						@pagination.Next(pagination.NextProps{
+							Href:     common.BaseURLString(ctx, common.WithPath("/usage"), common.WithValues("range", vmodel.Range, "page", fmt.Sprintf("%d", vmodel.Page+1))),
+							Disabled: !vmodel.HasNext,
+							Label:    "Suivant",
+						})
+					}
+				}
+			}
+		</div>
+	}
+}

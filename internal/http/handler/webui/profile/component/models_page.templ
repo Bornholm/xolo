@@ -1,0 +1,230 @@
+package component
+
+import (
+	"fmt"
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+)
+
+type ModelsPageVModel struct {
+	AppLayoutVModel common.AppLayoutVModel
+	ModelUsages     []ModelUsage
+	Range           string
+}
+
+templ ModelsPage(vmodel ModelsPageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel) {
+		<div class="space-y-6">
+			<!-- Header + period selector -->
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-4">
+					@icon.BrainCircuit(icon.Props{Class: "h-8 w-8"})
+					<h1 class="text-2xl font-semibold">Modèles</h1>
+				</div>
+				<form method="GET" class="flex items-center gap-2">
+					<label class="text-sm text-muted-foreground">Période :</label>
+					<select name="range" onchange="this.form.submit()" class="h-9 rounded-md border border-input bg-background px-3 text-sm">
+						for _, opt := range []struct{ Value, Label string }{
+							{"1d", "Dernier jour"},
+							{"7d", "7 derniers jours"},
+							{"30d", "30 derniers jours"},
+							{"90d", "3 derniers mois"},
+							{"180d", "6 derniers mois"},
+							{"365d", "Dernière année"},
+						} {
+							if vmodel.Range == opt.Value || (vmodel.Range == "" && opt.Value == "7d") {
+								<option value={ opt.Value } selected>{ opt.Label }</option>
+							} else {
+								<option value={ opt.Value }>{ opt.Label }</option>
+							}
+						}
+					</select>
+				</form>
+			</div>
+
+			<!-- Models grid -->
+			if len(vmodel.ModelUsages) == 0 {
+				<p class="text-sm text-muted-foreground">Aucun modèle disponible.</p>
+			} else {
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+					for _, mu := range vmodel.ModelUsages {
+						@card.Card() {
+							@card.Header() {
+								@card.Title() {
+									if mu.Org != nil {
+										{ mu.Org.Slug() + "/" + mu.Model.ProxyName() }
+									} else {
+										{ mu.Model.ProxyName() }
+									}
+								}
+								if mu.Org != nil {
+									<p class="text-xs text-muted-foreground">{ mu.Org.Name() }</p>
+								}
+							}
+							@card.Content() {
+								<div class="space-y-3">
+									if mu.Model.Description() != "" {
+										<p class="text-sm text-muted-foreground">{ mu.Model.Description() }</p>
+									}
+									<div class="grid grid-cols-2 gap-2 text-sm">
+										<div>
+											<span class="text-muted-foreground">Prompt (1K tokens)</span>
+											<p class="font-medium">{ formatCost(mu.Model.PromptCostPer1KTokens(), "USD") }</p>
+										</div>
+										<div>
+											<span class="text-muted-foreground">Complétion (1K tokens)</span>
+											<p class="font-medium">{ formatCost(mu.Model.CompletionCostPer1KTokens(), "USD") }</p>
+										</div>
+									</div>
+									if mu.Aggregate != nil && mu.Aggregate.TotalRequests > 0 {
+										<div class="border-t pt-3 grid grid-cols-3 gap-2 text-sm">
+											<div>
+												<span class="text-muted-foreground">Requêtes</span>
+												<p class="font-medium">{ fmt.Sprintf("%d", mu.Aggregate.TotalRequests) }</p>
+											</div>
+											<div>
+												<span class="text-muted-foreground">Tokens</span>
+												<p class="font-medium">{ fmt.Sprintf("%d", mu.Aggregate.TotalTokens) }</p>
+											</div>
+											<div>
+												<span class="text-muted-foreground">Coût</span>
+												<p class="font-medium">{ formatCost(mu.Aggregate.TotalCost, mu.Aggregate.Currency) }</p>
+											</div>
+										</div>
+									}
+								</div>
+							}
+						}
+					}
+				</div>
+			}
+
+			<!-- How-to card -->
+			@card.Card() {
+				@card.Header() {
+					@card.Title() {
+						Accès à l'API
+					}
+					<p class="text-sm text-muted-foreground">Xolo expose une API compatible OpenAI. Utilisez les paramètres ci-dessous avec vos outils habituels.</p>
+				}
+				@card.Content() {
+					<div class="space-y-4">
+						<!-- Base URL -->
+						<div class="space-y-1">
+							<p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">URL de base</p>
+							<div class="flex items-center gap-2">
+								<code class="flex-1 block bg-muted rounded-md px-3 py-2 text-sm font-mono break-all">{ common.BaseURLString(ctx, common.WithPath("/api/v1")) }</code>
+								<button
+									type="button"
+									title="Copier"
+									data-url={ common.BaseURLString(ctx, common.WithPath("/api/v1")) }
+									onclick="navigator.clipboard.writeText(this.dataset.url)"
+									class="shrink-0 rounded-md p-2 hover:bg-muted transition-colors"
+								>
+									@icon.Copy(icon.Props{Class: "h-4 w-4"})
+								</button>
+							</div>
+						</div>
+						<!-- Auth + model name -->
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+							<div class="space-y-1">
+								<p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Authentification</p>
+								<p>En-tête HTTP <code class="bg-muted rounded px-1 text-xs">Authorization: Bearer &lt;clé-api&gt;</code></p>
+								<p class="text-xs text-muted-foreground">Créez une clé API depuis <a href={ common.BaseURL(ctx, common.WithPath("/profile/tokens")) } class="underline">votre profil</a>.</p>
+							</div>
+							<div class="space-y-1">
+								<p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Nom du modèle</p>
+								<p>Format <code class="bg-muted rounded px-1 text-xs">&lt;organisation&gt;/&lt;modèle&gt;</code></p>
+								<p class="text-xs text-muted-foreground">Le nom complet est affiché sur chaque carte ci-dessous.</p>
+							</div>
+						</div>
+						<!-- Tool examples -->
+						<div class="space-y-2">
+							<p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Exemples d'utilisation</p>
+							<details class="group rounded-md border">
+								<summary class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium select-none">
+									@icon.Terminal(icon.Props{Class: "h-4 w-4 shrink-0"})
+									curl
+								</summary>
+								<pre class="overflow-x-auto border-t bg-muted px-4 py-3 text-xs font-mono leading-relaxed">{ curlExample(common.BaseURLString(ctx, common.WithPath("/api/v1"))) }</pre>
+							</details>
+							<details class="group rounded-md border">
+								<summary class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium select-none">
+									@icon.Code(icon.Props{Class: "h-4 w-4 shrink-0"})
+									Python · openai
+								</summary>
+								<pre class="overflow-x-auto border-t bg-muted px-4 py-3 text-xs font-mono leading-relaxed">{ pythonExample(common.BaseURLString(ctx, common.WithPath("/api/v1"))) }</pre>
+							</details>
+							<details class="group rounded-md border">
+								<summary class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium select-none">
+									@icon.Code(icon.Props{Class: "h-4 w-4 shrink-0"})
+									JavaScript / TypeScript · openai
+								</summary>
+								<pre class="overflow-x-auto border-t bg-muted px-4 py-3 text-xs font-mono leading-relaxed">{ jsExample(common.BaseURLString(ctx, common.WithPath("/api/v1"))) }</pre>
+							</details>
+							<details class="group rounded-md border">
+								<summary class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium select-none">
+									@icon.Layers(icon.Props{Class: "h-4 w-4 shrink-0"})
+									LiteLLM
+								</summary>
+								<pre class="overflow-x-auto border-t bg-muted px-4 py-3 text-xs font-mono leading-relaxed">{ litellmExample(common.BaseURLString(ctx, common.WithPath("/api/v1"))) }</pre>
+							</details>
+						</div>
+					</div>
+				}
+			}		</div>
+	}
+}
+
+func curlExample(baseURL string) string {
+	return `curl ` + baseURL + `/chat/completions \
+  -H "Authorization: Bearer <clé-api>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "<organisation>/<modèle>",
+    "messages": [{"role": "user", "content": "Bonjour !"}]
+  }'`
+}
+
+func pythonExample(baseURL string) string {
+	return `from openai import OpenAI
+
+client = OpenAI(
+    base_url="` + baseURL + `",
+    api_key="<clé-api>",
+)
+
+response = client.chat.completions.create(
+    model="<organisation>/<modèle>",
+    messages=[{"role": "user", "content": "Bonjour !"}],
+)
+print(response.choices[0].message.content)`
+}
+
+func jsExample(baseURL string) string {
+	return `import OpenAI from "openai";
+
+const client = new OpenAI({
+  baseURL: "` + baseURL + `",
+  apiKey: "<clé-api>",
+});
+
+const response = await client.chat.completions.create({
+  model: "<organisation>/<modèle>",
+  messages: [{ role: "user", content: "Bonjour !" }],
+});
+console.log(response.choices[0].message.content);`
+}
+
+func litellmExample(baseURL string) string {
+	return `import litellm
+
+response = litellm.completion(
+    model="openai/<organisation>/<modèle>",
+    messages=[{"role": "user", "content": "Bonjour !"}],
+    base_url="` + baseURL + `",
+    api_key="<clé-api>",
+)
+print(response.choices[0].message.content)`
+}

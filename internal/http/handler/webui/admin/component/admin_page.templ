@@ -1,0 +1,32 @@
+package component
+
+import commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+
+templ AdminPage(navbar commonComp.NavbarVModel, selectedItem string, funcs ...commonComp.PageOptionFunc) {
+	@commonComp.NavbarPage(navbar, funcs...) {
+		<div class="container">
+			<div class="columns">
+				<div class="column is-3">
+					<aside class="menu">
+						<p class="menu-label">
+							Administration
+						</p>
+						<ul class="menu-list">
+							<li>
+								<a href="/admin/users" class={ templ.KV("is-active", selectedItem == "users") }>
+									<span class="icon">
+										<i class="fas fa-users"></i>
+									</span>
+									<span>Utilisateurs</span>
+								</a>
+							</li>
+						</ul>
+					</aside>
+				</div>
+				<div class="column is-9">
+					{ children... }
+				</div>
+			</div>
+		</div>
+	}
+}

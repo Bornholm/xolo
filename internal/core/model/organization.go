@@ -1,0 +1,88 @@
+package model
+
+import (
+	"time"
+
+	"github.com/rs/xid"
+)
+
+type OrgID string
+
+func NewOrgID() OrgID {
+	return OrgID(xid.New().String())
+}
+
+type Organization interface {
+	WithID[OrgID]
+
+	Slug() string
+	Name() string
+	Description() string
+	Active() bool
+	Currency() string
+	CreatedAt() time.Time
+	UpdatedAt() time.Time
+}
+
+type BaseOrganization struct {
+	id          OrgID
+	slug        string
+	name        string
+	description string
+	active      bool
+	currency    string
+	createdAt   time.Time
+	updatedAt   time.Time
+}
+
+func (o *BaseOrganization) ID() OrgID           { return o.id }
+func (o *BaseOrganization) Slug() string         { return o.slug }
+func (o *BaseOrganization) Name() string         { return o.name }
+func (o *BaseOrganization) Description() string  { return o.description }
+func (o *BaseOrganization) Active() bool         { return o.active }
+func (o *BaseOrganization) Currency() string     { return o.currency }
+func (o *BaseOrganization) CreatedAt() time.Time { return o.createdAt }
+func (o *BaseOrganization) UpdatedAt() time.Time { return o.updatedAt }
+
+var _ Organization = &BaseOrganization{}
+
+func NewOrganization(slug, name, description string, currency ...string) *BaseOrganization {
+	cur := DefaultCurrency
+	if len(currency) > 0 && currency[0] != "" {
+		cur = currency[0]
+	}
+	return &BaseOrganization{
+		id:          NewOrgID(),
+		slug:        slug,
+		name:        name,
+		description: description,
+		active:      true,
+		currency:    cur,
+		createdAt:   time.Now(),
+		updatedAt:   time.Now(),
+	}
+}
+
+type OrgOption func(*BaseOrganization)
+
+func WithOrgName(name string) OrgOption        { return func(o *BaseOrganization) { o.name = name } }
+func WithOrgDescription(desc string) OrgOption { return func(o *BaseOrganization) { o.description = desc } }
+func WithOrgActive(active bool) OrgOption      { return func(o *BaseOrganization) { o.active = active } }
+func WithOrgCurrency(currency string) OrgOption { return func(o *BaseOrganization) { o.currency = currency } }
+
+func UpdateOrganization(org Organization, opts ...OrgOption) *BaseOrganization {
+	b := &BaseOrganization{
+		id:          org.ID(),
+		slug:        org.Slug(),
+		name:        org.Name(),
+		description: org.Description(),
+		active:      org.Active(),
+		currency:    org.Currency(),
+		createdAt:   org.CreatedAt(),
+		updatedAt:   time.Now(),
+	}
+	for _, opt := range opts {
+		opt(b)
+	}
+	return b
+}

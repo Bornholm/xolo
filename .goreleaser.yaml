@@ -1,0 +1,40 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: xolo-server
+    targets: [go_first_class]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    dir: ./cmd/server
+    binary: xolo-server
+    flags:
+      - -trimpath
+    ldflags:
+      - -w -s -X 'github.com/bornholm/xolo/internal/build.ShortVersion={{ .Version }}' -X 'github.com/bornholm/xolo/internal/build.LongVersion={{ .Version }}'
+
+checksum:
+  name_template: "checksums.txt"
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+release:
+  name_template: "v{{ .Version }}"
+
+dockers:
+  - id: xolo-server
+    ids:
+      - xolo-server
+    use: docker
+    dockerfile: misc/docker/xolo-server.Dockerfile
+    image_templates:
+      - ghcr.io/{{ tolower ( .Env.REPO_OWNER ) }}/xolo-server:{{ .Version }}
+      - ghcr.io/{{ tolower ( .Env.REPO_OWNER ) }}/xolo-server:latest
