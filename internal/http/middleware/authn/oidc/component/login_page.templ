@@ -1,0 +1,62 @@
+package component
+
+import (
+	"fmt"
+	"github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	templuibutton "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	templuicard "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+)
+
+type Provider struct {
+	ID    string
+	Label string
+	Icon  string
+}
+
+type LoginPageVModel struct {
+	Providers []Provider
+	Version   string
+	APIDocURL string
+}
+
+// LoginPage renders a centered card layout for authentication.
+templ LoginPage(vmodel LoginPageVModel) {
+	@component.Page(component.WithTitle("Authentification")) {
+		<div class="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+			@templuicard.Card(templuicard.Props{Class: "w-full max-w-sm"}) {
+				@templuicard.Header(templuicard.HeaderProps{Class: "text-center space-y-2"}) {
+					<div class="mx-auto flex h-18 w-18 items-center justify-center rounded-full bg-primary/5">
+						@component.Logo("h-14 w-14 text-primary", "height:80%")
+					</div>
+					@templuicard.Title() {
+						Xolo 
+					}
+					@templuicard.Description() {
+						Veuillez vous authentifier 
+					}
+				}
+				@templuicard.Content(templuicard.ContentProps{Class: "space-y-3"}) {
+					for _, p := range vmodel.Providers {
+						@templuibutton.Button(templuibutton.Props{
+							Variant:  templuibutton.VariantOutline,
+							Class:    "w-full justify-center gap-2",
+							Href:     fmt.Sprintf("/auth/oidc/providers/%s", p.ID),
+							Disabled: false,
+							Attributes: templ.Attributes{
+								"hx-boost": "false",
+							},
+						}) {
+							<i class={ fmt.Sprintf("fab %s", p.Icon) } aria-hidden="true"></i>
+							{ p.Label }
+						}
+					}
+				}
+				@templuicard.Footer(templuicard.FooterProps{Class: "justify-center"}) {
+					<p class="text-xs text-muted-foreground">
+						Xolo { vmodel.Version } - 2026
+					</p>
+				}
+			}
+		</div>
+	}
+}

@@ -1,0 +1,376 @@
+package component
+
+import (
+	"fmt"
+	"github.com/bornholm/xolo/internal/core/model"
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/chart"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
+)
+
+// ─── Invitations ────────────────────────────────────────────────────────────
+
+type InvitationsPageVModel struct {
+	common.AppLayoutVModel
+	Invites []model.InviteToken
+}
+
+templ InvitationsPage(vmodel InvitationsPageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel) {
+		<div class="space-y-6">
+			<div class="flex items-center gap-4">
+				@icon.Mail(icon.Props{Class: "h-8 w-8"})
+				<h1 class="text-2xl font-semibold">Invitations en attente</h1>
+			</div>
+			if len(vmodel.Invites) == 0 {
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					@alert.Description(alert.DescriptionProps{}) {
+						Aucune invitation en attente.
+					}
+				}
+			} else {
+				@card.Card() {
+					@card.Content() {
+						@table.Table() {
+							@table.Header() {
+								<tr>
+									<th class="text-left p-3 text-sm font-medium">Organisation</th>
+									<th class="text-left p-3 text-sm font-medium">Rôle</th>
+									<th class="text-left p-3 text-sm font-medium">Expiration</th>
+									<th class="text-right p-3 text-sm font-medium">Actions</th>
+								</tr>
+							}
+							@table.Body() {
+								for _, inv := range vmodel.Invites {
+									@table.Row() {
+										<td class="p-3">
+											if inv.Org() != nil {
+												{ inv.Org().Name() }
+											} else {
+												{ string(inv.OrgID()) }
+											}
+										</td>
+										<td class="p-3">
+											@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
+												{ inv.Role() }
+											}
+										</td>
+										<td class="p-3 text-sm text-muted-foreground">
+											if inv.ExpiresAt() != nil {
+												{ inv.ExpiresAt().Format("02/01/2006") }
+											} else {
+												—
+											}
+										</td>
+										<td class="p-3 text-right">
+											@button.Button(button.Props{
+												Href:    common.BaseURLString(ctx, common.WithPath("/join/", string(inv.ID()))),
+												Variant: button.VariantDefault,
+												Size:    button.SizeSm,
+											}) {
+												Rejoindre
+											}
+										</td>
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		</div>
+	}
+}
+
+// ─── Usage ──────────────────────────────────────────────────────────────────
+
+type ProfileChartDataPoint struct {
+	Label string
+	Value float64
+}
+
+type UsagePageVModel struct {
+	common.AppLayoutVModel
+	Aggregate      *UsageAggregate
+	OrgMemberships []model.Membership
+	Range          string
+	ChartPerDay    []ProfileChartDataPoint
+	ChartPerModel  []ProfileChartDataPoint
+	ChartPerOrg    []ProfileChartDataPoint
+}
+
+type UsageAggregate struct {
+	TotalRequests    int64
+	TotalCost        int64
+	Currency         string
+	PromptTokens     int64
+	CompletionTokens int64
+	TotalTokens      int64
+}
+
+templ UsagePage(vmodel UsagePageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithScripts(chart.Script())) {
+		<div class="space-y-6">
+			<div class="flex items-center justify-between gap-4">
+				<div class="flex items-center gap-4">
+					@icon.ChartBar(icon.Props{Class: "h-8 w-8"})
+					<h1 class="text-2xl font-semibold">Consommation</h1>
+				</div>
+				<form method="GET" class="flex items-center gap-2">
+					<label class="text-sm text-muted-foreground">Période :</label>
+					<select name="range" onchange="this.form.submit()" class="h-9 rounded-md border border-input bg-background px-3 text-sm">
+						for _, opt := range []struct{ Value, Label string }{
+							{"1d", "Dernier jour"},
+							{"7d", "7 derniers jours"},
+							{"30d", "30 derniers jours"},
+							{"90d", "3 derniers mois"},
+							{"180d", "6 derniers mois"},
+							{"365d", "Dernière année"},
+						} {
+							if vmodel.Range == opt.Value || (vmodel.Range == "" && opt.Value == "7d") {
+								<option value={ opt.Value } selected>{ opt.Label }</option>
+							} else {
+								<option value={ opt.Value }>{ opt.Label }</option>
+							}
+						}
+					</select>
+				</form>
+			</div>
+			if vmodel.Aggregate != nil {
+				<!-- Summary Cards -->
+				<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+					@card.Card() {
+						@card.Content() {
+							<div class="pt-4 space-y-1">
+								<p class="text-sm text-muted-foreground">Requêtes totales</p>
+								<p class="text-2xl font-bold">{ fmt.Sprintf("%d", vmodel.Aggregate.TotalRequests) }</p>
+							</div>
+						}
+					}
+					if vmodel.Aggregate.TotalCost > 0 {
+						@card.Card() {
+							@card.Content() {
+								<div class="pt-4 space-y-1">
+									<p class="text-sm text-muted-foreground">{ "Coût total (" + vmodel.Aggregate.Currency + ")" }</p>
+									<p class="text-2xl font-bold">{ formatCost(vmodel.Aggregate.TotalCost, vmodel.Aggregate.Currency) }</p>
+								</div>
+							}
+						}
+					}
+					@card.Card() {
+						@card.Content() {
+							<div class="pt-4 space-y-1">
+								<p class="text-sm text-muted-foreground">Tokens (prompt)</p>
+								<p class="text-2xl font-bold">{ fmt.Sprintf("%d", vmodel.Aggregate.PromptTokens) }</p>
+							</div>
+						}
+					}
+					@card.Card() {
+						@card.Content() {
+							<div class="pt-4 space-y-1">
+								<p class="text-sm text-muted-foreground">Tokens (réponse)</p>
+								<p class="text-2xl font-bold">{ fmt.Sprintf("%d", vmodel.Aggregate.CompletionTokens) }</p>
+							</div>
+						}
+					}
+				</div>
+				if len(vmodel.ChartPerDay) > 0 || len(vmodel.ChartPerModel) > 0 || len(vmodel.ChartPerOrg) > 0 {
+					{{ trueVal := true }}
+					<div class="space-y-4">
+						if len(vmodel.ChartPerDay) > 0 {
+							@card.Card() {
+								@card.Header() {
+									@card.Title() { Coût par jour }
+								}
+								@card.Content() {
+									@chart.Chart(chart.Props{
+										Variant:     chart.VariantBar,
+										ShowXLabels: true,
+										ShowYLabels: true,
+										ShowYGrid:   true,
+										ShowLegend:  false,
+										BeginAtZero: &trueVal,
+										Class:       "h-56",
+										Data: chart.Data{
+											Labels: profileChartLabels(vmodel.ChartPerDay),
+											Datasets: []chart.Dataset{{
+												Label:           "Coût",
+												Data:            profileChartValues(vmodel.ChartPerDay),
+												BackgroundColor: "rgba(99,102,241,0.8)",
+											}},
+										},
+									})
+								}
+							}
+						}
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+							if len(vmodel.ChartPerModel) > 0 {
+								@card.Card() {
+									@card.Header() {
+										@card.Title() { Coût par modèle }
+									}
+									@card.Content() {
+										@chart.Chart(chart.Props{
+											Variant:     chart.VariantBar,
+											ShowXLabels: true,
+											ShowYLabels: true,
+											ShowYGrid:   true,
+											ShowLegend:  false,
+											BeginAtZero: &trueVal,
+											Class:       "h-56",
+											Data: chart.Data{
+												Labels: profileChartLabels(vmodel.ChartPerModel),
+												Datasets: []chart.Dataset{{
+													Label:           "Coût",
+													Data:            profileChartValues(vmodel.ChartPerModel),
+													BackgroundColor: "rgba(20,184,166,0.8)",
+												}},
+											},
+										})
+									}
+								}
+							}
+							if len(vmodel.ChartPerOrg) > 1 {
+								@card.Card() {
+									@card.Header() {
+										@card.Title() { Répartition par organisation }
+									}
+									@card.Content() {
+										@chart.Chart(chart.Props{
+											Variant:    chart.VariantPie,
+											ShowLegend: true,
+											Class:      "h-56",
+											Data: chart.Data{
+												Labels: profileChartLabels(vmodel.ChartPerOrg),
+												Datasets: []chart.Dataset{{
+													Data:            profileChartValues(vmodel.ChartPerOrg),
+													BackgroundColor: []string{"rgba(99,102,241,0.8)", "rgba(20,184,166,0.8)", "rgba(245,158,11,0.8)", "rgba(239,68,68,0.8)", "rgba(168,85,247,0.8)", "rgba(14,165,233,0.8)"},
+													BorderWidth:     0,
+												}},
+											},
+										})
+									}
+								}
+							}
+						</div>
+					</div>
+				}
+			} else {
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					@alert.Description(alert.DescriptionProps{}) {
+						Aucune donnée de consommation disponible.
+					}
+				}
+			}
+		</div>
+	}
+}
+
+// ─── Quota ───────────────────────────────────────────────────────────────────
+
+type OrgEffectiveQuota struct {
+	Membership model.Membership
+	Quota      *model.EffectiveQuota
+}
+
+type QuotaPageVModel struct {
+	common.AppLayoutVModel
+	OrgQuotas []OrgEffectiveQuota
+}
+
+templ QuotaPage(vmodel QuotaPageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel) {
+		<div class="space-y-6">
+			<div class="flex items-center gap-4">
+				@icon.ShieldCheck(icon.Props{Class: "h-8 w-8"})
+				<h1 class="text-2xl font-semibold">Quotas effectifs</h1>
+			</div>
+			@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+				@alert.Description(alert.DescriptionProps{}) {
+					Les quotas affichés résultent de la combinaison des limites définies pour votre compte et pour chaque organisation.
+				}
+			}
+			if len(vmodel.OrgQuotas) == 0 {
+				<div class="rounded-lg border p-6 text-center text-muted-foreground">
+					Vous n'appartenez à aucune organisation.
+				</div>
+			} else {
+				for _, oq := range vmodel.OrgQuotas {
+					@card.Card() {
+						@card.Header() {
+							@card.Title() {
+								if oq.Membership.Org() != nil {
+									{ oq.Membership.Org().Name() }
+								} else {
+									{ string(oq.Membership.OrgID()) }
+								}
+							}
+						}
+						@card.Content() {
+							if oq.Quota == nil {
+								<p class="text-sm text-muted-foreground">Aucun quota défini (illimité).</p>
+							} else {
+								<p class="text-xs text-muted-foreground">Devise : { oq.Quota.Currency }</p>
+								<div class="grid grid-cols-3 gap-4 mt-2">
+									<div class="space-y-1">
+										<p class="text-sm text-muted-foreground">Quotidien</p>
+										<p class="font-medium">{ formatBudget(oq.Quota.DailyBudget, oq.Quota.Currency) }</p>
+									</div>
+									<div class="space-y-1">
+										<p class="text-sm text-muted-foreground">Mensuel</p>
+										<p class="font-medium">{ formatBudget(oq.Quota.MonthlyBudget, oq.Quota.Currency) }</p>
+									</div>
+									<div class="space-y-1">
+										<p class="text-sm text-muted-foreground">Annuel</p>
+										<p class="font-medium">{ formatBudget(oq.Quota.YearlyBudget, oq.Quota.Currency) }</p>
+									</div>
+								</div>
+							}
+						}
+					}
+				}
+			}
+		</div>
+	}
+}
+
+func profileChartLabels(pts []ProfileChartDataPoint) []string {
+	labels := make([]string, len(pts))
+	for i, p := range pts {
+		labels[i] = p.Label
+	}
+	return labels
+}
+
+func profileChartValues(pts []ProfileChartDataPoint) []float64 {
+	vals := make([]float64, len(pts))
+	for i, p := range pts {
+		vals[i] = p.Value
+	}
+	return vals
+}
+
+func formatCost(microcents int64, currency string) string {
+	symbol := "$"
+	switch currency {
+	case "EUR":
+		symbol = "€"
+	case "GBP":
+		symbol = "£"
+	case "JPY":
+		symbol = "¥"
+	}
+	return fmt.Sprintf("%s%.6f", symbol, float64(microcents)/1_000_000)
+}
+
+func formatBudget(v *int64, currency string) string {
+	if v == nil {
+		return "Illimité"
+	}
+	return formatCost(*v, currency)
+}

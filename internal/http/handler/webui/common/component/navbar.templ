@@ -1,0 +1,88 @@
+package component
+
+import (
+	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/bornholm/xolo/internal/http/middleware/authz"
+)
+
+type NavbarVModel struct {
+	User model.User
+}
+
+templ Navbar(vmodel NavbarVModel) {
+	<nav class="navbar" role="navigation" aria-label="main navigation">
+		<div class="navbar-brand">
+			<a class="navbar-item" href={ BaseURL(ctx) }>
+				<img
+					style="height:1.5em;vertical-align:middle"
+					src={ string(BaseURL(ctx, WithPath("/assets/logo.svg"))) }
+				/>
+				<span class="has-text-grey-dark has-text-weight-bold" style="vertical-align:middle">Xolo</span>
+			</a>
+			<a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbar-menu">
+				<span aria-hidden="true"></span>
+				<span aria-hidden="true"></span>
+				<span aria-hidden="true"></span>
+				<span aria-hidden="true"></span>
+			</a>
+		</div>
+		<div id="navbar-menu" class="navbar-menu">
+			<div class="navbar-start">
+				<a class="navbar-item" href={ BaseURL(ctx, WithPath("/collections")) }>
+					<span class="icon">
+						<i class="fa fa-folder-open"></i>
+					</span>
+					<span>Collections</span>
+				</a>
+			</div>
+			<div class="navbar-end">
+				<div class="navbar-item has-dropdown is-hoverable">
+					<a class="navbar-link is-hidden-touch">
+						<span class="icon">
+							<i class="fas fa-user"></i>
+						</span>
+						<span>{ vmodel.User.DisplayName() }</span>
+					</a>
+					<div class="navbar-dropdown is-right">
+						<a class="navbar-item" href={ BaseURL(ctx, WithPath("/profile")) }>
+							<span class="icon">
+								<i class="fa fa-user-edit"></i>
+							</span>
+							<span>Profil</span>
+						</a>
+						if AssertUser(ctx,  authz.Has(authz.RoleAdmin)) {
+							<a class="navbar-item" href={ BaseURL(ctx, WithPath("/admin")) }>
+								<span class="icon">
+									<i class="fa fa-cog"></i>
+								</span>
+								<span>Administration</span>
+							</a>
+						}
+						if !IsDesktopApp(ctx) {
+							<hr class="navbar-divider"/>
+							<a class="navbar-item" href={ BaseURL(ctx, WithPath("/auth/oidc/logout")) }>
+								<span class="icon">
+									<i class="fa fa-sign-out"></i>
+								</span>
+								<span>Déconnexion</span>
+							</a>
+						}
+					</div>
+				</div>
+			</div>
+		</div>
+	</nav>
+	<script type="text/javascript">
+    (function() {
+      const $navbarBurgers = Array.prototype.slice.call(document.querySelectorAll('.navbar-burger'), 0);
+      $navbarBurgers.forEach( el => {
+        el.addEventListener('click', () => {
+          const target = el.dataset.target;
+          const $target = document.getElementById(target);
+          el.classList.toggle('is-active');
+          $target.classList.toggle('is-active');
+        });
+      });
+    }())
+  </script>
+}

@@ -1,0 +1,13 @@
+package component
+
+templ NavbarPage(navbar NavbarVModel, funcs ...PageOptionFunc) {
+	@Page(funcs...) {
+		{{ isDesktopApp := IsDesktopApp(ctx) }}
+		<div class={ "container", templ.KV("is-fluid", isDesktopApp) }>
+			@Navbar(navbar)
+			<section class="section pt-3">
+				{ children... }
+			</section>
+		</div>
+	}
+}

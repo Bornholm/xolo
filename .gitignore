@@ -1,0 +1,8 @@
+/.env
+/bin
+/tools
+*.sqlite*
+index.bleve
+/data
+/dist
+/node_modules

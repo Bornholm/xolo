@@ -1,0 +1,177 @@
+package component
+
+import (
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/dialog"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/sheet"
+	"github.com/bornholm/xolo/internal/http/middleware/authz"
+)
+
+templ AppNavigationItems(vmodel AppLayoutVModel) {
+	@NavItem(icon.ChartColumn, "Usage", string(BaseURL(ctx, WithPath("/usage"))), vmodel.SelectedItem == "usage")
+	@NavItem(icon.BrainCircuit, "Modèles", string(BaseURL(ctx, WithPath("/models"))), vmodel.SelectedItem == "models")
+	@NavItem(icon.KeyRound, "Clés API", string(BaseURL(ctx, WithPath("/profile/tokens"))), vmodel.SelectedItem == "tokens")
+}
+
+templ AdminNavigationItems(vmodel AppLayoutVModel) {
+	@NavItem(icon.Building2, "Organisations", string(BaseURL(ctx, WithPath("/admin/orgs"))), vmodel.SelectedItem == "orgs")
+	@NavItem(icon.Users, "Utilisateurs", string(BaseURL(ctx, WithPath("/admin/users"))), vmodel.SelectedItem == "users")
+	@NavItem(icon.RefreshCw, "Taux de change", string(BaseURL(ctx, WithPath("/admin/exchange-rates"))), vmodel.SelectedItem == "exchange-rates")
+}
+
+templ CommonFooterItems(vmodel AppLayoutVModel) {
+	@NavItem(icon.User, vmodel.User.DisplayName(), string(BaseURL(ctx, WithPath("/profile"))), vmodel.SelectedItem == "profile")
+	@NavItem(icon.LogOut, "Déconnexion", string(BaseURL(ctx, WithPath("/auth/oidc/logout"))), false)
+}
+
+templ AppFooterItems(vmodel AppLayoutVModel) {
+	if AssertUser(ctx, authz.Has(authz.RoleAdmin)) {
+		@NavItem(icon.Settings, "Plateforme", string(BaseURL(ctx, WithPath("/admin/"))), vmodel.SelectedItem == "admin")
+	}
+	for _, m := range OrgAdminMemberships(ctx) {
+		if m.Org() != nil {
+			@NavItem(icon.Building, m.Org().Name(), string(BaseURL(ctx, WithPath("/orgs/", m.Org().Slug(), "/admin/"))), false)
+		}
+	}
+	@CommonFooterItems(vmodel)
+}
+
+templ AdminFooterItems(vmodel AppLayoutVModel) {
+	@NavItem(icon.ChartBar, "Usage", string(BaseURL(ctx, WithPath("/usage"))), vmodel.SelectedItem == "user-view")
+	for _, m := range OrgAdminMemberships(ctx) {
+		if m.Org() != nil {
+			@NavItem(icon.Building, m.Org().Name(), string(BaseURL(ctx, WithPath("/orgs/", m.Org().Slug(), "/admin/"))), false)
+		}
+	}
+	@CommonFooterItems(vmodel)
+}
+
+templ OrgAdminFooterItems(vmodel AppLayoutVModel) {
+	@NavItem(icon.ChartBar, "Usage", string(BaseURL(ctx, WithPath("/usage"))), vmodel.SelectedItem == "user-view")
+	if AssertUser(ctx, authz.Has(authz.RoleAdmin)) {
+		@NavItem(icon.Settings, "Plateforme", string(BaseURL(ctx, WithPath("/admin/"))), vmodel.SelectedItem == "admin")
+	}
+	@CommonFooterItems(vmodel)
+}
+
+// PublicShareNavigationItems renders navigation items for public share pages (no auth required).
+templ PublicShareNavigationItems(vmodel AppLayoutVModel) {
+	@NavItem(icon.House, "Accueil", string(BaseURL(ctx)), vmodel.SelectedItem == "home")
+}
+
+// PublicShareFooterItems renders footer items for public share pages.
+templ PublicShareFooterItems(vmodel AppLayoutVModel) {
+	if vmodel.User != nil {
+		@NavItem(icon.User, vmodel.User.DisplayName(), string(BaseURL(ctx, WithPath("/profile"))), vmodel.SelectedItem == "profile")
+		@NavItem(icon.LogOut, "Déconnexion", string(BaseURL(ctx, WithPath("/auth/oidc/logout"))), false)
+	} else {
+		@NavItem(icon.LogIn, "Connexion", string(BaseURL(ctx, WithPath("/auth/oidc/login"))), false)
+	}
+}
+
+// AppLayout is the main responsive layout shell with sidebar navigation.
+templ AppLayout(vmodel AppLayoutVModel, funcs ...PageOptionFunc) {
+	{{ funcs = append(funcs, WithScripts(dialog.Script())) }}
+	{{
+		if vmodel.User != nil && vmodel.User.Preferences().DarkMode() {
+			funcs = append(funcs, WithVariant(VariantDark))
+		}
+	}}
+	@Page(funcs...) {
+		<div class="flex h-screen overflow-hidden bg-background">
+			<!-- Mobile overlay sidebar -->
+			<div class="lg:hidden">
+				@sheet.Sheet(sheet.Props{Side: sheet.SideLeft}) {
+					@sheet.Trigger() {
+						@button.Button(button.Props{
+							Variant: button.VariantGhost,
+							Size:    button.SizeIcon,
+							Class:   "fixed top-3 left-3 z-50",
+						}) {
+							@icon.Menu()
+						}
+					}
+					@sheet.Content(sheet.ContentProps{Side: sheet.SideLeft, Class: "w-64 p-0"}) {
+						@sidebarContent(vmodel)
+					}
+				}
+			</div>
+			<!-- Desktop sidebar -->
+			<aside class="hidden lg:flex lg:w-60 lg:flex-col border-r bg-card">
+				@sidebarContent(vmodel)
+			</aside>
+			<!-- Main content area -->
+			<div class="flex flex-1 flex-col overflow-hidden">
+				<!-- Top bar -->
+				<header class="flex h-14 items-center gap-4 border-b bg-card px-4 md:px-6">
+					<div class="lg:hidden w-10"></div>
+					<!-- Spacer for hamburger on mobile -->
+					if len(vmodel.Breadcrumbs) > 0 {
+						@breadcrumb(vmodel.Breadcrumbs)
+					}
+				</header>
+				<!-- Page content -->
+				<main class="flex-1 overflow-auto p-4 md:p-6">
+					{ children... }
+				</main>
+			</div>
+		</div>
+	}
+}
+
+// sidebarContent renders the sidebar navigation content.
+templ sidebarContent(vmodel AppLayoutVModel) {
+	<div class="flex h-full flex-col" hx-boost="false">
+		<!-- Brand -->
+		<div class="flex h-14 items-center border-b px-4">
+			@Logo("h-7 w-7 mr-2", "height:70%")
+			<a href={ BaseURL(ctx) } title="Home"><span class="font-semibold text-lg">Xolo</span></a>
+		</div>
+		<!-- Navigation -->
+		<nav class="flex-1 space-y-1 p-3">
+			if vmodel.NavigationItems != nil {
+				@vmodel.NavigationItems(vmodel)
+			}
+		</nav>
+		<!-- User footer -->
+		<div class="border-t p-3 space-y-1">
+			if vmodel.FooterItems != nil {
+				@vmodel.FooterItems(vmodel)
+			}
+		</div>
+	</div>
+}
+
+// NavItem renders a navigation item with icon and label.
+templ NavItem(iconFunc func(...icon.Props) templ.Component, label, href string, active bool) {
+	<a
+		href={ templ.SafeURL(href) }
+		class={
+			"flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+			templ.KV("bg-accent text-accent-foreground", active),
+			templ.KV("text-muted-foreground hover:bg-accent hover:text-accent-foreground", !active),
+		}
+	>
+		@iconFunc(icon.Props{Class: "h-4 w-4"})
+		{ label }
+	</a>
+}
+
+// breadcrumb renders the breadcrumb navigation.
+templ breadcrumb(items []BreadcrumbItem) {
+	<nav class="flex items-center gap-1.5 text-sm text-muted-foreground">
+		for i, item := range items {
+			if i > 0 {
+				@icon.ChevronRight(icon.Props{Class: "h-3.5 w-3.5"})
+			}
+			if item.Href != "" && i < len(items)-1 {
+				<a href={ templ.SafeURL(item.Href) } class="hover:text-foreground transition-colors">
+					{ item.Label }
+				</a>
+			} else {
+				<span class="text-foreground font-medium">{ item.Label }</span>
+			}
+		}
+	</nav>
+}

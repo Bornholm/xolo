@@ -1,0 +1,101 @@
+package component
+
+const VariantDark string = "dark"
+
+type PageOptions struct {
+	Title       string
+	Head        func() templ.Component
+	Description string
+	Variant     string
+	Scripts     []templ.Component
+}
+
+type PageOptionFunc func(opts *PageOptions)
+
+func WithTitle(title string) PageOptionFunc {
+	return func(opts *PageOptions) {
+		opts.Title = title
+	}
+}
+
+func WithDescription(description string) PageOptionFunc {
+	return func(opts *PageOptions) {
+		opts.Description = description
+	}
+}
+
+func WithHead(fn func() templ.Component) PageOptionFunc {
+	return func(opts *PageOptions) {
+		opts.Head = fn
+	}
+}
+
+func WithVariant(variant string) PageOptionFunc {
+	return func(opts *PageOptions) {
+		opts.Variant = variant
+	}
+}
+
+func WithScripts(scripts ...templ.Component) PageOptionFunc {
+	return func(opts *PageOptions) {
+		opts.Scripts = append(opts.Scripts, scripts...)
+	}
+}
+
+func NewPageOptions(funcs ...PageOptionFunc) *PageOptions {
+	opts := &PageOptions{
+		Title:   "",
+		Head:    nil,
+		Variant: "",
+		Scripts: make([]templ.Component, 0),
+	}
+	for _, fn := range funcs {
+		fn(opts)
+	}
+
+	return opts
+}
+
+templ Page(funcs ...PageOptionFunc) {
+	{{ opts := NewPageOptions(funcs...) }}
+	<!DOCTYPE html>
+	<html class={ opts.Variant }>
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>
+				if ( opts.Title != "") {
+					{ opts.Title } | Xolo
+				} else {
+					Xolo
+				}
+			</title>
+			if opts.Description != "" {
+				<meta name="description" content={ opts.Description }/>
+			}
+			<link rel="icon" type="image/png" href={ string(BaseURL(ctx, WithPath("/assets/favicon.png"))) }/>
+			<link rel="stylesheet" href={ string(BaseURL(ctx, WithPath("/assets/templui.css"))) }/>
+			<link rel="stylesheet" href={ string(BaseURL(ctx, WithPath("/assets/fontawesome/css/all.min.css"))) }/>
+			<link rel="stylesheet" href={ string(BaseURL(ctx, WithPath("/assets/style.css"))) }/>
+			<script src={ string(BaseURL(ctx, WithPath("/assets/htmx.min.js"))) }></script>
+			if opts.Head != nil {
+				@opts.Head()
+			}
+			if len(opts.Scripts) > 0 {
+				@templ.Join(opts.Scripts...)
+			}
+		</head>
+		<body>
+			<div id="main">
+				{ children... }
+			</div>
+			<script type="text/javascript">
+				htmx.config.responseHandling = [
+					{code:"204", swap: false},   // 204 - No Content by default does nothing, but is not an error
+					{code:"[23]..", swap: true}, // 200 & 300 responses are non-errors and are swapped
+					{code:"[45]..", swap: true, error:true}, // 400 & 500 responses are not swapped and are errors
+				];
+			</script>
+		</body>
+	</html>
+}

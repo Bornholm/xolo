@@ -1,0 +1,77 @@
+package component
+
+import (
+	"fmt"
+	"github.com/bornholm/xolo/internal/core/model"
+	commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
+)
+
+type ExchangeRatesPageVModel struct {
+	AppLayoutVModel commonComp.AppLayoutVModel
+	Rates           []model.ExchangeRate
+}
+
+templ ExchangeRatesPage(vmodel ExchangeRatesPageVModel) {
+	@commonComp.AppLayout(vmodel.AppLayoutVModel, commonComp.WithTitle("Taux de change")) {
+		<div class="space-y-6">
+			<!-- Header -->
+			<div class="flex items-center gap-4">
+				@icon.RefreshCw(icon.Props{Class: "h-8 w-8"})
+				<div>
+					<h1 class="text-2xl font-semibold">Taux de change</h1>
+					<p class="text-sm text-muted-foreground">Données en cache, rafraîchies automatiquement</p>
+				</div>
+			</div>
+			if len(vmodel.Rates) == 0 {
+				<div class="rounded-lg border border-border p-6 text-center">
+					<div class="flex flex-col items-center gap-2">
+						@icon.Info(icon.Props{Class: "h-8 w-8 text-muted-foreground"})
+						<p class="text-muted-foreground">Aucun taux de change en cache. Le rafraîchissement automatique peuplera cette table au démarrage.</p>
+					</div>
+				</div>
+			} else {
+				@card.Card() {
+					@card.Content() {
+						@table.Table() {
+							@table.Header() {
+								@table.Head() {
+									De
+								}
+								@table.Head() {
+									Vers
+								}
+								@table.Head() {
+									Taux
+								}
+								@table.Head() {
+									Mis à jour le
+								}
+							}
+							@table.Body() {
+								for _, rate := range vmodel.Rates {
+									@table.Row() {
+										@table.Cell() {
+											<span class="font-medium">{ rate.FromCurrency }</span>
+										}
+										@table.Cell() {
+											<span class="font-medium">{ rate.ToCurrency }</span>
+										}
+										@table.Cell() {
+											{ fmt.Sprintf("%.8g", rate.Rate) }
+										}
+										@table.Cell() {
+											<span class="text-muted-foreground">{ rate.FetchedAt.Format("02/01/2006 15:04:05") }</span>
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		</div>
+	}
+}

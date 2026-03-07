@@ -1,0 +1,87 @@
+package component
+
+import (
+	"github.com/bornholm/xolo/internal/core/model"
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+)
+
+type NoOrgPageVModel struct {
+	AppLayoutVModel common.AppLayoutVModel
+	Invites         []model.InviteToken
+	DeclinedIDs     []string
+}
+
+func isDeclined(id string, declinedIDs []string) bool {
+	for _, d := range declinedIDs {
+		if d == id {
+			return true
+		}
+	}
+	return false
+}
+
+templ NoOrgPage(vmodel NoOrgPageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel) {
+		<div class="space-y-6">
+			<!-- Header -->
+			<div class="flex items-center gap-4">
+				@icon.Building2(icon.Props{Class: "h-8 w-8"})
+				<h1 class="text-2xl font-semibold">Bienvenue sur Xolo</h1>
+			</div>
+			<div class="rounded-lg border bg-card text-card-foreground shadow-sm p-6 space-y-4">
+				<p class="text-muted-foreground">
+					Vous n'avez pas encore rejoint d'organisation. Les organisations vous permettent d'accéder aux modèles LLM configurés par votre administrateur.
+				</p>
+				<!-- Pending invitations -->
+				if len(vmodel.Invites) > 0 {
+					<h3 class="text-lg font-semibold">Invitations en attente</h3>
+					<div class="space-y-3">
+						for _, inv := range vmodel.Invites {
+							if !isDeclined(string(inv.ID()), vmodel.DeclinedIDs) {
+								<div class="flex items-center justify-between rounded-md border p-4">
+									<div class="space-y-1">
+										<p class="font-medium">
+											if inv.Org() != nil {
+												{ inv.Org().Name() }
+											} else {
+												{ string(inv.OrgID()) }
+											}
+										</p>
+										<p class="text-sm text-muted-foreground">Rôle : { inv.Role() }</p>
+									</div>
+									<div class="flex gap-2">
+										@button.Button(button.Props{
+											Href:    common.BaseURLString(ctx, common.WithPath("/join/", string(inv.ID()))),
+											Variant: button.VariantDefault,
+											Size:    button.SizeSm,
+										}) {
+											Rejoindre
+										}
+										<form method="POST" action={ common.BaseURL(ctx, common.WithPath("/no-org/invitations/", string(inv.ID()), "/decline")) }>
+											@button.Button(button.Props{
+												Type:    button.TypeSubmit,
+												Variant: button.VariantOutline,
+												Size:    button.SizeSm,
+											}) {
+												Décliner
+											}
+										</form>
+									</div>
+								</div>
+							}
+						}
+					</div>
+				} else {
+					@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+						@alert.Description(alert.DescriptionProps{}) {
+							Aucune invitation en attente. Contactez un administrateur pour rejoindre une organisation.
+						}
+					}
+				}
+			</div>
+		</div>
+	}
+}

@@ -1,0 +1,93 @@
+package component
+
+import (
+	"github.com/bornholm/xolo/internal/core/model"
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+	switchcomp "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/switch"
+)
+
+type ProfilePageVModel struct {
+	AppLayoutVModel common.AppLayoutVModel
+	User            model.User
+	Preferences     model.UserPreferences
+}
+
+templ ProfilePage(vmodel ProfilePageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel) {
+		<div class="space-y-6">
+			<!-- Header -->
+			<div class="flex items-center gap-4">
+				@icon.User(icon.Props{Class: "h-8 w-8"})
+				<h1 class="text-2xl font-semibold">Profil</h1>
+			</div>
+			<!-- User Info Section -->
+			<div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+				<div class="flex flex-col space-y-1.5 p-6">
+					<h3 class="text-lg font-semibold">
+						@icon.Info(icon.Props{Class: "h-4 w-4 inline mr-2"})
+						Informations du compte
+					</h3>
+				</div>
+				<div class="p-6 pt-0 space-y-4">
+					<div class="space-y-2">
+						<label class="text-sm font-medium">Nom d'affichage</label>
+						@input.Input(input.Props{
+							Value:    vmodel.User.DisplayName(),
+							Readonly: true,
+						})
+					</div>
+					<div class="space-y-2">
+						<label class="text-sm font-medium">Courriel</label>
+						@input.Input(input.Props{
+							Value:    vmodel.User.Email(),
+							Readonly: true,
+						})
+					</div>
+					@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+						@alert.Description(alert.DescriptionProps{}) {
+							Ces informations sont contrôlées par votre fournisseur d'identité et ne peuvent être modifiées.
+						}
+					}
+				</div>
+			</div>
+			<!-- Preferences Section -->
+			<form
+				action={ common.BaseURL(ctx, common.WithPath("/profile/preferences")) }
+				method="POST"
+			>
+				<div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+					<div class="flex flex-col space-y-1.5 p-6">
+						<h3 class="text-lg font-semibold">
+							@icon.Settings(icon.Props{Class: "h-4 w-4 inline mr-2"})
+							Préférences
+						</h3>
+					</div>
+					<div class="p-6 pt-0 space-y-4">
+						<div class="flex items-center justify-between">
+							<div class="space-y-1">
+								<label class="text-sm font-medium block">Mode sombre</label>
+								<p class="text-sm text-muted-foreground">Activer le thème sombre pour l'interface utilisateur</p>
+							</div>
+							@switchcomp.Switch(switchcomp.Props{
+								Name:    "dark_mode",
+								Checked: vmodel.Preferences.DarkMode(),
+							})
+						</div>
+					</div>
+					<div class="p-6 pt-0">
+						@button.Button(button.Props{
+							Type:    button.TypeSubmit,
+							Variant: button.VariantDefault,
+						}) {
+							Enregistrer les préférences
+						}
+					</div>
+				</div>
+			</form>
+		</div>
+	}
+}

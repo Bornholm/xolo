@@ -1,0 +1,248 @@
+package component
+
+import (
+	"github.com/bornholm/xolo/internal/core/model"
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/dialog"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
+)
+
+type TokensPageVModel struct {
+	AppLayoutVModel common.AppLayoutVModel
+	AuthTokens      []model.AuthToken
+	OrgMemberships  []model.Membership
+	CreatedToken    string
+	DeletedToken    bool
+}
+
+templ TokensPage(vmodel TokensPageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel) {
+		<div class="space-y-6">
+			<!-- Header -->
+			<div class="flex items-center gap-4">
+				@icon.KeyRound(icon.Props{Class: "h-8 w-8"})
+				<h1 class="text-2xl font-semibold">Clés API</h1>
+			</div>
+			<!-- Auth Tokens Section -->
+			@card.Card() {
+				@card.Header() {
+					<div class="flex items-center justify-between">
+						@card.Title() {
+							@icon.Key(icon.Props{Class: "h-4 w-4 inline mr-2"})
+							Clés API
+						}
+						<!-- Dialog Trigger -->
+						@dialog.Trigger(dialog.TriggerProps{For: "token-create-dialog"}) {
+							@button.Button(button.Props{Variant: button.VariantDefault}) {
+								@icon.Plus()
+								<span>Nouvelle clé</span>
+							}
+						}
+					</div>
+				}
+				@card.Content() {
+					if len(vmodel.AuthTokens) == 0 {
+						@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+							@alert.Description(alert.DescriptionProps{}) {
+								Aucune clé API configurée. Les clés API permettent aux applications externes d'accéder à votre compte de manière sécurisée.
+							}
+						}
+					} else {
+						@table.Table() {
+							@table.Header() {
+								<tr>
+									<th class="text-left p-3 text-sm font-medium">Nom</th>
+									<th class="text-left p-3 text-sm font-medium">Organisation</th>
+									<th class="text-left p-3 text-sm font-medium">Expiration</th>
+									<th class="text-right p-3 text-sm font-medium"></th>
+								</tr>
+							}
+							@table.Body() {
+								for _, token := range vmodel.AuthTokens {
+									@table.Row() {
+										<td class="p-3">
+											<span class="font-medium">{ token.Label() }</span>
+										</td>
+										<td class="p-3 text-sm text-muted-foreground">
+											{ tokenOrgName(token, vmodel.OrgMemberships) }
+										</td>
+										<td class="p-3 text-sm text-muted-foreground">
+											{ tokenExpiry(token) }
+										</td>
+										<td class="p-3 text-right">
+											@button.Button(button.Props{
+												Variant: button.VariantDestructive,
+												Size:    button.SizeIcon,
+												Attributes: templ.Attributes{
+													"data-token-id": string(token.ID()),
+													"onclick":       "deleteTokenHandler(this)",
+												},
+											}) {
+												@icon.Trash2(icon.Props{Class: "h-4 w-4"})
+											}
+										</td>
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		</div>
+		<!-- Token Creation Dialog -->
+		@dialog.Dialog(dialog.Props{ID: "token-create-dialog"}) {
+			@dialog.Content() {
+				@dialog.Header() {
+					@dialog.Title(dialog.TitleProps{}) {
+						Créer une clé API
+					}
+				}
+				<div class="space-y-4">
+					<div class="p-3 rounded-md bg-yellow-50 dark:bg-yellow-900/20 text-sm">
+						<strong>Important :</strong> La clé API ne sera affichée qu'une seule fois après sa création. Assurez-vous de la copier dans un endroit sûr.
+					</div>
+					<form id="token-create-form" method="POST" action={ common.BaseURL(ctx, common.WithPath("/profile/tokens")) } class="space-y-4">
+						<div class="space-y-2">
+							<label for="token-label" class="text-sm font-medium">Nom de la clé</label>
+							@input.Input(input.Props{
+								Name:        "label",
+								ID:          "token-label",
+								Placeholder: "Ex: Application mobile, Script de sauvegarde...",
+							})
+						</div>
+						<div class="space-y-2">
+							<label for="token-org" class="text-sm font-medium">Organisation</label>
+							<select
+								id="token-org"
+								name="org_id"
+								class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none md:text-sm"
+							>
+								<option value="">— Aucune organisation —</option>
+								for _, m := range vmodel.OrgMemberships {
+									if m.Org() != nil {
+										<option value={ string(m.OrgID()) }>{ m.Org().Name() }</option>
+									}
+								}
+							</select>
+						</div>
+						<div class="space-y-2">
+							<label for="token-expires" class="text-sm font-medium">Date d'expiration (optionnel)</label>
+							<input
+								id="token-expires"
+								name="expires_at"
+								type="date"
+								class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none md:text-sm"
+							/>
+						</div>
+					</form>
+				</div>
+				@dialog.Footer(dialog.FooterProps{}) {
+					<button
+						type="submit"
+						class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 h-9 rounded-md px-4 cursor-pointer"
+						onclick="document.getElementById('token-create-form').requestSubmit()"
+					>
+						Créer la clé
+					</button>
+				}
+			}
+		}
+		<!-- Token Created Success Dialog -->
+		if vmodel.CreatedToken != "" {
+			@dialog.Dialog(dialog.Props{ID: "token-success-dialog", Open: true}) {
+				@dialog.Content() {
+					@dialog.Header() {
+						@dialog.Title(dialog.TitleProps{}) {
+							Clé API créée avec succès
+						}
+					}
+					<div class="space-y-4">
+						<label class="text-sm font-medium block">Votre nouvelle clé API :</label>
+						<div class="flex gap-2">
+							<input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none md:text-sm" type="text" value={ vmodel.CreatedToken } readonly id="created-token"/>
+							@button.Button(button.Props{
+								Class: "px-3 py-1 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80",
+								Attributes: templ.Attributes{
+									"onclick": "copyToken()",
+								},
+							}) {
+								@icon.Copy(icon.Props{Class: "h-4 w-4 icon"})
+								@icon.Check(icon.Props{Class: "h-4 w-4 icon hidden"})
+							}
+						</div>
+						<p class="text-sm text-red-500">
+							<strong>Attention :</strong> Cette clé API ne sera plus affichée. Copiez-la maintenant dans un endroit sûr.
+						</p>
+					</div>
+					@dialog.Footer(dialog.FooterProps{}) {
+						<a href={ common.BaseURL(ctx, common.WithPath("/profile/tokens")) } class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90">J'ai copié la clé</a>
+					}
+				}
+			}
+		}
+		<!-- Token Deleted Success Notification -->
+		if vmodel.DeletedToken {
+			<div class="fixed top-4 right-4 z-50 bg-green-600 text-white px-4 py-3 rounded-md shadow-lg">
+				<div class="flex items-center gap-2">
+					<span>Clé API supprimée avec succès</span>
+					<button onclick="this.parentElement.parentElement.remove()" class="ml-2 hover:bg-white/20 rounded p-1">
+						@icon.X(icon.Props{Class: "h-4 w-4"})
+					</button>
+				</div>
+			</div>
+		}
+		<!-- Dialog Script -->
+		@dialog.Script()
+		<script>
+			function copyToken() {
+				const tokenInput = document.getElementById('created-token');
+				tokenInput.select();
+				document.execCommand('copy');
+
+				const button = event.target.closest('button');
+				const icons = Array.from(button.querySelectorAll(".icon"));
+
+				icons.forEach(el => el.classList.toggle("hidden"))
+
+				setTimeout(() => {
+					icons.forEach(el => el.classList.toggle("hidden"))
+				}, 2000);
+			}
+
+			function deleteTokenHandler(button) {
+				const tokenId = button.getAttribute('data-token-id');
+				if (confirm('Supprimer cette clé API ? Cette action est irréversible.')) {
+					fetch('/profile/tokens/' + tokenId, {
+						method: 'DELETE',
+					}).then(() => {
+						window.location.reload();
+					});
+				}
+			}
+		</script>
+	}
+}
+
+func tokenOrgName(token model.AuthToken, memberships []model.Membership) string {
+	if token.OrgID() == "" {
+		return "—"
+	}
+	for _, m := range memberships {
+		if m.OrgID() == token.OrgID() && m.Org() != nil {
+			return m.Org().Name()
+		}
+	}
+	return string(token.OrgID())
+}
+
+func tokenExpiry(token model.AuthToken) string {
+	if token.ExpiresAt() == nil {
+		return "—"
+	}
+	return token.ExpiresAt().Format("02/01/2006")
+}

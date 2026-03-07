@@ -1,0 +1,54 @@
+package org
+
+import (
+	"log/slog"
+	"net/http"
+
+	"github.com/a-h/templ"
+	httpCtx "github.com/bornholm/xolo/internal/http/context"
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/org/component"
+	"github.com/bornholm/go-x/slogx"
+	"github.com/pkg/errors"
+)
+
+func (h *Handler) getDashboard(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user := httpCtx.User(ctx)
+	orgSlug := r.PathValue("orgSlug")
+	nav, footer := orgAdminNav(orgSlug)
+
+	org, err := h.orgFromSlug(ctx, orgSlug)
+	if err != nil {
+		slog.ErrorContext(ctx, "could not load org", slogx.Error(err))
+		http.Error(w, "Organization not found", http.StatusNotFound)
+		return
+	}
+
+	members, err := h.orgStore.ListOrgMembers(ctx, org.ID())
+	if err != nil {
+		slog.ErrorContext(ctx, "could not list members", slogx.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	providers, err := h.providerStore.ListProviders(ctx, org.ID())
+	if err != nil {
+		slog.ErrorContext(ctx, "could not list providers", slogx.Error(errors.WithStack(err)))
+		providers = nil
+	}
+
+	vmodel := component.OrgDashboardVModel{
+		Org:       org,
+		Members:   members,
+		Providers: providers,
+		AppLayoutVModel: common.AppLayoutVModel{
+			User:         user,
+			SelectedItem: "org-" + orgSlug,
+			NavigationItems: nav,
+			FooterItems:     footer,
+		},
+	}
+
+	templ.Handler(component.OrgDashboard(vmodel)).ServeHTTP(w, r)
+}

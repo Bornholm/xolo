@@ -1,0 +1,1129 @@
+package component
+
+import (
+	"fmt"
+	"github.com/bornholm/xolo/internal/core/model"
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/chart"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/pagination"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/separator"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
+	"strconv"
+)
+
+// ── Org Dashboard ─────────────────────────────────────────────────────────────
+templ OrgDashboard(vmodel OrgDashboardVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(vmodel.Org.Name())) {
+		<div class="space-y-6">
+			<div class="flex items-center justify-between">
+				<div>
+					<h1 class="text-2xl font-semibold">{ vmodel.Org.Name() }</h1>
+					<p class="text-sm text-muted-foreground">{ vmodel.Org.Description() }</p>
+				</div>
+			</div>
+			@separator.Separator()
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+				@card.Card() {
+					@card.Header() {
+						@card.Title() {
+							Membres
+						}
+					}
+					@card.Content() {
+						<p class="text-3xl font-bold">{ fmt.Sprintf("%d", len(vmodel.Members)) }</p>
+					}
+					@card.Footer() {
+						@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members")), Variant: button.VariantOutline, Size: button.SizeSm}) {
+							Gérer
+						}
+					}
+				}
+				@card.Card() {
+					@card.Header() {
+						@card.Title() {
+							Fournisseurs
+						}
+					}
+					@card.Content() {
+						<p class="text-3xl font-bold">{ fmt.Sprintf("%d", len(vmodel.Providers)) }</p>
+					}
+					@card.Footer() {
+						@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers")), Variant: button.VariantOutline, Size: button.SizeSm}) {
+							Gérer
+						}
+					}
+				}
+				@card.Card() {
+					@card.Header() {
+						@card.Title() {
+							Usage (30j)
+						}
+					}
+					@card.Content() {
+						<p class="text-3xl font-bold">—</p>
+					}
+					@card.Footer() {
+						@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/usage")), Variant: button.VariantOutline, Size: button.SizeSm}) {
+							Voir
+						}
+					}
+				}
+			</div>
+		</div>
+	}
+}
+
+// ── Members Page ──────────────────────────────────────────────────────────────
+templ MembersPage(vmodel MembersPageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Membres — "+vmodel.Org.Name())) {
+		<div class="space-y-6">
+			<div class="flex items-center justify-between">
+				<div>
+					<h1 class="text-2xl font-semibold">Membres</h1>
+					<p class="text-sm text-muted-foreground">{ vmodel.Org.Name() }</p>
+				</div>
+				@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/new"))}) {
+					@icon.UserPlus(icon.Props{Class: "h-4 w-4 mr-2"})
+					Inviter
+				}
+			</div>
+			if vmodel.Success != "" {
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					Opération réussie.
+				}
+			}
+			if len(vmodel.Members) == 0 {
+				<div class="rounded-lg border p-6 text-center text-muted-foreground">
+					Aucun membre. Créez un lien d'invitation pour ajouter des utilisateurs.
+				</div>
+			} else {
+				@card.Card() {
+					@card.Content() {
+						@table.Table() {
+							@table.Header() {
+								@table.Head() {
+									Utilisateur
+								}
+								@table.Head() {
+									Email
+								}
+								@table.Head() {
+									Rôle
+								}
+								@table.Head() {
+									Actions
+								}
+							}
+							@table.Body() {
+								for _, m := range vmodel.Members {
+									@table.Row() {
+										@table.Cell() {
+											if m.User() != nil {
+												{ m.User().DisplayName() }
+											}
+										}
+										@table.Cell() {
+											if m.User() != nil {
+												{ m.User().Email() }
+											}
+										}
+										@table.Cell() {
+											@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
+												{ m.Role() }
+											}
+										}
+										@table.Cell() {
+											<button
+												type="button"
+												data-url={ common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members/", string(m.ID()))) }
+												onclick="if(confirm('Retirer ce membre ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)"
+												class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-destructive text-destructive-foreground hover:bg-destructive/90 h-8 px-3"
+											>
+												Retirer
+											</button>
+											@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members/", string(m.ID()), "/quota")), Variant: button.VariantOutline, Size: button.SizeSm}) {
+												Quota
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		</div>
+	}
+}
+
+// ── Providers Page ────────────────────────────────────────────────────────────
+templ ProvidersPage(vmodel ProvidersPageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Fournisseurs — "+vmodel.Org.Name())) {
+		<div class="space-y-6">
+			<div class="flex items-center justify-between">
+				<h1 class="text-2xl font-semibold">Fournisseurs LLM</h1>
+				@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/new"))}) {
+					@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
+					Ajouter
+				}
+			</div>
+			if vmodel.Success != "" {
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					Opération réussie.
+				}
+			}
+			if len(vmodel.Providers) == 0 {
+				<div class="rounded-lg border p-6 text-center text-muted-foreground">
+					Aucun fournisseur. Ajoutez un fournisseur LLM pour commencer.
+				</div>
+			} else {
+				@card.Card() {
+					@card.Content() {
+						@table.Table() {
+							@table.Header() {
+								@table.Head() {
+									Nom
+								}
+								@table.Head() {
+									Type
+								}
+								@table.Head() {
+									Statut
+								}
+								@table.Head() {
+									Actions
+								}
+							}
+							@table.Body() {
+								for _, p := range vmodel.Providers {
+									@table.Row() {
+										@table.Cell() {
+											{ p.Name() }
+										}
+										@table.Cell() {
+											@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
+												{ p.Type() }
+											}
+										}
+										@table.Cell() {
+											if p.Active() {
+												@badge.Badge(badge.Props{Variant: badge.VariantDefault}) {
+													Actif
+												}
+											} else {
+												@badge.Badge(badge.Props{Variant: badge.VariantDestructive}) {
+													Inactif
+												}
+											}
+										}
+										@table.Cell() {
+											<div class="flex gap-2">
+												@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(p.ID()), "/models")), Variant: button.VariantOutline, Size: button.SizeSm}) {
+													Modèles
+												}
+												@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(p.ID()), "/edit")), Variant: button.VariantOutline, Size: button.SizeSm}) {
+													Modifier
+												}
+											</div>
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		</div>
+	}
+}
+
+// ── Provider Form ─────────────────────────────────────────────────────────────
+templ ProviderForm(vmodel ProviderFormVModel) {
+	{{ title := "Nouveau fournisseur" }}
+	{{ action := common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers")) }}
+	if !vmodel.IsNew && vmodel.Provider != nil {
+		{{ title = "Modifier — " + vmodel.Provider.Name() }}
+		{{ action = common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()), "/edit")) }}
+	}
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(title)) {
+		<div class="space-y-6">
+			<h1 class="text-2xl font-semibold">{ title }</h1>
+			<form method="POST" action={ templ.SafeURL(action) } class="space-y-4">
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Nom</label>
+					if !vmodel.IsNew && vmodel.Provider != nil {
+						@input.Input(input.Props{Name: "name", Value: vmodel.Provider.Name()})
+					} else {
+						@input.Input(input.Props{Name: "name"})
+					}
+				</div>
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Type</label>
+					<select name="provider_type" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+						for _, t := range []string{"openai", "mistral", "openrouter", "yzma"} {
+							if !vmodel.IsNew && vmodel.Provider != nil && vmodel.Provider.Type() == t {
+								<option value={ t } selected>{ t }</option>
+							} else {
+								<option value={ t }>{ t }</option>
+							}
+						}
+					</select>
+				</div>
+				<div class="space-y-2">
+					<label class="text-sm font-medium">URL de base</label>
+					<p class="text-xs text-muted-foreground">
+						Exemples : <code>https://api.openai.com/v1</code>, <code>https://api.mistral.ai/v1</code>, <code>https://openrouter.ai/api/v1</code>
+					</p>
+					if !vmodel.IsNew && vmodel.Provider != nil {
+						@input.Input(input.Props{Name: "base_url", Value: vmodel.Provider.BaseURL(), Placeholder: "https://api.mistral.ai/v1", Attributes: templ.Attributes{"required": "required"}})
+					} else {
+						@input.Input(input.Props{Name: "base_url", Placeholder: "https://api.mistral.ai/v1", Attributes: templ.Attributes{"required": "required"}})
+					}
+				</div>
+				<div class="space-y-2">
+					if vmodel.IsNew {
+						<label class="text-sm font-medium">Clé API</label>
+					} else {
+						<label class="text-sm font-medium">Clé API (laisser vide pour conserver)</label>
+					}
+					@input.Input(input.Props{Name: "api_key", Type: "password", Placeholder: "sk-..."})
+				</div>
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Devise</label>
+					<select name="currency" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+						for _, c := range model.SupportedCurrencies {
+							if !vmodel.IsNew && vmodel.Provider != nil && vmodel.Provider.Currency() == c {
+								<option value={ c } selected>{ c }</option>
+							} else {
+								<option value={ c }>{ c }</option>
+							}
+						}
+					</select>
+				</div>
+				if !vmodel.IsNew && vmodel.Provider != nil {
+					<div class="flex items-center gap-2">
+						<input type="checkbox" name="active" id="active" value="on" checked?={ vmodel.Provider.Active() }/>
+						<label for="active" class="text-sm font-medium">Actif</label>
+					</div>
+					@button.Button(button.Props{
+						Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()), "/test")),
+						Variant: button.VariantOutline,
+						Type:    "button",
+					}) {
+						Tester la connexion
+					}
+				}
+				@button.Button(button.Props{Type: "submit"}) {
+					Enregistrer
+				}
+			</form>
+			if !vmodel.IsNew && vmodel.Provider != nil {
+				<button
+					type="button"
+					data-url={ common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()))) }
+					onclick="if(confirm('Supprimer ce fournisseur et tous ses modèles ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)"
+					class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4"
+				>
+					Supprimer le fournisseur
+				</button>
+			}
+		</div>
+	}
+}
+
+// ── Models Page ───────────────────────────────────────────────────────────────
+templ ModelsPage(vmodel ModelsPageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Modèles — "+vmodel.Provider.Name())) {
+		<div class="space-y-6">
+			<div class="flex items-center justify-between">
+				<div>
+					<h1 class="text-2xl font-semibold">Modèles</h1>
+					<p class="text-sm text-muted-foreground">Fournisseur : { vmodel.Provider.Name() }</p>
+				</div>
+				@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()), "/models/new"))}) {
+					@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
+					Ajouter un modèle
+				}
+			</div>
+			if vmodel.Success != "" {
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					Opération réussie.
+				}
+			}
+			if len(vmodel.Models) == 0 {
+				<div class="rounded-lg border p-6 text-center text-muted-foreground">Aucun modèle.</div>
+			} else {
+				@card.Card() {
+					@card.Content() {
+						@table.Table() {
+							@table.Header() {
+								@table.Head() {
+									Nom proxy
+								}
+								@table.Head() {
+									Modèle réel
+								}
+								@table.Head() {
+									Coût prompt/1M
+								}
+								@table.Head() {
+									Coût compl./1M
+								}
+								@table.Head() {
+									Statut
+								}
+								@table.Head() {
+									Actions
+								}
+							}
+							@table.Body() {
+								for _, m := range vmodel.Models {
+									@table.Row() {
+										@table.Cell() {
+											{ vmodel.Org.Slug() + "/" + m.ProxyName() }
+										}
+										@table.Cell() {
+											{ m.RealModel() }
+										}
+										@table.Cell() {
+											{ formatCostRate(m.PromptCostPer1KTokens(), vmodel.Provider.Currency()) }
+										}
+										@table.Cell() {
+											{ formatCostRate(m.CompletionCostPer1KTokens(), vmodel.Provider.Currency()) }
+										}
+										@table.Cell() {
+											if m.Enabled() {
+												@badge.Badge(badge.Props{Variant: badge.VariantDefault}) {
+													Actif
+												}
+											} else {
+												@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
+													Inactif
+												}
+											}
+										}
+										@table.Cell() {
+											@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()), "/models/", string(m.ID()), "/edit")), Variant: button.VariantOutline, Size: button.SizeSm}) {
+												Modifier
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		</div>
+	}
+}
+
+// ── Model Form ────────────────────────────────────────────────────────────────
+templ ModelForm(vmodel ModelFormVModel) {
+	{{ title := "Nouveau modèle" }}
+	{{ action := common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()), "/models")) }}
+	if !vmodel.IsNew && vmodel.Model != nil {
+		{{ title = "Modifier — " + vmodel.Model.ProxyName() }}
+		{{ action = common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()), "/models/", string(vmodel.Model.ID()), "/edit")) }}
+	}
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(title)) {
+		<div class="space-y-6">
+			<h1 class="text-2xl font-semibold">{ title }</h1>
+			 if vmodel.Error != "" {
+				@alert.Alert(alert.Props{Variant: alert.VariantDestructive}) {
+					{ vmodel.Error }
+				}
+			}
+			<form method="POST" action={ templ.SafeURL(action) } class="space-y-4">
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Nom proxy (ce que le client envoie)</label>
+					<p class="text-xs text-muted-foreground">Le client devra utiliser le format <code>{ vmodel.Org.Slug() + "/" + "&lt;nom&gt;" }</code>.</p>
+					if !vmodel.IsNew && vmodel.Model != nil {
+						@input.Input(input.Props{Name: "proxy_name", Value: vmodel.Model.ProxyName()})
+					} else {
+						@input.Input(input.Props{Name: "proxy_name", Placeholder: "gpt-4o"})
+					}
+				</div>
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Modèle réel (transmis au fournisseur)</label>
+					if !vmodel.IsNew && vmodel.Model != nil {
+						@input.Input(input.Props{Name: "real_model", Value: vmodel.Model.RealModel()})
+					} else {
+						@input.Input(input.Props{Name: "real_model", Placeholder: "gpt-4o-2024-11-20"})
+					}
+				</div>
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Description</label>
+					if !vmodel.IsNew && vmodel.Model != nil {
+						@input.Input(input.Props{Name: "description", Value: vmodel.Model.Description()})
+					} else {
+						@input.Input(input.Props{Name: "description"})
+					}
+				</div>
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Coût prompt par million de tokens ($ USD)</label>
+					if !vmodel.IsNew && vmodel.Model != nil {
+						@input.Input(input.Props{Name: "prompt_cost", Type: "number", Value: formatCostField(vmodel.Model.PromptCostPer1KTokens()), Placeholder: "2.50", Attributes: templ.Attributes{"step": "any"}})
+					} else {
+						@input.Input(input.Props{Name: "prompt_cost", Type: "number", Placeholder: "2.50", Attributes: templ.Attributes{"step": "any"}})
+					}
+				</div>
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Coût complétion par million de tokens ($ USD)</label>
+					if !vmodel.IsNew && vmodel.Model != nil {
+						@input.Input(input.Props{Name: "completion_cost", Type: "number", Value: formatCostField(vmodel.Model.CompletionCostPer1KTokens()), Placeholder: "10.00", Attributes: templ.Attributes{"step": "any"}})
+					} else {
+						@input.Input(input.Props{Name: "completion_cost", Type: "number", Placeholder: "10.00", Attributes: templ.Attributes{"step": "any"}})
+					}
+				</div>
+				if !vmodel.IsNew && vmodel.Model != nil {
+					<div class="flex items-center gap-2">
+						<input type="checkbox" name="enabled" id="enabled" value="on" checked?={ vmodel.Model.Enabled() }/>
+						<label for="enabled" class="text-sm font-medium">Activé</label>
+					</div>
+				}
+				@button.Button(button.Props{Type: "submit"}) {
+					Enregistrer
+				}
+			</form>
+			if !vmodel.IsNew && vmodel.Model != nil {
+				<button
+					type="button"
+					data-url={ common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()), "/models/", string(vmodel.Model.ID()))) }
+					onclick="if(confirm('Supprimer ce modèle ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)"
+					class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4"
+				>
+					Supprimer le modèle
+				</button>
+			}
+		</div>
+	}
+}
+
+// ── Quota Page ────────────────────────────────────────────────────────────────
+templ QuotaPage(vmodel QuotaPageVModel) {
+	{{ title := "Budget de l'organisation" }}
+	{{ action := common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/quota")) }}
+	if vmodel.ScopeType == "user" && vmodel.Membership != nil {
+		{{ title = "Budget membre" }}
+		{{ action = common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members/", string(vmodel.Membership.ID()), "/quota")) }}
+	}
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(title)) {
+		<div class="space-y-6">
+			<h1 class="text-2xl font-semibold">{ title }</h1>
+			if vmodel.Success != "" {
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					Budget enregistré.
+				}
+			}
+			@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+				@alert.Description(alert.DescriptionProps{}) {
+					Les budgets sont exprimés dans la devise de l'organisation (<strong>{ vmodel.Org.Currency() }</strong>).
+					Pour modifier la devise, rendez-vous dans les <a href={ templ.SafeURL(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/settings"))) } class="underline font-medium">Paramètres</a>.
+				}
+			}
+			<form method="POST" action={ templ.SafeURL(action) } class="space-y-4">
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Budget journalier (vide = illimité)</label>
+					if vmodel.Quota != nil && vmodel.Quota.DailyBudget() != nil {
+						@input.Input(input.Props{Name: "daily_budget", Type: "number", Placeholder: "10.00", Value: formatBudgetField(*vmodel.Quota.DailyBudget()), Attributes: templ.Attributes{"step": "any"}})
+					} else {
+						@input.Input(input.Props{Name: "daily_budget", Type: "number", Placeholder: "10.00", Attributes: templ.Attributes{"step": "any"}})
+					}
+				</div>
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Budget mensuel (vide = illimité)</label>
+					if vmodel.Quota != nil && vmodel.Quota.MonthlyBudget() != nil {
+						@input.Input(input.Props{Name: "monthly_budget", Type: "number", Placeholder: "100.00", Value: formatBudgetField(*vmodel.Quota.MonthlyBudget()), Attributes: templ.Attributes{"step": "any"}})
+					} else {
+						@input.Input(input.Props{Name: "monthly_budget", Type: "number", Placeholder: "100.00", Attributes: templ.Attributes{"step": "any"}})
+					}
+				</div>
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Budget annuel (vide = illimité)</label>
+					if vmodel.Quota != nil && vmodel.Quota.YearlyBudget() != nil {
+						@input.Input(input.Props{Name: "yearly_budget", Type: "number", Placeholder: "1000.00", Value: formatBudgetField(*vmodel.Quota.YearlyBudget()), Attributes: templ.Attributes{"step": "any"}})
+					} else {
+						@input.Input(input.Props{Name: "yearly_budget", Type: "number", Placeholder: "1000.00", Attributes: templ.Attributes{"step": "any"}})
+					}
+				</div>
+				@button.Button(button.Props{Type: "submit"}) {
+					Enregistrer
+				}
+			</form>
+		</div>
+	}
+}
+
+// ── Settings Page ─────────────────────────────────────────────────────────────
+templ OrgSettingsPage(vmodel OrgSettingsPageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Paramètres — "+vmodel.Org.Name())) {
+		<div class="space-y-6">
+			<h1 class="text-2xl font-semibold">Paramètres</h1>
+			if vmodel.Success != "" {
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					Paramètres enregistrés.
+				}
+			}
+			<form method="POST" action={ templ.SafeURL(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/settings"))) } class="space-y-4">
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Devise préférée</label>
+					<select name="currency" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+						for _, c := range model.SupportedCurrencies {
+							if vmodel.Org.Currency() == c {
+								<option value={ c } selected>{ c }</option>
+							} else {
+								<option value={ c }>{ c }</option>
+							}
+						}
+					</select>
+					<p class="text-xs text-muted-foreground">Utilisée pour les quotas et l'affichage des coûts.</p>
+				</div>
+				@button.Button(button.Props{Type: "submit"}) {
+					Enregistrer
+				}
+			</form>
+		</div>
+	}
+}
+
+// ── Invites Page ──────────────────────────────────────────────────────────────
+templ InvitesPage(vmodel InvitesPageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Invitations — "+vmodel.Org.Name())) {
+		<div class="space-y-6">
+			<div class="flex items-center justify-between">
+				<h1 class="text-2xl font-semibold">Invitations</h1>
+				@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/new"))}) {
+					@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
+					Créer un lien
+				}
+			</div>
+			if vmodel.NewURL != "" {
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					<p class="font-medium">Lien d'invitation créé</p>
+					<p class="text-sm mt-1 font-mono break-all">{ vmodel.NewURL }</p>
+				}
+			}
+			if vmodel.Success != "" && vmodel.NewURL == "" {
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					Opération réussie.
+				}
+			}
+			if len(vmodel.Invites) == 0 {
+				<div class="rounded-lg border p-6 text-center text-muted-foreground">Aucune invitation.</div>
+			} else {
+				@card.Card() {
+					@card.Content() {
+						@table.Table() {
+							@table.Header() {
+								@table.Head() {
+									Email cible
+								}
+								@table.Head() {
+									Rôle
+								}
+								@table.Head() {
+									Utilisations
+								}
+								@table.Head() {
+									Expire
+								}
+								@table.Head() {
+									Statut
+								}
+								@table.Head() {
+									Actions
+								}
+							}
+							@table.Body() {
+								for _, inv := range vmodel.Invites {
+									@table.Row() {
+										@table.Cell() {
+											if inv.InviteeEmail() != nil {
+												{ *inv.InviteeEmail() }
+											} else {
+												<span class="text-muted-foreground">Lien ouvert</span>
+											}
+										}
+										@table.Cell() {
+											{ inv.Role() }
+										}
+										@table.Cell() {
+											if inv.MaxUses() != nil {
+												{ fmt.Sprintf("%d / %d", inv.UsesCount(), *inv.MaxUses()) }
+											} else {
+												{ fmt.Sprintf("%d / ∞", inv.UsesCount()) }
+											}
+										}
+										@table.Cell() {
+											if inv.ExpiresAt() != nil {
+												{ inv.ExpiresAt().Format("2006-01-02") }
+											} else {
+												Jamais
+											}
+										}
+										@table.Cell() {
+											if inv.RevokedAt() != nil {
+												@badge.Badge(badge.Props{Variant: badge.VariantDestructive}) {
+													Révoqué
+												}
+											} else {
+												@badge.Badge(badge.Props{Variant: badge.VariantDefault}) {
+													Actif
+												}
+											}
+										}
+										@table.Cell() {
+											<div class="flex gap-2">
+												<a href={ templ.SafeURL(vmodel.BaseURL + "/join/" + string(inv.ID())) } target="_blank" class="text-sm underline">Lien</a>
+												if inv.RevokedAt() == nil {
+													<button
+														type="button"
+														data-url={ common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/", string(inv.ID()))) }
+														onclick="if(confirm('Révoquer cette invitation ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)"
+														class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-destructive text-destructive-foreground hover:bg-destructive/90 h-8 px-3"
+													>
+														Révoquer
+													</button>
+												}
+											</div>
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		</div>
+	}
+}
+
+// ── Invite Form ───────────────────────────────────────────────────────────────
+templ InviteForm(vmodel InviteFormVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Créer une invitation")) {
+		<div class="space-y-6">
+			<h1 class="text-2xl font-semibold">Créer une invitation</h1>
+			<form method="POST" action={ common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites")) } class="space-y-4">
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Email de l'invité (optionnel)</label>
+					<p class="text-xs text-muted-foreground">Laisser vide pour un lien utilisable par n'importe qui.</p>
+					@input.Input(input.Props{Name: "invitee_email", Type: "email", Placeholder: "utilisateur@exemple.com"})
+				</div>
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Rôle</label>
+					<select name="role" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+						<option value="member">Membre</option>
+						<option value="org:admin">Admin organisation</option>
+					</select>
+				</div>
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Date d'expiration (optionnel)</label>
+					@input.Input(input.Props{Name: "expires_at", Type: "date"})
+				</div>
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Nombre max d'utilisations (optionnel)</label>
+					@input.Input(input.Props{Name: "max_uses", Type: "number", Placeholder: "1"})
+				</div>
+				@button.Button(button.Props{Type: "submit"}) {
+					Créer le lien
+				}
+			</form>
+		</div>
+	}
+}
+
+// ── Org Usage Page ────────────────────────────────────────────────────────────
+templ OrgUsagePage(vmodel OrgUsagePageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Usage — "+vmodel.Org.Name()), common.WithScripts(chart.Script())) {
+		<div class="space-y-6">
+			<div class="flex items-center justify-between">
+				<h1 class="text-2xl font-semibold">Usage</h1>
+				<form method="GET" class="flex items-center gap-2">
+					<label class="text-sm text-muted-foreground">Période :</label>
+					<select name="range" onchange="this.form.submit()" class="h-9 rounded-md border border-input bg-background px-3 text-sm">
+						for _, opt := range []struct{ Value, Label string }{
+							{"1d", "Dernier jour"},
+							{"7d", "7 derniers jours"},
+							{"30d", "30 derniers jours"},
+							{"90d", "3 derniers mois"},
+							{"180d", "6 derniers mois"},
+							{"365d", "Dernière année"},
+						} {
+							if vmodel.Range == opt.Value || (vmodel.Range == "" && opt.Value == "7d") {
+								<option value={ opt.Value } selected>{ opt.Label }</option>
+							} else {
+								<option value={ opt.Value }>{ opt.Label }</option>
+							}
+						}
+					</select>
+				</form>
+			</div>
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+				@card.Card() {
+					@card.Header() {
+						@card.Title() {
+							Requêtes
+						}
+					}
+					@card.Content() {
+						<p class="text-3xl font-bold">{ fmt.Sprintf("%d", vmodel.Aggregate.TotalRequests) }</p>
+					}
+				}
+				@card.Card() {
+					@card.Header() {
+						@card.Title() {
+							Coût total
+						}
+					}
+					@card.Content() {
+						if vmodel.Aggregate.TotalCost == 0 {
+							<p class="text-3xl font-bold">—</p>
+						} else {
+							<p class="text-3xl font-bold">{ formatCost(vmodel.Aggregate.TotalCost, vmodel.Aggregate.Currency) }</p>
+						}
+					}
+				}
+				@card.Card() {
+					@card.Header() {
+						@card.Title() {
+							Tokens totaux
+						}
+					}
+					@card.Content() {
+						<p class="text-3xl font-bold">{ fmt.Sprintf("%d", vmodel.Aggregate.TotalTokens) }</p>
+					}
+				}
+			</div>
+			if vmodel.OrgQuota != nil {
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+					if vmodel.OrgQuota.DailyBudget() != nil {
+						@card.Card() {
+							@card.Header() {
+								@card.Title() {
+									Budget journalier
+								}
+							}
+							@card.Content() {
+								{{ budget := microToFloat(*vmodel.OrgQuota.DailyBudget()) }}
+								{{ spent := microToFloat(vmodel.DailyCost) * 100 }}
+								{{ remaining := maxFloat(0, budget-spent) * 100 }}
+								@chart.Chart(chart.Props{
+									Variant:    chart.VariantDoughnut,
+									ShowLegend: true,
+									Class:      "h-48",
+									Data: chart.Data{
+										Labels: []string{"Utilisé (%)", "Disponible (%)"},
+										Datasets: []chart.Dataset{{
+											Data:            []float64{spent, remaining},
+											BackgroundColor: []string{"rgba(239,68,68,0.8)", "rgba(34,197,94,0.8)"},
+											BorderWidth:     0,
+										}},
+									},
+								})
+							}
+						}
+					}
+					if vmodel.OrgQuota.MonthlyBudget() != nil {
+						@card.Card() {
+							@card.Header() {
+								@card.Title() {
+									Budget mensuel
+								}
+							}
+							@card.Content() {
+								{{ budget := microToFloat(*vmodel.OrgQuota.MonthlyBudget()) }}
+								{{ spent := microToFloat(vmodel.MonthlyCost) }}
+								{{ remaining := maxFloat(0, budget-spent) }}
+								@chart.Chart(chart.Props{
+									Variant:    chart.VariantDoughnut,
+									ShowLegend: true,
+									Class:      "h-48",
+									Data: chart.Data{
+										Labels: []string{"Utilisé", "Disponible"},
+										Datasets: []chart.Dataset{{
+											Data:            []float64{spent, remaining},
+											BackgroundColor: []string{"rgba(239,68,68,0.8)", "rgba(34,197,94,0.8)"},
+											BorderWidth:     0,
+										}},
+									},
+								})
+							}
+						}
+					}
+					if vmodel.OrgQuota.YearlyBudget() != nil {
+						@card.Card() {
+							@card.Header() {
+								@card.Title() {
+									Budget annuel
+								}
+							}
+							@card.Content() {
+								{{ budget := microToFloat(*vmodel.OrgQuota.YearlyBudget()) }}
+								{{ spent := microToFloat(vmodel.YearlyCost) }}
+								{{ remaining := maxFloat(0, budget-spent) }}
+								@chart.Chart(chart.Props{
+									Variant:    chart.VariantDoughnut,
+									ShowLegend: true,
+									Class:      "h-48",
+									Data: chart.Data{
+										Labels: []string{"Utilisé", "Disponible"},
+										Datasets: []chart.Dataset{{
+											Data:            []float64{spent, remaining},
+											BackgroundColor: []string{"rgba(239,68,68,0.8)", "rgba(34,197,94,0.8)"},
+											BorderWidth:     0,
+										}},
+									},
+								})
+							}
+						}
+					}
+				</div>
+			}
+			if len(vmodel.ChartPerDay) > 0 || len(vmodel.ChartPerModel) > 0 || len(vmodel.ChartPerUser) > 0 {
+				{{ trueVal := true }}
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+					if len(vmodel.ChartPerDay) > 0 {
+						@card.Card() {
+							@card.Header() {
+								@card.Title() {
+									Coût par jour
+								}
+							}
+							@card.Content() {
+								@chart.Chart(chart.Props{
+									Variant:     chart.VariantBar,
+									ShowXLabels: true,
+									ShowYLabels: true,
+									ShowYGrid:   true,
+									ShowLegend:  false,
+									BeginAtZero: &trueVal,
+									Class:       "h-64",
+									Data: chart.Data{
+										Labels: chartLabels(vmodel.ChartPerDay),
+										Datasets: []chart.Dataset{{
+											Label:           vmodel.Currency,
+											Data:            chartValues(vmodel.ChartPerDay),
+											BackgroundColor: "rgba(99,102,241,0.8)",
+										}},
+									},
+								})
+							}
+						}
+					}
+					if len(vmodel.ChartPerModel) > 0 {
+							@card.Card() {
+								@card.Header() {
+									@card.Title() {
+										Coût par modèle
+									}
+								}
+								@card.Content() {
+									@chart.Chart(chart.Props{
+										Variant:     chart.VariantBar,
+										ShowXLabels: true,
+										ShowYLabels: true,
+										ShowYGrid:   true,
+										ShowLegend:  false,
+										BeginAtZero: &trueVal,
+										Class:       "h-64",
+										Data: chart.Data{
+											Labels: chartLabels(vmodel.ChartPerModel),
+											Datasets: []chart.Dataset{{
+												Label:           vmodel.Currency,
+												Data:            chartValues(vmodel.ChartPerModel),
+												BackgroundColor: "rgba(20,184,166,0.8)",
+											}},
+										},
+									})
+								}
+							}
+						}
+					if len(vmodel.ChartPerUser) > 0 {
+							@card.Card() {
+								@card.Header() {
+									@card.Title() {
+										Coût par utilisateur
+									}
+								}
+								@card.Content() {
+									@chart.Chart(chart.Props{
+										Variant:     chart.VariantBar,
+										ShowXLabels: true,
+										ShowYLabels: true,
+										ShowYGrid:   true,
+										ShowLegend:  false,
+										BeginAtZero: &trueVal,
+										Class:       "h-64",
+										Data: chart.Data{
+											Labels: chartLabels(vmodel.ChartPerUser),
+											Datasets: []chart.Dataset{{
+												Label:           vmodel.Currency,
+												Data:            chartValues(vmodel.ChartPerUser),
+												BackgroundColor: "rgba(245,158,11,0.8)",
+											}},
+										},
+									})
+								}
+							}
+						}
+				</div>
+			}
+			if len(vmodel.Records) > 0 {
+				@card.Card() {
+					@card.Content() {
+						@table.Table() {
+							@table.Header() {
+								@table.Head() {
+									Utilisateur
+								}
+								@table.Head() {
+									Modèle
+								}
+								@table.Head() {
+									Tokens prompt
+								}
+								@table.Head() {
+									Tokens compl.
+								}
+								@table.Head() {
+									Coût
+								}
+								@table.Head() {
+									Date
+								}
+							}
+							@table.Body() {
+								for _, dr := range vmodel.Records {
+									@table.Row() {
+										@table.Cell() {
+											if u, ok := vmodel.Users[dr.Record.UserID()]; ok {
+												{ u.DisplayName() }
+											} else {
+												{ string(dr.Record.UserID()) }
+											}
+										}
+										@table.Cell() {
+											{ dr.Record.ProxyModelName() }
+										}
+										@table.Cell() {
+											{ fmt.Sprintf("%d", dr.Record.PromptTokens()) }
+										}
+										@table.Cell() {
+											{ fmt.Sprintf("%d", dr.Record.CompletionTokens()) }
+										}
+										@table.Cell() {
+											if dr.Converted {
+												<span
+													title={ formatCost(dr.Record.Cost(), dr.Record.Currency()) }
+													class="cursor-help underline decoration-dotted"
+												>
+													{ formatCost(dr.DisplayCost, dr.DisplayCurrency) }
+												</span>
+											} else {
+												{ formatCost(dr.DisplayCost, dr.DisplayCurrency) }
+											}
+										}
+										@table.Cell() {
+											{ dr.Record.CreatedAt().Format("2006-01-02 15:04") }
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+				@pagination.Pagination() {
+					@pagination.Content() {
+						@pagination.Previous(pagination.PreviousProps{
+							Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/usage"), common.WithValues("range", vmodel.Range, "page", fmt.Sprintf("%d", vmodel.Page-1))),
+							Disabled: vmodel.Page <= 1,
+							Label:    "Précédent",
+						})
+						@pagination.Next(pagination.NextProps{
+							Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/usage"), common.WithValues("range", vmodel.Range, "page", fmt.Sprintf("%d", vmodel.Page+1))),
+							Disabled: !vmodel.HasNext,
+							Label:    "Suivant",
+						})
+					}
+				}
+			}
+		</div>
+	}
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+func chartLabels(pts []ChartDataPoint) []string {
+	labels := make([]string, len(pts))
+	for i, p := range pts {
+		labels[i] = p.Label
+	}
+	return labels
+}
+
+func chartValues(pts []ChartDataPoint) []float64 {
+	vals := make([]float64, len(pts))
+	for i, p := range pts {
+		vals[i] = p.Value
+	}
+	return vals
+}
+
+func microToFloat(v int64) float64 { return float64(v) / 1_000_000 }
+
+func maxFloat(a, b float64) float64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func currencySymbol(currency string) string {
+	switch currency {
+	case "EUR":
+		return "€"
+	case "GBP":
+		return "£"
+	case "JPY":
+		return "¥"
+	case "CHF":
+		return "CHF "
+	case "CAD":
+		return "CA$"
+	case "AUD":
+		return "AU$"
+	default:
+		return "$" // USD
+	}
+}
+
+// formatCost formats an absolute cost stored in microcents (1 microcent = $0.000001).
+func formatCost(v int64, currency string) string {
+	return fmt.Sprintf("%s%.6f", currencySymbol(currency), float64(v)/1_000_000)
+}
+
+// formatCostRate formats a pricing rate stored as microcents per 1K tokens,
+// displaying it as dollars per million tokens (industry standard).
+func formatCostRate(v int64, currency string) string {
+	return fmt.Sprintf("%s%.4f/1M", currencySymbol(currency), float64(v)/1_000)
+}
+
+func formatCostField(v int64) string {
+	// v is microcents/1K tokens; return dollars per 1M tokens for the form field
+	return fmt.Sprintf("%.6f", float64(v)/1_000)
+}
+
+func formatBudgetField(v int64) string {
+	// v is microcents; convert to the display unit (e.g. EUR/USD) with full precision.
+	// Use 'f' format with prec=-1 so strconv uses the minimum number of digits needed
+	// to represent the value exactly, avoiding both truncation ("0.00" for 100 µ¢)
+	// and unnecessary trailing zeros ("100.000000" for 100_000_000 µ¢).
+	return strconv.FormatFloat(float64(v)/1_000_000, 'f', -1, 64)
+}

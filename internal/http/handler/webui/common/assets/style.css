@@ -1,0 +1,18 @@
+html,
+body {
+  height: 100%;
+}
+
+.is-fullwidth {
+  min-width: 100%;
+}
+
+.is-fullheight {
+  min-height: 100%;
+  height: 100%;
+}
+
+.has-text-ellipsis {
+  overflow-x: hidden;
+  text-overflow: ellipsis;
+}

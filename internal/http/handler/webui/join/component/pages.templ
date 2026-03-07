@@ -1,0 +1,100 @@
+package component
+
+import (
+	"github.com/bornholm/xolo/internal/core/model"
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+)
+
+type JoinPageVModel struct {
+	common.AppLayoutVModel
+	Invite   model.InviteToken
+	LoginURL string
+}
+
+type JoinSuccessVModel struct {
+	common.AppLayoutVModel
+	OrgName string
+	OrgSlug string
+}
+
+type JoinErrorVModel struct {
+	common.AppLayoutVModel
+	Message string
+}
+
+templ JoinPage(vmodel JoinPageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Rejoindre "+vmodel.Invite.Org().Name())) {
+		<div class="flex items-center justify-center min-h-[60vh]">
+			@card.Card() {
+				@card.Header() {
+					@card.Title() {
+						Invitation à rejoindre { vmodel.Invite.Org().Name() }
+					}
+				}
+				@card.Content() {
+					<div class="space-y-4">
+						<p class="text-sm text-muted-foreground">
+							Vous avez été invité à rejoindre l'organisation <strong>{ vmodel.Invite.Org().Name() }</strong>.
+						</p>
+						<div class="text-sm">
+							<span class="font-medium">Rôle :</span> { vmodel.Invite.Role() }
+						</div>
+						if vmodel.User == nil {
+							<p class="text-sm text-muted-foreground">Vous devez vous connecter pour accepter cette invitation.</p>
+							@button.Button(button.Props{Href: vmodel.LoginURL}) {
+								Se connecter
+							}
+						} else {
+							<form method="POST">
+								@button.Button(button.Props{Type: "submit"}) {
+									Rejoindre l'organisation
+								}
+							</form>
+						}
+					</div>
+				}
+			}
+		</div>
+	}
+}
+
+templ JoinSuccess(vmodel JoinSuccessVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Bienvenue dans "+vmodel.OrgName)) {
+		<div class="flex items-center justify-center min-h-[60vh]">
+			@card.Card() {
+				@card.Header() {
+					@card.Title() {
+						Bienvenue ! 
+					}
+				}
+				@card.Content() {
+					<div class="space-y-4">
+						<p class="text-sm">Vous avez rejoint l'organisation <strong>{ vmodel.OrgName }</strong>.</p>
+						@button.Button(button.Props{Href: "/orgs/" + vmodel.OrgSlug + "/admin/"}) {
+							Accéder au tableau de bord
+						}
+					</div>
+				}
+			}
+		</div>
+	}
+}
+
+templ JoinError(vmodel JoinErrorVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Invitation invalide")) {
+		<div class="flex items-center justify-center min-h-[60vh]">
+			@card.Card() {
+				@card.Header() {
+					@card.Title() {
+						Invitation invalide 
+					}
+				}
+				@card.Content() {
+					<p class="text-sm text-muted-foreground">{ vmodel.Message }</p>
+				}
+			}
+		</div>
+	}
+}

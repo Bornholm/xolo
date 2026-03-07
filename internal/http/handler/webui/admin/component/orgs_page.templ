@@ -1,0 +1,142 @@
+package component
+
+import (
+	"github.com/bornholm/xolo/internal/core/model"
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
+)
+
+type OrgsPageVModel struct {
+	common.AppLayoutVModel
+	Orgs    []model.Organization
+	Success string
+}
+
+type OrgFormVModel struct {
+	common.AppLayoutVModel
+	Org   model.Organization
+	IsNew bool
+	Error string
+}
+
+templ OrgsPage(vmodel OrgsPageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Organisations")) {
+		<div class="space-y-6">
+			<div class="flex items-center justify-between">
+				<h1 class="text-2xl font-semibold">Organisations</h1>
+				@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/admin/orgs/new"))}) {
+					Nouvelle organisation
+				}
+			</div>
+			if vmodel.Success != "" {
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) { Opération réussie. }
+			}
+			if len(vmodel.Orgs) == 0 {
+				<div class="rounded-lg border p-6 text-center text-muted-foreground">
+					Aucune organisation. Créez la première organisation pour commencer.
+				</div>
+			} else {
+				@card.Card() {
+					@card.Content() {
+						@table.Table() {
+							@table.Header() {
+								@table.Head() { Nom }
+								@table.Head() { Slug }
+								@table.Head() { Statut }
+								@table.Head() { Actions }
+							}
+							@table.Body() {
+								for _, org := range vmodel.Orgs {
+									@table.Row() {
+										@table.Cell() { { org.Name() } }
+										@table.Cell() { { org.Slug() } }
+										@table.Cell() {
+											if org.Active() {
+												@badge.Badge(badge.Props{Variant: badge.VariantDefault}) { Actif }
+											} else {
+												@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) { Inactif }
+											}
+										}
+										@table.Cell() {
+											<div class="flex gap-2">
+												@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", org.Slug(), "/admin/")), Variant: button.VariantOutline, Size: button.SizeSm}) {
+													Admin
+												}
+												@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/admin/orgs/", string(org.ID()), "/edit")), Variant: button.VariantOutline, Size: button.SizeSm}) {
+													Modifier
+												}
+											</div>
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		</div>
+	}
+}
+
+templ OrgForm(vmodel OrgFormVModel) {
+	{{ title := "Nouvelle organisation" }}
+	{{ action := common.BaseURLString(ctx, common.WithPath("/admin/orgs")) }}
+	if !vmodel.IsNew && vmodel.Org != nil {
+		{{ title = "Modifier — " + vmodel.Org.Name() }}
+		{{ action = common.BaseURLString(ctx, common.WithPath("/admin/orgs/", string(vmodel.Org.ID()), "/edit")) }}
+	}
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(title)) {
+		<div class="space-y-6">
+			<h1 class="text-2xl font-semibold">{ title }</h1>
+			if vmodel.Error != "" {
+				@alert.Alert(alert.Props{Variant: alert.VariantDestructive}) { { vmodel.Error } }
+			}
+			<form method="POST" action={ templ.SafeURL(action) } class="space-y-4">
+				@card.Card() {
+					@card.Content() {
+						<div class="space-y-4 pt-4">
+							<div class="space-y-2">
+								<label class="text-sm font-medium">Nom</label>
+								if !vmodel.IsNew && vmodel.Org != nil {
+									@input.Input(input.Props{Name: "name", Value: vmodel.Org.Name()})
+								} else {
+									@input.Input(input.Props{Name: "name", Placeholder: "Mon organisation"})
+								}
+							</div>
+							<div class="space-y-2">
+								<label class="text-sm font-medium">Slug (identifiant URL)</label>
+								if !vmodel.IsNew && vmodel.Org != nil {
+									@input.Input(input.Props{Name: "slug", Value: vmodel.Org.Slug(), Disabled: true})
+								} else {
+									@input.Input(input.Props{Name: "slug", Placeholder: "mon-organisation"})
+								}
+							</div>
+							<div class="space-y-2">
+								<label class="text-sm font-medium">Description</label>
+								if !vmodel.IsNew && vmodel.Org != nil {
+									@input.Input(input.Props{Name: "description", Value: vmodel.Org.Description()})
+								} else {
+									@input.Input(input.Props{Name: "description"})
+								}
+							</div>
+							if !vmodel.IsNew && vmodel.Org != nil {
+								<div class="flex items-center gap-2">
+									<input type="checkbox" name="active" id="active" value="on" checked?={ vmodel.Org.Active() }/>
+									<label for="active" class="text-sm font-medium">Active</label>
+								</div>
+							}
+						</div>
+					}
+					@card.Footer() {
+						@button.Button(button.Props{Type: "submit"}) { Enregistrer }
+					}
+				}
+			</form>
+		</div>
+	}
+}

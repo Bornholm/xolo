@@ -1,0 +1,7 @@
+/tools
+/bin
+/index.bleve
+/.env
+/*.sqlite*
+/data
+/dist
