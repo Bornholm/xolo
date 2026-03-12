@@ -4,7 +4,7 @@ go 1.25.5
 
 require (
 	github.com/Oudwins/tailwind-merge-go v0.2.1
-	github.com/bornholm/genai v0.14.2
+	github.com/bornholm/genai v0.14.3
 	github.com/bornholm/go-x v0.0.0-20260127104343-c6737ea35324
 	github.com/caarlos0/env/v11 v11.3.1
 	github.com/gabriel-vasile/mimetype v1.4.8

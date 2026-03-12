@@ -20,27 +20,6 @@ import (
 	gohttp "net/http"
 )
 
-// prependPath wraps h so that prefix is prepended back to r.URL.Path before
-// the request is forwarded. This undoes the http.StripPrefix applied by
-// mount(), which is needed when the inner handler (e.g. the genai proxy)
-// registers its own routes using the full path.
-type pathPrepender struct {
-	prefix string
-	inner  gohttp.Handler
-}
-
-func (p *pathPrepender) ServeHTTP(w gohttp.ResponseWriter, r *gohttp.Request) {
-	r2 := r.Clone(r.Context())
-	r2.URL.Path = p.prefix + r.URL.Path
-	if r2.URL.RawPath != "" {
-		r2.URL.RawPath = p.prefix + r2.URL.RawPath
-	}
-	p.inner.ServeHTTP(w, r2)
-}
-
-func prependPath(prefix string, h gohttp.Handler) gohttp.Handler {
-	return &pathPrepender{prefix: prefix, inner: h}
-}
 
 func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Server, error) {
 	oidcAuthn, err := getOIDCAuthnHandlerFromConfig(ctx, conf)
@@ -142,9 +121,7 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		http.WithMount("/auth/oidc/", rateLimiter(oidcAuthn)),
 		http.WithMount("/auth/token/", rateLimiter(tokenAuthn)),
 		http.WithMount("/metrics/", rateLimiter(authChain(metrics.NewHandler()))),
-		// The genai proxy registers routes with the full "/api/v1/" prefix, so we
-		// must restore the stripped prefix before delegating to it.
-		http.WithMount("/api/v1/", rateLimiter(authChain(prependPath("/api/v1", proxyServer)))),
+		http.WithMount("/api/v1/", rateLimiter(authChain(proxyServer))),
 		http.WithRoute("GET /api/v1/models", rateLimiter(authChain(apiHandler))),
 		http.WithMount("/", authChain(withMemberships(webuiHandler))),
 	}
