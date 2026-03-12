@@ -44,20 +44,26 @@ type updatedLLMModelAdapter struct {
 	enabled                   bool
 	promptCostPer1KTokens     int64
 	completionCostPer1KTokens int64
+	contextWindow             int64
+	outputWindow              int64
+	capabilities              model.ModelCapabilities
 	createdAt                 time.Time
 	updatedAt                 time.Time
 }
 
-func (m *updatedLLMModelAdapter) ID() model.LLMModelID                  { return m.id }
-func (m *updatedLLMModelAdapter) ProviderID() model.ProviderID          { return m.providerID }
-func (m *updatedLLMModelAdapter) OrgID() model.OrgID                    { return m.orgID }
-func (m *updatedLLMModelAdapter) ProxyName() string                     { return m.proxyName }
-func (m *updatedLLMModelAdapter) RealModel() string                     { return m.realModel }
-func (m *updatedLLMModelAdapter) Description() string                   { return m.description }
-func (m *updatedLLMModelAdapter) Enabled() bool                         { return m.enabled }
-func (m *updatedLLMModelAdapter) PromptCostPer1KTokens() int64          { return m.promptCostPer1KTokens }
-func (m *updatedLLMModelAdapter) CompletionCostPer1KTokens() int64      { return m.completionCostPer1KTokens }
-func (m *updatedLLMModelAdapter) CreatedAt() time.Time                  { return m.createdAt }
-func (m *updatedLLMModelAdapter) UpdatedAt() time.Time                  { return m.updatedAt }
+func (m *updatedLLMModelAdapter) ID() model.LLMModelID               { return m.id }
+func (m *updatedLLMModelAdapter) ProviderID() model.ProviderID       { return m.providerID }
+func (m *updatedLLMModelAdapter) OrgID() model.OrgID                 { return m.orgID }
+func (m *updatedLLMModelAdapter) ProxyName() string                  { return m.proxyName }
+func (m *updatedLLMModelAdapter) RealModel() string                  { return m.realModel }
+func (m *updatedLLMModelAdapter) Description() string                { return m.description }
+func (m *updatedLLMModelAdapter) Enabled() bool                      { return m.enabled }
+func (m *updatedLLMModelAdapter) PromptCostPer1KTokens() int64       { return m.promptCostPer1KTokens }
+func (m *updatedLLMModelAdapter) CompletionCostPer1KTokens() int64   { return m.completionCostPer1KTokens }
+func (m *updatedLLMModelAdapter) ContextWindow() int64               { return m.contextWindow }
+func (m *updatedLLMModelAdapter) OutputWindow() int64                { return m.outputWindow }
+func (m *updatedLLMModelAdapter) Capabilities() model.ModelCapabilities { return m.capabilities }
+func (m *updatedLLMModelAdapter) CreatedAt() time.Time               { return m.createdAt }
+func (m *updatedLLMModelAdapter) UpdatedAt() time.Time               { return m.updatedAt }
 
 var _ model.LLMModel = &updatedLLMModelAdapter{}

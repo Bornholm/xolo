@@ -1,6 +1,7 @@
 package component
 
 import (
+	"encoding/json"
 	"fmt"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
@@ -42,7 +43,6 @@ templ ModelsPage(vmodel ModelsPageVModel) {
 					</select>
 				</form>
 			</div>
-
 			<!-- Models grid -->
 			if len(vmodel.ModelUsages) == 0 {
 				<p class="text-sm text-muted-foreground">Aucun modèle disponible.</p>
@@ -99,7 +99,6 @@ templ ModelsPage(vmodel ModelsPageVModel) {
 					}
 				</div>
 			}
-
 			<!-- How-to card -->
 			@card.Card() {
 				@card.Header() {
@@ -159,21 +158,15 @@ templ ModelsPage(vmodel ModelsPageVModel) {
 							<details class="group rounded-md border">
 								<summary class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium select-none">
 									@icon.Code(icon.Props{Class: "h-4 w-4 shrink-0"})
-									JavaScript / TypeScript · openai
+									OpenCode · ~/.config/opencode/config.json
 								</summary>
-								<pre class="overflow-x-auto border-t bg-muted px-4 py-3 text-xs font-mono leading-relaxed">{ jsExample(common.BaseURLString(ctx, common.WithPath("/api/v1"))) }</pre>
-							</details>
-							<details class="group rounded-md border">
-								<summary class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium select-none">
-									@icon.Layers(icon.Props{Class: "h-4 w-4 shrink-0"})
-									LiteLLM
-								</summary>
-								<pre class="overflow-x-auto border-t bg-muted px-4 py-3 text-xs font-mono leading-relaxed">{ litellmExample(common.BaseURLString(ctx, common.WithPath("/api/v1"))) }</pre>
+								<pre class="overflow-x-auto border-t bg-muted px-4 py-3 text-xs font-mono leading-relaxed">{ openCodeConfigExample(common.BaseURLString(ctx, common.WithPath("/api/v1")), vmodel.ModelUsages) }</pre>
 							</details>
 						</div>
 					</div>
 				}
-			}		</div>
+			}
+		</div>
 	}
 }
 
@@ -202,29 +195,75 @@ response = client.chat.completions.create(
 print(response.choices[0].message.content)`
 }
 
-func jsExample(baseURL string) string {
-	return `import OpenAI from "openai";
+func openCodeConfigExample(baseURL string, modelUsages []ModelUsage) string {
+	type modelLimit struct {
+		Context int64 `json:"context,omitempty"`
+		Output  int64 `json:"output,omitempty"`
+	}
+	type modelEntry struct {
+		Name  string      `json:"name"`
+		Limit *modelLimit `json:"limit,omitempty"`
+	}
+	type providerOptions struct {
+		BaseURL string `json:"baseURL"`
+		APIKey  string `json:"apiKey"`
+	}
+	type providerEntry struct {
+		NPM     string                `json:"npm"`
+		Name    string                `json:"name"`
+		Options providerOptions       `json:"options"`
+		Models  map[string]modelEntry `json:"models"`
+	}
+	type configRoot struct {
+		Schema   string                   `json:"$schema"`
+		Provider map[string]providerEntry `json:"provider"`
+	}
 
-const client = new OpenAI({
-  baseURL: "` + baseURL + `",
-  apiKey: "<clé-api>",
-});
+	models := make(map[string]modelEntry)
+	for _, mu := range modelUsages {
+		var name string
+		if mu.Org != nil {
+			name = mu.Org.Slug() + "/" + mu.Model.ProxyName()
+		} else {
+			name = mu.Model.ProxyName()
+		}
 
-const response = await client.chat.completions.create({
-  model: "<organisation>/<modèle>",
-  messages: [{ role: "user", content: "Bonjour !" }],
-});
-console.log(response.choices[0].message.content);`
-}
+		entry := modelEntry{Name: name}
 
-func litellmExample(baseURL string) string {
-	return `import litellm
+		if ctx := mu.Model.ContextWindow(); ctx > 0 {
+			if entry.Limit == nil {
+				entry.Limit = &modelLimit{}
+			}
+			entry.Limit.Context = ctx
+		}
+		if out := mu.Model.OutputWindow(); out > 0 {
+			if entry.Limit == nil {
+				entry.Limit = &modelLimit{}
+			}
+			entry.Limit.Output = out
+		}
 
-response = litellm.completion(
-    model="openai/<organisation>/<modèle>",
-    messages=[{"role": "user", "content": "Bonjour !"}],
-    base_url="` + baseURL + `",
-    api_key="<clé-api>",
-)
-print(response.choices[0].message.content)`
+		models[name] = entry
+	}
+
+	cfg := configRoot{
+		Schema: "https://opencode.ai/config.json",
+		Provider: map[string]providerEntry{
+			"xolo": {
+				NPM:  "@ai-sdk/openai-compatible",
+				Name: "Xolo",
+				Options: providerOptions{
+					BaseURL: baseURL,
+					APIKey:  "{env:XOLO_API_KEY}",
+				},
+				Models: models,
+			},
+		},
+	}
+
+	data, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return ""
+	}
+	return string(data)
 }

@@ -364,6 +364,14 @@ func (h *Handler) getNewModelPage(w http.ResponseWriter, r *http.Request) {
 	templ.Handler(component.ModelForm(vmodel)).ServeHTTP(w, r)
 }
 
+func parseIntField(v string) int64 {
+	n, err := strconv.ParseInt(v, 10, 64)
+	if err != nil || n < 0 {
+		return 0
+	}
+	return n
+}
+
 func parseCostField(v string) int64 {
 	// Parse a dollar value per 1M tokens and convert to microcents per 1K tokens.
 	// e.g. "2.50" ($/1M) → 2500 microcents/1K  (since 1M = 1000×1K, and 1$ = 1_000_000 microcents)
@@ -414,6 +422,14 @@ func (h *Handler) createModel(w http.ResponseWriter, r *http.Request) {
 		parseCostField(r.FormValue("prompt_cost")),
 		parseCostField(r.FormValue("completion_cost")),
 	)
+	m.SetContextWindow(parseIntField(r.FormValue("context_window")))
+	m.SetOutputWindow(parseIntField(r.FormValue("output_window")))
+	m.SetCapabilities(model.ModelCapabilities{
+		Tools:     r.FormValue("cap_tools") == "on",
+		Vision:    r.FormValue("cap_vision") == "on",
+		Reasoning: r.FormValue("cap_reasoning") == "on",
+		Audio:     r.FormValue("cap_audio") == "on",
+	})
 
 	if err := h.providerStore.CreateLLMModel(ctx, m); err != nil {
 		slog.ErrorContext(ctx, "could not create model", slogx.Error(err))
@@ -523,8 +539,16 @@ func (h *Handler) updateModel(w http.ResponseWriter, r *http.Request) {
 		enabled:                   r.FormValue("enabled") == "on",
 		promptCostPer1KTokens:     parseCostField(r.FormValue("prompt_cost")),
 		completionCostPer1KTokens: parseCostField(r.FormValue("completion_cost")),
-		createdAt:                 existing.CreatedAt(),
-		updatedAt:                 time.Now(),
+		contextWindow:             parseIntField(r.FormValue("context_window")),
+		outputWindow:              parseIntField(r.FormValue("output_window")),
+		capabilities: model.ModelCapabilities{
+			Tools:     r.FormValue("cap_tools") == "on",
+			Vision:    r.FormValue("cap_vision") == "on",
+			Reasoning: r.FormValue("cap_reasoning") == "on",
+			Audio:     r.FormValue("cap_audio") == "on",
+		},
+		createdAt: existing.CreatedAt(),
+		updatedAt: time.Now(),
 	}
 
 	if err := h.providerStore.SaveLLMModel(ctx, updated); err != nil {

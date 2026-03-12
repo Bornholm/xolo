@@ -9,6 +9,7 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
+	"encoding/json"
 	"fmt"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
@@ -82,7 +83,7 @@ func ModelsPage(vmodel ModelsPageVModel) templ.Component {
 					var templ_7745c5c3_Var3 string
 					templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(opt.Value)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 37, Col: 33}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 38, Col: 33}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 					if templ_7745c5c3_Err != nil {
@@ -95,7 +96,7 @@ func ModelsPage(vmodel ModelsPageVModel) templ.Component {
 					var templ_7745c5c3_Var4 string
 					templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(opt.Label)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 37, Col: 56}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 38, Col: 56}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 					if templ_7745c5c3_Err != nil {
@@ -113,7 +114,7 @@ func ModelsPage(vmodel ModelsPageVModel) templ.Component {
 					var templ_7745c5c3_Var5 string
 					templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(opt.Value)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 39, Col: 33}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 40, Col: 33}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 					if templ_7745c5c3_Err != nil {
@@ -126,7 +127,7 @@ func ModelsPage(vmodel ModelsPageVModel) templ.Component {
 					var templ_7745c5c3_Var6 string
 					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(opt.Label)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 39, Col: 47}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 40, Col: 47}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 					if templ_7745c5c3_Err != nil {
@@ -464,7 +465,7 @@ func ModelsPage(vmodel ModelsPageVModel) templ.Component {
 					var templ_7745c5c3_Var24 string
 					templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(common.BaseURLString(ctx, common.WithPath("/api/v1")))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 117, Col: 148}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 116, Col: 148}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 					if templ_7745c5c3_Err != nil {
@@ -477,7 +478,7 @@ func ModelsPage(vmodel ModelsPageVModel) templ.Component {
 					var templ_7745c5c3_Var25 string
 					templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(common.BaseURLString(ctx, common.WithPath("/api/v1")))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 121, Col: 73}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 120, Col: 73}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 					if templ_7745c5c3_Err != nil {
@@ -498,7 +499,7 @@ func ModelsPage(vmodel ModelsPageVModel) templ.Component {
 					var templ_7745c5c3_Var26 templ.SafeURL
 					templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinURLErrs(common.BaseURL(ctx, common.WithPath("/profile/tokens")))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 134, Col: 141}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 133, Col: 141}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 					if templ_7745c5c3_Err != nil {
@@ -519,7 +520,7 @@ func ModelsPage(vmodel ModelsPageVModel) templ.Component {
 					var templ_7745c5c3_Var27 string
 					templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(curlExample(common.BaseURLString(ctx, common.WithPath("/api/v1"))))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 150, Col: 167}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 149, Col: 167}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 					if templ_7745c5c3_Err != nil {
@@ -540,7 +541,7 @@ func ModelsPage(vmodel ModelsPageVModel) templ.Component {
 					var templ_7745c5c3_Var28 string
 					templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(pythonExample(common.BaseURLString(ctx, common.WithPath("/api/v1"))))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 157, Col: 169}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 156, Col: 169}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 					if templ_7745c5c3_Err != nil {
@@ -554,41 +555,20 @@ func ModelsPage(vmodel ModelsPageVModel) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "JavaScript / TypeScript · openai</summary><pre class=\"overflow-x-auto border-t bg-muted px-4 py-3 text-xs font-mono leading-relaxed\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "OpenCode · ~/.config/opencode/config.json</summary><pre class=\"overflow-x-auto border-t bg-muted px-4 py-3 text-xs font-mono leading-relaxed\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var29 string
-					templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(jsExample(common.BaseURLString(ctx, common.WithPath("/api/v1"))))
+					templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(openCodeConfigExample(common.BaseURLString(ctx, common.WithPath("/api/v1")), vmodel.ModelUsages))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 164, Col: 165}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 163, Col: 197}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "</pre></details> <details class=\"group rounded-md border\"><summary class=\"flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium select-none\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = icon.Layers(icon.Props{Class: "h-4 w-4 shrink-0"}).Render(ctx, templ_7745c5c3_Buffer)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "LiteLLM</summary><pre class=\"overflow-x-auto border-t bg-muted px-4 py-3 text-xs font-mono leading-relaxed\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var30 string
-					templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(litellmExample(common.BaseURLString(ctx, common.WithPath("/api/v1"))))
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 171, Col: 170}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "</pre></details></div></div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "</pre></details></div></div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -604,7 +584,7 @@ func ModelsPage(vmodel ModelsPageVModel) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -643,31 +623,77 @@ response = client.chat.completions.create(
 print(response.choices[0].message.content)`
 }
 
-func jsExample(baseURL string) string {
-	return `import OpenAI from "openai";
+func openCodeConfigExample(baseURL string, modelUsages []ModelUsage) string {
+	type modelLimit struct {
+		Context int64 `json:"context,omitempty"`
+		Output  int64 `json:"output,omitempty"`
+	}
+	type modelEntry struct {
+		Name  string      `json:"name"`
+		Limit *modelLimit `json:"limit,omitempty"`
+	}
+	type providerOptions struct {
+		BaseURL string `json:"baseURL"`
+		APIKey  string `json:"apiKey"`
+	}
+	type providerEntry struct {
+		NPM     string                `json:"npm"`
+		Name    string                `json:"name"`
+		Options providerOptions       `json:"options"`
+		Models  map[string]modelEntry `json:"models"`
+	}
+	type configRoot struct {
+		Schema   string                   `json:"$schema"`
+		Provider map[string]providerEntry `json:"provider"`
+	}
 
-const client = new OpenAI({
-  baseURL: "` + baseURL + `",
-  apiKey: "<clé-api>",
-});
+	models := make(map[string]modelEntry)
+	for _, mu := range modelUsages {
+		var name string
+		if mu.Org != nil {
+			name = mu.Org.Slug() + "/" + mu.Model.ProxyName()
+		} else {
+			name = mu.Model.ProxyName()
+		}
 
-const response = await client.chat.completions.create({
-  model: "<organisation>/<modèle>",
-  messages: [{ role: "user", content: "Bonjour !" }],
-});
-console.log(response.choices[0].message.content);`
-}
+		entry := modelEntry{Name: name}
 
-func litellmExample(baseURL string) string {
-	return `import litellm
+		if ctx := mu.Model.ContextWindow(); ctx > 0 {
+			if entry.Limit == nil {
+				entry.Limit = &modelLimit{}
+			}
+			entry.Limit.Context = ctx
+		}
+		if out := mu.Model.OutputWindow(); out > 0 {
+			if entry.Limit == nil {
+				entry.Limit = &modelLimit{}
+			}
+			entry.Limit.Output = out
+		}
 
-response = litellm.completion(
-    model="openai/<organisation>/<modèle>",
-    messages=[{"role": "user", "content": "Bonjour !"}],
-    base_url="` + baseURL + `",
-    api_key="<clé-api>",
-)
-print(response.choices[0].message.content)`
+		models[name] = entry
+	}
+
+	cfg := configRoot{
+		Schema: "https://opencode.ai/config.json",
+		Provider: map[string]providerEntry{
+			"xolo": {
+				NPM:  "@ai-sdk/openai-compatible",
+				Name: "Xolo",
+				Options: providerOptions{
+					BaseURL: baseURL,
+					APIKey:  "{env:XOLO_API_KEY}",
+				},
+				Models: models,
+			},
+		},
+	}
+
+	data, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return ""
+	}
+	return string(data)
 }
 
 var _ = templruntime.GeneratedTemplate

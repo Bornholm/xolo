@@ -105,7 +105,7 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 
 	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, providerStore, usageStore, inviteStore, quotaStore, exchangeRateService, conf.SecretKey)
 
-	apiHandler := api.NewHandler(providerStore, orgStore)
+	apiHandler := api.NewHandler(providerStore, orgStore, exchangeRateService)
 
 	proxyServer := proxy.NewServer(
 		proxy.WithAuthExtractor(proxyAdapter.XoloAuthExtractor(userStore)),
@@ -123,6 +123,8 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		http.WithMount("/metrics/", rateLimiter(authChain(metrics.NewHandler()))),
 		http.WithMount("/api/v1/", rateLimiter(authChain(proxyServer))),
 		http.WithRoute("GET /api/v1/models", rateLimiter(authChain(apiHandler))),
+		http.WithRoute("GET /api/models-dev/lookup", rateLimiter(authChain(apiHandler))),
+		http.WithRoute("GET /api/exchange-rate", rateLimiter(authChain(apiHandler))),
 		http.WithMount("/", authChain(withMemberships(webuiHandler))),
 	}
 

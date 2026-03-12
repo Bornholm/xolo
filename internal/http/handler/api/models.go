@@ -4,28 +4,61 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	proxyAdapter "github.com/bornholm/xolo/internal/adapter/proxy"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
+	"github.com/bornholm/xolo/internal/core/service"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	"github.com/bornholm/go-x/slogx"
 )
 
 type Handler struct {
-	providerStore port.ProviderStore
-	orgStore      port.OrgStore
-	mux           *http.ServeMux
+	providerStore       port.ProviderStore
+	orgStore            port.OrgStore
+	exchangeRateService *service.ExchangeRateService
+	mux                 *http.ServeMux
 }
 
-func NewHandler(providerStore port.ProviderStore, orgStore port.OrgStore) *Handler {
+func NewHandler(providerStore port.ProviderStore, orgStore port.OrgStore, exchangeRateService *service.ExchangeRateService) *Handler {
 	h := &Handler{
-		providerStore: providerStore,
-		orgStore:      orgStore,
-		mux:           http.NewServeMux(),
+		providerStore:       providerStore,
+		orgStore:            orgStore,
+		exchangeRateService: exchangeRateService,
+		mux:                 http.NewServeMux(),
 	}
 	h.mux.HandleFunc("GET /api/v1/models", h.handleModels)
+	h.mux.HandleFunc("GET /api/models-dev/lookup", h.handleModelsDevLookup)
+	h.mux.HandleFunc("GET /api/exchange-rate", h.handleExchangeRate)
 	return h
+}
+
+type exchangeRateResponse struct {
+	From string  `json:"from"`
+	To   string  `json:"to"`
+	Rate float64 `json:"rate"`
+}
+
+func (h *Handler) handleExchangeRate(w http.ResponseWriter, r *http.Request) {
+	from := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("from")))
+	to := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("to")))
+	if from == "" || to == "" {
+		writeError(w, http.StatusBadRequest, "missing from or to parameter")
+		return
+	}
+	if from == to {
+		writeJSON(w, http.StatusOK, exchangeRateResponse{From: from, To: to, Rate: 1})
+		return
+	}
+	// Convert 1_000_000 microcents to get the rate as a float64.
+	converted, err := h.exchangeRateService.Convert(r.Context(), 1_000_000, from, to)
+	if err != nil {
+		slog.WarnContext(r.Context(), "exchange rate unavailable", slog.String("from", from), slog.String("to", to), slog.Any("error", err))
+		writeError(w, http.StatusServiceUnavailable, "exchange rate unavailable")
+		return
+	}
+	writeJSON(w, http.StatusOK, exchangeRateResponse{From: from, To: to, Rate: float64(converted) / 1_000_000})
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

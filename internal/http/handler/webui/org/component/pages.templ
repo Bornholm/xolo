@@ -433,6 +433,40 @@ templ ModelForm(vmodel ModelFormVModel) {
 		{{ action = common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()), "/models/", string(vmodel.Model.ID()), "/edit")) }}
 	}
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(title)) {
+		<script>
+		async function fillFromModelsDev(btn) {
+			var form = btn.closest('form');
+			var id = form.querySelector('[name=real_model]').value.trim();
+			if (!id) { alert('Renseignez d\'abord le nom du modèle réel.'); return; }
+			btn.disabled = true;
+			try {
+				var r = await fetch(btn.dataset.lookupUrl + '?id=' + encodeURIComponent(id));
+				if (!r.ok) { alert('Modèle non trouvé dans le catalogue models.dev.'); return; }
+				var d = await r.json();
+				var f = function(n, v) { var el = form.querySelector('[name=' + n + ']'); if (el) el.value = v; };
+				var c = function(n, v) { var el = form.querySelector('[name=' + n + ']'); if (el) el.checked = v; };
+				if (d.context_window) f('context_window', d.context_window);
+				if (d.output_window) f('output_window', d.output_window);
+				if (d.prompt_cost || d.completion_cost) {
+					var currency = btn.dataset.currency || 'USD';
+					var rate = 1;
+					if (currency !== 'USD') {
+						var rr = await fetch(btn.dataset.exchangeRateUrl + '?from=USD&to=' + encodeURIComponent(currency));
+						if (rr.ok) { var rd = await rr.json(); rate = rd.rate; }
+					}
+					if (d.prompt_cost) f('prompt_cost', (d.prompt_cost / 1000 * rate).toFixed(6));
+					if (d.completion_cost) f('completion_cost', (d.completion_cost / 1000 * rate).toFixed(6));
+				}
+				c('cap_tools', !!d.cap_tools);
+				c('cap_vision', !!d.cap_vision);
+				c('cap_reasoning', !!d.cap_reasoning);
+				c('cap_audio', !!d.cap_audio);
+				if (d.name) { var pn = form.querySelector('[name=proxy_name]'); if (pn && !pn.value) pn.value = d.name; }
+			} finally {
+				btn.disabled = false;
+			}
+		}
+		</script>
 		<div class="space-y-6">
 			<h1 class="text-2xl font-semibold">{ title }</h1>
 			 if vmodel.Error != "" {
@@ -451,7 +485,19 @@ templ ModelForm(vmodel ModelFormVModel) {
 					}
 				</div>
 				<div class="space-y-2">
-					<label class="text-sm font-medium">Modèle réel (transmis au fournisseur)</label>
+					<div class="flex items-center justify-between">
+						<label class="text-sm font-medium">Modèle réel (transmis au fournisseur)</label>
+						<button
+							type="button"
+							data-lookup-url={ common.BaseURLString(ctx, common.WithPath("/api/models-dev/lookup")) }
+							data-exchange-rate-url={ common.BaseURLString(ctx, common.WithPath("/api/exchange-rate")) }
+							data-currency={ vmodel.Provider.Currency() }
+							onclick="fillFromModelsDev(this)"
+							class="text-xs text-muted-foreground underline hover:text-foreground transition-colors"
+						>
+							Pré-remplir depuis models.dev
+						</button>
+					</div>
 					if !vmodel.IsNew && vmodel.Model != nil {
 						@input.Input(input.Props{Name: "real_model", Value: vmodel.Model.RealModel()})
 					} else {
@@ -466,21 +512,66 @@ templ ModelForm(vmodel ModelFormVModel) {
 						@input.Input(input.Props{Name: "description"})
 					}
 				</div>
-				<div class="space-y-2">
-					<label class="text-sm font-medium">Coût prompt par million de tokens ($ USD)</label>
-					if !vmodel.IsNew && vmodel.Model != nil {
-						@input.Input(input.Props{Name: "prompt_cost", Type: "number", Value: formatCostField(vmodel.Model.PromptCostPer1KTokens()), Placeholder: "2.50", Attributes: templ.Attributes{"step": "any"}})
-					} else {
-						@input.Input(input.Props{Name: "prompt_cost", Type: "number", Placeholder: "2.50", Attributes: templ.Attributes{"step": "any"}})
-					}
+				<div class="grid grid-cols-2 gap-3">
+					<div class="space-y-2">
+						<label class="text-sm font-medium">Fenêtre de contexte (tokens)</label>
+						if !vmodel.IsNew && vmodel.Model != nil {
+							@input.Input(input.Props{Name: "context_window", Type: "number", Value: fmtInt(vmodel.Model.ContextWindow()), Placeholder: "128000"})
+						} else {
+							@input.Input(input.Props{Name: "context_window", Type: "number", Placeholder: "128000"})
+						}
+					</div>
+					<div class="space-y-2">
+						<label class="text-sm font-medium">Fenêtre de sortie (tokens)</label>
+						if !vmodel.IsNew && vmodel.Model != nil {
+							@input.Input(input.Props{Name: "output_window", Type: "number", Value: fmtInt(vmodel.Model.OutputWindow()), Placeholder: "8192"})
+						} else {
+							@input.Input(input.Props{Name: "output_window", Type: "number", Placeholder: "8192"})
+						}
+					</div>
 				</div>
 				<div class="space-y-2">
-					<label class="text-sm font-medium">Coût complétion par million de tokens ($ USD)</label>
-					if !vmodel.IsNew && vmodel.Model != nil {
-						@input.Input(input.Props{Name: "completion_cost", Type: "number", Value: formatCostField(vmodel.Model.CompletionCostPer1KTokens()), Placeholder: "10.00", Attributes: templ.Attributes{"step": "any"}})
-					} else {
-						@input.Input(input.Props{Name: "completion_cost", Type: "number", Placeholder: "10.00", Attributes: templ.Attributes{"step": "any"}})
-					}
+					<label class="text-sm font-medium">Capacités</label>
+					<div class="flex flex-wrap gap-4">
+						{{ capTools := !vmodel.IsNew && vmodel.Model != nil && vmodel.Model.Capabilities().Tools }}
+						{{ capVision := !vmodel.IsNew && vmodel.Model != nil && vmodel.Model.Capabilities().Vision }}
+						{{ capReasoning := !vmodel.IsNew && vmodel.Model != nil && vmodel.Model.Capabilities().Reasoning }}
+						{{ capAudio := !vmodel.IsNew && vmodel.Model != nil && vmodel.Model.Capabilities().Audio }}
+						<label class="flex items-center gap-2 text-sm cursor-pointer">
+							<input type="checkbox" name="cap_tools" value="on" checked?={ capTools }/>
+							Outils (tools)
+						</label>
+						<label class="flex items-center gap-2 text-sm cursor-pointer">
+							<input type="checkbox" name="cap_vision" value="on" checked?={ capVision }/>
+							Vision
+						</label>
+						<label class="flex items-center gap-2 text-sm cursor-pointer">
+							<input type="checkbox" name="cap_reasoning" value="on" checked?={ capReasoning }/>
+							Raisonnement (reasoning)
+						</label>
+						<label class="flex items-center gap-2 text-sm cursor-pointer">
+							<input type="checkbox" name="cap_audio" value="on" checked?={ capAudio }/>
+							Audio
+						</label>
+					</div>
+				</div>
+				<div class="grid grid-cols-2 gap-3">
+					<div class="space-y-2">
+						<label class="text-sm font-medium">Coût prompt par million de tokens ({ vmodel.Provider.Currency() })</label>
+						if !vmodel.IsNew && vmodel.Model != nil {
+							@input.Input(input.Props{Name: "prompt_cost", Type: "number", Value: formatCostField(vmodel.Model.PromptCostPer1KTokens()), Placeholder: "2.50", Attributes: templ.Attributes{"step": "any"}})
+						} else {
+							@input.Input(input.Props{Name: "prompt_cost", Type: "number", Placeholder: "2.50", Attributes: templ.Attributes{"step": "any"}})
+						}
+					</div>
+					<div class="space-y-2">
+						<label class="text-sm font-medium">Coût complétion par million de tokens ({ vmodel.Provider.Currency() })</label>
+						if !vmodel.IsNew && vmodel.Model != nil {
+							@input.Input(input.Props{Name: "completion_cost", Type: "number", Value: formatCostField(vmodel.Model.CompletionCostPer1KTokens()), Placeholder: "10.00", Attributes: templ.Attributes{"step": "any"}})
+						} else {
+							@input.Input(input.Props{Name: "completion_cost", Type: "number", Placeholder: "10.00", Attributes: templ.Attributes{"step": "any"}})
+						}
+					</div>
 				</div>
 				if !vmodel.IsNew && vmodel.Model != nil {
 					<div class="flex items-center gap-2">
@@ -1113,6 +1204,13 @@ func formatCost(v int64, currency string) string {
 // displaying it as dollars per million tokens (industry standard).
 func formatCostRate(v int64, currency string) string {
 	return fmt.Sprintf("%s%.4f/1M", currencySymbol(currency), float64(v)/1_000)
+}
+
+func fmtInt(v int64) string {
+	if v == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%d", v)
 }
 
 func formatCostField(v int64) string {
