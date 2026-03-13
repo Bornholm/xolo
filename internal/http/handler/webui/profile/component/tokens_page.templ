@@ -116,19 +116,24 @@ templ TokensPage(vmodel TokensPageVModel) {
 							})
 						</div>
 						<div class="space-y-2">
-							<label for="token-org" class="text-sm font-medium">Organisation</label>
-							<select
-								id="token-org"
-								name="org_id"
-								class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none md:text-sm"
-							>
-								<option value="">— Aucune organisation —</option>
-								for _, m := range vmodel.OrgMemberships {
-									if m.Org() != nil {
-										<option value={ string(m.OrgID()) }>{ m.Org().Name() }</option>
+							<label for="token-org" class="text-sm font-medium">Organisation <span class="text-destructive">*</span></label>
+							if len(vmodel.OrgMemberships) == 0 {
+								<p class="text-sm text-muted-foreground">Vous n’appartenez à aucune organisation. Contactez un administrateur pour rejoindre une organisation avant de créer une clé API.</p>
+							} else {
+								<select
+									id="token-org"
+									name="org_id"
+									required
+									class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none md:text-sm"
+								>
+									<option value="">— Sélectionnez une organisation —</option>
+									for _, m := range vmodel.OrgMemberships {
+										if m.Org() != nil {
+											<option value={ string(m.OrgID()) }>{ m.Org().Name() }</option>
+										}
 									}
-								}
-							</select>
+								</select>
+							}
 						</div>
 						<div class="space-y-2">
 							<label for="token-expires" class="text-sm font-medium">Date d'expiration (optionnel)</label>
@@ -144,7 +149,10 @@ templ TokensPage(vmodel TokensPageVModel) {
 				@dialog.Footer(dialog.FooterProps{}) {
 					<button
 						type="submit"
-						class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 h-9 rounded-md px-4 cursor-pointer"
+						if len(vmodel.OrgMemberships) == 0 {
+							disabled
+						}
+						class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 h-9 rounded-md px-4 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
 						onclick="document.getElementById('token-create-form').requestSubmit()"
 					>
 						Créer la clé

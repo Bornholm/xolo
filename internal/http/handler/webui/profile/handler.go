@@ -174,6 +174,10 @@ func (h *Handler) createToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	orgID := model.OrgID(r.FormValue("org_id"))
+	if orgID == "" {
+		http.Error(w, "L'organisation est requise", http.StatusBadRequest)
+		return
+	}
 
 	var expiresAt *time.Time
 	if expiresStr := r.FormValue("expires_at"); expiresStr != "" {
