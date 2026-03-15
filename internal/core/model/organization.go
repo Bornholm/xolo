@@ -22,17 +22,19 @@ type Organization interface {
 	Currency() string
 	CreatedAt() time.Time
 	UpdatedAt() time.Time
+	ShareQuotaEqually() bool
 }
 
 type BaseOrganization struct {
-	id          OrgID
-	slug        string
-	name        string
-	description string
-	active      bool
-	currency    string
-	createdAt   time.Time
-	updatedAt   time.Time
+	id                  OrgID
+	slug                string
+	name                string
+	description         string
+	active              bool
+	currency            string
+	createdAt           time.Time
+	updatedAt           time.Time
+	shareQuotaEqually   bool
 }
 
 func (o *BaseOrganization) ID() OrgID           { return o.id }
@@ -43,6 +45,7 @@ func (o *BaseOrganization) Active() bool         { return o.active }
 func (o *BaseOrganization) Currency() string     { return o.currency }
 func (o *BaseOrganization) CreatedAt() time.Time { return o.createdAt }
 func (o *BaseOrganization) UpdatedAt() time.Time { return o.updatedAt }
+func (o *BaseOrganization) ShareQuotaEqually() bool { return o.shareQuotaEqually }
 
 var _ Organization = &BaseOrganization{}
 
@@ -69,17 +72,19 @@ func WithOrgName(name string) OrgOption        { return func(o *BaseOrganization
 func WithOrgDescription(desc string) OrgOption { return func(o *BaseOrganization) { o.description = desc } }
 func WithOrgActive(active bool) OrgOption      { return func(o *BaseOrganization) { o.active = active } }
 func WithOrgCurrency(currency string) OrgOption { return func(o *BaseOrganization) { o.currency = currency } }
+func WithOrgShareQuotaEqually(v bool) OrgOption { return func(o *BaseOrganization) { o.shareQuotaEqually = v } }
 
 func UpdateOrganization(org Organization, opts ...OrgOption) *BaseOrganization {
 	b := &BaseOrganization{
-		id:          org.ID(),
-		slug:        org.Slug(),
-		name:        org.Name(),
-		description: org.Description(),
-		active:      org.Active(),
-		currency:    org.Currency(),
-		createdAt:   org.CreatedAt(),
-		updatedAt:   time.Now(),
+		id:                  org.ID(),
+		slug:                org.Slug(),
+		name:                org.Name(),
+		description:         org.Description(),
+		active:              org.Active(),
+		currency:            org.Currency(),
+		createdAt:           org.CreatedAt(),
+		updatedAt:           time.Now(),
+		shareQuotaEqually:   org.ShareQuotaEqually(),
 	}
 	for _, opt := range opts {
 		opt(b)

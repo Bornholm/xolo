@@ -12,19 +12,26 @@ import (
 	"github.com/pkg/errors"
 )
 
+// quotaResolver is satisfied by both QuotaService (prod) and gorm.Store (tests).
+type quotaResolver interface {
+	ResolveEffectiveQuota(ctx context.Context, userID model.UserID, orgID model.OrgID) (*model.EffectiveQuota, error)
+}
+
 // XoloQuotaEnforcer is a PreRequestHook that checks the effective budget quota
 // for the requesting user and org, rejecting requests that would exceed it.
 type XoloQuotaEnforcer struct {
-	quotaStore port.QuotaStore
-	usageStore port.UsageStore
-	userStore  port.UserStore
+	quotaResolver quotaResolver  // for per-user effective quota
+	quotaStore    port.QuotaStore // for org-level GetQuota + SumCost checks
+	usageStore    port.UsageStore
+	userStore     port.UserStore
 }
 
-func NewXoloQuotaEnforcer(quotaStore port.QuotaStore, usageStore port.UsageStore, userStore port.UserStore) *XoloQuotaEnforcer {
+func NewXoloQuotaEnforcer(quotaResolver quotaResolver, quotaStore port.QuotaStore, usageStore port.UsageStore, userStore port.UserStore) *XoloQuotaEnforcer {
 	return &XoloQuotaEnforcer{
-		quotaStore: quotaStore,
-		usageStore: usageStore,
-		userStore:  userStore,
+		quotaResolver: quotaResolver,
+		quotaStore:    quotaStore,
+		usageStore:    usageStore,
+		userStore:     userStore,
 	}
 }
 
@@ -78,7 +85,7 @@ func (e *XoloQuotaEnforcer) PreRequest(ctx context.Context, req *genaiProxy.Prox
 	}
 
 	// ── Per-user quota check (effective = min of user quota and org quota) ──────
-	effectiveQuota, err := e.quotaStore.ResolveEffectiveQuota(ctx, userID, orgID)
+	effectiveQuota, err := e.quotaResolver.ResolveEffectiveQuota(ctx, userID, orgID)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

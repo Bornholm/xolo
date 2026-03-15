@@ -16,7 +16,7 @@ import (
 type Handler struct {
 	mux                 *http.ServeMux
 	inviteStore         port.InviteStore
-	quotaStore          port.QuotaStore
+	quotaService        *service.QuotaService
 	usageStore          port.UsageStore
 	userStore           port.UserStore
 	orgStore            port.OrgStore
@@ -37,13 +37,14 @@ func NewHandler(
 	usageStore port.UsageStore,
 	inviteStore port.InviteStore,
 	quotaStore port.QuotaStore,
+	quotaService *service.QuotaService,
 	exchangeRateService *service.ExchangeRateService,
 	secretKey string,
 ) *Handler {
 	h := &Handler{
 		mux:                 http.NewServeMux(),
 		inviteStore:         inviteStore,
-		quotaStore:          quotaStore,
+		quotaService:        quotaService,
 		usageStore:          usageStore,
 		userStore:           userStore,
 		orgStore:            orgStore,
@@ -58,9 +59,9 @@ func NewHandler(
 	h.mux.Handle("POST /no-org/invitations/{tokenID}/decline", isActive(http.HandlerFunc(h.declineInvitation)))
 	mount(h.mux, "/usage", isActive(http.HandlerFunc(h.getDashboardPage)))
 	mount(h.mux, "/models", isActive(http.HandlerFunc(h.getModelsPage)))
-	mount(h.mux, "/profile/", isActive(profile.NewHandler(userStore, orgStore, usageStore, inviteStore, quotaStore)))
+	mount(h.mux, "/profile/", isActive(profile.NewHandler(userStore, orgStore, inviteStore)))
 	mount(h.mux, "/admin/", isActive(admin.NewHandler(userStore, orgStore, taskRunner, exchangeRateService)))
-	mount(h.mux, "/orgs/", isActive(org.NewHandler(orgStore, providerStore, usageStore, inviteStore, userStore, exchangeRateService, secretKey)))
+	mount(h.mux, "/orgs/", isActive(org.NewHandler(orgStore, providerStore, usageStore, inviteStore, userStore, exchangeRateService, quotaStore, secretKey)))
 
 	// Public join flow — no isActive wrapper (unauthenticated users get a sign-in prompt)
 	h.mux.Handle("/join/", http.StripPrefix("/join", join.NewHandler(orgStore, inviteStore)))

@@ -7,6 +7,9 @@ import (
 
 	"github.com/bornholm/genai/llm"
 	"github.com/bornholm/genai/llm/provider"
+	llmratelimit "github.com/bornholm/genai/llm/ratelimit"
+	llmretry "github.com/bornholm/genai/llm/retry"
+	"github.com/bornholm/genai/llm/tokenlimit"
 	genaiProxy "github.com/bornholm/genai/proxy"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
@@ -104,6 +107,26 @@ func (r *OrgModelRouter) ResolveModel(ctx context.Context, req *genaiProxy.Proxy
 	)
 	if err != nil {
 		return nil, "", errors.Wrapf(err, "could not create LLM client for provider '%s'", p.Name())
+	}
+
+	// Token limit (innermost — applied first, closest to the provider).
+	// Always pass WithChatCompletionLimit explicitly to avoid the 500k TPM
+	// silent default from tokenlimit.NewClient called bare.
+	if cfg := llmModel.TokenLimitConfig(); cfg != nil && cfg.Enabled {
+		client = tokenlimit.NewClient(client,
+			tokenlimit.WithChatCompletionLimit(cfg.MaxTokens, cfg.Interval),
+		)
+	}
+
+	// Rate limit wraps token limit: token-bucket (minInterval between requests, burst = MaxBurst).
+	if cfg := p.RateLimitConfig(); cfg != nil && cfg.Enabled {
+		client = llmratelimit.NewClient(client, cfg.Interval, cfg.MaxBurst)
+	}
+
+	// Retry wraps everything (outermost): each retry attempt goes through
+	// rate-limit and token-limit, preventing burst hammering during retries.
+	if cfg := p.RetryConfig(); cfg != nil && cfg.Enabled {
+		client = llmretry.NewClient(client, cfg.Delay, cfg.MaxAttempts)
 	}
 
 	return client, llmModel.RealModel(), nil

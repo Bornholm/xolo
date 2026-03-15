@@ -16,6 +16,7 @@ type Handler struct {
 	usageStore          port.UsageStore
 	inviteStore         port.InviteStore
 	userStore           port.UserStore
+	quotaStore          port.QuotaStore
 	secretKey           string
 	exchangeRateService *service.ExchangeRateService
 }
@@ -32,6 +33,7 @@ func NewHandler(
 	inviteStore port.InviteStore,
 	userStore port.UserStore,
 	exchangeRateService *service.ExchangeRateService,
+	quotaStore port.QuotaStore,
 	secretKey string,
 ) *Handler {
 	h := &Handler{
@@ -41,6 +43,7 @@ func NewHandler(
 		usageStore:          usageStore,
 		inviteStore:         inviteStore,
 		userStore:           userStore,
+		quotaStore:          quotaStore,
 		secretKey:           secretKey,
 		exchangeRateService: exchangeRateService,
 	}

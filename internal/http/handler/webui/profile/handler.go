@@ -4,7 +4,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"sort"
 	"time"
 
 	"github.com/a-h/templ"
@@ -22,9 +21,7 @@ type Handler struct {
 	mux         *http.ServeMux
 	userStore   port.UserStore
 	orgStore    port.OrgStore
-	usageStore  port.UsageStore
 	inviteStore port.InviteStore
-	quotaStore  port.QuotaStore
 }
 
 // ServeHTTP implements http.Handler.
@@ -32,14 +29,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.mux.ServeHTTP(w, r)
 }
 
-func NewHandler(userStore port.UserStore, orgStore port.OrgStore, usageStore port.UsageStore, inviteStore port.InviteStore, quotaStore port.QuotaStore) *Handler {
+func NewHandler(userStore port.UserStore, orgStore port.OrgStore, inviteStore port.InviteStore) *Handler {
 	h := &Handler{
 		mux:         http.NewServeMux(),
 		userStore:   userStore,
 		orgStore:    orgStore,
-		usageStore:  usageStore,
 		inviteStore: inviteStore,
-		quotaStore:  quotaStore,
 	}
 
 	// Require authentication for all profile routes
@@ -51,8 +46,6 @@ func NewHandler(userStore port.UserStore, orgStore port.OrgStore, usageStore por
 	h.mux.Handle("DELETE /tokens/{tokenID}", assertUser(http.HandlerFunc(h.deleteToken)))
 	h.mux.Handle("POST /preferences", assertUser(http.HandlerFunc(h.updatePreferences)))
 	h.mux.Handle("GET /invitations", assertUser(http.HandlerFunc(h.getInvitationsPage)))
-	h.mux.Handle("GET /usage", assertUser(http.HandlerFunc(h.getUsagePage)))
-	h.mux.Handle("GET /quota", assertUser(http.HandlerFunc(h.getQuotaPage)))
 
 	return h
 }
@@ -285,130 +278,6 @@ func (h *Handler) getInvitationsPage(w http.ResponseWriter, r *http.Request) {
 	templ.Handler(component.InvitationsPage(vmodel)).ServeHTTP(w, r)
 }
 
-func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	user := httpCtx.User(ctx)
-
-	rangeParam := r.URL.Query().Get("range")
-	since := profileRangeToSince(rangeParam)
-
-	memberships, err := h.orgStore.GetUserMemberships(ctx, user.ID())
-	if err != nil {
-		slog.ErrorContext(ctx, "could not fetch memberships", slogx.Error(err))
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-
-	userID := user.ID()
-	portAgg, err := h.usageStore.AggregateUsage(ctx, port.UsageFilter{UserID: &userID, Since: &since})
-	if err != nil {
-		slog.ErrorContext(ctx, "could not aggregate usage", slogx.Error(err))
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-
-	var agg *component.UsageAggregate
-	if portAgg != nil {
-		agg = &component.UsageAggregate{
-			TotalRequests:    portAgg.TotalRequests,
-			TotalCost:        portAgg.TotalCost,
-			Currency:         portAgg.Currency,
-			PromptTokens:     portAgg.PromptTokens,
-			CompletionTokens: portAgg.CompletionTokens,
-			TotalTokens:      portAgg.TotalTokens,
-		}
-	}
-
-	// Fetch records for chart data
-	limit := 500
-	chartRecords, _ := h.usageStore.QueryUsage(ctx, port.UsageFilter{
-		UserID: &userID,
-		Since:  &since,
-		Limit:  &limit,
-	})
-
-	// Build chart aggregates
-	perModel := make(map[string]int64)
-	perDay := make(map[string]int64)
-	perOrg := make(map[string]int64)
-	for _, rec := range chartRecords {
-		perModel[rec.ProxyModelName()] += rec.Cost()
-		perDay[rec.CreatedAt().Format("2006-01-02")] += rec.Cost()
-		orgID := string(rec.OrgID())
-		orgName := orgID
-		for _, m := range memberships {
-			if string(m.OrgID()) == orgID && m.Org() != nil {
-				orgName = m.Org().Name()
-				break
-			}
-		}
-		perOrg[orgName] += rec.Cost()
-	}
-
-	vmodel := component.UsagePageVModel{
-		Aggregate:      agg,
-		OrgMemberships: memberships,
-		Range:          rangeParam,
-		ChartPerDay:    profileChartByDate(perDay),
-		ChartPerModel:  profileChartByValue(perModel),
-		ChartPerOrg:    profileChartByValue(perOrg),
-		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "profile",
-			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppNavigationItems(vmodel)
-			},
-			FooterItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppFooterItems(vmodel)
-			},
-		},
-	}
-
-	templ.Handler(component.UsagePage(vmodel)).ServeHTTP(w, r)
-}
-
-func (h *Handler) getQuotaPage(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	user := httpCtx.User(ctx)
-
-	memberships, err := h.orgStore.GetUserMemberships(ctx, user.ID())
-	if err != nil {
-		slog.ErrorContext(ctx, "could not fetch memberships", slogx.Error(err))
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-
-	// Resolve quota for each org membership
-	orgQuotas := make([]component.OrgEffectiveQuota, 0, len(memberships))
-	for _, m := range memberships {
-		eq, err := h.quotaStore.ResolveEffectiveQuota(ctx, user.ID(), m.OrgID())
-		if err != nil {
-			slog.ErrorContext(ctx, "could not resolve quota", slogx.Error(err))
-			continue
-		}
-		orgQuotas = append(orgQuotas, component.OrgEffectiveQuota{
-			Membership: m,
-			Quota:      eq,
-		})
-	}
-
-	vmodel := component.QuotaPageVModel{
-		OrgQuotas: orgQuotas,
-		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "profile",
-			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppNavigationItems(vmodel)
-			},
-			FooterItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppFooterItems(vmodel)
-			},
-		},
-	}
-
-	templ.Handler(component.QuotaPage(vmodel)).ServeHTTP(w, r)
-}
-
 func (h *Handler) getForbiddenPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -426,46 +295,6 @@ func (h *Handler) getForbiddenPage(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusForbidden)
 	templ.Handler(forbiddenPage).ServeHTTP(w, r)
-}
-
-func profileChartByValue(m map[string]int64) []component.ProfileChartDataPoint {
-	pts := make([]component.ProfileChartDataPoint, 0, len(m))
-	for label, cost := range m {
-		pts = append(pts, component.ProfileChartDataPoint{Label: label, Value: float64(cost) / 1_000_000})
-	}
-	sort.Slice(pts, func(i, j int) bool { return pts[i].Value > pts[j].Value })
-	return pts
-}
-
-func profileChartByDate(m map[string]int64) []component.ProfileChartDataPoint {
-	dates := make([]string, 0, len(m))
-	for k := range m {
-		dates = append(dates, k)
-	}
-	sort.Strings(dates)
-	pts := make([]component.ProfileChartDataPoint, 0, len(dates))
-	for _, d := range dates {
-		pts = append(pts, component.ProfileChartDataPoint{Label: d, Value: float64(m[d]) / 1_000_000})
-	}
-	return pts
-}
-
-func profileRangeToSince(r string) time.Time {
-	now := time.Now()
-	switch r {
-	case "1d":
-		return now.AddDate(0, 0, -1)
-	case "30d":
-		return now.AddDate(0, -1, 0)
-	case "90d":
-		return now.AddDate(0, -3, 0)
-	case "180d":
-		return now.AddDate(0, -6, 0)
-	case "365d":
-		return now.AddDate(-1, 0, 0)
-	default: // 7d and anything else
-		return now.AddDate(0, 0, -7)
-	}
 }
 
 var _ http.Handler = &Handler{}

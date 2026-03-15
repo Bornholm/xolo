@@ -82,6 +82,11 @@ type OrgSettingsPageVModel struct {
 	common.AppLayoutVModel
 	Org     model.Organization
 	Success string
+	// Aperçu quota partagé (nil si non applicable)
+	MemberCount         int
+	SharedDailyBudget   *int64 // microcents, nil si org n'a pas ce budget
+	SharedMonthlyBudget *int64
+	SharedYearlyBudget  *int64
 }
 
 type OrgDisplayUsageRecord struct {

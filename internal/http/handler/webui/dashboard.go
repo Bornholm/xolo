@@ -53,7 +53,7 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 	userID := user.ID()
 	orgUsages := make([]component.OrgUsage, 0, len(memberships))
 	for _, m := range memberships {
-		quota, err := h.quotaStore.ResolveEffectiveQuota(ctx, userID, m.OrgID())
+		quota, err := h.quotaService.ResolveEffectiveQuota(ctx, userID, m.OrgID())
 		if err != nil {
 			slog.ErrorContext(ctx, "could not resolve quota", slogx.Error(err), slog.String("orgID", string(m.OrgID())))
 		}

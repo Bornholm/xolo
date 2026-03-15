@@ -61,7 +61,7 @@ type modelsDevCache struct {
 
 var catalog = &modelsDevCache{}
 
-func (c *modelsDevCache) lookup(id string) (ModelsDevInfo, bool) {
+func (c *modelsDevCache) lookup(id, providerHint string) (ModelsDevInfo, bool) {
 	c.mu.RLock()
 	if time.Since(c.fetchedAt) > modelsDevCacheTTL {
 		c.mu.RUnlock()
@@ -72,20 +72,46 @@ func (c *modelsDevCache) lookup(id string) (ModelsDevInfo, bool) {
 	}
 	defer c.mu.RUnlock()
 
-	// Try exact match first.
-	if info, ok := c.index[id]; ok {
-		return info, true
+	// Build candidate list: try the id as-is first, then without "-latest" suffix.
+	// models.dev has BOTH "mistral-large-latest" (exact) and "mistral-small-2506"
+	// (no -latest variant), so we must try the exact name before stripping.
+	candidates := []string{id}
+	if base, ok := strings.CutSuffix(id, "-latest"); ok {
+		candidates = append(candidates, base)
 	}
-	// Try stripping a provider prefix: "mistral/mistral-large" → "mistral-large".
-	if _, after, ok := strings.Cut(id, "/"); ok {
-		if info, ok := c.index[after]; ok {
+
+	for _, cand := range candidates {
+		// 1. With provider hint: exact "providerHint/cand".
+		if providerHint != "" {
+			if info, ok := c.index[providerHint+"/"+cand]; ok {
+				return info, true
+			}
+		}
+		// 2. Exact short key.
+		if info, ok := c.index[cand]; ok {
 			return info, true
 		}
-	}
-	// Try appending common provider prefixes when only the model name is given.
-	for key, info := range c.index {
-		if strings.HasSuffix(key, "/"+id) {
-			return info, true
+		// 3. Strip an embedded provider prefix: "mistral/mistral-small" → "mistral-small".
+		if _, after, ok := strings.Cut(cand, "/"); ok {
+			if info, ok := c.index[after]; ok {
+				return info, true
+			}
+		}
+		// 4. Suffix scan: any "xxx/cand".
+		for key, info := range c.index {
+			if strings.HasSuffix(key, "/"+cand) {
+				return info, true
+			}
+		}
+		// 5. Prefix scan within provider hint: "providerHint/cand-XXXX".
+		//    Handles e.g. "mistral-small" → "mistral/mistral-small-2506".
+		if providerHint != "" {
+			prefix := providerHint + "/" + cand
+			for key, info := range c.index {
+				if strings.HasPrefix(key, prefix) {
+					return info, true
+				}
+			}
 		}
 	}
 	return ModelsDevInfo{}, false
@@ -155,7 +181,9 @@ func (h *Handler) handleModelsDevLookup(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	info, ok := catalog.lookup(id)
+	providerHint := strings.TrimSpace(r.URL.Query().Get("provider"))
+
+	info, ok := catalog.lookup(id, providerHint)
 	if !ok {
 		writeError(w, http.StatusNotFound, "model not found in models.dev catalog")
 		return

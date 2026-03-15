@@ -16,8 +16,10 @@ type updatedProviderAdapter struct {
 	apiKey    string
 	active    bool
 	currency  string
-	createdAt time.Time
-	updatedAt time.Time
+	createdAt       time.Time
+	updatedAt       time.Time
+	retryConfig     *model.RetryConfig
+	rateLimitConfig *model.RateLimitConfig
 }
 
 func (p *updatedProviderAdapter) ID() model.ProviderID     { return p.id }
@@ -28,8 +30,10 @@ func (p *updatedProviderAdapter) BaseURL() string          { return p.baseURL }
 func (p *updatedProviderAdapter) APIKey() string           { return p.apiKey }
 func (p *updatedProviderAdapter) Active() bool             { return p.active }
 func (p *updatedProviderAdapter) Currency() string         { return p.currency }
-func (p *updatedProviderAdapter) CreatedAt() time.Time     { return p.createdAt }
-func (p *updatedProviderAdapter) UpdatedAt() time.Time     { return p.updatedAt }
+func (p *updatedProviderAdapter) CreatedAt() time.Time                    { return p.createdAt }
+func (p *updatedProviderAdapter) UpdatedAt() time.Time                    { return p.updatedAt }
+func (p *updatedProviderAdapter) RetryConfig() *model.RetryConfig         { return p.retryConfig }
+func (p *updatedProviderAdapter) RateLimitConfig() *model.RateLimitConfig { return p.rateLimitConfig }
 
 var _ model.Provider = &updatedProviderAdapter{}
 
@@ -49,6 +53,7 @@ type updatedLLMModelAdapter struct {
 	capabilities              model.ModelCapabilities
 	createdAt                 time.Time
 	updatedAt                 time.Time
+	tokenLimitConfig          *model.TokenLimitConfig
 }
 
 func (m *updatedLLMModelAdapter) ID() model.LLMModelID               { return m.id }
@@ -62,8 +67,9 @@ func (m *updatedLLMModelAdapter) PromptCostPer1KTokens() int64       { return m.
 func (m *updatedLLMModelAdapter) CompletionCostPer1KTokens() int64   { return m.completionCostPer1KTokens }
 func (m *updatedLLMModelAdapter) ContextWindow() int64               { return m.contextWindow }
 func (m *updatedLLMModelAdapter) OutputWindow() int64                { return m.outputWindow }
-func (m *updatedLLMModelAdapter) Capabilities() model.ModelCapabilities { return m.capabilities }
-func (m *updatedLLMModelAdapter) CreatedAt() time.Time               { return m.createdAt }
-func (m *updatedLLMModelAdapter) UpdatedAt() time.Time               { return m.updatedAt }
+func (m *updatedLLMModelAdapter) Capabilities() model.ModelCapabilities    { return m.capabilities }
+func (m *updatedLLMModelAdapter) CreatedAt() time.Time                     { return m.createdAt }
+func (m *updatedLLMModelAdapter) UpdatedAt() time.Time                     { return m.updatedAt }
+func (m *updatedLLMModelAdapter) TokenLimitConfig() *model.TokenLimitConfig { return m.tokenLimitConfig }
 
 var _ model.LLMModel = &updatedLLMModelAdapter{}

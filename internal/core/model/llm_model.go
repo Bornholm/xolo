@@ -40,6 +40,7 @@ type LLMModel interface {
 	Capabilities() ModelCapabilities
 	CreatedAt() time.Time
 	UpdatedAt() time.Time
+	TokenLimitConfig() *TokenLimitConfig
 }
 
 type BaseLLMModel struct {
@@ -57,6 +58,7 @@ type BaseLLMModel struct {
 	capabilities              ModelCapabilities
 	createdAt                 time.Time
 	updatedAt                 time.Time
+	tokenLimitConfig          *TokenLimitConfig
 }
 
 func (m *BaseLLMModel) ID() LLMModelID                     { return m.id }
@@ -73,10 +75,12 @@ func (m *BaseLLMModel) OutputWindow() int64                { return m.outputWind
 func (m *BaseLLMModel) Capabilities() ModelCapabilities    { return m.capabilities }
 func (m *BaseLLMModel) CreatedAt() time.Time               { return m.createdAt }
 func (m *BaseLLMModel) UpdatedAt() time.Time               { return m.updatedAt }
+func (m *BaseLLMModel) TokenLimitConfig() *TokenLimitConfig     { return m.tokenLimitConfig }
 
 func (m *BaseLLMModel) SetContextWindow(v int64)               { m.contextWindow = v }
 func (m *BaseLLMModel) SetOutputWindow(v int64)                { m.outputWindow = v }
 func (m *BaseLLMModel) SetCapabilities(c ModelCapabilities)    { m.capabilities = c }
+func (m *BaseLLMModel) SetTokenLimitConfig(c *TokenLimitConfig) { m.tokenLimitConfig = c }
 
 var _ LLMModel = &BaseLLMModel{}
 

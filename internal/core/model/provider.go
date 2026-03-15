@@ -24,19 +24,23 @@ type Provider interface {
 	Currency() string
 	CreatedAt() time.Time
 	UpdatedAt() time.Time
+	RetryConfig() *RetryConfig
+	RateLimitConfig() *RateLimitConfig
 }
 
 type BaseProvider struct {
-	id        ProviderID
-	orgID     OrgID
-	name      string
-	pType     string
-	baseURL   string
-	apiKey    string
-	active    bool
-	currency  string
-	createdAt time.Time
-	updatedAt time.Time
+	id              ProviderID
+	orgID           OrgID
+	name            string
+	pType           string
+	baseURL         string
+	apiKey          string
+	active          bool
+	currency        string
+	createdAt       time.Time
+	updatedAt       time.Time
+	retryConfig     *RetryConfig
+	rateLimitConfig *RateLimitConfig
 }
 
 func (p *BaseProvider) ID() ProviderID       { return p.id }
@@ -49,6 +53,11 @@ func (p *BaseProvider) Active() bool         { return p.active }
 func (p *BaseProvider) Currency() string     { return p.currency }
 func (p *BaseProvider) CreatedAt() time.Time { return p.createdAt }
 func (p *BaseProvider) UpdatedAt() time.Time { return p.updatedAt }
+func (p *BaseProvider) RetryConfig() *RetryConfig         { return p.retryConfig }
+func (p *BaseProvider) RateLimitConfig() *RateLimitConfig { return p.rateLimitConfig }
+
+func (p *BaseProvider) SetRetryConfig(c *RetryConfig)         { p.retryConfig = c }
+func (p *BaseProvider) SetRateLimitConfig(c *RateLimitConfig) { p.rateLimitConfig = c }
 
 var _ Provider = &BaseProvider{}
 

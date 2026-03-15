@@ -2,6 +2,7 @@ package component
 
 import (
 	"fmt"
+	"time"
 	"github.com/bornholm/xolo/internal/core/model"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
@@ -254,6 +255,11 @@ templ ProviderForm(vmodel ProviderFormVModel) {
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(title)) {
 		<div class="space-y-6">
 			<h1 class="text-2xl font-semibold">{ title }</h1>
+			if vmodel.Error != "" {
+				@alert.Alert(alert.Props{Variant: alert.VariantDestructive}) {
+					{ vmodel.Error }
+				}
+			}
 			<form method="POST" action={ templ.SafeURL(action) } class="space-y-4">
 				<div class="space-y-2">
 					<label class="text-sm font-medium">Nom</label>
@@ -318,6 +324,74 @@ templ ProviderForm(vmodel ProviderFormVModel) {
 					}) {
 						Tester la connexion
 					}
+					// ── Retry ────────────────────────────────────────────────
+					{{ retryCfg := vmodel.Provider.RetryConfig() }}
+					<div class="rounded-md border p-4 space-y-3">
+						{{ retryEnabled := retryCfg != nil && retryCfg.Enabled }}
+						<div class="flex items-center gap-2">
+							<input type="checkbox" name="retry_enabled" id="retry_enabled" value="on" checked?={ retryEnabled }/>
+							<label for="retry_enabled" class="text-sm font-semibold">Retry (nouvelle tentative)</label>
+						</div>
+						<div class="grid grid-cols-2 gap-3">
+							<div class="space-y-2">
+								<label class="text-sm font-medium">Nombre de tentatives</label>
+								if retryCfg != nil {
+									@input.Input(input.Props{Name: "retry_max_attempts", Type: "number", Value: fmt.Sprintf("%d", retryCfg.MaxAttempts), Placeholder: "3", Attributes: templ.Attributes{"min": "1"}})
+								} else {
+									@input.Input(input.Props{Name: "retry_max_attempts", Type: "number", Placeholder: "3", Attributes: templ.Attributes{"min": "1"}})
+								}
+							</div>
+							<div class="space-y-2">
+								<label class="text-sm font-medium">Délai entre tentatives</label>
+								<div class="flex gap-2">
+									if retryCfg != nil {
+										@input.Input(input.Props{Name: "retry_delay_value", Type: "number", Value: durationValue(retryCfg.Delay), Placeholder: "1", Attributes: templ.Attributes{"min": "1", "class": "flex-1"}})
+									} else {
+										@input.Input(input.Props{Name: "retry_delay_value", Type: "number", Placeholder: "1", Attributes: templ.Attributes{"min": "1", "class": "flex-1"}})
+									}
+									<select name="retry_delay_unit" class="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm">
+										<option value="ms" selected?={ retryCfg != nil && durationUnit(retryCfg.Delay) == "ms" }>ms</option>
+										<option value="s" selected?={ retryCfg == nil || durationUnit(retryCfg.Delay) == "s" }>s</option>
+										<option value="min" selected?={ retryCfg != nil && durationUnit(retryCfg.Delay) == "min" }>min</option>
+									</select>
+								</div>
+							</div>
+						</div>
+					</div>
+					// ── Rate limit ───────────────────────────────────────────
+					{{ rlCfg := vmodel.Provider.RateLimitConfig() }}
+					<div class="rounded-md border p-4 space-y-3">
+						{{ rlEnabled := rlCfg != nil && rlCfg.Enabled }}
+						<div class="flex items-center gap-2">
+							<input type="checkbox" name="rate_limit_enabled" id="rate_limit_enabled" value="on" checked?={ rlEnabled }/>
+							<label for="rate_limit_enabled" class="text-sm font-semibold">Rate limit (limitation de débit)</label>
+						</div>
+						<div class="grid grid-cols-2 gap-3">
+							<div class="space-y-2">
+								<label class="text-sm font-medium">Intervalle minimum entre requêtes</label>
+								<div class="flex gap-2">
+									if rlCfg != nil {
+										@input.Input(input.Props{Name: "rate_limit_interval_value", Type: "number", Value: durationValue(rlCfg.Interval), Placeholder: "1", Attributes: templ.Attributes{"min": "1", "class": "flex-1"}})
+									} else {
+										@input.Input(input.Props{Name: "rate_limit_interval_value", Type: "number", Placeholder: "1", Attributes: templ.Attributes{"min": "1", "class": "flex-1"}})
+									}
+									<select name="rate_limit_interval_unit" class="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm">
+										<option value="ms" selected?={ rlCfg != nil && durationUnit(rlCfg.Interval) == "ms" }>ms</option>
+										<option value="s" selected?={ rlCfg == nil || durationUnit(rlCfg.Interval) == "s" }>s</option>
+										<option value="min" selected?={ rlCfg != nil && durationUnit(rlCfg.Interval) == "min" }>min</option>
+									</select>
+								</div>
+							</div>
+							<div class="space-y-2">
+								<label class="text-sm font-medium">Capacité de burst (rafale max)</label>
+								if rlCfg != nil {
+									@input.Input(input.Props{Name: "rate_limit_max_burst", Type: "number", Value: fmt.Sprintf("%d", rlCfg.MaxBurst), Placeholder: "10", Attributes: templ.Attributes{"min": "1"}})
+								} else {
+									@input.Input(input.Props{Name: "rate_limit_max_burst", Type: "number", Placeholder: "10", Attributes: templ.Attributes{"min": "1"}})
+								}
+							</div>
+						</div>
+					</div>
 				}
 				@button.Button(button.Props{Type: "submit"}) {
 					Enregistrer
@@ -440,7 +514,9 @@ templ ModelForm(vmodel ModelFormVModel) {
 			if (!id) { alert('Renseignez d\'abord le nom du modèle réel.'); return; }
 			btn.disabled = true;
 			try {
-				var r = await fetch(btn.dataset.lookupUrl + '?id=' + encodeURIComponent(id));
+				var url = btn.dataset.lookupUrl + '?id=' + encodeURIComponent(id);
+			if (btn.dataset.providerType) url += '&provider=' + encodeURIComponent(btn.dataset.providerType);
+			var r = await fetch(url);
 				if (!r.ok) { alert('Modèle non trouvé dans le catalogue models.dev.'); return; }
 				var d = await r.json();
 				var f = function(n, v) { var el = form.querySelector('[name=' + n + ']'); if (el) el.value = v; };
@@ -492,6 +568,7 @@ templ ModelForm(vmodel ModelFormVModel) {
 							data-lookup-url={ common.BaseURLString(ctx, common.WithPath("/api/models-dev/lookup")) }
 							data-exchange-rate-url={ common.BaseURLString(ctx, common.WithPath("/api/exchange-rate")) }
 							data-currency={ vmodel.Provider.Currency() }
+							data-provider-type={ vmodel.Provider.Type() }
 							onclick="fillFromModelsDev(this)"
 							class="text-xs text-muted-foreground underline hover:text-foreground transition-colors"
 						>
@@ -577,6 +654,40 @@ templ ModelForm(vmodel ModelFormVModel) {
 					<div class="flex items-center gap-2">
 						<input type="checkbox" name="enabled" id="enabled" value="on" checked?={ vmodel.Model.Enabled() }/>
 						<label for="enabled" class="text-sm font-medium">Activé</label>
+					</div>
+					// ── Token limit ──────────────────────────────────────────
+					{{ tlCfg := vmodel.Model.TokenLimitConfig() }}
+					<div class="rounded-md border p-4 space-y-3">
+						{{ tlEnabled := tlCfg != nil && tlCfg.Enabled }}
+						<div class="flex items-center gap-2">
+							<input type="checkbox" name="token_limit_enabled" id="token_limit_enabled" value="on" checked?={ tlEnabled }/>
+							<label for="token_limit_enabled" class="text-sm font-semibold">Limite de tokens (chat completion)</label>
+						</div>
+						<div class="grid grid-cols-2 gap-3">
+							<div class="space-y-2">
+								<label class="text-sm font-medium">Tokens max par intervalle</label>
+								if tlCfg != nil {
+									@input.Input(input.Props{Name: "token_limit_max_tokens", Type: "number", Value: fmt.Sprintf("%d", tlCfg.MaxTokens), Placeholder: "100000", Attributes: templ.Attributes{"min": "1"}})
+								} else {
+									@input.Input(input.Props{Name: "token_limit_max_tokens", Type: "number", Placeholder: "100000", Attributes: templ.Attributes{"min": "1"}})
+								}
+							</div>
+							<div class="space-y-2">
+								<label class="text-sm font-medium">Durée de l'intervalle</label>
+								<div class="flex gap-2">
+									if tlCfg != nil {
+										@input.Input(input.Props{Name: "token_limit_interval_value", Type: "number", Value: durationValue(tlCfg.Interval), Placeholder: "1", Attributes: templ.Attributes{"min": "1", "class": "flex-1"}})
+									} else {
+										@input.Input(input.Props{Name: "token_limit_interval_value", Type: "number", Placeholder: "1", Attributes: templ.Attributes{"min": "1", "class": "flex-1"}})
+									}
+									<select name="token_limit_interval_unit" class="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm">
+										<option value="ms" selected?={ tlCfg != nil && durationUnit(tlCfg.Interval) == "ms" }>ms</option>
+										<option value="s" selected?={ tlCfg == nil || durationUnit(tlCfg.Interval) == "s" }>s</option>
+										<option value="min" selected?={ tlCfg != nil && durationUnit(tlCfg.Interval) == "min" }>min</option>
+									</select>
+								</div>
+							</div>
+						</div>
 					</div>
 				}
 				@button.Button(button.Props{Type: "submit"}) {
@@ -675,6 +786,33 @@ templ OrgSettingsPage(vmodel OrgSettingsPageVModel) {
 						}
 					</select>
 					<p class="text-xs text-muted-foreground">Utilisée pour les quotas et l'affichage des coûts.</p>
+				</div>
+				<div class="space-y-2">
+					<div class="flex items-center space-x-2">
+						if vmodel.Org.ShareQuotaEqually() {
+							<input type="checkbox" id="share_quota_equally" name="share_quota_equally" checked class="h-4 w-4"/>
+						} else {
+							<input type="checkbox" id="share_quota_equally" name="share_quota_equally" class="h-4 w-4"/>
+						}
+						<label for="share_quota_equally" class="text-sm font-medium">
+							Répartir le quota de l'organisation équitablement entre les membres
+						</label>
+					</div>
+					<p class="text-xs text-muted-foreground">S'applique aux membres sans quota individuel défini.</p>
+					if vmodel.MemberCount > 0 {
+						<div class="text-xs text-muted-foreground space-y-1">
+							<p>Aperçu ({ strconv.Itoa(vmodel.MemberCount) } membres) :</p>
+							if vmodel.SharedDailyBudget != nil {
+								<p>Journalier : { currencySymbol(vmodel.Org.Currency()) }{ formatBudgetField(*vmodel.SharedDailyBudget) }</p>
+							}
+							if vmodel.SharedMonthlyBudget != nil {
+								<p>Mensuel : { currencySymbol(vmodel.Org.Currency()) }{ formatBudgetField(*vmodel.SharedMonthlyBudget) }</p>
+							}
+							if vmodel.SharedYearlyBudget != nil {
+								<p>Annuel : { currencySymbol(vmodel.Org.Currency()) }{ formatBudgetField(*vmodel.SharedYearlyBudget) }</p>
+							}
+						</div>
+					}
 				</div>
 				@button.Button(button.Props{Type: "submit"}) {
 					Enregistrer
@@ -1224,4 +1362,34 @@ func formatBudgetField(v int64) string {
 	// to represent the value exactly, avoiding both truncation ("0.00" for 100 µ¢)
 	// and unnecessary trailing zeros ("100.000000" for 100_000_000 µ¢).
 	return strconv.FormatFloat(float64(v)/1_000_000, 'f', -1, 64)
+}
+
+// durationValue returns the numeric component of d in its natural unit (minutes,
+// seconds, or milliseconds). Returns "" for a zero duration.
+func durationValue(d time.Duration) string {
+	if d == 0 {
+		return ""
+	}
+	if d%time.Minute == 0 {
+		return fmt.Sprintf("%d", int64(d/time.Minute))
+	}
+	if d%time.Second == 0 {
+		return fmt.Sprintf("%d", int64(d/time.Second))
+	}
+	return fmt.Sprintf("%d", int64(d/time.Millisecond))
+}
+
+// durationUnit returns "min", "s", or "ms" depending on the most coarse
+// whole unit that can represent d. Returns "s" for a zero duration.
+func durationUnit(d time.Duration) string {
+	if d != 0 && d%time.Minute == 0 {
+		return "min"
+	}
+	if d != 0 && d%time.Second == 0 {
+		return "s"
+	}
+	if d != 0 {
+		return "ms"
+	}
+	return "s"
 }

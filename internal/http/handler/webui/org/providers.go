@@ -157,10 +157,11 @@ func (h *Handler) getEditProviderPage(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) updateProvider(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	user := httpCtx.User(ctx)
 	orgSlug := r.PathValue("orgSlug")
 	providerID := r.PathValue("providerID")
 
-	_, err := h.orgFromSlug(ctx, orgSlug)
+	org, err := h.orgFromSlug(ctx, orgSlug)
 	if err != nil {
 		http.Error(w, "Organization not found", http.StatusNotFound)
 		return
@@ -196,17 +197,63 @@ func (h *Handler) updateProvider(w http.ResponseWriter, r *http.Request) {
 		currency = existing.Currency()
 	}
 
+	// --- Retry config ---
+	var retryConfig *model.RetryConfig
+	if r.FormValue("retry_enabled") == "on" {
+		delay, err := parseDurationField(r, "retry_delay_value", "retry_delay_unit")
+		if err != nil || delay <= 0 {
+			h.renderProviderFormError(w, r, ctx, user, orgSlug, org, existing, false,
+				"Retry : le délai doit être un entier strictement positif.")
+			return
+		}
+		attempts, _ := strconv.Atoi(r.FormValue("retry_max_attempts"))
+		if attempts < 1 {
+			h.renderProviderFormError(w, r, ctx, user, orgSlug, org, existing, false,
+				"Retry : le nombre de tentatives doit être ≥ 1.")
+			return
+		}
+		retryConfig = &model.RetryConfig{
+			Enabled:     true,
+			MaxAttempts: attempts,
+			Delay:       delay,
+		}
+	}
+
+	// --- Rate limit config ---
+	var rateLimitConfig *model.RateLimitConfig
+	if r.FormValue("rate_limit_enabled") == "on" {
+		interval, err := parseDurationField(r, "rate_limit_interval_value", "rate_limit_interval_unit")
+		if err != nil || interval <= 0 {
+			h.renderProviderFormError(w, r, ctx, user, orgSlug, org, existing, false,
+				"Rate limit : l'intervalle doit être un entier strictement positif.")
+			return
+		}
+		burst, _ := strconv.Atoi(r.FormValue("rate_limit_max_burst"))
+		if burst < 1 {
+			h.renderProviderFormError(w, r, ctx, user, orgSlug, org, existing, false,
+				"Rate limit : la capacité de burst doit être ≥ 1.")
+			return
+		}
+		rateLimitConfig = &model.RateLimitConfig{
+			Enabled:  true,
+			Interval: interval,
+			MaxBurst: burst,
+		}
+	}
+
 	updated := &updatedProviderAdapter{
-		id:        existing.ID(),
-		orgID:     existing.OrgID(),
-		name:      r.FormValue("name"),
-		pType:     r.FormValue("provider_type"),
-		baseURL:   strings.TrimSpace(r.FormValue("base_url")),
-		apiKey:    apiKey,
-		active:    r.FormValue("active") == "on",
-		currency:  currency,
-		createdAt: existing.CreatedAt(),
-		updatedAt: time.Now(),
+		id:              existing.ID(),
+		orgID:           existing.OrgID(),
+		name:            r.FormValue("name"),
+		pType:           r.FormValue("provider_type"),
+		baseURL:         strings.TrimSpace(r.FormValue("base_url")),
+		apiKey:          apiKey,
+		active:          r.FormValue("active") == "on",
+		currency:        currency,
+		createdAt:       existing.CreatedAt(),
+		updatedAt:       time.Now(),
+		retryConfig:     retryConfig,
+		rateLimitConfig: rateLimitConfig,
 	}
 
 	if err := h.providerStore.SaveProvider(ctx, updated); err != nil {
@@ -382,6 +429,31 @@ func parseCostField(v string) int64 {
 	return int64(f * 1_000)
 }
 
+// parseDurationField reads a (value, unit) pair from the form and returns a time.Duration.
+// value must be a positive integer; unit must be "ms", "s", or "min" (default: "s").
+// Returns 0, nil if the value field is empty or absent.
+// Returns an error if the value field is present but invalid or ≤ 0.
+func parseDurationField(r *http.Request, valueField, unitField string) (time.Duration, error) {
+	valueStr := r.FormValue(valueField)
+	if valueStr == "" {
+		return 0, nil
+	}
+	v, err := strconv.ParseInt(valueStr, 10, 64)
+	if err != nil || v <= 0 {
+		return 0, errors.Errorf("le champ %q doit être un entier strictement positif", valueField)
+	}
+	var multiplier time.Duration
+	switch r.FormValue(unitField) {
+	case "ms":
+		multiplier = time.Millisecond
+	case "min":
+		multiplier = time.Minute
+	default: // "s" or empty
+		multiplier = time.Second
+	}
+	return time.Duration(v) * multiplier, nil
+}
+
 func (h *Handler) createModel(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := httpCtx.User(ctx)
@@ -529,6 +601,28 @@ func (h *Handler) updateModel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// --- Token limit config ---
+	var tokenLimitConfig *model.TokenLimitConfig
+	if r.FormValue("token_limit_enabled") == "on" {
+		interval, err := parseDurationField(r, "token_limit_interval_value", "token_limit_interval_unit")
+		if err != nil || interval <= 0 {
+			h.renderModelFormError(w, r, ctx, user, orgSlug, org, p, existing, false,
+				"Limite de tokens : l'intervalle doit être un entier strictement positif.")
+			return
+		}
+		maxTokens, _ := strconv.Atoi(r.FormValue("token_limit_max_tokens"))
+		if maxTokens < 1 {
+			h.renderModelFormError(w, r, ctx, user, orgSlug, org, p, existing, false,
+				"Limite de tokens : le nombre de tokens doit être ≥ 1.")
+			return
+		}
+		tokenLimitConfig = &model.TokenLimitConfig{
+			Enabled:   true,
+			MaxTokens: maxTokens,
+			Interval:  interval,
+		}
+	}
+
 	updated := &updatedLLMModelAdapter{
 		id:                        existing.ID(),
 		providerID:                existing.ProviderID(),
@@ -547,8 +641,9 @@ func (h *Handler) updateModel(w http.ResponseWriter, r *http.Request) {
 			Reasoning: r.FormValue("cap_reasoning") == "on",
 			Audio:     r.FormValue("cap_audio") == "on",
 		},
-		createdAt: existing.CreatedAt(),
-		updatedAt: time.Now(),
+		createdAt:        existing.CreatedAt(),
+		updatedAt:        time.Now(),
+		tokenLimitConfig: tokenLimitConfig,
 	}
 
 	if err := h.providerStore.SaveLLMModel(ctx, updated); err != nil {
@@ -577,6 +672,24 @@ func (h *Handler) renderModelFormError(w http.ResponseWriter, r *http.Request, c
 	}
 	w.WriteHeader(http.StatusUnprocessableEntity)
 	templ.Handler(component.ModelForm(vmodel)).ServeHTTP(w, r)
+}
+
+func (h *Handler) renderProviderFormError(w http.ResponseWriter, r *http.Request, ctx context.Context, user model.User, orgSlug string, org model.Organization, p model.Provider, isNew bool, errMsg string) {
+	nav, footer := orgAdminNav(orgSlug)
+	vmodel := component.ProviderFormVModel{
+		Org:      org,
+		Provider: p,
+		IsNew:    isNew,
+		Error:    errMsg,
+		AppLayoutVModel: common.AppLayoutVModel{
+			User:            user,
+			SelectedItem:    "org-" + orgSlug + "-providers",
+			NavigationItems: nav,
+			FooterItems:     footer,
+		},
+	}
+	w.WriteHeader(http.StatusUnprocessableEntity)
+	templ.Handler(component.ProviderForm(vmodel)).ServeHTTP(w, r)
 }
 
 func (h *Handler) deleteModel(w http.ResponseWriter, r *http.Request) {

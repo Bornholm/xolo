@@ -35,6 +35,29 @@ func (h *Handler) getSettingsPage(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
+	if org.ShareQuotaEqually() {
+		orgQuota, err := h.quotaStore.GetQuota(ctx, model.QuotaScopeOrg, string(org.ID()))
+		if err == nil && orgQuota != nil {
+			members, err := h.orgStore.ListOrgMembers(ctx, org.ID())
+			if err == nil && len(members) > 0 {
+				n := int64(len(members))
+				vmodel.MemberCount = len(members)
+				if v := orgQuota.DailyBudget(); v != nil {
+					divided := *v / n
+					vmodel.SharedDailyBudget = &divided
+				}
+				if v := orgQuota.MonthlyBudget(); v != nil {
+					divided := *v / n
+					vmodel.SharedMonthlyBudget = &divided
+				}
+				if v := orgQuota.YearlyBudget(); v != nil {
+					divided := *v / n
+					vmodel.SharedYearlyBudget = &divided
+				}
+			}
+		}
+	}
+
 	templ.Handler(component.OrgSettingsPage(vmodel)).ServeHTTP(w, r)
 }
 
@@ -58,7 +81,12 @@ func (h *Handler) saveSettings(w http.ResponseWriter, r *http.Request) {
 		currency = model.DefaultCurrency
 	}
 
-	updated := model.UpdateOrganization(org, model.WithOrgCurrency(currency))
+	shareQuotaEqually := r.FormValue("share_quota_equally") == "on"
+
+	updated := model.UpdateOrganization(org,
+		model.WithOrgCurrency(currency),
+		model.WithOrgShareQuotaEqually(shareQuotaEqually),
+	)
 	if err := h.orgStore.SaveOrg(ctx, updated); err != nil {
 		slog.ErrorContext(ctx, "could not save org settings", slogx.Error(err))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

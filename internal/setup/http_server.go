@@ -85,6 +85,11 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		return nil, errors.Wrap(err, "could not create quota store from config")
 	}
 
+	quotaService, err := getQuotaServiceFromConfig(ctx, conf)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create quota service from config")
+	}
+
 	usageStore, err := getUsageStoreFromConfig(ctx, conf)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create usage store from config")
@@ -103,14 +108,14 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 
 	withMemberships := membershipsMiddleware.Middleware(orgStore)
 
-	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, providerStore, usageStore, inviteStore, quotaStore, exchangeRateService, conf.SecretKey)
+	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, providerStore, usageStore, inviteStore, quotaStore, quotaService, exchangeRateService, conf.SecretKey)
 
 	apiHandler := api.NewHandler(providerStore, orgStore, exchangeRateService)
 
 	proxyServer := proxy.NewServer(
 		proxy.WithAuthExtractor(proxyAdapter.XoloAuthExtractor(userStore)),
 		proxy.WithHook(proxyAdapter.NewOrgModelRouter(providerStore, orgStore, conf.SecretKey)),
-		proxy.WithHook(proxyAdapter.NewXoloQuotaEnforcer(quotaStore, usageStore, userStore)),
+		proxy.WithHook(proxyAdapter.NewXoloQuotaEnforcer(quotaService, quotaStore, usageStore, userStore)),
 		proxy.WithHook(proxyAdapter.NewXoloUsageTracker(usageStore, providerStore, orgStore, exchangeRateService)),
 	)
 
