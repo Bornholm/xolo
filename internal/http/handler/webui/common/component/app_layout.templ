@@ -18,6 +18,7 @@ templ AdminNavigationItems(vmodel AppLayoutVModel) {
 	@NavItem(icon.Building2, "Organisations", string(BaseURL(ctx, WithPath("/admin/orgs"))), vmodel.SelectedItem == "orgs")
 	@NavItem(icon.Users, "Utilisateurs", string(BaseURL(ctx, WithPath("/admin/users"))), vmodel.SelectedItem == "users")
 	@NavItem(icon.RefreshCw, "Taux de change", string(BaseURL(ctx, WithPath("/admin/exchange-rates"))), vmodel.SelectedItem == "exchange-rates")
+	@NavItem(icon.Plug, "Plugins", string(BaseURL(ctx, WithPath("/admin/plugins"))), vmodel.SelectedItem == "plugins")
 }
 
 templ CommonFooterItems(vmodel AppLayoutVModel) {

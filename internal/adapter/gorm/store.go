@@ -83,6 +83,9 @@ func NewStore(db *gorm.DB) *Store {
 			&InviteToken{},
 			// Exchange rate cache
 			&ExchangeRate{},
+			// Plugin store
+			&PluginActivationRecord{},
+			&PluginConfigRecord{},
 		),
 	}
 }

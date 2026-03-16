@@ -15,6 +15,26 @@ builds:
     ldflags:
       - -w -s -X 'github.com/bornholm/xolo/internal/build.ShortVersion={{ .Version }}' -X 'github.com/bornholm/xolo/internal/build.LongVersion={{ .Version }}'
 
+  - id: xolo-plugin-time-restriction
+    targets: [go_first_class]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    dir: ./plugins/time-restriction
+    binary: xolo-plugin-time-restriction
+    flags:
+      - -trimpath
+    ldflags:
+      - -w -s
+
+  - id: xolo-plugin-model-auto-select
+    targets: [go_first_class]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    dir: ./plugins/model-auto-select
+    binary: xolo-plugin-model-auto-select
+    flags:
+      - -trimpath
+    ldflags:
+      - -w -s
+
 checksum:
   name_template: "checksums.txt"
 snapshot:
@@ -33,6 +53,8 @@ dockers:
   - id: xolo-server
     ids:
       - xolo-server
+      - xolo-plugin-time-restriction
+      - xolo-plugin-model-auto-select
     use: docker
     dockerfile: misc/docker/xolo-server.Dockerfile
     image_templates:

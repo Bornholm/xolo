@@ -3,7 +3,6 @@ package proxy
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	genaiProxy "github.com/bornholm/genai/proxy"
@@ -35,38 +34,6 @@ func NewXoloQuotaEnforcer(quotaResolver quotaResolver, quotaStore port.QuotaStor
 	}
 }
 
-// populateMetaFromHeader looks up the Bearer token from the request Authorization
-// header and stores orgID and authTokenID in req.Metadata.
-//
-// This is needed because the genai proxy captures ctx = r.Context() before calling
-// the AuthExtractor, which modifies *r. Pre-request hooks therefore receive a stale
-// ctx that does not carry the orgID set by XoloAuthExtractor. Reading the token
-// directly from the Authorization header is the only reliable way to obtain orgID
-// in the pre-request phase.
-func (e *XoloQuotaEnforcer) populateMetaFromHeader(ctx context.Context, req *genaiProxy.ProxyRequest) {
-	if OrgIDFromMeta(req.Metadata) != "" {
-		return // already populated by a previous hook
-	}
-	auth := req.Headers.Get("Authorization")
-	if auth == "" {
-		return
-	}
-	parts := strings.SplitN(auth, " ", 2)
-	if len(parts) != 2 || !strings.EqualFold(parts[0], "bearer") {
-		return
-	}
-	raw := strings.TrimSpace(parts[1])
-	if raw == "" {
-		return
-	}
-	token, err := e.userStore.FindAuthToken(ctx, raw)
-	if err != nil {
-		return
-	}
-	req.Metadata[MetaOrgID] = string(token.OrgID())
-	req.Metadata[MetaAuthTokenID] = string(token.ID())
-}
-
 func (e *XoloQuotaEnforcer) Name() string  { return "xolo.quota-enforcer" }
 func (e *XoloQuotaEnforcer) Priority() int { return 5 }
 
@@ -74,7 +41,7 @@ func (e *XoloQuotaEnforcer) Priority() int { return 5 }
 func (e *XoloQuotaEnforcer) PreRequest(ctx context.Context, req *genaiProxy.ProxyRequest) (*genaiProxy.HookResult, error) {
 	// The proxy captures ctx before running the AuthExtractor, so ctx is stale and
 	// does not carry orgID. Read it directly from the Authorization header instead.
-	e.populateMetaFromHeader(ctx, req)
+	populateMetaFromHeader(ctx, e.userStore, req)
 
 	userID := model.UserID(req.UserID)
 	orgID := OrgIDFromMeta(req.Metadata)

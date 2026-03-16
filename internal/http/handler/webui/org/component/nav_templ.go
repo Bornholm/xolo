@@ -59,6 +59,10 @@ func OrgNavItems(orgSlug string, selectedItem string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
+		templ_7745c5c3_Err = common.NavItem(icon.Plug, "Plugins", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/plugins")), selectedItem == "org-"+orgSlug+"-plugins").Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
 		templ_7745c5c3_Err = common.NavItem(icon.Settings, "Paramètres", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/settings")), selectedItem == "org-"+orgSlug+"-settings").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err

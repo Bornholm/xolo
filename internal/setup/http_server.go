@@ -15,6 +15,7 @@ import (
 	"github.com/bornholm/xolo/internal/http/middleware/authn"
 	membershipsMiddleware "github.com/bornholm/xolo/internal/http/middleware/memberships"
 	"github.com/bornholm/xolo/internal/http/middleware/ratelimit"
+	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
 	"github.com/pkg/errors"
 
 	gohttp "net/http"
@@ -106,14 +107,48 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 	}
 	exchangeRateService.StartRefresher(ctx, model.SupportedCurrencies, conf.ExchangeRate.RefreshInterval)
 
+	pluginManager, err := getPluginManagerFromConfig(ctx, conf)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create plugin manager from config")
+	}
+
+	pluginActivationStore, err := getPluginActivationStoreFromConfig(ctx, conf)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create plugin activation store from config")
+	}
+
+	pluginConfigStore, err := getPluginConfigStoreFromConfig(ctx, conf)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create plugin config store from config")
+	}
+
+	pluginClients := make(map[string]proto.XoloPluginClient)
+	pluginDescriptors := make(map[string]*proto.PluginDescriptor)
+	for _, desc := range pluginManager.List() {
+		if c, ok := pluginManager.Get(desc.Name); ok {
+			pluginClients[desc.Name] = c
+			pluginDescriptors[desc.Name] = desc
+		}
+	}
+
+	pluginHookAdapter := proxyAdapter.NewPluginHookAdapter(
+		pluginClients,
+		pluginDescriptors,
+		pluginActivationStore,
+		pluginConfigStore,
+		userStore,
+		providerStore,
+	)
+
 	withMemberships := membershipsMiddleware.Middleware(orgStore)
 
-	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, providerStore, usageStore, inviteStore, quotaStore, quotaService, exchangeRateService, conf.SecretKey)
+	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, providerStore, usageStore, inviteStore, quotaStore, quotaService, exchangeRateService, conf.SecretKey, pluginManager, pluginActivationStore, pluginConfigStore)
 
 	apiHandler := api.NewHandler(providerStore, orgStore, exchangeRateService)
 
 	proxyServer := proxy.NewServer(
 		proxy.WithAuthExtractor(proxyAdapter.XoloAuthExtractor(userStore)),
+		proxy.WithHook(pluginHookAdapter),
 		proxy.WithHook(proxyAdapter.NewOrgModelRouter(providerStore, orgStore, conf.SecretKey)),
 		proxy.WithHook(proxyAdapter.NewXoloQuotaEnforcer(quotaService, quotaStore, usageStore, userStore)),
 		proxy.WithHook(proxyAdapter.NewXoloUsageTracker(usageStore, providerStore, orgStore, exchangeRateService)),

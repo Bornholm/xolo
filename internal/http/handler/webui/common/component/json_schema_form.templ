@@ -1,0 +1,321 @@
+package component
+
+import (
+	"fmt"
+
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/checkbox"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+)
+
+// JSONSchemaFormArrayObjectField renders a dynamic list editor for array-of-objects fields.
+// existingJSON is the current JSON array string (e.g. "[{...},{...}]").
+// The field submits as a hidden input named "{name}__json".
+templ JSONSchemaFormArrayObjectField(name string, schema map[string]any, existingJSON string) {
+	{{ itemsSchemaJSON := marshalJSON(schema["items"]) }}
+	<div
+		class="array-field-root flex flex-col gap-3"
+		data-field={ name }
+		data-items={ existingJSON }
+		data-schema={ itemsSchemaJSON }
+	>
+		<div class="array-field-items flex flex-col gap-3"></div>
+		<input type="hidden" class="array-field-json" name={ name + "__json" }/>
+		@button.Button(button.Props{
+			Type:    button.TypeButton,
+			Variant: button.VariantOutline,
+			Class:   "array-field-add",
+		}) {
+			+ Ajouter
+		}
+	</div>
+	<script>
+	(function() {
+		var root = document.currentScript.previousElementSibling;
+		var name = root.dataset.field;
+		var itemsEl = root.querySelector('.array-field-items');
+		var hiddenInput = root.querySelector('.array-field-json');
+		var addBtn = root.querySelector('.array-field-add');
+
+		var schema = {};
+		try { schema = JSON.parse(root.dataset.schema || '{}'); } catch(e) {}
+		var props = schema.properties || {};
+		// preserve property order: required fields first, then others
+		var required = schema.required || [];
+		var propKeys = required.concat(
+			Object.keys(props).filter(function(k) { return required.indexOf(k) === -1; })
+		);
+
+		var items = [];
+		try {
+			var raw = root.dataset.items;
+			if (raw && raw !== '' && raw !== 'null') items = JSON.parse(raw);
+			if (!Array.isArray(items)) items = [];
+		} catch(e) { items = []; }
+
+		var DAYS_FR = {
+			'monday':'Lundi','tuesday':'Mardi','wednesday':'Mercredi',
+			'thursday':'Jeudi','friday':'Vendredi','saturday':'Samedi','sunday':'Dimanche'
+		};
+
+		var inputClass = 'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
+
+		function renderItem(idx, item) {
+			var div = document.createElement('div');
+			div.className = 'border border-border rounded-md p-4 flex flex-col gap-4';
+			div.dataset.idx = idx;
+
+			var header = document.createElement('div');
+			header.className = 'flex justify-between items-center';
+			var numEl = document.createElement('span');
+			numEl.className = 'text-sm font-semibold';
+			numEl.textContent = 'Élément #' + (idx + 1);
+			var removeBtn = document.createElement('button');
+			removeBtn.type = 'button';
+			removeBtn.className = 'text-sm text-destructive hover:underline';
+			removeBtn.textContent = 'Supprimer';
+			removeBtn.addEventListener('click', function() { doRemove(idx); });
+			header.appendChild(numEl);
+			header.appendChild(removeBtn);
+			div.appendChild(header);
+
+			propKeys.forEach(function(propName) {
+				var propSchema = props[propName];
+				if (!propSchema) return;
+				var fieldDiv = document.createElement('div');
+				fieldDiv.className = 'flex flex-col gap-1';
+
+				var label = document.createElement('label');
+				label.className = 'text-sm font-medium';
+				label.textContent = propSchema.title || propName;
+				fieldDiv.appendChild(label);
+
+				if (propSchema.description) {
+					var desc = document.createElement('p');
+					desc.className = 'text-xs text-muted-foreground';
+					desc.textContent = propSchema.description;
+					fieldDiv.appendChild(desc);
+				}
+
+				var currentVal = (item && item[propName] !== undefined) ? item[propName]
+					: (propSchema.default !== undefined ? propSchema.default : null);
+
+				if (propSchema.type === 'array' && propSchema.items && propSchema.items.enum) {
+					// Array of enum values → checkboxes
+					var checkGroup = document.createElement('div');
+					checkGroup.className = 'flex flex-wrap gap-x-4 gap-y-2 pt-1';
+					var currentArr = Array.isArray(currentVal) ? currentVal : [];
+					propSchema.items.enum.forEach(function(enumVal) {
+						var checkLabel = document.createElement('label');
+						checkLabel.className = 'flex items-center gap-1.5 text-sm cursor-pointer';
+						var cb = document.createElement('input');
+						cb.type = 'checkbox';
+						cb.value = enumVal;
+						cb.checked = currentArr.indexOf(enumVal) !== -1;
+						cb.dataset.prop = propName;
+						cb.className = 'h-4 w-4 rounded border-input accent-primary';
+						cb.addEventListener('change', function() { syncItem(idx); });
+						checkLabel.appendChild(cb);
+						var span = document.createElement('span');
+						span.textContent = DAYS_FR[enumVal] || enumVal;
+						checkLabel.appendChild(span);
+						checkGroup.appendChild(checkLabel);
+					});
+					fieldDiv.appendChild(checkGroup);
+				} else if (propSchema.type === 'boolean') {
+					var cb = document.createElement('input');
+					cb.type = 'checkbox';
+					cb.checked = !!currentVal;
+					cb.dataset.prop = propName;
+					cb.className = 'h-4 w-4 rounded border-input accent-primary';
+					cb.addEventListener('change', function() { syncItem(idx); });
+					fieldDiv.appendChild(cb);
+				} else {
+					var inp = document.createElement('input');
+					var d = (propSchema.description || '').toLowerCase();
+					if (d.indexOf('hh:mm') !== -1 || propSchema.format === 'time') {
+						inp.type = 'time';
+					} else if (propSchema.type === 'number' || propSchema.type === 'integer') {
+						inp.type = 'number';
+					} else {
+						inp.type = 'text';
+					}
+					inp.value = currentVal != null ? String(currentVal) : '';
+					inp.dataset.prop = propName;
+					inp.className = inputClass;
+					inp.addEventListener('input', function() { syncItem(idx); });
+					fieldDiv.appendChild(inp);
+				}
+				div.appendChild(fieldDiv);
+			});
+			return div;
+		}
+
+		function collectItem(div) {
+			var item = {};
+			propKeys.forEach(function(propName) {
+				var propSchema = props[propName];
+				if (!propSchema) return;
+				if (propSchema.type === 'array') {
+					var checks = div.querySelectorAll('[data-prop="' + propName + '"]');
+					item[propName] = Array.prototype.filter.call(checks, function(c) { return c.checked; }).map(function(c) { return c.value; });
+				} else if (propSchema.type === 'boolean') {
+					var cb = div.querySelector('[data-prop="' + propName + '"]');
+					item[propName] = cb ? cb.checked : false;
+				} else if (propSchema.type === 'number' || propSchema.type === 'integer') {
+					var inp = div.querySelector('[data-prop="' + propName + '"]');
+					if (inp) {
+						var v = propSchema.type === 'integer' ? parseInt(inp.value, 10) : parseFloat(inp.value);
+						item[propName] = isNaN(v) ? null : v;
+					}
+				} else {
+					var inp = div.querySelector('[data-prop="' + propName + '"]');
+					item[propName] = inp ? inp.value : '';
+				}
+			});
+			return item;
+		}
+
+		function syncAll() {
+			itemsEl.querySelectorAll('[data-idx]').forEach(function(div) {
+				items[parseInt(div.dataset.idx)] = collectItem(div);
+			});
+		}
+
+		function syncItem(idx) {
+			var div = itemsEl.querySelector('[data-idx="' + idx + '"]');
+			if (div) items[idx] = collectItem(div);
+			serialize();
+		}
+
+		function doRemove(idx) {
+			syncAll();
+			items.splice(idx, 1);
+			redraw();
+		}
+
+		function redraw() {
+			itemsEl.innerHTML = '';
+			items.forEach(function(item, i) {
+				itemsEl.appendChild(renderItem(i, item));
+			});
+			serialize();
+		}
+
+		function serialize() {
+			hiddenInput.value = JSON.stringify(items);
+		}
+
+		if (addBtn) {
+			addBtn.addEventListener('click', function() {
+				syncAll();
+				items.push({});
+				redraw();
+			});
+		}
+
+		var form = root.closest('form');
+		if (form) {
+			form.addEventListener('submit', function() {
+				syncAll();
+				serialize();
+			}, true);
+		}
+
+		redraw();
+	})();
+	</script>
+}
+
+templ JSONSchemaFormField(name string, schema map[string]any, value string) {
+	if isArrayOfObjects(schema) {
+		@JSONSchemaFormArrayObjectField(name, schema, value)
+	} else {
+		switch schema["type"] {
+		case "boolean":
+			<div class="flex items-center gap-2">
+				@checkbox.Checkbox(checkbox.Props{
+					ID:      name,
+					Name:    name,
+					Checked: value == "true",
+				})
+				<label for={ name } class="text-sm font-medium">{ getTitle(schema, name) }</label>
+			</div>
+		case "number", "integer":
+			<div class="flex flex-col gap-1">
+				<label for={ name } class="text-sm font-medium">{ getTitle(schema, name) }</label>
+				if desc, ok := schema["description"].(string); ok && desc != "" {
+					<p class="text-xs text-muted-foreground">{ desc }</p>
+				}
+				@input.Input(input.Props{
+					ID:    name,
+					Name:  name,
+					Type:  input.TypeNumber,
+					Value: value,
+				})
+			</div>
+		default:
+			if enum, ok := schema["enum"].([]any); ok {
+				<div class="flex flex-col gap-1">
+					<label for={ name } class="text-sm font-medium">{ getTitle(schema, name) }</label>
+					if desc, ok := schema["description"].(string); ok && desc != "" {
+						<p class="text-xs text-muted-foreground">{ desc }</p>
+					}
+					<select id={ name } name={ name } class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+						for _, opt := range enum {
+							<option
+								value={ fmt.Sprintf("%v", opt) }
+								if fmt.Sprintf("%v", opt) == value {
+									selected
+								}
+							>{ fmt.Sprintf("%v", opt) }</option>
+						}
+					</select>
+				</div>
+			} else {
+				<div class="flex flex-col gap-1">
+					<label for={ name } class="text-sm font-medium">{ getTitle(schema, name) }</label>
+					if desc, ok := schema["description"].(string); ok && desc != "" {
+						<p class="text-xs text-muted-foreground">{ desc }</p>
+					}
+					if format, _ := schema["format"].(string); format == "textarea" {
+						<textarea
+							id={ name }
+							name={ name }
+							class="flex min-h-32 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm font-mono shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+						>{ value }</textarea>
+					} else {
+						@input.Input(input.Props{
+							ID:    name,
+							Name:  name,
+							Type:  input.TypeText,
+							Value: value,
+						})
+					}
+				</div>
+			}
+		}
+	}
+}
+
+templ JSONSchemaForm(action string, properties map[string]map[string]any, values map[string]string, fieldErrors map[string]string) {
+	<form method="POST" action={ templ.SafeURL(action) } class="flex flex-col gap-4">
+		for name, schema := range properties {
+			<div>
+				if t, _ := schema["type"].(string); t == "array" {
+					<p class="text-sm font-medium mb-2">{ getTitle(schema, name) }</p>
+				}
+				@JSONSchemaFormField(name, schema, values[name])
+				if msg, ok := fieldErrors[name]; ok {
+					<p class="text-sm text-destructive mt-1">{ msg }</p>
+				}
+			</div>
+		}
+		if msg, ok := fieldErrors["_"]; ok {
+			<p class="text-sm text-destructive">{ msg }</p>
+		}
+		@button.Button(button.Props{Type: button.TypeSubmit}) {
+			Enregistrer
+		}
+	</form>
+}

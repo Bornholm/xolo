@@ -2,7 +2,6 @@ package component
 
 import (
 	"fmt"
-	"time"
 	"github.com/bornholm/xolo/internal/core/model"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
@@ -16,6 +15,7 @@ import (
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/separator"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
 	"strconv"
+	"time"
 )
 
 // ── Org Dashboard ─────────────────────────────────────────────────────────────
@@ -545,7 +545,7 @@ templ ModelForm(vmodel ModelFormVModel) {
 		</script>
 		<div class="space-y-6">
 			<h1 class="text-2xl font-semibold">{ title }</h1>
-			 if vmodel.Error != "" {
+			if vmodel.Error != "" {
 				@alert.Alert(alert.Props{Variant: alert.VariantDestructive}) {
 					{ vmodel.Error }
 				}
@@ -1033,22 +1033,23 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 			if vmodel.OrgQuota != nil {
 				<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 					if vmodel.OrgQuota.DailyBudget() != nil {
+						{{ budget := microToFloat(*vmodel.OrgQuota.DailyBudget()) }}
+						{{ spent := microToFloat(vmodel.DailyCost) }}
 						@card.Card() {
 							@card.Header() {
 								@card.Title() {
 									Budget journalier
+									<p class="text-sm font-medium shadow-xs py-2">{ fmt.Sprintf("Restant: %d%%", 100-int(spent/budget*100)) }</p>
 								}
 							}
 							@card.Content() {
-								{{ budget := microToFloat(*vmodel.OrgQuota.DailyBudget()) }}
-								{{ spent := microToFloat(vmodel.DailyCost) * 100 }}
-								{{ remaining := maxFloat(0, budget-spent) * 100 }}
+								{{ remaining := maxFloat(0, budget-spent) }}
 								@chart.Chart(chart.Props{
 									Variant:    chart.VariantDoughnut,
 									ShowLegend: true,
 									Class:      "h-48",
 									Data: chart.Data{
-										Labels: []string{"Utilisé (%)", "Disponible (%)"},
+										Labels: []string{fmt.Sprintf("Utilisé"), "Disponible"},
 										Datasets: []chart.Dataset{{
 											Data:            []float64{spent, remaining},
 											BackgroundColor: []string{"rgba(239,68,68,0.8)", "rgba(34,197,94,0.8)"},
@@ -1060,15 +1061,16 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 						}
 					}
 					if vmodel.OrgQuota.MonthlyBudget() != nil {
+						{{ budget := microToFloat(*vmodel.OrgQuota.MonthlyBudget()) }}
+						{{ spent := microToFloat(vmodel.MonthlyCost) }}
 						@card.Card() {
 							@card.Header() {
 								@card.Title() {
 									Budget mensuel
+									<p class="text-sm font-medium shadow-xs py-2">{ fmt.Sprintf("Restant: %d%%", 100-int(spent/budget*100)) }</p>
 								}
 							}
 							@card.Content() {
-								{{ budget := microToFloat(*vmodel.OrgQuota.MonthlyBudget()) }}
-								{{ spent := microToFloat(vmodel.MonthlyCost) }}
 								{{ remaining := maxFloat(0, budget-spent) }}
 								@chart.Chart(chart.Props{
 									Variant:    chart.VariantDoughnut,
@@ -1087,10 +1089,13 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 						}
 					}
 					if vmodel.OrgQuota.YearlyBudget() != nil {
+						{{ budget := microToFloat(*vmodel.OrgQuota.YearlyBudget()) }}
+						{{ spent := microToFloat(vmodel.YearlyCost) }}
 						@card.Card() {
 							@card.Header() {
 								@card.Title() {
 									Budget annuel
+									<p class="text-sm font-medium shadow-xs py-2">{ fmt.Sprintf("Restant: %d%%", 100-int(spent/budget*100)) }</p>
 								}
 							}
 							@card.Content() {
@@ -1147,61 +1152,61 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 						}
 					}
 					if len(vmodel.ChartPerModel) > 0 {
-							@card.Card() {
-								@card.Header() {
-									@card.Title() {
-										Coût par modèle
-									}
-								}
-								@card.Content() {
-									@chart.Chart(chart.Props{
-										Variant:     chart.VariantBar,
-										ShowXLabels: true,
-										ShowYLabels: true,
-										ShowYGrid:   true,
-										ShowLegend:  false,
-										BeginAtZero: &trueVal,
-										Class:       "h-64",
-										Data: chart.Data{
-											Labels: chartLabels(vmodel.ChartPerModel),
-											Datasets: []chart.Dataset{{
-												Label:           vmodel.Currency,
-												Data:            chartValues(vmodel.ChartPerModel),
-												BackgroundColor: "rgba(20,184,166,0.8)",
-											}},
-										},
-									})
+						@card.Card() {
+							@card.Header() {
+								@card.Title() {
+									Coût par modèle
 								}
 							}
+							@card.Content() {
+								@chart.Chart(chart.Props{
+									Variant:     chart.VariantBar,
+									ShowXLabels: true,
+									ShowYLabels: true,
+									ShowYGrid:   true,
+									ShowLegend:  false,
+									BeginAtZero: &trueVal,
+									Class:       "h-64",
+									Data: chart.Data{
+										Labels: chartLabels(vmodel.ChartPerModel),
+										Datasets: []chart.Dataset{{
+											Label:           vmodel.Currency,
+											Data:            chartValues(vmodel.ChartPerModel),
+											BackgroundColor: "rgba(20,184,166,0.8)",
+										}},
+									},
+								})
+							}
 						}
+					}
 					if len(vmodel.ChartPerUser) > 0 {
-							@card.Card() {
-								@card.Header() {
-									@card.Title() {
-										Coût par utilisateur
-									}
-								}
-								@card.Content() {
-									@chart.Chart(chart.Props{
-										Variant:     chart.VariantBar,
-										ShowXLabels: true,
-										ShowYLabels: true,
-										ShowYGrid:   true,
-										ShowLegend:  false,
-										BeginAtZero: &trueVal,
-										Class:       "h-64",
-										Data: chart.Data{
-											Labels: chartLabels(vmodel.ChartPerUser),
-											Datasets: []chart.Dataset{{
-												Label:           vmodel.Currency,
-												Data:            chartValues(vmodel.ChartPerUser),
-												BackgroundColor: "rgba(245,158,11,0.8)",
-											}},
-										},
-									})
+						@card.Card() {
+							@card.Header() {
+								@card.Title() {
+									Coût par utilisateur
 								}
 							}
+							@card.Content() {
+								@chart.Chart(chart.Props{
+									Variant:     chart.VariantBar,
+									ShowXLabels: true,
+									ShowYLabels: true,
+									ShowYGrid:   true,
+									ShowLegend:  false,
+									BeginAtZero: &trueVal,
+									Class:       "h-64",
+									Data: chart.Data{
+										Labels: chartLabels(vmodel.ChartPerUser),
+										Datasets: []chart.Dataset{{
+											Label:           vmodel.Currency,
+											Data:            chartValues(vmodel.ChartPerUser),
+											BackgroundColor: "rgba(245,158,11,0.8)",
+										}},
+									},
+								})
+							}
 						}
+					}
 				</div>
 			}
 			if len(vmodel.Records) > 0 {

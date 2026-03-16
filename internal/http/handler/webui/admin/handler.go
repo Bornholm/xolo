@@ -6,7 +6,12 @@ import (
 	"github.com/bornholm/xolo/internal/core/port"
 	"github.com/bornholm/xolo/internal/core/service"
 	"github.com/bornholm/xolo/internal/http/middleware/authz"
+	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
 )
+
+type pluginManagerIface interface {
+	List() []*proto.PluginDescriptor
+}
 
 type Handler struct {
 	mux                 *http.ServeMux
@@ -14,6 +19,7 @@ type Handler struct {
 	orgStore            port.OrgStore
 	taskRunner          port.TaskRunner
 	exchangeRateService *service.ExchangeRateService
+	pluginManager       pluginManagerIface
 }
 
 // ServeHTTP implements http.Handler.
@@ -21,13 +27,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.mux.ServeHTTP(w, r)
 }
 
-func NewHandler(userStore port.UserStore, orgStore port.OrgStore, taskRunner port.TaskRunner, exchangeRateService *service.ExchangeRateService) *Handler {
+func NewHandler(userStore port.UserStore, orgStore port.OrgStore, taskRunner port.TaskRunner, exchangeRateService *service.ExchangeRateService, pluginManager pluginManagerIface) *Handler {
 	h := &Handler{
 		mux:                 http.NewServeMux(),
 		userStore:           userStore,
 		orgStore:            orgStore,
 		taskRunner:          taskRunner,
 		exchangeRateService: exchangeRateService,
+		pluginManager:       pluginManager,
 	}
 
 	// Admin middleware - only allow admin users
@@ -49,6 +56,9 @@ func NewHandler(userStore port.UserStore, orgStore port.OrgStore, taskRunner por
 
 	// Exchange rate routes
 	h.mux.Handle("GET /exchange-rates", assertAdmin(http.HandlerFunc(h.getExchangeRatesPage)))
+
+	// Plugin diagnostics
+	h.mux.Handle("GET /plugins", assertAdmin(http.HandlerFunc(h.getPluginsDiagnosticsPage)))
 
 	return h
 }

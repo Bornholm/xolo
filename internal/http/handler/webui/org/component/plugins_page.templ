@@ -1,0 +1,59 @@
+package component
+
+import (
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+)
+
+templ PluginsPage(vmodel PluginsPageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Plugins — "+vmodel.Org.Name())) {
+		<div class="space-y-6">
+			<div class="flex items-center justify-between">
+				<h1 class="text-2xl font-semibold">Plugins</h1>
+			</div>
+			if len(vmodel.Descriptors) == 0 {
+				<p class="text-muted-foreground">Aucun plugin disponible.</p>
+			} else {
+				<div class="grid gap-4">
+					for _, d := range vmodel.Descriptors {
+						<div class="border rounded-lg p-4 flex items-start justify-between">
+							<div>
+								<p class="font-semibold">{ d.Name } <span class="text-sm text-muted-foreground">v{ d.Version }</span></p>
+								<p class="text-sm text-muted-foreground">{ d.Description }</p>
+							</div>
+							<div class="flex gap-2">
+								if vmodel.Active[d.Name] {
+									@button.Button(button.Props{
+										Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/plugins/", d.Name, "/config")),
+										Variant: button.VariantOutline,
+										Size:    button.SizeSm,
+									}) {
+										Configurer
+									}
+									<form method="POST" action={ templ.SafeURL(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/plugins/", d.Name, "/deactivate"))) }>
+										@button.Button(button.Props{
+											Type:    button.TypeSubmit,
+											Variant: button.VariantDestructive,
+											Size:    button.SizeSm,
+										}) {
+											Désactiver
+										}
+									</form>
+								} else {
+									<form method="POST" action={ templ.SafeURL(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/plugins/", d.Name, "/activate"))) }>
+										@button.Button(button.Props{
+											Type: button.TypeSubmit,
+											Size: button.SizeSm,
+										}) {
+											Activer
+										}
+									</form>
+								}
+							</div>
+						</div>
+					}
+				</div>
+			}
+		</div>
+	}
+}

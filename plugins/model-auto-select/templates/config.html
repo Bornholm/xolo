@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Configuration — fuzzy-model-selector</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, sans-serif; font-size: 14px; color: #111827; background: #fff; margin: 0; padding: 24px; }
+  h2 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+  .desc { color: #6b7280; font-size: 13px; margin: 0 0 24px; }
+  .section { border: 1px solid #e5e7eb; border-radius: 10px; margin-bottom: 16px; }
+  .section-hd { padding: 12px 16px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; display: flex; gap: 10px; align-items: flex-start; }
+  .section-num { background: #2563eb; color: #fff; border-radius: 50%; width: 22px; height: 22px; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .section-title { font-weight: 600; font-size: 13px; margin: 0 0 2px; }
+  .section-desc { color: #6b7280; font-size: 12px; margin: 0; line-height: 1.5; }
+  .section-body { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 12px; font-weight: 500; }
+  .field .hint { font-size: 11px; color: #6b7280; }
+  input[type=text], input[type=number], select, textarea {
+    height: 34px; border: 1px solid #d1d5db; border-radius: 6px; padding: 0 10px;
+    font-size: 13px; width: 100%; background: #fff; color: #111827;
+    transition: border-color .15s; outline: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb; }
+  textarea { height: 140px; padding: 8px 10px; font-family: monospace; font-size: 12px; resize: vertical; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .array-items { display: flex; flex-direction: column; gap: 10px; }
+  .array-item { border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; background: #fafafa; }
+  .array-item-hd { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; margin-bottom: 10px; }
+  .del-btn { color: #dc2626; background: none; border: none; cursor: pointer; font-size: 12px; }
+  .add-btn { border: 1px dashed #d1d5db; border-radius: 6px; padding: 8px; text-align: center; color: #6b7280; font-size: 12px; cursor: pointer; background: none; width: 100%; }
+  .add-btn:hover { border-color: #9ca3af; }
+  .mode-toggle { display: flex; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
+  .mode-btn { flex: 1; padding: 7px 10px; font-size: 12px; text-align: center; cursor: pointer; background: #f9fafb; color: #6b7280; border: none; }
+  .mode-btn.active { background: #2563eb; color: #fff; font-weight: 600; }
+  .var-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+  .var-box-title { font-size: 11px; font-weight: 600; color: #1d4ed8; margin: 0 0 6px; }
+  .var-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 5px; }
+  .var-tag { background: #dbeafe; color: #1e40af; border-radius: 4px; padding: 1px 7px; font-size: 11px; font-family: monospace; }
+  .var-tag.out { background: #dcfce7; color: #166534; }
+  .var-tag.builtin { background: #f3e8ff; color: #6b21a8; }
+  .signal-map { border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
+  .smap-hd { display: grid; grid-template-columns: 1fr 24px 1fr; gap: 8px; padding: 7px 12px; background: #f1f5f9; font-size: 10px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid #e5e7eb; }
+  .smap-row { display: grid; grid-template-columns: 1fr 24px 1fr; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid #f1f5f9; }
+  .smap-row:last-child { border-bottom: none; }
+  .smap-pill { background: #dbeafe; color: #1e40af; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-family: monospace; display: inline-block; }
+  .smap-arrow { text-align: center; color: #9ca3af; font-size: 14px; }
+  .smap-row select { height: 30px; font-size: 12px; }
+  .gen-preview { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 10px 12px; margin-top: 10px; }
+  .gen-preview-title { font-size: 11px; font-weight: 600; color: #15803d; margin: 0 0 6px; }
+  .gen-preview pre { font-size: 10px; color: #166534; font-family: monospace; margin: 0; white-space: pre-wrap; }
+  .error-msg { background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 8px 12px; color: #dc2626; font-size: 12px; margin-bottom: 12px; }
+  .btn-primary { background: #2563eb; color: #fff; border: none; border-radius: 6px; padding: 8px 20px; font-size: 13px; font-weight: 500; cursor: pointer; }
+  .btn-primary:hover { background: #1d4ed8; }
+  code { background: #f1f5f9; border-radius: 3px; padding: 0 4px; font-family: monospace; font-size: 11px; }
+</style>
+</head>
+<body>
+<h2>fuzzy-model-selector</h2>
+<p class="desc">Sélectionne automatiquement le modèle LLM le plus adapté via logique floue.</p>
+
+{{if .Error}}
+<div class="error-msg">{{.Error}}</div>
+{{end}}
+
+<form method="POST" action="./" id="cfg-form">
+
+<!-- Section 1 -->
+<div class="section">
+  <div class="section-hd">
+    <div class="section-num">1</div>
+    <div>
+      <p class="section-title">Configuration générale</p>
+      <p class="section-desc">Le <strong>modèle virtuel</strong> est le nom que les clients utilisent dans leurs requêtes pour activer la sélection automatique.</p>
+    </div>
+  </div>
+  <div class="section-body">
+    <div class="grid2">
+      <div class="field">
+        <label for="virtual_model">Modèle virtuel</label>
+        <div class="hint">Nom utilisé dans les requêtes API (ex: <code>auto</code>)</div>
+        <input type="text" id="virtual_model" name="virtual_model" value="{{.Config.VirtualModel}}" placeholder="auto">
+      </div>
+      <div class="field">
+        <label for="budget_preference">Préférence budgétaire <span style="font-weight:400;color:#9ca3af">(0–10)</span></label>
+        <div class="hint">0 = économique · 10 = qualité max. Variable DSL : <code>budget_preference</code></div>
+        <input type="number" id="budget_preference" name="budget_preference" value="{{.Config.BudgetPreference}}" min="0" max="10" step="0.5">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 2: Signals -->
+<div class="section">
+  <div class="section-hd">
+    <div class="section-num">2</div>
+    <div>
+      <p class="section-title">Signaux de détection</p>
+      <p class="section-desc">Chaque signal analyse les messages et produit un score 0–1. Son <strong>nom</strong> devient une <strong>variable d'entrée</strong> dans vos règles floues.</p>
+    </div>
+  </div>
+  <div class="section-body">
+    <div class="array-items" id="signals-list"></div>
+    <button type="button" class="add-btn" id="add-signal">+ Ajouter un signal</button>
+    <input type="hidden" name="signals_json" id="signals-json">
+  </div>
+</div>
+
+<!-- Section 3: Models -->
+<div class="section">
+  <div class="section-hd">
+    <div class="section-num">3</div>
+    <div>
+      <p class="section-title">Modèles disponibles</p>
+      <p class="section-desc">Les <strong>tags</strong> décrivent les points forts de chaque modèle et deviennent des <strong>variables de sortie</strong> dans vos règles (préfixées <code>tag_</code>).</p>
+    </div>
+  </div>
+  <div class="section-body">
+    <div class="array-items" id="models-list"></div>
+    <button type="button" class="add-btn" id="add-model">+ Ajouter un modèle</button>
+    <input type="hidden" name="models_json" id="models-json">
+  </div>
+</div>
+
+<!-- Section 4: Rules -->
+<div class="section">
+  <div class="section-hd">
+    <div class="section-num">4</div>
+    <div>
+      <p class="section-title">Règles de sélection</p>
+      <p class="section-desc">Définissez comment les signaux influencent le choix du modèle.</p>
+    </div>
+  </div>
+  <div class="section-body">
+    <div class="mode-toggle">
+      <button type="button" class="mode-btn" id="btn-simple" onclick="setMode('simple')">✦ Mode simplifié — associations visuelles</button>
+      <button type="button" class="mode-btn" id="btn-advanced" onclick="setMode('advanced')">⌨ Mode avancé — DSL go-fuzzy</button>
+    </div>
+    <input type="hidden" name="ui_mode" id="ui-mode-input" value="{{.Config.UIMode}}">
+    <input type="hidden" name="simple_mappings_json" id="simple-mappings-json">
+
+    <!-- Simple mode UI -->
+    <div id="simple-mode-panel">
+      <p style="font-size:12px;color:#374151;margin:0 0 10px">Pour chaque signal, indiquez quel tag favoriser quand ce signal est fort :</p>
+      <div class="signal-map">
+        <div class="smap-hd"><span>Signal fort</span><span></span><span>Tag à favoriser</span></div>
+        <div id="simple-mappings-rows"></div>
+      </div>
+      <div class="gen-preview" id="gen-preview" style="display:none">
+        <p class="gen-preview-title">⚙ Règles générées automatiquement</p>
+        <pre id="gen-preview-dsl"></pre>
+      </div>
+    </div>
+
+    <!-- Advanced mode UI -->
+    <div id="advanced-mode-panel" style="display:none">
+      <div class="var-box" id="var-box">
+        <p class="var-box-title">Variables disponibles</p>
+        <div style="margin-bottom:5px;font-size:11px;font-weight:600">Entrées :</div>
+        <div class="var-tags" id="input-vars"></div>
+        <div style="margin:6px 0 3px;font-size:11px;font-weight:600">Sorties :</div>
+        <div class="var-tags" id="output-vars"></div>
+      </div>
+      <div class="field">
+        <label for="rules">Règles floues (DSL go-fuzzy)</label>
+        <div class="hint">Syntaxe : <code>IF &lt;var&gt; IS &lt;terme&gt; THEN &lt;tag&gt; IS &lt;terme&gt;;</code> · AND / OR / NOT / parenthèses</div>
+        <textarea id="rules" name="rules">{{.Config.Rules}}</textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<button type="submit" class="btn-primary">Enregistrer</button>
+</form>
+
+<script>
+var initSignals = {{.SignalsJSON}};
+var initModels = {{.ModelsJSON}};
+var initMappings = {{.MappingsJSON}};
+var initMode = {{.UIMode}};
+
+var signals = initSignals || [];
+var models = initModels || [];
+var mappings = initMappings || [];
+
+function renderSignals() {
+  var list = document.getElementById('signals-list');
+  list.innerHTML = '';
+  signals.forEach(function(sig, i) {
+    var div = document.createElement('div');
+    div.className = 'array-item';
+    div.innerHTML =
+      '<div class="array-item-hd">Signal #' + (i+1) + ' <button type="button" class="del-btn" onclick="removeSignal(' + i + ')">Supprimer</button></div>' +
+      '<div class="grid2">' +
+        '<div class="field"><label>Nom de la variable</label>' +
+        '<input type="text" value="' + esc(sig.name||'') + '" oninput="signals['+i+'].name=this.value;syncAll()" placeholder="code_ratio"></div>' +
+        '<div class="field"><label>Type</label>' +
+        '<select onchange="signals['+i+'].type=this.value;syncAll()">' +
+          '<option value="keyword_ratio"' + (sig.type==='keyword_ratio'?' selected':'') + '>keyword_ratio</option>' +
+          '<option value="keyword_count"' + (sig.type==='keyword_count'?' selected':'') + '>keyword_count</option>' +
+        '</select></div>' +
+        '<div class="field" style="grid-column:1/-1"><label>Mots-clés (un par ligne)</label>' +
+        '<textarea style="height:70px" oninput="signals['+i+'].patterns=this.value.split(\'\\n\').map(s=>s.trim()).filter(Boolean);syncAll()">' + esc((sig.patterns||[]).join('\n')) + '</textarea></div>' +
+      '</div>';
+    list.appendChild(div);
+  });
+  syncAll();
+}
+
+function removeSignal(i) { signals.splice(i,1); renderSignals(); renderSimpleMappings(); }
+document.getElementById('add-signal').onclick = function() {
+  signals.push({name:'',type:'keyword_ratio',patterns:[]});
+  renderSignals();
+};
+
+function renderModels() {
+  var list = document.getElementById('models-list');
+  list.innerHTML = '';
+  models.forEach(function(m, i) {
+    var div = document.createElement('div');
+    div.className = 'array-item';
+    div.innerHTML =
+      '<div class="array-item-hd">Modèle #' + (i+1) + ' <button type="button" class="del-btn" onclick="removeModel(' + i + ')">Supprimer</button></div>' +
+      '<div class="grid2">' +
+        '<div class="field"><label>Nom proxy</label>' +
+        '<input type="text" value="' + esc(m.proxy_name||'') + '" oninput="models['+i+'].proxy_name=this.value;syncAll()" placeholder="openai/gpt-4o"></div>' +
+        '<div class="field"><label>Tags (un par ligne)</label>' +
+        '<textarea style="height:70px" oninput="models['+i+'].tags=this.value.split(\'\\n\').map(s=>s.trim()).filter(Boolean);syncAll()">' + esc((m.tags||[]).join('\n')) + '</textarea></div>' +
+      '</div>';
+    list.appendChild(div);
+  });
+  syncAll();
+}
+
+function removeModel(i) { models.splice(i,1); renderModels(); renderSimpleMappings(); }
+document.getElementById('add-model').onclick = function() {
+  models.push({proxy_name:'',tags:[]});
+  renderModels();
+};
+
+function syncAll() {
+  document.getElementById('signals-json').value = JSON.stringify(signals);
+  document.getElementById('models-json').value = JSON.stringify(models);
+  updateVarBox();
+  renderSimpleMappings();
+}
+
+function allTags() {
+  var tags = [];
+  models.forEach(function(m) { (m.tags||[]).forEach(function(t) { if (t && tags.indexOf(t)===-1) tags.push(t); }); });
+  return tags;
+}
+
+function signalNames() {
+  return signals.map(function(s) { return s.name; }).filter(Boolean);
+}
+
+function updateVarBox() {
+  var inputs = signalNames().concat(['budget_preference']);
+  var outputs = allTags().map(function(t) { return 'tag_' + t; });
+  var inputEl = document.getElementById('input-vars');
+  var outputEl = document.getElementById('output-vars');
+  if (!inputEl) return;
+  inputEl.innerHTML = inputs.map(function(n) {
+    var cls = n === 'budget_preference' ? 'var-tag builtin' : 'var-tag';
+    return '<span class="' + cls + '">' + esc(n) + '</span>';
+  }).join('');
+  outputEl.innerHTML = outputs.map(function(n) {
+    return '<span class="var-tag out">' + esc(n) + '</span>';
+  }).join('');
+}
+
+function renderSimpleMappings() {
+  var rows = document.getElementById('simple-mappings-rows');
+  if (!rows) return;
+  var snames = signalNames().concat(['budget_preference']);
+  var tags = allTags();
+
+  snames.forEach(function(sname) {
+    if (!mappings.find(function(m) { return m.signal === sname; })) {
+      mappings.push({signal: sname, tag: tags[0] || ''});
+    }
+  });
+  mappings = mappings.filter(function(m) { return snames.indexOf(m.signal) !== -1; });
+
+  rows.innerHTML = '';
+  mappings.forEach(function(mp, i) {
+    var row = document.createElement('div');
+    row.className = 'smap-row';
+    var tagOptions = tags.map(function(t) {
+      return '<option value="' + esc(t) + '"' + (mp.tag===t?' selected':'') + '>' + esc(t) + '</option>';
+    }).join('');
+    row.innerHTML =
+      '<div><span class="smap-pill">' + esc(mp.signal) + '</span></div>' +
+      '<div class="smap-arrow">→</div>' +
+      '<div><select onchange="mappings['+i+'].tag=this.value;updateMappingsJSON();updateGeneratedPreview()">' + tagOptions + '</select></div>';
+    rows.appendChild(row);
+  });
+
+  updateMappingsJSON();
+  updateGeneratedPreview();
+}
+
+function updateMappingsJSON() {
+  document.getElementById('simple-mappings-json').value = JSON.stringify(mappings);
+}
+
+function updateGeneratedPreview() {
+  var lines = [];
+  var defined = {};
+  mappings.forEach(function(m) {
+    if (!m.signal || !m.tag) return;
+    if (!defined[m.signal]) {
+      defined[m.signal] = true;
+      if (m.signal === 'budget_preference') {
+        lines.push('DEFINE budget_preference (\n  TERM low LINEAR(0, 3),\n  TERM high LINEAR(7, 10)\n);');
+      } else {
+        lines.push('DEFINE ' + m.signal + ' (\n  TERM low LINEAR(0, 0.3),\n  TERM high LINEAR(0.5, 1)\n);');
+      }
+    }
+  });
+  lines.push('');
+  mappings.forEach(function(m) {
+    if (!m.signal || !m.tag) return;
+    if (m.signal === 'budget_preference') {
+      lines.push('IF budget_preference IS low THEN tag_' + m.tag + ' IS preferred;');
+    } else {
+      lines.push('IF ' + m.signal + ' IS high THEN tag_' + m.tag + ' IS preferred;');
+    }
+  });
+  var dsl = lines.join('\n');
+  var preview = document.getElementById('gen-preview');
+  var previewDsl = document.getElementById('gen-preview-dsl');
+  if (dsl.trim()) {
+    preview.style.display = 'block';
+    previewDsl.textContent = dsl;
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+var wasAdvanced = initMode === 'advanced';
+
+function setMode(mode) {
+  document.getElementById('ui-mode-input').value = mode;
+  var isSimple = mode === 'simple';
+  document.getElementById('btn-simple').className = 'mode-btn' + (isSimple ? ' active' : '');
+  document.getElementById('btn-advanced').className = 'mode-btn' + (!isSimple ? ' active' : '');
+  document.getElementById('simple-mode-panel').style.display = isSimple ? '' : 'none';
+  document.getElementById('advanced-mode-panel').style.display = isSimple ? 'none' : '';
+  if (!isSimple) updateVarBox();
+  if (isSimple && wasAdvanced) {
+    if (confirm('Repasser en mode simplifié restaurera vos associations précédentes et écrasera les règles manuelles. Continuer ?')) {
+      mappings = JSON.parse(JSON.stringify(initMappings || []));
+      renderSimpleMappings();
+    } else {
+      setMode('advanced');
+    }
+  }
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+renderSignals();
+renderModels();
+setMode(initMode || 'simple');
+</script>
+</body>
+</html>

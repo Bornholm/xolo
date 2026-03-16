@@ -17,13 +17,28 @@ RELEASE_VERSION ?= $(shell TZ=Europe/Paris date -d "@$(COMMIT_TIMESTAMP)" +%Y.%-
 
 GORELEASER_ARGS ?= release --snapshot --clean
 
-watch: tools/modd/bin/modd
+watch: .env tools/modd/bin/modd
 	tools/modd/bin/modd
 
 run-with-env: .env
 	( set -o allexport && source .env && set +o allexport && $(value CMD))
 
-build: build-server
+build: build-server all-plugins
+
+all-plugins: cleanup-plugins $(foreach plugin,$(shell find ./plugins/ -mindepth 1  -maxdepth 1 -type d -printf '%f\n'), plugin-$(plugin))
+
+
+cleanup-plugins:
+	rm -rf bin/plugins/*
+
+plugin-%:
+	CGO_ENABLED=0 \
+		go build \
+			-ldflags "$(LDFLAGS)" \
+			-gcflags "$(GCFLAGS)" \
+			-asmflags "$(ASMFLAGS)" \
+			-o bin/plugins/$* \
+			./plugins/$*/
 
 build-%: generate
 	CGO_ENABLED=0 \
@@ -72,6 +87,21 @@ goreleaser: tools/goreleaser/bin/goreleaser
 
 .env:
 	cp .env.dist .env
+
+tools/protoc-gen-go/bin/protoc-gen-go:
+	mkdir -p tools/protoc-gen-go/bin
+	GOBIN=$(PWD)/tools/protoc-gen-go/bin go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+
+tools/protoc-gen-go-grpc/bin/protoc-gen-go-grpc:
+	mkdir -p tools/protoc-gen-go-grpc/bin
+	GOBIN=$(PWD)/tools/protoc-gen-go-grpc/bin go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+generate-proto: tools/protoc-gen-go/bin/protoc-gen-go tools/protoc-gen-go-grpc/bin/protoc-gen-go-grpc
+	PATH=$(PWD)/tools/protoc-gen-go/bin:$(PWD)/tools/protoc-gen-go-grpc/bin:$(PATH) \
+	protoc \
+		--go_out=. --go_opt=paths=source_relative \
+		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
+		pkg/pluginsdk/proto/plugin.proto
 
 include misc/*/*.mk
 

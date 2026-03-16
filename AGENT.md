@@ -72,6 +72,8 @@ internal/
 - Tailwind CSS is generated from `misc/tailwind/templui.css` → `internal/http/handler/webui/common/assets/templui.css`
 - Run `make generate` after editing any `.templ` file or CSS
 
+**IMPORTANT — composants UI :** toute nouvelle interface doit **obligatoirement** utiliser les composants templui disponibles sous `internal/http/handler/webui/templui/component/` (input, button, checkbox, label, card, badge, alert, etc.). Ne jamais utiliser de balises HTML brutes (`<input>`, `<button>`, `<select>`) là où un composant templui équivalent existe.
+
 ### Adding a new proxy hook
 
 Mount hooks on the `proxy.Server` in `internal/setup/http_server.go` using `proxy.WithHook(...)`. The hook system is defined in `github.com/bornholm/genai/proxy` — see `proxy/hook.go` for the interface.

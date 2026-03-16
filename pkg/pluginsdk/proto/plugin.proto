@@ -1,0 +1,115 @@
+syntax = "proto3";
+package xolo.plugin.v1;
+option go_package = "github.com/bornholm/xolo/pkg/pluginsdk/proto";
+
+service XoloPlugin {
+  rpc Describe(DescribeRequest) returns (PluginDescriptor);
+  rpc Initialize(InitializeRequest) returns (InitializeResponse);
+  rpc PreRequest(PreRequestInput) returns (PreRequestOutput);
+  rpc PostResponse(PostResponseInput) returns (PostResponseOutput);
+  rpc ResolveModel(ResolveModelInput) returns (ResolveModelOutput);
+  rpc ListModels(ListModelsInput) returns (ListModelsOutput);
+}
+
+service XoloHostService {
+  rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);
+  rpc SaveConfig(SaveConfigRequest) returns (SaveConfigResponse);
+}
+
+message InitializeRequest {
+  uint32 host_service_broker_id = 1;
+}
+message InitializeResponse {
+  uint32 http_ui_port = 1;
+}
+
+message GetConfigRequest {
+  string org_id     = 1;
+  string plugin_name = 2;
+}
+message GetConfigResponse {
+  string config_json = 1;
+}
+message SaveConfigRequest {
+  string org_id      = 1;
+  string plugin_name = 2;
+  string config_json = 3;
+}
+message SaveConfigResponse {}
+
+message DescribeRequest {}
+
+message PluginDescriptor {
+  string name = 1;
+  string version = 2;
+  string description = 3;
+  repeated Capability capabilities = 4;
+  enum Capability {
+    CAPABILITY_UNSPECIFIED = 0;
+    PRE_REQUEST = 1;
+    POST_RESPONSE = 2;
+    RESOLVE_MODEL = 3;
+    LIST_MODELS = 4;
+  }
+  string config_schema = 5;
+  string user_config_schema = 6;
+  bool default_required = 7;
+}
+
+message RequestContext {
+  string org_id = 1;
+  string user_id = 2;
+  string token_id = 3;
+  string config_json = 4;
+  string user_config_json = 5;
+}
+
+message ModelInfo {
+  string proxy_name = 1;
+  string real_model = 2;
+  string provider_id = 3;
+  double prompt_cost_per_1k_tokens = 4;
+  double completion_cost_per_1k_tokens = 5;
+  int64 token_limit = 6;
+}
+
+message PreRequestInput {
+  RequestContext ctx = 1;
+  string model = 2;
+  string messages_json = 3;
+}
+
+message PreRequestOutput {
+  bool allowed = 1;
+  string rejection_reason = 2;
+}
+
+message PostResponseInput {
+  RequestContext ctx = 1;
+  string model = 2;
+  int64 prompt_tokens = 3;
+  int64 completion_tokens = 4;
+  bool had_error = 5;
+}
+
+message PostResponseOutput {}
+
+message ResolveModelInput {
+  RequestContext ctx = 1;
+  string requested_model = 2;
+  repeated ModelInfo available_models = 3;
+  string messages_json = 4;
+}
+
+message ResolveModelOutput {
+  string resolved_proxy_name = 1;
+}
+
+message ListModelsInput {
+  RequestContext ctx = 1;
+  repeated ModelInfo available_models = 2;
+}
+
+message ListModelsOutput {
+  repeated string additional_proxy_names = 1;
+}

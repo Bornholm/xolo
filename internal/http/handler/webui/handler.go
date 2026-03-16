@@ -11,17 +11,26 @@ import (
 	"github.com/bornholm/xolo/internal/http/handler/webui/org"
 	"github.com/bornholm/xolo/internal/http/handler/webui/profile"
 	"github.com/bornholm/xolo/internal/http/middleware/authz"
+	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
 )
 
+type pluginManagerIface interface {
+	List() []*proto.PluginDescriptor
+	HTTPPort(pluginName string) uint32
+}
+
 type Handler struct {
-	mux                 *http.ServeMux
-	inviteStore         port.InviteStore
-	quotaService        *service.QuotaService
-	usageStore          port.UsageStore
-	userStore           port.UserStore
-	orgStore            port.OrgStore
-	providerStore       port.ProviderStore
-	exchangeRateService *service.ExchangeRateService
+	mux                   *http.ServeMux
+	inviteStore           port.InviteStore
+	quotaService          *service.QuotaService
+	usageStore            port.UsageStore
+	userStore             port.UserStore
+	orgStore              port.OrgStore
+	providerStore         port.ProviderStore
+	exchangeRateService   *service.ExchangeRateService
+	pluginManager         pluginManagerIface
+	pluginActivationStore port.PluginActivationStore
+	pluginConfigStore     port.PluginConfigStore
 }
 
 // ServeHTTP implements http.Handler.
@@ -40,16 +49,22 @@ func NewHandler(
 	quotaService *service.QuotaService,
 	exchangeRateService *service.ExchangeRateService,
 	secretKey string,
+	pluginManager pluginManagerIface,
+	pluginActivationStore port.PluginActivationStore,
+	pluginConfigStore port.PluginConfigStore,
 ) *Handler {
 	h := &Handler{
-		mux:                 http.NewServeMux(),
-		inviteStore:         inviteStore,
-		quotaService:        quotaService,
-		usageStore:          usageStore,
-		userStore:           userStore,
-		orgStore:            orgStore,
-		providerStore:       providerStore,
-		exchangeRateService: exchangeRateService,
+		mux:                   http.NewServeMux(),
+		inviteStore:           inviteStore,
+		quotaService:          quotaService,
+		usageStore:            usageStore,
+		userStore:             userStore,
+		orgStore:              orgStore,
+		providerStore:         providerStore,
+		exchangeRateService:   exchangeRateService,
+		pluginManager:         pluginManager,
+		pluginActivationStore: pluginActivationStore,
+		pluginConfigStore:     pluginConfigStore,
 	}
 
 	isActive := authz.Middleware(http.HandlerFunc(h.getInactiveUserPage), authz.Active())
@@ -60,8 +75,8 @@ func NewHandler(
 	mount(h.mux, "/usage", isActive(http.HandlerFunc(h.getDashboardPage)))
 	mount(h.mux, "/models", isActive(http.HandlerFunc(h.getModelsPage)))
 	mount(h.mux, "/profile/", isActive(profile.NewHandler(userStore, orgStore, inviteStore)))
-	mount(h.mux, "/admin/", isActive(admin.NewHandler(userStore, orgStore, taskRunner, exchangeRateService)))
-	mount(h.mux, "/orgs/", isActive(org.NewHandler(orgStore, providerStore, usageStore, inviteStore, userStore, exchangeRateService, quotaStore, secretKey)))
+	mount(h.mux, "/admin/", isActive(admin.NewHandler(userStore, orgStore, taskRunner, exchangeRateService, pluginManager)))
+	mount(h.mux, "/orgs/", isActive(org.NewHandler(orgStore, providerStore, usageStore, inviteStore, userStore, exchangeRateService, quotaStore, secretKey, pluginManager, pluginActivationStore, pluginConfigStore)))
 
 	// Public join flow — no isActive wrapper (unauthenticated users get a sign-in prompt)
 	h.mux.Handle("/join/", http.StripPrefix("/join", join.NewHandler(orgStore, inviteStore)))

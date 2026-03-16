@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	genaiProxy "github.com/bornholm/genai/proxy"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
 	"github.com/pkg/errors"
@@ -113,4 +114,38 @@ func AuthTokenIDFromMeta(meta map[string]any) string {
 func ModelIDFromMeta(meta map[string]any) model.LLMModelID {
 	v, _ := meta[MetaModelID].(string)
 	return model.LLMModelID(v)
+}
+
+// tokenFinder is a minimal interface satisfied by port.UserStore.
+// Using a minimal interface avoids forcing test stubs to implement all UserStore methods.
+type tokenFinder interface {
+	FindAuthToken(ctx context.Context, token string) (model.AuthToken, error)
+}
+
+// populateMetaFromHeader reads the Bearer token from the request Authorization header,
+// looks up the corresponding auth token, and stores orgID and authTokenID in req.Metadata.
+// This is needed because the request context is captured before XoloAuthExtractor runs,
+// so hooks that need org/user identity must re-derive it from the header directly.
+func populateMetaFromHeader(ctx context.Context, store tokenFinder, req *genaiProxy.ProxyRequest) {
+	if OrgIDFromMeta(req.Metadata) != "" {
+		return // already populated
+	}
+	auth := req.Headers.Get("Authorization")
+	if auth == "" {
+		return
+	}
+	parts := strings.SplitN(auth, " ", 2)
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "bearer") {
+		return
+	}
+	raw := strings.TrimSpace(parts[1])
+	if raw == "" {
+		return
+	}
+	token, err := store.FindAuthToken(ctx, raw)
+	if err != nil {
+		return
+	}
+	req.Metadata[MetaOrgID] = string(token.OrgID())
+	req.Metadata[MetaAuthTokenID] = string(token.ID())
 }

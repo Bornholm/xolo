@@ -13,5 +13,6 @@ templ OrgNavItems(orgSlug string, selectedItem string) {
 	@common.NavItem(icon.PiggyBank, "Quota", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/quota")), selectedItem == "org-"+orgSlug+"-quota")
 	@common.NavItem(icon.Mail, "Invitations", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/invites")), selectedItem == "org-"+orgSlug+"-invites")
 	@common.NavItem(icon.ChartColumn, "Usage", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/usage")), selectedItem == "org-"+orgSlug+"-usage")
+	@common.NavItem(icon.Plug, "Plugins", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/plugins")), selectedItem == "org-"+orgSlug+"-plugins")
 	@common.NavItem(icon.Settings, "Paramètres", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/settings")), selectedItem == "org-"+orgSlug+"-settings")
 }

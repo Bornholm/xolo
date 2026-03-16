@@ -11,6 +11,7 @@ type Config struct {
 	Storage      Storage            `envPrefix:"STORAGE_"`
 	TaskRunner   TaskRunner         `envPrefix:"TASK_RUNNER_"`
 	ExchangeRate ExchangeRateConfig `envPrefix:"EXCHANGE_RATE_"`
+	Plugins      PluginsConfig      `envPrefix:"PLUGINS_"`
 	// SecretKey is a 32-byte hex string used for AES-GCM encryption of provider API keys.
 	SecretKey string `env:"SECRET_KEY"`
 }

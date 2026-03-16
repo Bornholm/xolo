@@ -8,7 +8,12 @@ RUN apk add \
 
 COPY xolo-server /usr/local/bin/xolo-server
 
+RUN mkdir -p /plugins
+COPY xolo-plugin-time-restriction /plugins/time-restriction
+COPY xolo-plugin-model-auto-select /plugins/xolo-plugin-model-auto-select
+
 ENV XOLO_STORAGE_DATABASE_DSN=/data/data.sqlite
+ENV XOLO_PLUGINS_DIR=/plugins
 
 VOLUME /data
 

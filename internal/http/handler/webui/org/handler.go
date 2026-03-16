@@ -6,19 +6,28 @@ import (
 	"github.com/bornholm/xolo/internal/core/port"
 	"github.com/bornholm/xolo/internal/core/service"
 	"github.com/bornholm/xolo/internal/http/middleware/authz"
+	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
 )
+
+type pluginManagerIface interface {
+	List() []*proto.PluginDescriptor
+	HTTPPort(pluginName string) uint32
+}
 
 // Handler serves the org-admin section: /orgs/{orgSlug}/admin/
 type Handler struct {
-	mux                 *http.ServeMux
-	orgStore            port.OrgStore
-	providerStore       port.ProviderStore
-	usageStore          port.UsageStore
-	inviteStore         port.InviteStore
-	userStore           port.UserStore
-	quotaStore          port.QuotaStore
-	secretKey           string
-	exchangeRateService *service.ExchangeRateService
+	mux                   *http.ServeMux
+	orgStore              port.OrgStore
+	providerStore         port.ProviderStore
+	usageStore            port.UsageStore
+	inviteStore           port.InviteStore
+	userStore             port.UserStore
+	quotaStore            port.QuotaStore
+	secretKey             string
+	exchangeRateService   *service.ExchangeRateService
+	pluginManager         pluginManagerIface
+	pluginActivationStore port.PluginActivationStore
+	pluginConfigStore     port.PluginConfigStore
 }
 
 // ServeHTTP implements http.Handler.
@@ -35,17 +44,23 @@ func NewHandler(
 	exchangeRateService *service.ExchangeRateService,
 	quotaStore port.QuotaStore,
 	secretKey string,
+	pluginManager pluginManagerIface,
+	pluginActivationStore port.PluginActivationStore,
+	pluginConfigStore port.PluginConfigStore,
 ) *Handler {
 	h := &Handler{
-		mux:                 http.NewServeMux(),
-		orgStore:            orgStore,
-		providerStore:       providerStore,
-		usageStore:          usageStore,
-		inviteStore:         inviteStore,
-		userStore:           userStore,
-		quotaStore:          quotaStore,
-		secretKey:           secretKey,
-		exchangeRateService: exchangeRateService,
+		mux:                   http.NewServeMux(),
+		orgStore:              orgStore,
+		providerStore:         providerStore,
+		usageStore:            usageStore,
+		inviteStore:           inviteStore,
+		userStore:             userStore,
+		quotaStore:            quotaStore,
+		secretKey:             secretKey,
+		exchangeRateService:   exchangeRateService,
+		pluginManager:         pluginManager,
+		pluginActivationStore: pluginActivationStore,
+		pluginConfigStore:     pluginConfigStore,
 	}
 
 	assertOrgAdmin := func(next http.Handler) http.Handler {
@@ -106,6 +121,13 @@ func NewHandler(
 
 	h.mux.Handle("GET /{orgSlug}/admin/settings", assertOrgAdmin(http.HandlerFunc(h.getSettingsPage)))
 	h.mux.Handle("POST /{orgSlug}/admin/settings", assertOrgAdmin(http.HandlerFunc(h.saveSettings)))
+
+	h.mux.Handle("GET /{orgSlug}/admin/plugins", assertOrgAdmin(http.HandlerFunc(h.getPluginsPage)))
+	h.mux.Handle("POST /{orgSlug}/admin/plugins/{pluginName}/activate", assertOrgAdmin(http.HandlerFunc(h.postActivatePlugin)))
+	h.mux.Handle("POST /{orgSlug}/admin/plugins/{pluginName}/deactivate", assertOrgAdmin(http.HandlerFunc(h.postDeactivatePlugin)))
+	h.mux.Handle("GET /{orgSlug}/admin/plugins/{pluginName}/config", assertOrgAdmin(http.HandlerFunc(h.getPluginConfigPage)))
+	h.mux.Handle("POST /{orgSlug}/admin/plugins/{pluginName}/config", assertOrgAdmin(http.HandlerFunc(h.postPluginConfig)))
+	h.mux.Handle("/{orgSlug}/plugins/{pluginName}/ui/{uiPath...}", assertOrgAdmin(http.HandlerFunc(h.servePluginUI)))
 
 	// Org member routes
 	_ = assertOrgMember
