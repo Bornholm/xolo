@@ -79,15 +79,16 @@ func parseConfig(configJSON string) (Config, error) {
 }
 
 // isAllowed retourne true si now tombe dans au moins un créneau de cfg.
-// Retourne false si cfg.Slots est vide, si cfg.Timezone est invalide,
-// ou si aucun créneau ne correspond à l'heure et au jour courants.
-func isAllowed(now time.Time, cfg Config) bool {
+// Retourne false si cfg.Slots est vide ou si aucun créneau ne correspond
+// à l'heure et au jour courants.
+// Retourne une erreur si cfg.Timezone est invalide.
+func isAllowed(now time.Time, cfg Config) (bool, error) {
 	if len(cfg.Slots) == 0 {
-		return false
+		return false, nil
 	}
 	loc, err := time.LoadLocation(cfg.Timezone)
 	if err != nil {
-		return false
+		return false, fmt.Errorf("load timezone %q: %w", cfg.Timezone, err)
 	}
 	local := now.In(loc)
 	currentDay := strings.ToLower(local.Weekday().String())
@@ -96,9 +97,9 @@ func isAllowed(now time.Time, cfg Config) bool {
 		if slices.Contains(s.Days, currentDay) &&
 			currentHHMM >= s.Start &&
 			currentHHMM < s.End {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 

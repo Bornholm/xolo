@@ -18,56 +18,85 @@ func slot(start, end string, days ...string) Slot {
 
 func TestIsAllowed_MatchingSlot(t *testing.T) {
 	c := cfg("UTC", slot("09:00", "18:00", "monday"))
-	if !isAllowed(monday09h30, c) {
+	got, err := isAllowed(monday09h30, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got {
 		t.Fatal("expected allowed")
 	}
 }
 
 func TestIsAllowed_BeforeSlot(t *testing.T) {
 	c := cfg("UTC", slot("10:00", "18:00", "monday"))
-	if isAllowed(monday09h30, c) {
+	got, err := isAllowed(monday09h30, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got {
 		t.Fatal("expected denied: before start")
 	}
 }
 
 func TestIsAllowed_AfterSlot(t *testing.T) {
 	c := cfg("UTC", slot("09:00", "09:15", "monday"))
-	if isAllowed(monday09h30, c) {
+	got, err := isAllowed(monday09h30, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got {
 		t.Fatal("expected denied: after end")
 	}
 }
 
 func TestIsAllowed_WrongDay(t *testing.T) {
 	c := cfg("UTC", slot("09:00", "18:00", "tuesday", "wednesday"))
-	if isAllowed(monday09h30, c) {
+	got, err := isAllowed(monday09h30, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got {
 		t.Fatal("expected denied: wrong day")
 	}
 }
 
 func TestIsAllowed_EmptySlots(t *testing.T) {
 	c := cfg("UTC")
-	if isAllowed(monday09h30, c) {
+	got, err := isAllowed(monday09h30, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got {
 		t.Fatal("expected denied: empty slots")
 	}
 }
 
 func TestIsAllowed_EmptyConfig(t *testing.T) {
-	if isAllowed(monday09h30, Config{}) {
+	got, err := isAllowed(monday09h30, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got {
 		t.Fatal("expected denied: zero-value config")
 	}
 }
 
 func TestIsAllowed_InvalidTimezone(t *testing.T) {
 	c := cfg("Invalid/Zone", slot("09:00", "18:00", "monday"))
-	if isAllowed(monday09h30, c) {
-		t.Fatal("expected denied: invalid timezone")
+	_, err := isAllowed(monday09h30, c)
+	if err == nil {
+		t.Fatal("expected error for invalid timezone")
 	}
 }
 
 func TestIsAllowed_EndExclusive(t *testing.T) {
 	// 09:30 == end → doit être refusé (end est exclusif)
 	c := cfg("UTC", slot("09:00", "09:30", "monday"))
-	if isAllowed(monday09h30, c) {
+	got, err := isAllowed(monday09h30, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got {
 		t.Fatal("expected denied: now == end (exclusive)")
 	}
 }
@@ -77,7 +106,11 @@ func TestIsAllowed_MultipleSlots(t *testing.T) {
 		slot("07:00", "08:00", "monday"), // ne matche pas (trop tôt)
 		slot("09:00", "18:00", "monday"), // matche
 	)
-	if !isAllowed(monday09h30, c) {
+	got, err := isAllowed(monday09h30, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got {
 		t.Fatal("expected allowed: second slot matches")
 	}
 }

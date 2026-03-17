@@ -33,7 +33,15 @@ func (p *Plugin) PreRequest(_ context.Context, in *proto.PreRequestInput) (*prot
 			RejectionReason: "Accès refusé : hors des plages horaires autorisées.",
 		}, nil
 	}
-	if !isAllowed(time.Now(), cfg) {
+	allowed, err := isAllowed(time.Now(), cfg)
+	if err != nil {
+		slog.Warn("time-restriction: configuration error, denying request", slog.Any("error", err))
+		return &proto.PreRequestOutput{
+			Allowed:         false,
+			RejectionReason: "Accès refusé : erreur de configuration du plugin.",
+		}, nil
+	}
+	if !allowed {
 		slog.Debug("time-restriction: request denied (outside allowed time slots)")
 		return &proto.PreRequestOutput{
 			Allowed:         false,
