@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/a-h/templ"
+	"github.com/bornholm/go-x/slogx"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
 	"github.com/bornholm/xolo/internal/crypto"
@@ -14,7 +15,6 @@ import (
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/profile/component"
 	"github.com/bornholm/xolo/internal/http/middleware/authz"
-	"github.com/bornholm/go-x/slogx"
 )
 
 type Handler struct {
@@ -60,6 +60,10 @@ func (h *Handler) getProfilePage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "profile",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: "Espace de travail", Href: "/usage"},
+				{Label: "Profil", Href: ""},
+			},
 			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
 				return common.AppNavigationItems(vmodel)
 			},
@@ -105,6 +109,11 @@ func (h *Handler) getTokensPage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "tokens",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: "Espace de travail", Href: "/usage"},
+				{Label: "Profil", Href: "/profile/"},
+				{Label: "Jetons API", Href: ""},
+			},
 			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
 				return common.AppNavigationItems(vmodel)
 			},
@@ -266,6 +275,11 @@ func (h *Handler) getInvitationsPage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "profile",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: "Espace de travail", Href: "/usage"},
+				{Label: "Profil", Href: "/profile/"},
+				{Label: "Invitations", Href: ""},
+			},
 			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
 				return common.AppNavigationItems(vmodel)
 			},

@@ -10,9 +10,9 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/bornholm/go-x/slogx"
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
+	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/profile/component"
 )
@@ -203,6 +203,10 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "usage",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: "Espace de travail", Href: "/usage"},
+				{Label: "Usage", Href: ""},
+			},
 			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
 				return common.AppNavigationItems(vmodel)
 			},

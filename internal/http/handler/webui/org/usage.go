@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/a-h/templ"
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
+	"github.com/bornholm/go-x/slogx"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
+	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/org/component"
-	"github.com/bornholm/go-x/slogx"
 )
 
 const usagePageSize = 20
@@ -202,8 +202,12 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 		ChartPerModel: chartByValue(perModel),
 		ChartPerUser:  chartByValue(perUser),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:            user,
-			SelectedItem:    "org-" + orgSlug + "-usage",
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-usage",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: "Usage", Href: ""},
+			},
 			NavigationItems: nav,
 			FooterItems:     footer,
 		},

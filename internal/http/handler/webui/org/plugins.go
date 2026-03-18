@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	"github.com/a-h/templ"
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
+	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/org/component"
 	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
@@ -53,8 +53,12 @@ func (h *Handler) getPluginsPage(w http.ResponseWriter, r *http.Request) {
 		Descriptors: h.pluginManager.List(),
 		Active:      activeMap,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:            user,
-			SelectedItem:    "org-" + orgSlug + "-plugins",
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-plugins",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: "Plugins", Href: ""},
+			},
 			NavigationItems: nav,
 			FooterItems:     footer,
 		},
@@ -157,8 +161,13 @@ func (h *Handler) getPluginConfigPage(w http.ResponseWriter, r *http.Request) {
 		Values:     jsonToStringMap(configJSON),
 		HasHTTPUI:  h.pluginManager.HTTPPort(pluginName) > 0,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:            user,
-			SelectedItem:    "org-" + orgSlug + "-plugins",
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-plugins",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: "Plugins", Href: "/orgs/" + orgSlug + "/admin/plugins"},
+				{Label: descriptor.Name, Href: ""},
+			},
 			NavigationItems: nav,
 			FooterItems:     footer,
 		},
@@ -378,7 +387,6 @@ func mergeFormIntoConfig(existingJSON string, formValues map[string]string, prop
 	b, _ := json.Marshal(base)
 	return string(b)
 }
-
 
 // schemaForRenderable returns a modified schema where non-renderable fields
 // (array, object) are removed from the "required" array so that validation

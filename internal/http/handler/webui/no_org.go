@@ -6,11 +6,11 @@ import (
 	"net/http"
 
 	"github.com/a-h/templ"
+	"github.com/bornholm/go-x/slogx"
 	"github.com/bornholm/xolo/internal/core/model"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/profile/component"
-	"github.com/bornholm/go-x/slogx"
 )
 
 func (h *Handler) getNoOrgPage(w http.ResponseWriter, r *http.Request) {
@@ -47,6 +47,10 @@ func (h *Handler) getNoOrgPage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "usage",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: "Espace de travail", Href: "/usage"},
+				{Label: "Aucune organisation", Href: ""},
+			},
 			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
 				return common.AppNavigationItems(vmodel)
 			},
@@ -54,7 +58,7 @@ func (h *Handler) getNoOrgPage(w http.ResponseWriter, r *http.Request) {
 				return common.AppFooterItems(vmodel)
 			},
 		},
-		Invites:    invites,
+		Invites:     invites,
 		DeclinedIDs: declinedIDs,
 	}
 

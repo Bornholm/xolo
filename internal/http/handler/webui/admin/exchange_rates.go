@@ -54,6 +54,10 @@ func (h *Handler) fillExchangeRatesPageVModelAppLayout(ctx context.Context, vmod
 		User:         user,
 		IsAdmin:      isAdmin,
 		SelectedItem: "exchange-rates",
+		Breadcrumbs: []commonComp.BreadcrumbItem{
+			{Label: "Plateforme", Href: "/admin/"},
+			{Label: "Taux de change", Href: ""},
+		},
 		NavigationItems: func(vmodel commonComp.AppLayoutVModel) templ.Component {
 			return commonComp.AdminNavigationItems(vmodel)
 		},

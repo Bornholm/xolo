@@ -7,6 +7,8 @@ import (
 	"strconv"
 
 	"github.com/a-h/templ"
+	"github.com/bornholm/go-x/templx/form"
+	formx "github.com/bornholm/go-x/templx/form"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
@@ -15,8 +17,6 @@ import (
 	commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/middleware/authz"
 	"github.com/bornholm/xolo/templx/form/renderer/templui"
-	"github.com/bornholm/go-x/templx/form"
-	formx "github.com/bornholm/go-x/templx/form"
 	"github.com/pkg/errors"
 )
 
@@ -159,6 +159,10 @@ func (h *Handler) fillUsersPageVModelAppLayout(ctx context.Context, vmodel *comp
 		User:         user,
 		IsAdmin:      isAdmin,
 		SelectedItem: "users",
+		Breadcrumbs: []commonComp.BreadcrumbItem{
+			{Label: "Plateforme", Href: "/admin/"},
+			{Label: "Utilisateurs", Href: "/admin/users"},
+		},
 		NavigationItems: func(vmodel commonComp.AppLayoutVModel) templ.Component {
 			return commonComp.AdminNavigationItems(vmodel)
 		},
@@ -216,6 +220,10 @@ func (h *Handler) fillEditUserPageVModelAppLayout(ctx context.Context, vmodel *c
 		User:         user,
 		IsAdmin:      isAdmin,
 		SelectedItem: "users",
+		Breadcrumbs: []commonComp.BreadcrumbItem{
+			{Label: "Plateforme", Href: "/admin/"},
+			{Label: "Utilisateurs", Href: "/admin/users"},
+		},
 		NavigationItems: func(vmodel commonComp.AppLayoutVModel) templ.Component {
 			return commonComp.AdminNavigationItems(vmodel)
 		},
@@ -236,6 +244,9 @@ func (h *Handler) fillEditUserPageVModelUser(ctx context.Context, vmodel *compon
 	}
 
 	vmodel.User = user
+	vmodel.AppLayoutVModel.Breadcrumbs = append(vmodel.AppLayoutVModel.Breadcrumbs,
+		commonComp.BreadcrumbItem{Label: user.Email(), Href: ""},
+	)
 
 	return nil
 }

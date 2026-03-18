@@ -5,10 +5,10 @@ import (
 	"net/http"
 
 	"github.com/a-h/templ"
+	"github.com/bornholm/go-x/slogx"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/org/component"
-	"github.com/bornholm/go-x/slogx"
 	"github.com/pkg/errors"
 )
 
@@ -45,6 +45,10 @@ func (h *Handler) getDashboard(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "org-" + orgSlug,
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: "Tableau de bord", Href: ""},
+			},
 			NavigationItems: nav,
 			FooterItems:     footer,
 		},

@@ -6,12 +6,12 @@ import (
 	"strconv"
 
 	"github.com/a-h/templ"
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
+	"github.com/bornholm/go-x/slogx"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
+	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/org/component"
-	"github.com/bornholm/go-x/slogx"
 	"github.com/pkg/errors"
 )
 
@@ -42,8 +42,12 @@ func (h *Handler) getOrgQuotaPage(w http.ResponseWriter, r *http.Request) {
 		Quota:     existing,
 		Success:   r.URL.Query().Get("success"),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:            user,
-			SelectedItem:    "org-" + orgSlug + "-quota",
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-quota",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: "Quotas", Href: "/orgs/" + orgSlug + "/admin/quota"},
+			},
 			NavigationItems: nav,
 			FooterItems:     footer,
 		},
@@ -130,8 +134,14 @@ func (h *Handler) getMemberQuotaPage(w http.ResponseWriter, r *http.Request) {
 		Quota:      existing,
 		Success:    r.URL.Query().Get("success"),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:            user,
-			SelectedItem:    "org-" + orgSlug + "-members",
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-members",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: "Membres", Href: "/orgs/" + orgSlug + "/admin/members"},
+				{Label: membership.User().DisplayName(), Href: ""},
+				{Label: "Quotas", Href: ""},
+			},
 			NavigationItems: nav,
 			FooterItems:     footer,
 		},

@@ -10,7 +10,7 @@ templ OrgNavItems(orgSlug string, selectedItem string) {
 	@common.NavItem(icon.LayoutDashboard, "Tableau de bord", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/")), selectedItem == "org-"+orgSlug+"-dashboard")
 	@common.NavItem(icon.Users, "Membres", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/members")), selectedItem == "org-"+orgSlug+"-members")
 	@common.NavItem(icon.Server, "Fournisseurs", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/providers")), selectedItem == "org-"+orgSlug+"-providers")
-	@common.NavItem(icon.PiggyBank, "Quota", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/quota")), selectedItem == "org-"+orgSlug+"-quota")
+	@common.NavItem(icon.PiggyBank, "Budget", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/quota")), selectedItem == "org-"+orgSlug+"-quota")
 	@common.NavItem(icon.Mail, "Invitations", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/invites")), selectedItem == "org-"+orgSlug+"-invites")
 	@common.NavItem(icon.ChartColumn, "Usage", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/usage")), selectedItem == "org-"+orgSlug+"-usage")
 	@common.NavItem(icon.Plug, "Plugins", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/plugins")), selectedItem == "org-"+orgSlug+"-plugins")

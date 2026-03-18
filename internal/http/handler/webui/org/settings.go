@@ -6,8 +6,8 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/bornholm/go-x/slogx"
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	"github.com/bornholm/xolo/internal/core/model"
+	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/org/component"
 )
@@ -28,8 +28,12 @@ func (h *Handler) getSettingsPage(w http.ResponseWriter, r *http.Request) {
 		Org:     org,
 		Success: r.URL.Query().Get("success"),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:            user,
-			SelectedItem:    "org-" + orgSlug + "-settings",
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-settings",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: "Paramètres", Href: ""},
+			},
 			NavigationItems: nav,
 			FooterItems:     footer,
 		},

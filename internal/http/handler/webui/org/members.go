@@ -5,12 +5,12 @@ import (
 	"net/http"
 
 	"github.com/a-h/templ"
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
+	"github.com/bornholm/go-x/slogx"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
+	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/org/component"
-	"github.com/bornholm/go-x/slogx"
 	"github.com/pkg/errors"
 )
 
@@ -40,6 +40,10 @@ func (h *Handler) getMembersPage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "org-" + orgSlug + "-members",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: "Membres", Href: ""},
+			},
 			NavigationItems: nav,
 			FooterItems:     footer,
 		},

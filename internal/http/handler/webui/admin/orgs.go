@@ -5,12 +5,12 @@ import (
 	"net/http"
 
 	"github.com/a-h/templ"
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
+	"github.com/bornholm/go-x/slogx"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
-	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	"github.com/bornholm/xolo/internal/http/handler/webui/admin/component"
-	"github.com/bornholm/go-x/slogx"
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/pkg/errors"
 )
 
@@ -31,6 +31,10 @@ func (h *Handler) getOrgsPage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "orgs",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: "Plateforme", Href: "/admin/"},
+				{Label: "Organisations", Href: "/admin/orgs"},
+			},
 			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
 				return common.AdminNavigationItems(vmodel)
 			},
@@ -52,6 +56,11 @@ func (h *Handler) getNewOrgPage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "orgs",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: "Plateforme", Href: "/admin/"},
+				{Label: "Organisations", Href: "/admin/orgs"},
+				{Label: "Nouvelle organisation", Href: ""},
+			},
 			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
 				return common.AdminNavigationItems(vmodel)
 			},
@@ -112,6 +121,11 @@ func (h *Handler) getEditOrgPage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "orgs",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: "Plateforme", Href: "/admin/"},
+				{Label: "Organisations", Href: "/admin/orgs"},
+				{Label: org.Name(), Href: ""},
+			},
 			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
 				return common.AdminNavigationItems(vmodel)
 			},

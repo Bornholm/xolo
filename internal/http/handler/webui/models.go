@@ -56,6 +56,10 @@ func (h *Handler) getModelsPage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "models",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: "Espace de travail", Href: "/usage"},
+				{Label: "Modèles", Href: ""},
+			},
 			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
 				return common.AppNavigationItems(vmodel)
 			},

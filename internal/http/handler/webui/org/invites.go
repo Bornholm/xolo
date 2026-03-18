@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/a-h/templ"
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
+	"github.com/bornholm/go-x/slogx"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
+	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/org/component"
-	"github.com/bornholm/go-x/slogx"
 	"github.com/pkg/errors"
 )
 
@@ -44,8 +44,12 @@ func (h *Handler) getInvitesPage(w http.ResponseWriter, r *http.Request) {
 		Success: r.URL.Query().Get("success"),
 		NewURL:  r.URL.Query().Get("new_url"),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:            user,
-			SelectedItem:    "org-" + orgSlug + "-invites",
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-invites",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: "Invitations", Href: ""},
+			},
 			NavigationItems: nav,
 			FooterItems:     footer,
 		},
@@ -69,8 +73,12 @@ func (h *Handler) getNewInvitePage(w http.ResponseWriter, r *http.Request) {
 	vmodel := component.InviteFormVModel{
 		Org: org,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:            user,
-			SelectedItem:    "org-" + orgSlug + "-invites",
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-invites",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: "Invitations", Href: "/orgs/" + orgSlug + "/admin/invites"},
+			},
 			NavigationItems: nav,
 			FooterItems:     footer,
 		},

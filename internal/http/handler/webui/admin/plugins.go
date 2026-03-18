@@ -36,6 +36,10 @@ func (h *Handler) fillPluginsDiagnosticsPageViewModel(r *http.Request) (*compone
 			User:         user,
 			IsAdmin:      isAdmin,
 			SelectedItem: "plugins",
+			Breadcrumbs: []commonComp.BreadcrumbItem{
+				{Label: "Plateforme", Href: "/admin/"},
+				{Label: "Plugins", Href: ""},
+			},
 			NavigationItems: func(vmodel commonComp.AppLayoutVModel) templ.Component {
 				return commonComp.AdminNavigationItems(vmodel)
 			},

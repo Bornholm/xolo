@@ -10,17 +10,17 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/bornholm/genai/llm/provider"
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
+	"github.com/bornholm/go-x/slogx"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
 	"github.com/bornholm/xolo/internal/crypto"
+	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/org/component"
-	"github.com/bornholm/go-x/slogx"
 	"github.com/pkg/errors"
 
-	_ "github.com/bornholm/genai/llm/provider/openai"
 	_ "github.com/bornholm/genai/llm/provider/mistral"
+	_ "github.com/bornholm/genai/llm/provider/openai"
 	_ "github.com/bornholm/genai/llm/provider/openrouter"
 )
 
@@ -48,8 +48,12 @@ func (h *Handler) getProvidersPage(w http.ResponseWriter, r *http.Request) {
 		Providers: providers,
 		Success:   r.URL.Query().Get("success"),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:            user,
-			SelectedItem:    "org-" + orgSlug + "-providers",
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-providers",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: "Fournisseurs", Href: ""},
+			},
 			NavigationItems: nav,
 			FooterItems:     footer,
 		},
@@ -74,8 +78,13 @@ func (h *Handler) getNewProviderPage(w http.ResponseWriter, r *http.Request) {
 		Org:   org,
 		IsNew: true,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:            user,
-			SelectedItem:    "org-" + orgSlug + "-providers",
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-providers",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
+				{Label: "Nouveau fournisseur", Href: ""},
+			},
 			NavigationItems: nav,
 			FooterItems:     footer,
 		},
@@ -145,8 +154,13 @@ func (h *Handler) getEditProviderPage(w http.ResponseWriter, r *http.Request) {
 		Provider: p,
 		IsNew:    false,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:            user,
-			SelectedItem:    "org-" + orgSlug + "-providers",
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-providers",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
+				{Label: p.Name(), Href: ""},
+			},
 			NavigationItems: nav,
 			FooterItems:     footer,
 		},
@@ -367,8 +381,13 @@ func (h *Handler) getModelsPage(w http.ResponseWriter, r *http.Request) {
 		Models:   filtered,
 		Success:  r.URL.Query().Get("success"),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:            user,
-			SelectedItem:    "org-" + orgSlug + "-providers",
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-providers",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
+				{Label: p.Name(), Href: "/orgs/" + orgSlug + "/admin/providers/" + string(p.ID()) + "/models"},
+			},
 			NavigationItems: nav,
 			FooterItems:     footer,
 		},
@@ -401,8 +420,14 @@ func (h *Handler) getNewModelPage(w http.ResponseWriter, r *http.Request) {
 		Provider: p,
 		IsNew:    true,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:            user,
-			SelectedItem:    "org-" + orgSlug + "-providers",
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-providers",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
+				{Label: p.Name(), Href: "/orgs/" + orgSlug + "/admin/providers/" + string(p.ID()) + "/models"},
+				{Label: p.Name(), Href: ""},
+			},
 			NavigationItems: nav,
 			FooterItems:     footer,
 		},
@@ -544,8 +569,14 @@ func (h *Handler) getEditModelPage(w http.ResponseWriter, r *http.Request) {
 		Model:    m,
 		IsNew:    false,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:            user,
-			SelectedItem:    "org-" + orgSlug + "-providers",
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-providers",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
+				{Label: p.Name(), Href: "/orgs/" + orgSlug + "/admin/providers/" + string(p.ID()) + "/models"},
+				{Label: m.ProxyName(), Href: ""},
+			},
 			NavigationItems: nav,
 			FooterItems:     footer,
 		},
@@ -664,8 +695,14 @@ func (h *Handler) renderModelFormError(w http.ResponseWriter, r *http.Request, c
 		IsNew:    isNew,
 		Error:    errMsg,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:            user,
-			SelectedItem:    "org-" + orgSlug + "-providers",
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-providers",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
+				{Label: p.Name(), Href: "/orgs/" + orgSlug + "/admin/providers/" + string(p.ID()) + "/models"},
+				{Label: m.ProxyName(), Href: ""},
+			},
 			NavigationItems: nav,
 			FooterItems:     footer,
 		},
@@ -682,8 +719,13 @@ func (h *Handler) renderProviderFormError(w http.ResponseWriter, r *http.Request
 		IsNew:    isNew,
 		Error:    errMsg,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:            user,
-			SelectedItem:    "org-" + orgSlug + "-providers",
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-providers",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
+				{Label: p.Name(), Href: "/orgs/" + orgSlug + "/admin/providers/" + string(p.ID()) + "/models"},
+			},
 			NavigationItems: nav,
 			FooterItems:     footer,
 		},
