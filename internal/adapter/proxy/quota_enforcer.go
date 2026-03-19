@@ -213,7 +213,7 @@ func formatMicrocents(v int64, currency string) string {
 	if s, ok := symbols[currency]; ok {
 		symbol = s
 	}
-	return fmt.Sprintf("%.2f%s", symbol, float64(v)/1_000_000)
+	return fmt.Sprintf("%.2f%s", float64(v)/1_000_000, symbol)
 }
 
 var _ genaiProxy.PreRequestHook = &XoloQuotaEnforcer{}
