@@ -164,9 +164,10 @@ func ProfilePage(vmodel ProfilePageVModel) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
+			darkMode, _ := vmodel.Preferences.DarkMode()
 			templ_7745c5c3_Err = switchcomp.Switch(switchcomp.Props{
 				Name:    "dark_mode",
-				Checked: vmodel.Preferences.DarkMode(),
+				Checked: darkMode,
 			}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

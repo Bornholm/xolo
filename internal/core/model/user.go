@@ -184,19 +184,23 @@ func NewAuthToken(owner User, orgID OrgID, label, value string, expiresAt *time.
 }
 
 type UserPreferences interface {
-	DarkMode() bool
+	DarkMode() (bool, bool)
 }
 
 type BaseUserPreferences struct {
-	darkMode bool
+	darkMode *bool
 }
 
 // DarkMode implements [UserPreferences].
-func (p *BaseUserPreferences) DarkMode() bool {
-	return p.darkMode
+func (p *BaseUserPreferences) DarkMode() (bool, bool) {
+	if p.darkMode == nil {
+		return false, false
+	}
+
+	return *p.darkMode, true
 }
 
-func SetUserPrefencesDarkMode(darkMode bool) BaseUserPreferencesSetter {
+func SetUserPrefencesDarkMode(darkMode *bool) BaseUserPreferencesSetter {
 	return func(p *BaseUserPreferences) {
 		p.darkMode = darkMode
 	}
@@ -212,7 +216,7 @@ type BaseUserPreferencesSetter func(p *BaseUserPreferences)
 
 func NewUserPreferences(setters ...BaseUserPreferencesSetter) *BaseUserPreferences {
 	preferences := &BaseUserPreferences{
-		darkMode: false,
+		darkMode: nil,
 	}
 	preferences.Set(setters...)
 	return preferences

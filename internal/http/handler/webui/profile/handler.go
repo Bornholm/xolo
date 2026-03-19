@@ -144,7 +144,7 @@ func (h *Handler) updatePreferences(w http.ResponseWriter, r *http.Request) {
 	// Copy user to get a mutable BaseUser and update preferences
 	updatedUser := model.CopyUser(existingUser)
 	updatedUser.SetPreferences(model.NewUserPreferences(
-		model.SetUserPrefencesDarkMode(darkMode),
+		model.SetUserPrefencesDarkMode(&darkMode),
 	))
 
 	// Save user with updated preferences

@@ -75,8 +75,14 @@ templ PublicShareFooterItems(vmodel AppLayoutVModel) {
 templ AppLayout(vmodel AppLayoutVModel, funcs ...PageOptionFunc) {
 	{{ funcs = append(funcs, WithScripts(dialog.Script())) }}
 	{{
-		if vmodel.User != nil && vmodel.User.Preferences().DarkMode() {
-			funcs = append(funcs, WithVariant(VariantDark))
+		if vmodel.User != nil {
+			if darkMode, exists := vmodel.User.Preferences().DarkMode(); exists {
+				if darkMode {
+					funcs = append(funcs, WithVariant(VariantDark))
+				} else {
+					funcs = append(funcs, WithVariant(VariantLight))
+				}
+			}
 		}
 	}}
 	@Page(funcs...) {

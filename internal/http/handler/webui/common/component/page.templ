@@ -1,6 +1,11 @@
 package component
 
-const VariantDark string = "dark"
+import "github.com/bornholm/xolo/internal/http/context"
+
+const (
+	VariantDark  string = "dark"
+	VariantLight string = "light"
+)
 
 type PageOptions struct {
 	Title       string
@@ -57,9 +62,15 @@ func NewPageOptions(funcs ...PageOptionFunc) *PageOptions {
 }
 
 templ Page(funcs ...PageOptionFunc) {
-	{{ opts := NewPageOptions(funcs...) }}
+	{{
+		opts := NewPageOptions(funcs...)
+		variant := opts.Variant
+		if variant == "" {
+			variant = context.ColorScheme(ctx)
+		}
+	}}
 	<!DOCTYPE html>
-	<html class={ opts.Variant }>
+	<html class={ variant }>
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>

@@ -11,6 +11,7 @@ import (
 	sloghttp "github.com/samber/slog-http"
 
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
+	"github.com/bornholm/xolo/internal/http/middleware/colorscheme"
 )
 
 type Server struct {
@@ -48,6 +49,10 @@ func (s *Server) Run(ctx context.Context) error {
 			next.ServeHTTP(w, r)
 		})
 	}(handler)
+
+	colorScheme := colorscheme.Middleware()
+
+	handler = colorScheme(handler)
 
 	server := http.Server{
 		Addr:    s.opts.Address,

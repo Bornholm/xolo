@@ -19,7 +19,7 @@ type User struct {
 	DisplayName string
 	Email       string `gorm:"unique"`
 
-	AuthTokens  []*AuthToken  `gorm:"foreignKey:OwnerID;constraint:OnDelete:CASCADE;"`
+	AuthTokens []*AuthToken `gorm:"foreignKey:OwnerID;constraint:OnDelete:CASCADE;"`
 
 	Roles []*UserRole `gorm:"constraint:OnDelete:CASCADE;"`
 
@@ -33,8 +33,11 @@ type wrappedUserPreference struct {
 }
 
 // DarkMode implements model.UserPreferences.
-func (p *wrappedUserPreference) DarkMode() bool {
-	return p.p.DarkMode
+func (p *wrappedUserPreference) DarkMode() (bool, bool) {
+	if p.p.DarkMode == nil {
+		return false, false
+	}
+	return *p.p.DarkMode, true
 }
 
 var _ model.UserPreferences = &wrappedUserPreference{}
@@ -43,7 +46,7 @@ var _ model.UserPreferences = &wrappedUserPreference{}
 type UserPreferences struct {
 	ID       uint   `gorm:"primaryKey"`
 	UserID   string `gorm:"unique;index"`
-	DarkMode bool
+	DarkMode *bool
 }
 
 // fromUser converts a model.User to a GORM User
@@ -58,9 +61,16 @@ func fromUser(u model.User) *User {
 	}
 
 	prefs := u.Preferences()
+
+	darkMode, darkModeExists := prefs.DarkMode()
+
 	user.Preferences = &UserPreferences{
 		UserID:   string(u.ID()),
-		DarkMode: prefs.DarkMode(),
+		DarkMode: nil,
+	}
+
+	if darkModeExists {
+		user.Preferences.DarkMode = &darkMode
 	}
 
 	for _, r := range u.Roles() {
@@ -161,11 +171,11 @@ type wrappedAuthToken struct {
 	t *AuthToken
 }
 
-func (w *wrappedAuthToken) ID() model.AuthTokenID    { return model.AuthTokenID(w.t.ID) }
-func (w *wrappedAuthToken) Owner() model.User         { return &wrappedUser{w.t.Owner} }
-func (w *wrappedAuthToken) Label() string             { return w.t.Label }
-func (w *wrappedAuthToken) Value() string             { return w.t.Value }
-func (w *wrappedAuthToken) OrgID() model.OrgID        { return model.OrgID(w.t.OrgID) }
-func (w *wrappedAuthToken) ExpiresAt() *time.Time     { return w.t.ExpiresAt }
+func (w *wrappedAuthToken) ID() model.AuthTokenID { return model.AuthTokenID(w.t.ID) }
+func (w *wrappedAuthToken) Owner() model.User     { return &wrappedUser{w.t.Owner} }
+func (w *wrappedAuthToken) Label() string         { return w.t.Label }
+func (w *wrappedAuthToken) Value() string         { return w.t.Value }
+func (w *wrappedAuthToken) OrgID() model.OrgID    { return model.OrgID(w.t.OrgID) }
+func (w *wrappedAuthToken) ExpiresAt() *time.Time { return w.t.ExpiresAt }
 
 var _ model.AuthToken = &wrappedAuthToken{}

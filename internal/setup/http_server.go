@@ -21,7 +21,6 @@ import (
 	gohttp "net/http"
 )
 
-
 func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Server, error) {
 	oidcAuthn, err := getOIDCAuthnHandlerFromConfig(ctx, conf)
 	if err != nil {

@@ -72,9 +72,10 @@ templ ProfilePage(vmodel ProfilePageVModel) {
 								<label class="text-sm font-medium block">Mode sombre</label>
 								<p class="text-sm text-muted-foreground">Activer le thème sombre pour l'interface utilisateur</p>
 							</div>
+							{{ darkMode, _ := vmodel.Preferences.DarkMode() }}
 							@switchcomp.Switch(switchcomp.Props{
 								Name:    "dark_mode",
-								Checked: vmodel.Preferences.DarkMode(),
+								Checked: darkMode,
 							})
 						</div>
 					</div>
