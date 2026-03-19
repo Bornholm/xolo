@@ -28,7 +28,7 @@ templ CommonFooterItems(vmodel AppLayoutVModel) {
 
 templ AppFooterItems(vmodel AppLayoutVModel) {
 	if AssertUser(ctx, authz.Has(authz.RoleAdmin)) {
-		@NavItem(icon.Settings, "Plateforme", string(BaseURL(ctx, WithPath("/admin/"))), vmodel.SelectedItem == "admin")
+		@NavItem(icon.CloudCog, "Plateforme", string(BaseURL(ctx, WithPath("/admin/"))), vmodel.SelectedItem == "admin")
 	}
 	for _, m := range OrgAdminMemberships(ctx) {
 		if m.Org() != nil {
@@ -39,7 +39,7 @@ templ AppFooterItems(vmodel AppLayoutVModel) {
 }
 
 templ AdminFooterItems(vmodel AppLayoutVModel) {
-	@NavItem(icon.ChartBar, "Usage", string(BaseURL(ctx, WithPath("/usage"))), vmodel.SelectedItem == "user-view")
+	@NavItem(icon.Monitor, "Espace de travail", string(BaseURL(ctx, WithPath("/usage"))), vmodel.SelectedItem == "user-view")
 	for _, m := range OrgAdminMemberships(ctx) {
 		if m.Org() != nil {
 			@NavItem(icon.Building, m.Org().Name(), string(BaseURL(ctx, WithPath("/orgs/", m.Org().Slug(), "/usage"))), false)
@@ -49,9 +49,9 @@ templ AdminFooterItems(vmodel AppLayoutVModel) {
 }
 
 templ OrgAdminFooterItems(vmodel AppLayoutVModel) {
-	@NavItem(icon.ChartBar, "Usage", string(BaseURL(ctx, WithPath("/usage"))), vmodel.SelectedItem == "user-view")
+	@NavItem(icon.Monitor, "Espace de travail", string(BaseURL(ctx, WithPath("/usage"))), vmodel.SelectedItem == "user-view")
 	if AssertUser(ctx, authz.Has(authz.RoleAdmin)) {
-		@NavItem(icon.Settings, "Plateforme", string(BaseURL(ctx, WithPath("/admin/"))), vmodel.SelectedItem == "admin")
+		@NavItem(icon.CloudCog, "Plateforme", string(BaseURL(ctx, WithPath("/admin/"))), vmodel.SelectedItem == "admin")
 	}
 	@CommonFooterItems(vmodel)
 }

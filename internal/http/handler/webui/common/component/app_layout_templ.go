@@ -149,7 +149,7 @@ func AppFooterItems(vmodel AppLayoutVModel) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if AssertUser(ctx, authz.Has(authz.RoleAdmin)) {
-			templ_7745c5c3_Err = NavItem(icon.Settings, "Plateforme", string(BaseURL(ctx, WithPath("/admin/"))), vmodel.SelectedItem == "admin").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = NavItem(icon.CloudCog, "Plateforme", string(BaseURL(ctx, WithPath("/admin/"))), vmodel.SelectedItem == "admin").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -191,7 +191,7 @@ func AdminFooterItems(vmodel AppLayoutVModel) templ.Component {
 			templ_7745c5c3_Var5 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = NavItem(icon.ChartBar, "Usage", string(BaseURL(ctx, WithPath("/usage"))), vmodel.SelectedItem == "user-view").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = NavItem(icon.Monitor, "Espace de travail", string(BaseURL(ctx, WithPath("/usage"))), vmodel.SelectedItem == "user-view").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -232,12 +232,12 @@ func OrgAdminFooterItems(vmodel AppLayoutVModel) templ.Component {
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = NavItem(icon.ChartBar, "Usage", string(BaseURL(ctx, WithPath("/usage"))), vmodel.SelectedItem == "user-view").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = NavItem(icon.Monitor, "Espace de travail", string(BaseURL(ctx, WithPath("/usage"))), vmodel.SelectedItem == "user-view").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if AssertUser(ctx, authz.Has(authz.RoleAdmin)) {
-			templ_7745c5c3_Err = NavItem(icon.Settings, "Plateforme", string(BaseURL(ctx, WithPath("/admin/"))), vmodel.SelectedItem == "admin").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = NavItem(icon.CloudCog, "Plateforme", string(BaseURL(ctx, WithPath("/admin/"))), vmodel.SelectedItem == "admin").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
