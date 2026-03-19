@@ -6541,13 +6541,13 @@ func currencySymbol(currency string) string {
 
 // formatCost formats an absolute cost stored in microcents (1 microcent = $0.000001).
 func formatCost(v int64, currency string) string {
-	return fmt.Sprintf("%s%.6f", currencySymbol(currency), float64(v)/1_000_000)
+	return fmt.Sprintf("%.6f%s", float64(v)/1_000_000, currencySymbol(currency))
 }
 
 // formatCostRate formats a pricing rate stored as microcents per 1K tokens,
 // displaying it as dollars per million tokens (industry standard).
 func formatCostRate(v int64, currency string) string {
-	return fmt.Sprintf("%s%.4f/1M", currencySymbol(currency), float64(v)/1_000)
+	return fmt.Sprintf("%.4f%s/1M", float64(v)/1_000, currencySymbol(currency))
 }
 
 func fmtInt(v int64) string {

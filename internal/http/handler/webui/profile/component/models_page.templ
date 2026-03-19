@@ -3,19 +3,23 @@ package component
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/bornholm/xolo/internal/core/model"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 )
 
+const DefaultMaxDisplayedModels int = 3
+
 type ModelsPageVModel struct {
 	AppLayoutVModel common.AppLayoutVModel
 	ModelUsages     []ModelUsage
 	Range           string
+	RemainingCount  int
 }
 
 templ ModelsPage(vmodel ModelsPageVModel) {
-	@common.AppLayout(vmodel.AppLayoutVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Modèles")) {
 		<div class="space-y-6">
 			<!-- Header + period selector -->
 			<div class="flex items-center justify-between">
@@ -47,55 +51,69 @@ templ ModelsPage(vmodel ModelsPageVModel) {
 			if len(vmodel.ModelUsages) == 0 {
 				<p class="text-sm text-muted-foreground">Aucun modèle disponible.</p>
 			} else {
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-					for _, mu := range vmodel.ModelUsages {
-						@card.Card() {
-							@card.Header() {
-								@card.Title() {
+				<div class="space-y-4">
+					<div id="models-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+						{{ max := DefaultMaxDisplayedModels }}
+						if vmodel.RemainingCount == 0 {
+							{{ max = len(vmodel.ModelUsages) }}
+						}
+						for _, mu := range vmodel.ModelUsages[:max] {
+							@card.Card() {
+								@card.Header() {
+									@card.Title() {
+										if mu.Org != nil {
+											{ mu.Org.Slug() + "/" + mu.Model.ProxyName() }
+										} else {
+											{ mu.Model.ProxyName() }
+										}
+									}
 									if mu.Org != nil {
-										{ mu.Org.Slug() + "/" + mu.Model.ProxyName() }
-									} else {
-										{ mu.Model.ProxyName() }
+										<p class="text-xs text-muted-foreground">{ mu.Org.Name() }</p>
 									}
 								}
-								if mu.Org != nil {
-									<p class="text-xs text-muted-foreground">{ mu.Org.Name() }</p>
-								}
-							}
-							@card.Content() {
-								<div class="space-y-3">
-									if mu.Model.Description() != "" {
-										<p class="text-sm text-muted-foreground">{ mu.Model.Description() }</p>
-									}
-									<div class="grid grid-cols-2 gap-2 text-sm">
-										<div>
-											<span class="text-muted-foreground">Prompt (1K tokens)</span>
-											<p class="font-medium">{ formatCost(mu.Model.PromptCostPer1KTokens(), "USD") }</p>
+								@card.Content() {
+									<div class="space-y-3">
+										if mu.Model.Description() != "" {
+											<p class="text-sm text-muted-foreground">{ mu.Model.Description() }</p>
+										}
+										<div class="grid grid-cols-2 gap-2 text-sm">
+											<div>
+												<span class="text-muted-foreground">Prompt (1M tokens)</span>
+												<p class="font-medium">{ formatCostPerM(mu.Model.PromptCostPer1KTokens(), orgCurrency(mu.Org)) }</p>
+											</div>
+											<div>
+												<span class="text-muted-foreground">Complétion (1M tokens)</span>
+												<p class="font-medium">{ formatCostPerM(mu.Model.CompletionCostPer1KTokens(), orgCurrency(mu.Org)) }</p>
+											</div>
 										</div>
-										<div>
-											<span class="text-muted-foreground">Complétion (1K tokens)</span>
-											<p class="font-medium">{ formatCost(mu.Model.CompletionCostPer1KTokens(), "USD") }</p>
-										</div>
+										if mu.Aggregate != nil && mu.Aggregate.TotalRequests > 0 {
+											<div class="border-t pt-3 grid grid-cols-3 gap-2 text-sm">
+												<div>
+													<span class="text-muted-foreground">Requêtes</span>
+													<p class="font-medium">{ fmt.Sprintf("%d", mu.Aggregate.TotalRequests) }</p>
+												</div>
+												<div>
+													<span class="text-muted-foreground">Tokens</span>
+													<p class="font-medium">{ fmt.Sprintf("%d", mu.Aggregate.TotalTokens) }</p>
+												</div>
+												<div>
+													<span class="text-muted-foreground">Coût</span>
+													<p class="font-medium">{ formatCost(mu.Aggregate.TotalCost, mu.Aggregate.Currency) }</p>
+												</div>
+											</div>
+										}
 									</div>
-									if mu.Aggregate != nil && mu.Aggregate.TotalRequests > 0 {
-										<div class="border-t pt-3 grid grid-cols-3 gap-2 text-sm">
-											<div>
-												<span class="text-muted-foreground">Requêtes</span>
-												<p class="font-medium">{ fmt.Sprintf("%d", mu.Aggregate.TotalRequests) }</p>
-											</div>
-											<div>
-												<span class="text-muted-foreground">Tokens</span>
-												<p class="font-medium">{ fmt.Sprintf("%d", mu.Aggregate.TotalTokens) }</p>
-											</div>
-											<div>
-												<span class="text-muted-foreground">Coût</span>
-												<p class="font-medium">{ formatCost(mu.Aggregate.TotalCost, mu.Aggregate.Currency) }</p>
-											</div>
-										</div>
-									}
-								</div>
+								}
 							}
 						}
+					</div>
+					if vmodel.RemainingCount > 0 {
+						<a
+							href={ common.BaseURL(ctx, common.WithPath("/models"), common.WithValues("show_all", "true")) }
+							class="text-sm text-muted-foreground hover:text-foreground underline cursor-pointer"
+						>
+							Afficher { fmt.Sprintf("%d", vmodel.RemainingCount) } modèle(s) supplémentaire(s)
+						</a>
 					}
 				</div>
 			}
@@ -266,4 +284,86 @@ func openCodeConfigExample(baseURL string, modelUsages []ModelUsage) string {
 		return ""
 	}
 	return string(data)
+}
+
+func formatCostPerM(microcentsPer1K int64, currency string) string {
+	return formatCostPerMCurrency(currency, microcentsPer1K*1000)
+}
+
+func formatCostPerMCurrency(currency string, microcents int64) string {
+	symbol := "$"
+	switch currency {
+	case "EUR":
+		symbol = "€"
+	case "GBP":
+		symbol = "£"
+	case "JPY":
+		symbol = "¥"
+	}
+	return fmt.Sprintf("%.6f%s", float64(microcents)/1_000_000, symbol)
+}
+
+func orgCurrency(org model.Organization) string {
+	if org == nil {
+		return "USD"
+	}
+	currency := org.Currency()
+	if currency == "" {
+		return "USD"
+	}
+	return currency
+}
+
+templ ModelsGrid(modelUsages []ModelUsage) {
+	<div id="models-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+		for _, mu := range modelUsages {
+			@card.Card() {
+				@card.Header() {
+					@card.Title() {
+						if mu.Org != nil {
+							{ mu.Org.Slug() + "/" + mu.Model.ProxyName() }
+						} else {
+							{ mu.Model.ProxyName() }
+						}
+					}
+					if mu.Org != nil {
+						<p class="text-xs text-muted-foreground">{ mu.Org.Name() }</p>
+					}
+				}
+				@card.Content() {
+					<div class="space-y-3">
+						if mu.Model.Description() != "" {
+							<p class="text-sm text-muted-foreground">{ mu.Model.Description() }</p>
+						}
+						<div class="grid grid-cols-2 gap-2 text-sm">
+							<div>
+								<span class="text-muted-foreground">Prompt (1M tokens)</span>
+								<p class="font-medium">{ formatCostPerM(mu.Model.PromptCostPer1KTokens(), orgCurrency(mu.Org)) }</p>
+							</div>
+							<div>
+								<span class="text-muted-foreground">Complétion (1M tokens)</span>
+								<p class="font-medium">{ formatCostPerM(mu.Model.CompletionCostPer1KTokens(), orgCurrency(mu.Org)) }</p>
+							</div>
+						</div>
+						if mu.Aggregate != nil && mu.Aggregate.TotalRequests > 0 {
+							<div class="border-t pt-3 grid grid-cols-3 gap-2 text-sm">
+								<div>
+									<span class="text-muted-foreground">Requêtes</span>
+									<p class="font-medium">{ fmt.Sprintf("%d", mu.Aggregate.TotalRequests) }</p>
+								</div>
+								<div>
+									<span class="text-muted-foreground">Tokens</span>
+									<p class="font-medium">{ fmt.Sprintf("%d", mu.Aggregate.TotalTokens) }</p>
+								</div>
+								<div>
+									<span class="text-muted-foreground">Coût</span>
+									<p class="font-medium">{ formatCost(mu.Aggregate.TotalCost, mu.Aggregate.Currency) }</p>
+								</div>
+							</div>
+						}
+					</div>
+				}
+			}
+		}
+	</div>
 }

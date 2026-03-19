@@ -66,7 +66,7 @@ func usagePercent(used int64, budget *int64) int {
 }
 
 templ DashboardPage(vmodel DashboardPageVModel) {
-	@common.AppLayout(vmodel.AppLayoutVModel, common.WithScripts(chart.Script())) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Usage"), common.WithScripts(chart.Script())) {
 		<div class="space-y-6">
 			<!-- Header + period selector -->
 			<div class="flex items-center justify-between">

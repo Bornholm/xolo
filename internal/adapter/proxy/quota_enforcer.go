@@ -19,7 +19,7 @@ type quotaResolver interface {
 // XoloQuotaEnforcer is a PreRequestHook that checks the effective budget quota
 // for the requesting user and org, rejecting requests that would exceed it.
 type XoloQuotaEnforcer struct {
-	quotaResolver quotaResolver  // for per-user effective quota
+	quotaResolver quotaResolver   // for per-user effective quota
 	quotaStore    port.QuotaStore // for org-level GetQuota + SumCost checks
 	usageStore    port.UsageStore
 	userStore     port.UserStore
@@ -213,7 +213,7 @@ func formatMicrocents(v int64, currency string) string {
 	if s, ok := symbols[currency]; ok {
 		symbol = s
 	}
-	return fmt.Sprintf("%s%.2f", symbol, float64(v)/1_000_000)
+	return fmt.Sprintf("%.2f%s", symbol, float64(v)/1_000_000)
 }
 
 var _ genaiProxy.PreRequestHook = &XoloQuotaEnforcer{}

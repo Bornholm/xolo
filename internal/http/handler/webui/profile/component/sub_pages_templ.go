@@ -390,7 +390,7 @@ func formatCost(microcents int64, currency string) string {
 	case "JPY":
 		symbol = "¥"
 	}
-	return fmt.Sprintf("%s%.6f", symbol, float64(microcents)/1_000_000)
+	return fmt.Sprintf("%.6f%s", float64(microcents)/1_000_000, symbol)
 }
 
 var _ = templruntime.GeneratedTemplate

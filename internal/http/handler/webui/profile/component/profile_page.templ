@@ -17,7 +17,7 @@ type ProfilePageVModel struct {
 }
 
 templ ProfilePage(vmodel ProfilePageVModel) {
-	@common.AppLayout(vmodel.AppLayoutVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Profil")) {
 		<div class="space-y-6">
 			<!-- Header -->
 			<div class="flex items-center gap-4">

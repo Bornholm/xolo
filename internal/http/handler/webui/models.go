@@ -1,8 +1,11 @@
 package webui
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
+	"sort"
+	"time"
 
 	"github.com/a-h/templ"
 	"github.com/bornholm/go-x/slogx"
@@ -20,8 +23,58 @@ func (h *Handler) getModelsPage(w http.ResponseWriter, r *http.Request) {
 
 	rangeParam := r.URL.Query().Get("range")
 	since := dashboardRangeToSince(rangeParam)
+	showAll := r.URL.Query().Get("show_all") == "true"
 
-	userID := user.ID()
+	modelUsages := h.loadModelUsages(ctx, user.ID(), memberships, since)
+
+	sort.Slice(modelUsages, func(i, j int) bool {
+		a := modelUsages[i].Aggregate
+		b := modelUsages[j].Aggregate
+		if a == nil && b == nil {
+			return false
+		}
+		if a == nil {
+			return false
+		}
+		if b == nil {
+			return true
+		}
+		return a.TotalRequests > b.TotalRequests
+	})
+
+	totalCount := len(modelUsages)
+	remainingCount := totalCount - component.DefaultMaxDisplayedModels
+
+	if !showAll && totalCount > component.DefaultMaxDisplayedModels {
+		modelUsages = modelUsages[:component.DefaultMaxDisplayedModels]
+	} else {
+		remainingCount = 0
+	}
+
+	vmodel := component.ModelsPageVModel{
+		AppLayoutVModel: common.AppLayoutVModel{
+			User:         user,
+			SelectedItem: "models",
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: "Espace de travail", Href: "/usage"},
+				{Label: "Modèles", Href: ""},
+			},
+			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
+				return common.AppNavigationItems(vmodel)
+			},
+			FooterItems: func(vmodel common.AppLayoutVModel) templ.Component {
+				return common.AppFooterItems(vmodel)
+			},
+		},
+		ModelUsages:    modelUsages,
+		Range:          rangeParam,
+		RemainingCount: remainingCount,
+	}
+
+	templ.Handler(component.ModelsPage(vmodel)).ServeHTTP(w, r)
+}
+
+func (h *Handler) loadModelUsages(ctx context.Context, userID model.UserID, memberships []model.Membership, since time.Time) []component.ModelUsage {
 	var modelUsages []component.ModelUsage
 	for _, m := range memberships {
 		models, err := h.providerStore.ListEnabledLLMModels(ctx, m.OrgID())
@@ -51,25 +104,5 @@ func (h *Handler) getModelsPage(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
-
-	vmodel := component.ModelsPageVModel{
-		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "models",
-			Breadcrumbs: []common.BreadcrumbItem{
-				{Label: "Espace de travail", Href: "/usage"},
-				{Label: "Modèles", Href: ""},
-			},
-			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppNavigationItems(vmodel)
-			},
-			FooterItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppFooterItems(vmodel)
-			},
-		},
-		ModelUsages: modelUsages,
-		Range:       rangeParam,
-	}
-
-	templ.Handler(component.ModelsPage(vmodel)).ServeHTTP(w, r)
+	return modelUsages
 }
