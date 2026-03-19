@@ -492,7 +492,7 @@ func OrgDashboard(vmodel OrgDashboardVModel) templ.Component {
 						}
 						return nil
 					})
-					templ_7745c5c3_Err = button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/usage")), Variant: button.VariantOutline, Size: button.SizeSm}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var24), templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage")), Variant: button.VariantOutline, Size: button.SizeSm}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var24), templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -3846,7 +3846,7 @@ func OrgSettingsPage(vmodel OrgSettingsPageVModel) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 227, "<label for=\"share_quota_equally\" class=\"text-sm font-medium\">Répartir le quota de l'organisation équitablement entre les membres</label></div><p class=\"text-xs text-muted-foreground\">S'applique aux membres sans quota individuel défini.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 227, "<label for=\"share_quota_equally\" class=\"text-sm font-medium\">Répartir le budget de l'organisation équitablement entre les membres</label></div><p class=\"text-xs text-muted-foreground\">S'applique aux membres sans quota individuel défini.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -6447,7 +6447,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 						}
 						ctx = templ.InitializeContext(ctx)
 						templ_7745c5c3_Err = pagination.Previous(pagination.PreviousProps{
-							Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/usage"), common.WithValues("range", vmodel.Range, "page", fmt.Sprintf("%d", vmodel.Page-1))),
+							Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage"), common.WithValues("range", vmodel.Range, "page", fmt.Sprintf("%d", vmodel.Page-1))),
 							Disabled: vmodel.Page <= 1,
 							Label:    "Précédent",
 						}).Render(ctx, templ_7745c5c3_Buffer)
@@ -6459,7 +6459,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 							return templ_7745c5c3_Err
 						}
 						templ_7745c5c3_Err = pagination.Next(pagination.NextProps{
-							Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/usage"), common.WithValues("range", vmodel.Range, "page", fmt.Sprintf("%d", vmodel.Page+1))),
+							Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage"), common.WithValues("range", vmodel.Range, "page", fmt.Sprintf("%d", vmodel.Page+1))),
 							Disabled: !vmodel.HasNext,
 							Label:    "Suivant",
 						}).Render(ctx, templ_7745c5c3_Buffer)

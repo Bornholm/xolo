@@ -156,7 +156,7 @@ func AppFooterItems(vmodel AppLayoutVModel) templ.Component {
 		}
 		for _, m := range OrgAdminMemberships(ctx) {
 			if m.Org() != nil {
-				templ_7745c5c3_Err = NavItem(icon.Building, m.Org().Name(), string(BaseURL(ctx, WithPath("/orgs/", m.Org().Slug(), "/admin/"))), false).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = NavItem(icon.Building, m.Org().Name(), string(BaseURL(ctx, WithPath("/orgs/", m.Org().Slug(), "/usage"))), false).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -197,7 +197,7 @@ func AdminFooterItems(vmodel AppLayoutVModel) templ.Component {
 		}
 		for _, m := range OrgAdminMemberships(ctx) {
 			if m.Org() != nil {
-				templ_7745c5c3_Err = NavItem(icon.Building, m.Org().Name(), string(BaseURL(ctx, WithPath("/orgs/", m.Org().Slug(), "/admin/"))), false).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = NavItem(icon.Building, m.Org().Name(), string(BaseURL(ctx, WithPath("/orgs/", m.Org().Slug(), "/usage"))), false).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

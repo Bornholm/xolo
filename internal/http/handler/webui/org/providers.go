@@ -51,7 +51,7 @@ func (h *Handler) getProvidersPage(w http.ResponseWriter, r *http.Request) {
 			User:         user,
 			SelectedItem: "org-" + orgSlug + "-providers",
 			Breadcrumbs: []common.BreadcrumbItem{
-				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: ""},
 			},
 			NavigationItems: nav,
@@ -81,7 +81,7 @@ func (h *Handler) getNewProviderPage(w http.ResponseWriter, r *http.Request) {
 			User:         user,
 			SelectedItem: "org-" + orgSlug + "-providers",
 			Breadcrumbs: []common.BreadcrumbItem{
-				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
 				{Label: "Nouveau fournisseur", Href: ""},
 			},
@@ -157,7 +157,7 @@ func (h *Handler) getEditProviderPage(w http.ResponseWriter, r *http.Request) {
 			User:         user,
 			SelectedItem: "org-" + orgSlug + "-providers",
 			Breadcrumbs: []common.BreadcrumbItem{
-				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
 				{Label: p.Name(), Href: ""},
 			},
@@ -384,7 +384,7 @@ func (h *Handler) getModelsPage(w http.ResponseWriter, r *http.Request) {
 			User:         user,
 			SelectedItem: "org-" + orgSlug + "-providers",
 			Breadcrumbs: []common.BreadcrumbItem{
-				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
 				{Label: p.Name(), Href: "/orgs/" + orgSlug + "/admin/providers/" + string(p.ID()) + "/models"},
 			},
@@ -423,7 +423,7 @@ func (h *Handler) getNewModelPage(w http.ResponseWriter, r *http.Request) {
 			User:         user,
 			SelectedItem: "org-" + orgSlug + "-providers",
 			Breadcrumbs: []common.BreadcrumbItem{
-				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
 				{Label: p.Name(), Href: "/orgs/" + orgSlug + "/admin/providers/" + string(p.ID()) + "/models"},
 				{Label: p.Name(), Href: ""},
@@ -572,7 +572,7 @@ func (h *Handler) getEditModelPage(w http.ResponseWriter, r *http.Request) {
 			User:         user,
 			SelectedItem: "org-" + orgSlug + "-providers",
 			Breadcrumbs: []common.BreadcrumbItem{
-				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
 				{Label: p.Name(), Href: "/orgs/" + orgSlug + "/admin/providers/" + string(p.ID()) + "/models"},
 				{Label: m.ProxyName(), Href: ""},
@@ -698,7 +698,7 @@ func (h *Handler) renderModelFormError(w http.ResponseWriter, r *http.Request, c
 			User:         user,
 			SelectedItem: "org-" + orgSlug + "-providers",
 			Breadcrumbs: []common.BreadcrumbItem{
-				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
 				{Label: p.Name(), Href: "/orgs/" + orgSlug + "/admin/providers/" + string(p.ID()) + "/models"},
 				{Label: m.ProxyName(), Href: ""},
@@ -722,7 +722,7 @@ func (h *Handler) renderProviderFormError(w http.ResponseWriter, r *http.Request
 			User:         user,
 			SelectedItem: "org-" + orgSlug + "-providers",
 			Breadcrumbs: []common.BreadcrumbItem{
-				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
 				{Label: p.Name(), Href: "/orgs/" + orgSlug + "/admin/providers/" + string(p.ID()) + "/models"},
 			},

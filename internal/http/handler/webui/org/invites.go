@@ -47,7 +47,7 @@ func (h *Handler) getInvitesPage(w http.ResponseWriter, r *http.Request) {
 			User:         user,
 			SelectedItem: "org-" + orgSlug + "-invites",
 			Breadcrumbs: []common.BreadcrumbItem{
-				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Invitations", Href: ""},
 			},
 			NavigationItems: nav,
@@ -76,7 +76,7 @@ func (h *Handler) getNewInvitePage(w http.ResponseWriter, r *http.Request) {
 			User:         user,
 			SelectedItem: "org-" + orgSlug + "-invites",
 			Breadcrumbs: []common.BreadcrumbItem{
-				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Invitations", Href: "/orgs/" + orgSlug + "/admin/invites"},
 			},
 			NavigationItems: nav,

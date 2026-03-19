@@ -205,7 +205,7 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 			User:         user,
 			SelectedItem: "org-" + orgSlug + "-usage",
 			Breadcrumbs: []common.BreadcrumbItem{
-				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Usage", Href: ""},
 			},
 			NavigationItems: nav,

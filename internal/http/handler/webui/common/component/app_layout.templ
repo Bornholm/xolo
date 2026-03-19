@@ -32,7 +32,7 @@ templ AppFooterItems(vmodel AppLayoutVModel) {
 	}
 	for _, m := range OrgAdminMemberships(ctx) {
 		if m.Org() != nil {
-			@NavItem(icon.Building, m.Org().Name(), string(BaseURL(ctx, WithPath("/orgs/", m.Org().Slug(), "/admin/"))), false)
+			@NavItem(icon.Building, m.Org().Name(), string(BaseURL(ctx, WithPath("/orgs/", m.Org().Slug(), "/usage"))), false)
 		}
 	}
 	@CommonFooterItems(vmodel)
@@ -42,7 +42,7 @@ templ AdminFooterItems(vmodel AppLayoutVModel) {
 	@NavItem(icon.ChartBar, "Usage", string(BaseURL(ctx, WithPath("/usage"))), vmodel.SelectedItem == "user-view")
 	for _, m := range OrgAdminMemberships(ctx) {
 		if m.Org() != nil {
-			@NavItem(icon.Building, m.Org().Name(), string(BaseURL(ctx, WithPath("/orgs/", m.Org().Slug(), "/admin/"))), false)
+			@NavItem(icon.Building, m.Org().Name(), string(BaseURL(ctx, WithPath("/orgs/", m.Org().Slug(), "/usage"))), false)
 		}
 	}
 	@CommonFooterItems(vmodel)

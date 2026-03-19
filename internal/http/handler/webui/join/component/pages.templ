@@ -72,8 +72,8 @@ templ JoinSuccess(vmodel JoinSuccessVModel) {
 				@card.Content() {
 					<div class="space-y-4">
 						<p class="text-sm">Vous avez rejoint l'organisation <strong>{ vmodel.OrgName }</strong>.</p>
-						@button.Button(button.Props{Href: "/orgs/" + vmodel.OrgSlug + "/admin/"}) {
-							Accéder au tableau de bord
+						@button.Button(button.Props{Href: "/orgs/" + vmodel.OrgSlug + "/usage"}) {
+							Accéder à l'organisation
 						}
 					</div>
 				}

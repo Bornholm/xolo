@@ -35,15 +35,7 @@ func OrgNavItems(orgSlug string, selectedItem string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = common.NavItem(icon.LayoutDashboard, "Tableau de bord", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/")), selectedItem == "org-"+orgSlug+"-dashboard").Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = common.NavItem(icon.Users, "Membres", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/members")), selectedItem == "org-"+orgSlug+"-members").Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = common.NavItem(icon.Server, "Fournisseurs", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/providers")), selectedItem == "org-"+orgSlug+"-providers").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = common.NavItem(icon.ChartColumn, "Usage", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/usage")), selectedItem == "org-"+orgSlug+"-usage").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -51,11 +43,15 @@ func OrgNavItems(orgSlug string, selectedItem string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
+		templ_7745c5c3_Err = common.NavItem(icon.Users, "Membres", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/members")), selectedItem == "org-"+orgSlug+"-members").Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
 		templ_7745c5c3_Err = common.NavItem(icon.Mail, "Invitations", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/invites")), selectedItem == "org-"+orgSlug+"-invites").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = common.NavItem(icon.ChartColumn, "Usage", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/usage")), selectedItem == "org-"+orgSlug+"-usage").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = common.NavItem(icon.Server, "Fournisseurs", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/providers")), selectedItem == "org-"+orgSlug+"-providers").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

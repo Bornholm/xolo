@@ -31,7 +31,7 @@ func (h *Handler) getSettingsPage(w http.ResponseWriter, r *http.Request) {
 			User:         user,
 			SelectedItem: "org-" + orgSlug + "-settings",
 			Breadcrumbs: []common.BreadcrumbItem{
-				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Paramètres", Href: ""},
 			},
 			NavigationItems: nav,

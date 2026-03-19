@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"slices"
 
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	"github.com/bornholm/xolo/internal/core/model"
+	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	"github.com/bornholm/xolo/internal/http/middleware/authz"
 )
 
@@ -25,7 +25,7 @@ func (h *Handler) getHomePage(w http.ResponseWriter, r *http.Request) {
 		memberships := httpCtx.Memberships(ctx)
 		if org := firstAdminOrg(memberships); org != nil {
 			if len(memberships) > 0 {
-				http.Redirect(w, r, baseURL.JoinPath("/orgs/", org.Slug(), "/admin/").String(), http.StatusTemporaryRedirect)
+				http.Redirect(w, r, baseURL.JoinPath("/orgs/", org.Slug(), "/usage").String(), http.StatusTemporaryRedirect)
 				return
 			}
 		}

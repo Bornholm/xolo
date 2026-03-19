@@ -70,7 +70,7 @@ templ OrgDashboard(vmodel OrgDashboardVModel) {
 						<p class="text-3xl font-bold">—</p>
 					}
 					@card.Footer() {
-						@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/usage")), Variant: button.VariantOutline, Size: button.SizeSm}) {
+						@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage")), Variant: button.VariantOutline, Size: button.SizeSm}) {
 							Voir
 						}
 					}
@@ -822,7 +822,7 @@ templ OrgSettingsPage(vmodel OrgSettingsPageVModel) {
 							<input type="checkbox" id="share_quota_equally" name="share_quota_equally" class="h-4 w-4"/>
 						}
 						<label for="share_quota_equally" class="text-sm font-medium">
-							Répartir le quota de l'organisation équitablement entre les membres
+							Répartir le budget de l'organisation équitablement entre les membres
 						</label>
 					</div>
 					<p class="text-xs text-muted-foreground">S'applique aux membres sans quota individuel défini.</p>
@@ -1307,12 +1307,12 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 				@pagination.Pagination() {
 					@pagination.Content() {
 						@pagination.Previous(pagination.PreviousProps{
-							Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/usage"), common.WithValues("range", vmodel.Range, "page", fmt.Sprintf("%d", vmodel.Page-1))),
+							Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage"), common.WithValues("range", vmodel.Range, "page", fmt.Sprintf("%d", vmodel.Page-1))),
 							Disabled: vmodel.Page <= 1,
 							Label:    "Précédent",
 						})
 						@pagination.Next(pagination.NextProps{
-							Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/usage"), common.WithValues("range", vmodel.Range, "page", fmt.Sprintf("%d", vmodel.Page+1))),
+							Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage"), common.WithValues("range", vmodel.Range, "page", fmt.Sprintf("%d", vmodel.Page+1))),
 							Disabled: !vmodel.HasNext,
 							Label:    "Suivant",
 						})

@@ -84,8 +84,8 @@ templ OrgsPage(vmodel OrgsPageVModel) {
 										}
 										@table.Cell() {
 											<div class="flex gap-2">
-												@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", org.Slug(), "/admin/")), Variant: button.VariantOutline, Size: button.SizeSm}) {
-													Admin
+												@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", org.Slug(), "/usage")), Variant: button.VariantOutline, Size: button.SizeSm}) {
+													Usage
 												}
 												@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/admin/orgs/", string(org.ID()), "/edit")), Variant: button.VariantOutline, Size: button.SizeSm}) {
 													Modifier

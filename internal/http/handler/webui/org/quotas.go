@@ -45,8 +45,8 @@ func (h *Handler) getOrgQuotaPage(w http.ResponseWriter, r *http.Request) {
 			User:         user,
 			SelectedItem: "org-" + orgSlug + "-quota",
 			Breadcrumbs: []common.BreadcrumbItem{
-				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
-				{Label: "Quotas", Href: "/orgs/" + orgSlug + "/admin/quota"},
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
+				{Label: "Budget", Href: "/orgs/" + orgSlug + "/admin/quota"},
 			},
 			NavigationItems: nav,
 			FooterItems:     footer,
@@ -137,10 +137,10 @@ func (h *Handler) getMemberQuotaPage(w http.ResponseWriter, r *http.Request) {
 			User:         user,
 			SelectedItem: "org-" + orgSlug + "-members",
 			Breadcrumbs: []common.BreadcrumbItem{
-				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Membres", Href: "/orgs/" + orgSlug + "/admin/members"},
 				{Label: membership.User().DisplayName(), Href: ""},
-				{Label: "Quotas", Href: ""},
+				{Label: "Budget", Href: ""},
 			},
 			NavigationItems: nav,
 			FooterItems:     footer,

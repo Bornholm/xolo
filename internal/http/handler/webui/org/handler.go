@@ -87,8 +87,11 @@ func NewHandler(
 		})
 	}
 
-	// Org admin routes
-	h.mux.Handle("GET /{orgSlug}/admin/", assertOrgAdmin(http.HandlerFunc(h.getDashboard)))
+	// Org admin routes — redirect /{orgSlug}/admin/ to /{orgSlug}/usage
+	h.mux.Handle("GET /{orgSlug}/admin/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		orgSlug := r.PathValue("orgSlug")
+		http.Redirect(w, r, "/orgs/"+orgSlug+"/usage", http.StatusMovedPermanently)
+	}))
 	h.mux.Handle("GET /{orgSlug}/admin/members", assertOrgAdmin(http.HandlerFunc(h.getMembersPage)))
 	h.mux.Handle("DELETE /{orgSlug}/admin/members/{membershipID}", assertOrgAdmin(http.HandlerFunc(h.deleteMember)))
 
@@ -117,7 +120,7 @@ func NewHandler(
 	h.mux.Handle("POST /{orgSlug}/admin/invites", assertOrgAdmin(http.HandlerFunc(h.createInvite)))
 	h.mux.Handle("DELETE /{orgSlug}/admin/invites/{inviteID}", assertOrgAdmin(http.HandlerFunc(h.revokeInvite)))
 
-	h.mux.Handle("GET /{orgSlug}/admin/usage", assertOrgAdmin(http.HandlerFunc(h.getUsagePage)))
+	h.mux.Handle("GET /{orgSlug}/usage", assertOrgAdmin(http.HandlerFunc(h.getUsagePage)))
 
 	h.mux.Handle("GET /{orgSlug}/admin/settings", assertOrgAdmin(http.HandlerFunc(h.getSettingsPage)))
 	h.mux.Handle("POST /{orgSlug}/admin/settings", assertOrgAdmin(http.HandlerFunc(h.saveSettings)))
