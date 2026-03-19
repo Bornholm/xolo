@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Bornholm/xolo/refs/heads/main/internal/http/handler/webui/common/assets/logo.svg" width="128px" alt="Logo"/>
+  <img src="https://raw.githubusercontent.com/Bornholm/xolo/refs/heads/main/internal/http/handler/webui/common/assets/favicon.svg" width="128px" alt="Logo"/>
 </p>
 
 # Xolo
