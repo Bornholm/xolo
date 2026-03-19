@@ -76,8 +76,8 @@ templ NoOrgPage(vmodel NoOrgPageVModel) {
 					</div>
 				} else {
 					@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-						@alert.Description(alert.DescriptionProps{}) {
-							Aucune invitation en attente. Contactez un administrateur pour rejoindre une organisation.
+						@alert.Description() {
+							<div>Aucune invitation en attente. Contactez un administrateur pour rejoindre une organisation.</div>
 						}
 					}
 				}

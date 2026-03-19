@@ -34,7 +34,11 @@ templ OrgsPage(vmodel OrgsPageVModel) {
 				}
 			</div>
 			if vmodel.Success != "" {
-				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) { Opération réussie. }
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					@alert.Description() {
+						Opération réussie.
+					}
+				}
 			}
 			if len(vmodel.Orgs) == 0 {
 				<div class="rounded-lg border p-6 text-center text-muted-foreground">
@@ -45,21 +49,37 @@ templ OrgsPage(vmodel OrgsPageVModel) {
 					@card.Content() {
 						@table.Table() {
 							@table.Header() {
-								@table.Head() { Nom }
-								@table.Head() { Slug }
-								@table.Head() { Statut }
-								@table.Head() { Actions }
+								@table.Head() {
+									Nom 
+								}
+								@table.Head() {
+									Slug 
+								}
+								@table.Head() {
+									Statut 
+								}
+								@table.Head() {
+									Actions 
+								}
 							}
 							@table.Body() {
 								for _, org := range vmodel.Orgs {
 									@table.Row() {
-										@table.Cell() { { org.Name() } }
-										@table.Cell() { { org.Slug() } }
+										@table.Cell() {
+											{ org.Name() }
+										}
+										@table.Cell() {
+											{ org.Slug() }
+										}
 										@table.Cell() {
 											if org.Active() {
-												@badge.Badge(badge.Props{Variant: badge.VariantDefault}) { Actif }
+												@badge.Badge(badge.Props{Variant: badge.VariantDefault}) {
+													Actif 
+												}
 											} else {
-												@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) { Inactif }
+												@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
+													Inactif 
+												}
 											}
 										}
 										@table.Cell() {
@@ -93,9 +113,13 @@ templ OrgForm(vmodel OrgFormVModel) {
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(title)) {
 		<div class="space-y-6">
 			<h1 class="text-2xl font-semibold">{ title }</h1>
-			if vmodel.Error != "" {
-				@alert.Alert(alert.Props{Variant: alert.VariantDestructive}) { { vmodel.Error } }
-			}
+				if vmodel.Error != "" {
+					@alert.Alert(alert.Props{Variant: alert.VariantDestructive}) {
+						@alert.Description() {
+							{ vmodel.Error }
+						}
+					}
+				}
 			<form method="POST" action={ templ.SafeURL(action) } class="space-y-4">
 				@card.Card() {
 					@card.Content() {
@@ -133,7 +157,9 @@ templ OrgForm(vmodel OrgFormVModel) {
 						</div>
 					}
 					@card.Footer() {
-						@button.Button(button.Props{Type: "submit"}) { Enregistrer }
+						@button.Button(button.Props{Type: "submit"}) {
+							Enregistrer 
+						}
 					}
 				}
 			</form>

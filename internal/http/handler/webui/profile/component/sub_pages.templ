@@ -25,63 +25,63 @@ templ InvitationsPage(vmodel InvitationsPageVModel) {
 			<div class="flex items-center gap-4">
 				@icon.Mail(icon.Props{Class: "h-8 w-8"})
 				<h1 class="text-2xl font-semibold">Invitations en attente</h1>
-			</div>
-			if len(vmodel.Invites) == 0 {
-				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-					@alert.Description(alert.DescriptionProps{}) {
-						Aucune invitation en attente.
+				if len(vmodel.Invites) == 0 {
+					@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+						@alert.Description(alert.DescriptionProps{}) {
+							Aucune invitation en attente.
+						}
 					}
-				}
-			} else {
-				@card.Card() {
-					@card.Content() {
-						@table.Table() {
-							@table.Header() {
-								<tr>
-									<th class="text-left p-3 text-sm font-medium">Organisation</th>
-									<th class="text-left p-3 text-sm font-medium">Rôle</th>
-									<th class="text-left p-3 text-sm font-medium">Expiration</th>
-									<th class="text-right p-3 text-sm font-medium">Actions</th>
-								</tr>
-							}
-							@table.Body() {
-								for _, inv := range vmodel.Invites {
-									@table.Row() {
-										<td class="p-3">
-											if inv.Org() != nil {
-												{ inv.Org().Name() }
-											} else {
-												{ string(inv.OrgID()) }
-											}
-										</td>
-										<td class="p-3">
-											@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
-												{ inv.Role() }
-											}
-										</td>
-										<td class="p-3 text-sm text-muted-foreground">
-											if inv.ExpiresAt() != nil {
-												{ inv.ExpiresAt().Format("02/01/2006") }
-											} else {
-												—
-											}
-										</td>
-										<td class="p-3 text-right">
-											@button.Button(button.Props{
-												Href:    common.BaseURLString(ctx, common.WithPath("/join/", string(inv.ID()))),
-												Variant: button.VariantDefault,
-												Size:    button.SizeSm,
-											}) {
-												Rejoindre
-											}
-										</td>
+				} else {
+					@card.Card() {
+						@card.Content() {
+							@table.Table() {
+								@table.Header() {
+									<tr>
+										<th class="text-left p-3 text-sm font-medium">Organisation</th>
+										<th class="text-left p-3 text-sm font-medium">Rôle</th>
+										<th class="text-left p-3 text-sm font-medium">Expiration</th>
+										<th class="text-right p-3 text-sm font-medium">Actions</th>
+									</tr>
+								}
+								@table.Body() {
+									for _, inv := range vmodel.Invites {
+										@table.Row() {
+											<td class="p-3">
+												if inv.Org() != nil {
+													{ inv.Org().Name() }
+												} else {
+													{ string(inv.OrgID()) }
+												}
+											</td>
+											<td class="p-3">
+												@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
+													{ inv.Role() }
+												}
+											</td>
+											<td class="p-3 text-sm text-muted-foreground">
+												if inv.ExpiresAt() != nil {
+													{ inv.ExpiresAt().Format("02/01/2006") }
+												} else {
+													—
+												}
+											</td>
+											<td class="p-3 text-right">
+												@button.Button(button.Props{
+													Href:    common.BaseURLString(ctx, common.WithPath("/join/", string(inv.ID()))),
+													Variant: button.VariantDefault,
+													Size:    button.SizeSm,
+												}) {
+													Rejoindre
+												}
+											</td>
+										}
 									}
 								}
 							}
 						}
 					}
 				}
-			}
+			</div>
 		</div>
 	}
 }

@@ -48,8 +48,8 @@ templ TokensPage(vmodel TokensPageVModel) {
 				@card.Content() {
 					if len(vmodel.AuthTokens) == 0 {
 						@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-							@alert.Description(alert.DescriptionProps{}) {
-								Aucune clé API configurée. Les clés API permettent aux applications externes d'accéder à votre compte de manière sécurisée.
+							@alert.Description() {
+								<div>Aucune clé API configurée. Les clés API permettent aux applications externes d'accéder à votre compte de manière sécurisée.</div>
 							}
 						}
 					} else {

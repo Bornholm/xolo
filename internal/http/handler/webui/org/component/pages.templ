@@ -93,6 +93,13 @@ templ MembersPage(vmodel MembersPageVModel) {
 					@icon.UserPlus(icon.Props{Class: "h-4 w-4 mr-2"})
 					Inviter
 				}
+				if vmodel.Success != "" {
+					@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+						@alert.Description() {
+							Opération réussie.
+						}
+					}
+				}
 			</div>
 			if vmodel.Success != "" {
 				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
@@ -172,6 +179,13 @@ templ ProvidersPage(vmodel ProvidersPageVModel) {
 				@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/new"))}) {
 					@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
 					Ajouter
+				}
+				if vmodel.Success != "" {
+					@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+						@alert.Description() {
+							Opération réussie.
+						}
+					}
 				}
 			</div>
 			if vmodel.Success != "" {
@@ -257,7 +271,9 @@ templ ProviderForm(vmodel ProviderFormVModel) {
 			<h1 class="text-2xl font-semibold">{ title }</h1>
 			if vmodel.Error != "" {
 				@alert.Alert(alert.Props{Variant: alert.VariantDestructive}) {
-					{ vmodel.Error }
+					@alert.Description() {
+						{ vmodel.Error }
+					}
 				}
 			}
 			<form method="POST" action={ templ.SafeURL(action) } class="space-y-4">
@@ -423,6 +439,13 @@ templ ModelsPage(vmodel ModelsPageVModel) {
 				@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()), "/models/new"))}) {
 					@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
 					Ajouter un modèle
+				}
+				if vmodel.Success != "" {
+					@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+						@alert.Description() {
+							Opération réussie.
+						}
+					}
 				}
 			</div>
 			if vmodel.Success != "" {
@@ -721,13 +744,15 @@ templ QuotaPage(vmodel QuotaPageVModel) {
 			<h1 class="text-2xl font-semibold">{ title }</h1>
 			if vmodel.Success != "" {
 				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-					Budget enregistré.
+					@alert.Description() {
+						Budget enregistré.
+					}
 				}
 			}
 			@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-				@alert.Description(alert.DescriptionProps{}) {
-					Les budgets sont exprimés dans la devise de l'organisation (<strong>{ vmodel.Org.Currency() }</strong>).
-					Pour modifier la devise, rendez-vous dans les <a href={ templ.SafeURL(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/settings"))) } class="underline font-medium">Paramètres</a>.
+				@alert.Description() {
+					<div>Les budgets sont exprimés dans la devise de l'organisation (<strong>{ vmodel.Org.Currency() }</strong>).</div>
+					<div>Pour modifier la devise, rendez-vous dans les <a href={ templ.SafeURL(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/settings"))) } class="underline font-medium">Paramètres</a>.</div>
 				}
 			}
 			<form method="POST" action={ templ.SafeURL(action) } class="space-y-4">
@@ -770,7 +795,9 @@ templ OrgSettingsPage(vmodel OrgSettingsPageVModel) {
 			<h1 class="text-2xl font-semibold">Paramètres</h1>
 			if vmodel.Success != "" {
 				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-					Paramètres enregistrés.
+					@alert.Description() {
+						Paramètres enregistrés.
+					}
 				}
 			}
 			<form method="POST" action={ templ.SafeURL(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/settings"))) } class="space-y-4">
@@ -835,13 +862,17 @@ templ InvitesPage(vmodel InvitesPageVModel) {
 			</div>
 			if vmodel.NewURL != "" {
 				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-					<p class="font-medium">Lien d'invitation créé</p>
-					<p class="text-sm mt-1 font-mono break-all">{ vmodel.NewURL }</p>
+					@alert.Description() {
+						<div class="font-medium">Lien d'invitation créé</div>
+						<div class="text-sm mt-1 font-mono break-all">{ vmodel.NewURL }</div>
+					}
 				}
 			}
 			if vmodel.Success != "" && vmodel.NewURL == "" {
 				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-					Opération réussie.
+					@alert.Description() {
+						Opération réussie.
+					}
 				}
 			}
 			if len(vmodel.Invites) == 0 {
