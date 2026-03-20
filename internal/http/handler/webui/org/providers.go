@@ -117,7 +117,9 @@ func (h *Handler) createProvider(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	cloudTier, _ := strconv.Atoi(r.FormValue("cloud_tier"))
 	p := model.NewProvider(org.ID(), r.FormValue("name"), r.FormValue("provider_type"), strings.TrimSpace(r.FormValue("base_url")), encryptedKey, r.FormValue("currency"))
+	p.SetCloudTier(cloudTier)
 	if err := h.providerStore.CreateProvider(ctx, p); err != nil {
 		slog.ErrorContext(ctx, "could not create provider", slogx.Error(err))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -256,6 +258,8 @@ func (h *Handler) updateProvider(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	cloudTier, _ := strconv.Atoi(r.FormValue("cloud_tier"))
+
 	updated := &updatedProviderAdapter{
 		id:              existing.ID(),
 		orgID:           existing.OrgID(),
@@ -265,6 +269,7 @@ func (h *Handler) updateProvider(w http.ResponseWriter, r *http.Request) {
 		apiKey:          apiKey,
 		active:          r.FormValue("active") == "on",
 		currency:        currency,
+		cloudTier:       cloudTier,
 		createdAt:       existing.CreatedAt(),
 		updatedAt:       time.Now(),
 		retryConfig:     retryConfig,
@@ -456,6 +461,27 @@ func parseIntField(v string) int64 {
 	return n
 }
 
+func parseFloat64Field(v string) float64 {
+	f, err := strconv.ParseFloat(v, 64)
+	if err != nil || f < 0 {
+		return 0
+	}
+	return f
+}
+
+// parseActiveParamsField parses a billions value (e.g. "7" for 7B) into raw int64.
+// Returns 0 if the input is empty or invalid.
+func parseActiveParamsField(v string) int64 {
+	if v == "" {
+		return 0
+	}
+	f, err := strconv.ParseFloat(v, 64)
+	if err != nil || f <= 0 {
+		return 0
+	}
+	return int64(f * 1e9)
+}
+
 func parseCostField(v string) int64 {
 	// Parse a dollar value per 1M tokens and convert to microcents per 1K tokens.
 	// e.g. "2.50" ($/1M) → 2500 microcents/1K  (since 1M = 1000×1K, and 1$ = 1_000_000 microcents)
@@ -533,6 +559,9 @@ func (h *Handler) createModel(w http.ResponseWriter, r *http.Request) {
 	)
 	m.SetContextWindow(parseIntField(r.FormValue("context_window")))
 	m.SetOutputWindow(parseIntField(r.FormValue("output_window")))
+	m.SetActiveParams(parseActiveParamsField(r.FormValue("active_params")))
+	m.SetTokensPerSecLow(parseFloat64Field(r.FormValue("tokens_per_sec_low")))
+	m.SetTokensPerSecHigh(parseFloat64Field(r.FormValue("tokens_per_sec_high")))
 	m.SetCapabilities(model.ModelCapabilities{
 		Tools:     r.FormValue("cap_tools") == "on",
 		Vision:    r.FormValue("cap_vision") == "on",
@@ -678,6 +707,9 @@ func (h *Handler) updateModel(w http.ResponseWriter, r *http.Request) {
 		completionCostPer1KTokens: parseCostField(r.FormValue("completion_cost")),
 		contextWindow:             parseIntField(r.FormValue("context_window")),
 		outputWindow:              parseIntField(r.FormValue("output_window")),
+		activeParams:              parseActiveParamsField(r.FormValue("active_params")),
+		tokensPerSecLow:           parseFloat64Field(r.FormValue("tokens_per_sec_low")),
+		tokensPerSecHigh:          parseFloat64Field(r.FormValue("tokens_per_sec_high")),
 		capabilities: model.ModelCapabilities{
 			Tools:     r.FormValue("cap_tools") == "on",
 			Vision:    r.FormValue("cap_vision") == "on",

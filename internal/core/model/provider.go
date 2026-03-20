@@ -22,6 +22,8 @@ type Provider interface {
 	APIKey() string // encrypted at rest, decrypted on use
 	Active() bool
 	Currency() string
+	// CloudTier indicates the infrastructure tier (0=Hyperscaler, 1=MajorCloud, 2=SmallProvider).
+	CloudTier() int
 	CreatedAt() time.Time
 	UpdatedAt() time.Time
 	RetryConfig() *RetryConfig
@@ -37,6 +39,7 @@ type BaseProvider struct {
 	apiKey          string
 	active          bool
 	currency        string
+	cloudTier       int
 	createdAt       time.Time
 	updatedAt       time.Time
 	retryConfig     *RetryConfig
@@ -51,6 +54,7 @@ func (p *BaseProvider) BaseURL() string      { return p.baseURL }
 func (p *BaseProvider) APIKey() string       { return p.apiKey }
 func (p *BaseProvider) Active() bool         { return p.active }
 func (p *BaseProvider) Currency() string     { return p.currency }
+func (p *BaseProvider) CloudTier() int       { return p.cloudTier }
 func (p *BaseProvider) CreatedAt() time.Time { return p.createdAt }
 func (p *BaseProvider) UpdatedAt() time.Time { return p.updatedAt }
 func (p *BaseProvider) RetryConfig() *RetryConfig         { return p.retryConfig }
@@ -58,6 +62,7 @@ func (p *BaseProvider) RateLimitConfig() *RateLimitConfig { return p.rateLimitCo
 
 func (p *BaseProvider) SetRetryConfig(c *RetryConfig)         { p.retryConfig = c }
 func (p *BaseProvider) SetRateLimitConfig(c *RateLimitConfig) { p.rateLimitConfig = c }
+func (p *BaseProvider) SetCloudTier(t int)                    { p.cloudTier = t }
 
 var _ Provider = &BaseProvider{}
 

@@ -16,6 +16,7 @@ type updatedProviderAdapter struct {
 	apiKey    string
 	active    bool
 	currency  string
+	cloudTier       int
 	createdAt       time.Time
 	updatedAt       time.Time
 	retryConfig     *model.RetryConfig
@@ -30,6 +31,7 @@ func (p *updatedProviderAdapter) BaseURL() string          { return p.baseURL }
 func (p *updatedProviderAdapter) APIKey() string           { return p.apiKey }
 func (p *updatedProviderAdapter) Active() bool             { return p.active }
 func (p *updatedProviderAdapter) Currency() string         { return p.currency }
+func (p *updatedProviderAdapter) CloudTier() int           { return p.cloudTier }
 func (p *updatedProviderAdapter) CreatedAt() time.Time                    { return p.createdAt }
 func (p *updatedProviderAdapter) UpdatedAt() time.Time                    { return p.updatedAt }
 func (p *updatedProviderAdapter) RetryConfig() *model.RetryConfig         { return p.retryConfig }
@@ -50,6 +52,9 @@ type updatedLLMModelAdapter struct {
 	completionCostPer1KTokens int64
 	contextWindow             int64
 	outputWindow              int64
+	activeParams              int64
+	tokensPerSecLow           float64
+	tokensPerSecHigh          float64
 	capabilities              model.ModelCapabilities
 	createdAt                 time.Time
 	updatedAt                 time.Time
@@ -67,6 +72,9 @@ func (m *updatedLLMModelAdapter) PromptCostPer1KTokens() int64       { return m.
 func (m *updatedLLMModelAdapter) CompletionCostPer1KTokens() int64   { return m.completionCostPer1KTokens }
 func (m *updatedLLMModelAdapter) ContextWindow() int64               { return m.contextWindow }
 func (m *updatedLLMModelAdapter) OutputWindow() int64                { return m.outputWindow }
+func (m *updatedLLMModelAdapter) ActiveParams() int64                { return m.activeParams }
+func (m *updatedLLMModelAdapter) TokensPerSecLow() float64           { return m.tokensPerSecLow }
+func (m *updatedLLMModelAdapter) TokensPerSecHigh() float64          { return m.tokensPerSecHigh }
 func (m *updatedLLMModelAdapter) Capabilities() model.ModelCapabilities    { return m.capabilities }
 func (m *updatedLLMModelAdapter) CreatedAt() time.Time                     { return m.createdAt }
 func (m *updatedLLMModelAdapter) UpdatedAt() time.Time                     { return m.updatedAt }

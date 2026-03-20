@@ -95,6 +95,12 @@ type OrgDisplayUsageRecord struct {
 	DisplayCost     int64
 	DisplayCurrency string
 	Converted       bool
+	EnergyWh        float64 // midpoint estimation in Wh (0 = unknown)
+	EnergyLowWh     float64
+	EnergyHighWh    float64
+	CO2GramsMid     float64 // gCO₂ at world-average carbon intensity
+	CO2GramsMin     float64 // gCO₂ at France nuclear intensity (best case)
+	CO2GramsMax     float64 // gCO₂ at coal plant intensity (worst case)
 }
 
 type ChartDataPoint struct {
@@ -122,6 +128,9 @@ type OrgUsagePageVModel struct {
 	ChartPerDay   []ChartDataPoint
 	ChartPerModel []ChartDataPoint
 	ChartPerUser  []ChartDataPoint
+	// Energy estimation
+	TotalEnergyWh    float64 // sum of midpoint estimates (0 if all unknown)
+	TotalCO2GramsMid float64 // sum of CO₂ midpoints (world average, grams)
 }
 
 type PluginsPageVModel struct {
