@@ -36,6 +36,12 @@ type LLMModel interface {
 	// Context limits (0 = unknown / not set)
 	ContextWindow() int64 // max input tokens
 	OutputWindow() int64  // max output tokens
+	// ActiveParams is the number of active parameters (0 = unknown).
+	// Used for energy estimation.
+	ActiveParams() int64
+	// TokensPerSecLow/High : known decode throughput in tokens/s (0 = auto-estimate).
+	TokensPerSecLow() float64
+	TokensPerSecHigh() float64
 	// Capabilities
 	Capabilities() ModelCapabilities
 	CreatedAt() time.Time
@@ -55,6 +61,9 @@ type BaseLLMModel struct {
 	completionCostPer1KTokens int64
 	contextWindow             int64
 	outputWindow              int64
+	activeParams              int64
+	tokensPerSecLow           float64
+	tokensPerSecHigh          float64
 	capabilities              ModelCapabilities
 	createdAt                 time.Time
 	updatedAt                 time.Time
@@ -77,10 +86,17 @@ func (m *BaseLLMModel) CreatedAt() time.Time               { return m.createdAt 
 func (m *BaseLLMModel) UpdatedAt() time.Time               { return m.updatedAt }
 func (m *BaseLLMModel) TokenLimitConfig() *TokenLimitConfig     { return m.tokenLimitConfig }
 
+func (m *BaseLLMModel) ActiveParams() int64                     { return m.activeParams }
+func (m *BaseLLMModel) TokensPerSecLow() float64               { return m.tokensPerSecLow }
+func (m *BaseLLMModel) TokensPerSecHigh() float64              { return m.tokensPerSecHigh }
+
 func (m *BaseLLMModel) SetContextWindow(v int64)               { m.contextWindow = v }
 func (m *BaseLLMModel) SetOutputWindow(v int64)                { m.outputWindow = v }
 func (m *BaseLLMModel) SetCapabilities(c ModelCapabilities)    { m.capabilities = c }
 func (m *BaseLLMModel) SetTokenLimitConfig(c *TokenLimitConfig) { m.tokenLimitConfig = c }
+func (m *BaseLLMModel) SetActiveParams(v int64)                { m.activeParams = v }
+func (m *BaseLLMModel) SetTokensPerSecLow(v float64)           { m.tokensPerSecLow = v }
+func (m *BaseLLMModel) SetTokensPerSecHigh(v float64)          { m.tokensPerSecHigh = v }
 
 var _ LLMModel = &BaseLLMModel{}
 

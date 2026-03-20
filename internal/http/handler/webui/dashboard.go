@@ -12,6 +12,7 @@ import (
 	"github.com/bornholm/go-x/slogx"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
+	"github.com/bornholm/xolo/internal/estimator"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/profile/component"
@@ -147,8 +148,34 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Pre-load models and providers for energy estimation (deduplicated)
+	modelCache := make(map[model.LLMModelID]model.LLMModel)
+	providerCache := make(map[model.ProviderID]model.Provider)
+	for _, rec := range records {
+		mid := rec.ModelID()
+		if mid == "" {
+			continue
+		}
+		if _, ok := modelCache[mid]; ok {
+			continue
+		}
+		m, err := h.providerStore.GetLLMModelByID(ctx, mid)
+		if err != nil {
+			continue
+		}
+		modelCache[mid] = m
+		pid := m.ProviderID()
+		if _, ok := providerCache[pid]; !ok {
+			p, err := h.providerStore.GetProviderByID(ctx, pid)
+			if err == nil {
+				providerCache[pid] = p
+			}
+		}
+	}
+
 	// Build display records with cost converted to org currency where needed
 	displayRecords := make([]component.DisplayUsageRecord, 0, len(records))
+	var totalEnergyWh, totalCO2GramsMid float64
 	for _, rec := range records {
 		dr := component.DisplayUsageRecord{
 			Record:          rec,
@@ -168,6 +195,30 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 					dr.Converted = true
 				}
 			}
+		}
+		// Energy estimation
+		if m, ok := modelCache[rec.ModelID()]; ok && m.ActiveParams() > 0 {
+			tier := estimator.TierHyperscaler
+			if p, ok := providerCache[m.ProviderID()]; ok {
+				tier = estimator.CloudTier(p.CloudTier())
+			}
+			est := estimator.NewCloudEstimator(tier).EstimateFromParams(
+				float64(m.ActiveParams()),
+				estimator.InferenceRequest{
+					InputTokens:  int(rec.PromptTokens()),
+					OutputTokens: int(rec.CompletionTokens()),
+				},
+				m.TokensPerSecLow(),
+				m.TokensPerSecHigh(),
+			)
+			dr.EnergyWh = est.Mid.TotalWh
+			dr.EnergyLowWh = est.Low.TotalWh
+			dr.EnergyHighWh = est.High.TotalWh
+			dr.CO2GramsMid = est.Mid.Equivalences.CO2Grams
+			dr.CO2GramsMin = est.Mid.Equivalences.CO2GramsMin
+			dr.CO2GramsMax = est.Mid.Equivalences.CO2GramsMax
+			totalEnergyWh += est.Mid.TotalWh
+			totalCO2GramsMid += est.Mid.Equivalences.CO2Grams
 		}
 		displayRecords = append(displayRecords, dr)
 	}
@@ -214,15 +265,17 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 				return common.AppFooterItems(vmodel)
 			},
 		},
-		OrgUsages:     orgUsages,
-		Aggregate:     agg,
-		Records:       displayRecords,
-		Orgs:          orgs,
-		Range:         rangeParam,
-		Page:          page,
-		HasNext:       hasNext,
-		ChartPerDay:   dashChartByDate(perDay),
-		ChartPerModel: dashChartByValue(perModel),
+		OrgUsages:        orgUsages,
+		Aggregate:        agg,
+		Records:          displayRecords,
+		Orgs:             orgs,
+		Range:            rangeParam,
+		Page:             page,
+		HasNext:          hasNext,
+		ChartPerDay:      dashChartByDate(perDay),
+		ChartPerModel:    dashChartByValue(perModel),
+		TotalEnergyWh:    totalEnergyWh,
+		TotalCO2GramsMid: totalCO2GramsMid,
 	}
 
 	templ.Handler(component.DashboardPage(vmodel)).ServeHTTP(w, r)

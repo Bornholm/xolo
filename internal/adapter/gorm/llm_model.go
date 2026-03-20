@@ -20,7 +20,10 @@ type LLMModel struct {
 	CompletionCostPer1KTokens int64 `gorm:"default:0"`
 	ContextWindow             int64 `gorm:"default:0"`
 	OutputWindow              int64 `gorm:"default:0"`
-	CapTools                  int   `gorm:"default:0"`
+	ActiveParams              int64   `gorm:"default:0"`
+	TokensPerSecLow           float64 `gorm:"default:0"`
+	TokensPerSecHigh          float64 `gorm:"default:0"`
+	CapTools                  int     `gorm:"default:0"`
 	CapVision                 int   `gorm:"default:0"`
 	CapReasoning              int   `gorm:"default:0"`
 	CapAudio                  int   `gorm:"default:0"`
@@ -42,6 +45,9 @@ func (w *wrappedLLMModel) PromptCostPer1KTokens() int64       { return w.m.Promp
 func (w *wrappedLLMModel) CompletionCostPer1KTokens() int64   { return w.m.CompletionCostPer1KTokens }
 func (w *wrappedLLMModel) ContextWindow() int64               { return w.m.ContextWindow }
 func (w *wrappedLLMModel) OutputWindow() int64                { return w.m.OutputWindow }
+func (w *wrappedLLMModel) ActiveParams() int64                { return w.m.ActiveParams }
+func (w *wrappedLLMModel) TokensPerSecLow() float64          { return w.m.TokensPerSecLow }
+func (w *wrappedLLMModel) TokensPerSecHigh() float64         { return w.m.TokensPerSecHigh }
 func (w *wrappedLLMModel) Capabilities() model.ModelCapabilities {
 	return model.ModelCapabilities{
 		Tools:     w.m.CapTools != 0,
@@ -70,6 +76,9 @@ func fromLLMModel(m model.LLMModel) *LLMModel {
 		CompletionCostPer1KTokens: m.CompletionCostPer1KTokens(),
 		ContextWindow:             m.ContextWindow(),
 		OutputWindow:              m.OutputWindow(),
+		ActiveParams:              m.ActiveParams(),
+		TokensPerSecLow:           m.TokensPerSecLow(),
+		TokensPerSecHigh:          m.TokensPerSecHigh(),
 		CapTools:                  boolToInt(caps.Tools),
 		CapVision:                 boolToInt(caps.Vision),
 		CapReasoning:              boolToInt(caps.Reasoning),

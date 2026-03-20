@@ -32,19 +32,27 @@ type DisplayUsageRecord struct {
 	DisplayCost     int64
 	DisplayCurrency string
 	Converted       bool
+	EnergyWh        float64 // midpoint estimation in Wh (0 = unknown)
+	EnergyLowWh     float64
+	EnergyHighWh    float64
+	CO2GramsMid     float64 // gCO₂ at world-average carbon intensity
+	CO2GramsMin     float64 // gCO₂ at France nuclear intensity (best case)
+	CO2GramsMax     float64 // gCO₂ at coal plant intensity (worst case)
 }
 
 type DashboardPageVModel struct {
-	AppLayoutVModel common.AppLayoutVModel
-	OrgUsages       []OrgUsage
-	Aggregate       *port.UsageAggregate
-	Records         []DisplayUsageRecord
-	Orgs            map[model.OrgID]model.Organization
-	Range           string
-	Page            int
-	HasNext         bool
-	ChartPerDay     []ProfileChartDataPoint
-	ChartPerModel   []ProfileChartDataPoint
+	AppLayoutVModel  common.AppLayoutVModel
+	OrgUsages        []OrgUsage
+	Aggregate        *port.UsageAggregate
+	Records          []DisplayUsageRecord
+	Orgs             map[model.OrgID]model.Organization
+	Range            string
+	Page             int
+	HasNext          bool
+	ChartPerDay      []ProfileChartDataPoint
+	ChartPerModel    []ProfileChartDataPoint
+	TotalEnergyWh    float64 // sum of midpoint estimates (0 if all unknown)
+	TotalCO2GramsMid float64 // sum of CO₂ midpoints (world average, grams)
 }
 
 func dashMaxFloat(a, b float64) float64 {
@@ -52,6 +60,37 @@ func dashMaxFloat(a, b float64) float64 {
 		return a
 	}
 	return b
+}
+
+// formatEnergyWh formats an energy value with auto-scaling (kWh, Wh, mWh, µWh).
+func formatEnergyWh(wh float64) string {
+	if wh <= 0 {
+		return "—"
+	}
+	if wh >= 1000 {
+		return fmt.Sprintf("%.3f kWh", wh/1000)
+	}
+	if wh >= 1 {
+		return fmt.Sprintf("%.3f Wh", wh)
+	}
+	if wh >= 0.001 {
+		return fmt.Sprintf("%.3f mWh", wh*1000)
+	}
+	return fmt.Sprintf("%.3f µWh", wh*1_000_000)
+}
+
+// formatCO2Grams formats a CO₂ quantity in grams with auto-scaling (g, mg, µg).
+func formatCO2Grams(g float64) string {
+	if g <= 0 {
+		return "—"
+	}
+	if g >= 1 {
+		return fmt.Sprintf("%.3f gCO₂", g)
+	}
+	if g >= 0.001 {
+		return fmt.Sprintf("%.3f mgCO₂", g*1000)
+	}
+	return fmt.Sprintf("%.3f µgCO₂", g*1_000_000)
 }
 
 func usagePercent(used int64, budget *int64) int {
@@ -96,7 +135,7 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 			</div>
 			<!-- Summary cards -->
 			if vmodel.Aggregate != nil {
-				<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+				<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
 					@card.Card() {
 						@card.Header() {
 							@card.Title() {
@@ -129,6 +168,25 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 						}
 						@card.Content() {
 							<p class="text-3xl font-bold">{ fmt.Sprintf("%d", vmodel.Aggregate.TotalTokens) }</p>
+						}
+					}
+					if vmodel.TotalEnergyWh > 0 {
+						@card.Card() {
+							@card.Header() {
+								@card.Title() {
+									Énergie / CO₂ estimés
+								}
+							}
+							@card.Content() {
+								<p class="text-3xl font-bold">{ formatEnergyWh(vmodel.TotalEnergyWh) }</p>
+								if vmodel.TotalCO2GramsMid > 0 {
+									<p class="text-sm font-medium text-muted-foreground mt-1">
+										{ formatCO2Grams(vmodel.TotalCO2GramsMid) }
+										<span class="text-xs">(mix monde)</span>
+									</p>
+								}
+								<p class="text-xs text-muted-foreground mt-1">estimation ±facteur ×3-5</p>
+							}
 						}
 					}
 				</div>
@@ -313,6 +371,9 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 									Coût
 								}
 								@table.Head() {
+									Énergie / CO₂
+								}
+								@table.Head() {
 									Date
 								}
 							}
@@ -345,6 +406,26 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 												</span>
 											} else {
 												{ formatCost(dr.DisplayCost, dr.DisplayCurrency) }
+											}
+										}
+										@table.Cell() {
+											if dr.EnergyWh > 0 {
+												<span
+													title={ fmt.Sprintf("min: %s / max: %s", formatEnergyWh(dr.EnergyLowWh), formatEnergyWh(dr.EnergyHighWh)) }
+													class="cursor-help underline decoration-dotted"
+												>
+													{ formatEnergyWh(dr.EnergyWh) }
+												</span>
+												if dr.CO2GramsMid > 0 {
+													<span
+														title={ fmt.Sprintf("CO₂ France : %s / monde : %s / charbon : %s", formatCO2Grams(dr.CO2GramsMin), formatCO2Grams(dr.CO2GramsMid), formatCO2Grams(dr.CO2GramsMax)) }
+														class="block text-xs text-muted-foreground cursor-help"
+													>
+														{ formatCO2Grams(dr.CO2GramsMid) }
+													</span>
+												}
+											} else {
+												—
 											}
 										}
 										@table.Cell() {

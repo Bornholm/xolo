@@ -17,6 +17,7 @@ type Provider struct {
 	APIKey    string `gorm:"not null"` // AES-GCM encrypted hex
 	Active    int    `gorm:"default:1"`
 	Currency  string `gorm:"default:'USD'"`
+	CloudTier int    `gorm:"default:0"`
 	RetryConfig     JSONColumn[model.RetryConfig]     `gorm:"type:text"`
 	RateLimitConfig JSONColumn[model.RateLimitConfig] `gorm:"type:text"`
 
@@ -35,6 +36,7 @@ func (w *wrappedProvider) BaseURL() string       { return w.p.BaseURL }
 func (w *wrappedProvider) APIKey() string        { return w.p.APIKey }
 func (w *wrappedProvider) Active() bool          { return w.p.Active != 0 }
 func (w *wrappedProvider) Currency() string      { return w.p.Currency }
+func (w *wrappedProvider) CloudTier() int        { return w.p.CloudTier }
 func (w *wrappedProvider) CreatedAt() time.Time                 { return w.p.CreatedAt }
 func (w *wrappedProvider) UpdatedAt() time.Time                 { return w.p.UpdatedAt }
 func (w *wrappedProvider) RetryConfig() *model.RetryConfig         { return w.p.RetryConfig.Val }
@@ -52,6 +54,7 @@ func fromProvider(p model.Provider) *Provider {
 		APIKey:          p.APIKey(),
 		Active:          boolToInt(p.Active()),
 		Currency:        p.Currency(),
+		CloudTier:       p.CloudTier(),
 		RetryConfig:     JSONColumn[model.RetryConfig]{Val: p.RetryConfig()},
 		RateLimitConfig: JSONColumn[model.RateLimitConfig]{Val: p.RateLimitConfig()},
 	}
