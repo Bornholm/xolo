@@ -3,6 +3,7 @@ package proxy
 import (
 	"context"
 	"log/slog"
+	"reflect"
 	"strings"
 
 	"github.com/bornholm/genai/llm"
@@ -98,12 +99,7 @@ func (r *OrgModelRouter) ResolveModel(ctx context.Context, req *genaiProxy.Proxy
 	}
 
 	client, err := provider.Create(ctx,
-		provider.WithChatCompletionOptions(provider.ClientOptions{
-			Provider: provider.Name(p.Type()),
-			BaseURL:  p.BaseURL(),
-			APIKey:   decryptedKey,
-			Model:    llmModel.RealModel(),
-		}),
+		withDynamicChatCompletion(provider.Name(p.Type()), p.BaseURL(), decryptedKey, llmModel.RealModel()),
 	)
 	if err != nil {
 		return nil, "", errors.Wrapf(err, "could not create LLM client for provider '%s'", p.Name())
@@ -171,3 +167,26 @@ func parseQualifiedModelName(name string) (orgSlug, proxyName string, err error)
 
 var _ genaiProxy.ModelResolverHook = &OrgModelRouter{}
 var _ genaiProxy.ModelListerHook = &OrgModelRouter{}
+
+// withDynamicChatCompletion crée une OptionFunc pour un provider identifié à runtime.
+// Tous les providers enregistrés embarquent provider.CommonOptions, on utilise
+// la réflexion pour définir BaseURL, APIKey et Model sans type connu à la compilation.
+func withDynamicChatCompletion(name provider.Name, baseURL, apiKey, model string) provider.OptionFunc {
+	return func(o *provider.Options) error {
+		opts := provider.NewChatCompletionProviderOptions(name)
+		if opts == nil {
+			return errors.Errorf("unknown provider %q", name)
+		}
+		v := reflect.ValueOf(opts).Elem()
+		if common := v.FieldByName("CommonOptions"); common.IsValid() {
+			common.FieldByName("BaseURL").SetString(baseURL)
+			common.FieldByName("APIKey").SetString(apiKey)
+			common.FieldByName("Model").SetString(model)
+		}
+		o.ChatCompletion = &provider.ResolvedClientOptions{
+			Provider: name,
+			Specific: opts,
+		}
+		return nil
+	}
+}

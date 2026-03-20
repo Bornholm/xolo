@@ -4,7 +4,7 @@ go 1.25.5
 
 require (
 	github.com/Oudwins/tailwind-merge-go v0.2.1
-	github.com/bornholm/genai v0.14.3
+	github.com/bornholm/genai v0.17.1
 	github.com/bornholm/go-fuzzy v0.0.0-20250815131223-76b121e8632d
 	github.com/bornholm/go-x v0.0.0-20260127104343-c6737ea35324
 	github.com/caarlos0/env/v11 v11.3.1
@@ -21,8 +21,8 @@ require (
 	github.com/samber/slog-http v1.5.1
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
 	github.com/yuin/goldmark v1.7.8
-	golang.org/x/time v0.14.0
-	google.golang.org/grpc v1.64.1
+	golang.org/x/time v0.15.0
+	google.golang.org/grpc v1.79.2
 	gorm.io/gorm v1.31.1
 )
 
@@ -52,13 +52,13 @@ require (
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
-	golang.org/x/oauth2 v0.34.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237 // indirect
+	golang.org/x/oauth2 v0.36.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260311181403-84a4fc48630c // indirect
 )
 
 require (
 	github.com/a-h/templ v0.3.1001
-	golang.org/x/net v0.51.0 // indirect
+	golang.org/x/net v0.52.0 // indirect
 )
 
 require (
@@ -69,10 +69,10 @@ require (
 	github.com/ncruces/julianday v1.0.0 // indirect
 	github.com/rs/xid v1.6.0
 	github.com/tetratelabs/wazero v1.11.0 // indirect
-	go.opentelemetry.io/otel v1.39.0 // indirect
-	go.opentelemetry.io/otel/trace v1.39.0 // indirect
+	go.opentelemetry.io/otel v1.42.0 // indirect
+	go.opentelemetry.io/otel/trace v1.42.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
 	google.golang.org/protobuf v1.36.11
 )
 

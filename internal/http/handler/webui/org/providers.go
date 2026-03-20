@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -326,14 +327,25 @@ func (h *Handler) testProvider(w http.ResponseWriter, r *http.Request) {
 }
 
 func testProviderConnection(ctx context.Context, providerType, baseURL, apiKey string) (bool, error) {
-	client, err := provider.Create(ctx,
-		provider.WithChatCompletionOptions(provider.ClientOptions{
-			Provider: provider.Name(providerType),
-			BaseURL:  baseURL,
-			APIKey:   apiKey,
-			Model:    "gpt-3.5-turbo", // dummy model name — just validates credentials
-		}),
-	)
+	name := provider.Name(providerType)
+	opts := provider.NewChatCompletionProviderOptions(name)
+	if opts == nil {
+		return false, errors.Errorf("unknown provider %q", providerType)
+	}
+	v := reflect.ValueOf(opts).Elem()
+	if common := v.FieldByName("CommonOptions"); common.IsValid() {
+		common.FieldByName("BaseURL").SetString(baseURL)
+		common.FieldByName("APIKey").SetString(apiKey)
+		// dummy model — just validates credentials
+		common.FieldByName("Model").SetString("gpt-3.5-turbo")
+	}
+	client, err := provider.Create(ctx, func(o *provider.Options) error {
+		o.ChatCompletion = &provider.ResolvedClientOptions{
+			Provider: name,
+			Specific: opts,
+		}
+		return nil
+	})
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
