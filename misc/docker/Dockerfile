@@ -19,16 +19,14 @@ RUN --mount=type=cache,target=/go/pkg/mod/ \
     --mount=type=cache,target=./tools \
     make goreleaser GORELEASER_ARGS="build --clean --auto-snapshot --single-target"
 
-FROM alpine:3.21 AS runtime
+FROM alpine:3.23 AS runtime
 
 RUN apk add \
     ca-certificates \
     openssl \
-    pandoc \
     gcompat \
   && update-ca-certificates
 
 COPY --from=build /src/dist/xolo-server_linux_amd64_v1/xolo-server /usr/local/bin/xolo-server
-COPY --from=build /src/dist/xolo-client_linux_amd64_v1/xolo-client /usr/local/bin/xolo-client
 
 CMD ["/usr/local/bin/xolo-server"]
