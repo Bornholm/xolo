@@ -28,5 +28,10 @@ RUN apk add \
   && update-ca-certificates
 
 COPY --from=build /src/dist/xolo-server_linux_amd64_v1/xolo-server /usr/local/bin/xolo-server
+COPY --from=build /src/dist/xolo-plugin-time-restriction_linux_amd64_v1/xolo-plugin-time-restriction /plugins/time-restriction
+COPY --from=build /src/dist/xolo-plugin-model-auto-select_linux_amd64_v1/xolo-plugin-model-auto-select /plugins/model-auto-select
+
+ENV XOLO_STORAGE_DATABASE_DSN=/data/data.sqlite
+ENV XOLO_PLUGINS_DIR=/plugins
 
 CMD ["/usr/local/bin/xolo-server"]
