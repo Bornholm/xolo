@@ -109,6 +109,13 @@ func applyUsageFilter(query *gorm.DB, filter port.UsageFilter) *gorm.DB {
 	if filter.UserID != nil {
 		query = query.Where("user_id = ?", string(*filter.UserID))
 	}
+	if len(filter.UserIDs) > 0 {
+		userIDStrings := make([]string, len(filter.UserIDs))
+		for i, uid := range filter.UserIDs {
+			userIDStrings[i] = string(uid)
+		}
+		query = query.Where("user_id IN ?", userIDStrings)
+	}
 	if filter.OrgID != nil {
 		query = query.Where("org_id = ?", string(*filter.OrgID))
 	}

@@ -12,9 +12,13 @@ import (
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/pagination"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/popover"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/separator"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -1042,11 +1046,11 @@ templ InviteForm(vmodel InviteFormVModel) {
 
 // ── Org Usage Page ────────────────────────────────────────────────────────────
 templ OrgUsagePage(vmodel OrgUsagePageVModel) {
-	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Usage — "+vmodel.Org.Name()), common.WithScripts(chart.Script())) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Usage — "+vmodel.Org.Name()), common.WithScripts(chart.Script(), popover.Script(), selectbox.Script())) {
 		<div class="space-y-6">
 			<div class="flex items-center justify-between">
 				<h1 class="text-2xl font-semibold">Usage</h1>
-				<form method="GET" class="flex items-center gap-2">
+				<form method="GET" class="flex items-center gap-3 flex-wrap">
 					<label class="text-sm text-muted-foreground">Période :</label>
 					<select name="range" onchange="this.form.submit()" class="h-9 rounded-md border border-input bg-background px-3 text-sm">
 						for _, opt := range []struct{ Value, Label string }{
@@ -1064,9 +1068,44 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 							}
 						}
 					</select>
+					if len(vmodel.Members) > 0 {
+						<label class="text-sm text-muted-foreground">Utilisateurs :</label>
+						@selectbox.SelectBox(selectbox.Props{Multiple: true, Class: "w-56"}) {
+							@selectbox.Trigger(selectbox.TriggerProps{
+								Name:              "user",
+								Multiple:          true,
+								ShowPills:         false,
+								SelectedCountText: "{n} utilisateurs",
+							}) {
+								@selectbox.Value(selectbox.ValueProps{
+									Placeholder: "Tous",
+									Multiple:    true,
+								})
+							}
+							@selectbox.Content(selectbox.ContentProps{
+								SearchPlaceholder: "Rechercher...",
+							}) {
+								@selectbox.Group() {
+									for _, m := range vmodel.Members {
+										if m.User() != nil {
+											@selectbox.Item(selectbox.ItemProps{
+												Value:    string(m.User().ID()),
+												Selected: slices.Contains(vmodel.UserFilter, string(m.User().ID())),
+											}) {
+												{ m.User().DisplayName() }
+											}
+										}
+									}
+								}
+							}
+						}
+						@button.Button(button.Props{Type: "submit", Variant: button.VariantOutline, Size: button.SizeSm}) {
+							Filtrer
+						}
+					}
 				</form>
 			</div>
-			<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+			<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
 				@card.Card() {
 					@card.Header() {
 						@card.Title() {
@@ -1213,7 +1252,7 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 			}
 			if len(vmodel.ChartPerDay) > 0 || len(vmodel.ChartPerModel) > 0 || len(vmodel.ChartPerUser) > 0 {
 				{{ trueVal := true }}
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 					if len(vmodel.ChartPerDay) > 0 {
 						@card.Card() {
 							@card.Header() {
@@ -1390,12 +1429,12 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 				@pagination.Pagination() {
 					@pagination.Content() {
 						@pagination.Previous(pagination.PreviousProps{
-							Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage"), common.WithValues("range", vmodel.Range, "page", fmt.Sprintf("%d", vmodel.Page-1))),
+							Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage"), common.WithValues("range", vmodel.Range, "page", fmt.Sprintf("%d", vmodel.Page-1), "user", strings.Join(vmodel.UserFilter, ","))),
 							Disabled: vmodel.Page <= 1,
 							Label:    "Précédent",
 						})
 						@pagination.Next(pagination.NextProps{
-							Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage"), common.WithValues("range", vmodel.Range, "page", fmt.Sprintf("%d", vmodel.Page+1))),
+							Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage"), common.WithValues("range", vmodel.Range, "page", fmt.Sprintf("%d", vmodel.Page+1), "user", strings.Join(vmodel.UserFilter, ","))),
 							Disabled: !vmodel.HasNext,
 							Label:    "Suivant",
 						})

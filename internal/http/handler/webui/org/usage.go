@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/a-h/templ"
@@ -44,13 +45,44 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 	since := rangeToSince(rangeParam)
 	orgID := org.ID()
 
+	// Support comma-separated values emitted by the SelectBox component (e.g. user=id1,id2)
+	rawUserFilter := r.URL.Query()["user"]
+	var userFilter []string
+	for _, v := range rawUserFilter {
+		for _, part := range strings.Split(v, ",") {
+			if part != "" {
+				userFilter = append(userFilter, part)
+			}
+		}
+	}
+
+	// Fetch org members for filter
+	members, err := h.orgStore.ListOrgMembers(ctx, org.ID())
+	if err != nil {
+		slog.WarnContext(ctx, "could not list org members", slogx.Error(err))
+		members = nil
+	}
+
 	orgCurrency := org.Currency()
 
-	// Aggregate without currency filter so all records are counted
-	agg, err := h.usageStore.AggregateUsage(ctx, port.UsageFilter{
+	// Build user filter for queries
+	var userIDs []model.UserID
+	if len(userFilter) > 0 {
+		for _, uid := range userFilter {
+			userIDs = append(userIDs, model.UserID(uid))
+		}
+	}
+
+	usageFilter := port.UsageFilter{
 		OrgID: &orgID,
 		Since: &since,
-	})
+	}
+	if len(userIDs) > 0 {
+		usageFilter.UserIDs = userIDs
+	}
+
+	// Aggregate without currency filter so all records are counted
+	agg, err := h.usageStore.AggregateUsage(ctx, usageFilter)
 	if err != nil {
 		slog.ErrorContext(ctx, "could not aggregate usage", slogx.Error(err))
 		agg = &port.UsageAggregate{}
@@ -80,10 +112,11 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 
 	// Fetch one extra record to detect whether a next page exists
 	rawRecords, err := h.usageStore.QueryUsage(ctx, port.UsageFilter{
-		OrgID:  &orgID,
-		Since:  &since,
-		Limit:  intPtr(usagePageSize + 1),
-		Offset: intPtr(offset),
+		OrgID:   &orgID,
+		Since:   &since,
+		Limit:   intPtr(usagePageSize + 1),
+		Offset:  intPtr(offset),
+		UserIDs: userIDs,
 	})
 	if err != nil {
 		slog.ErrorContext(ctx, "could not query usage records", slogx.Error(err))
@@ -200,9 +233,10 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 
 	// Fetch all records (up to 500) for chart aggregation — separate from paged display records
 	chartRecords, _ := h.usageStore.QueryUsage(ctx, port.UsageFilter{
-		OrgID: &orgID,
-		Since: &since,
-		Limit: intPtr(500),
+		OrgID:   &orgID,
+		Since:   &since,
+		Limit:   intPtr(500),
+		UserIDs: userIDs,
 	})
 
 	// Also load users referenced by chart records that may not be in the paged set
@@ -244,6 +278,8 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 		Aggregate:        agg,
 		Records:          records,
 		Users:            users,
+		Members:          members,
+		UserFilter:       userFilter,
 		Since:            since,
 		Range:            rangeParam,
 		Page:             page,
