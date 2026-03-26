@@ -54,6 +54,11 @@ func (e *XoloQuotaEnforcer) PreRequest(ctx context.Context, req *genaiProxy.Prox
 		return nil, nil
 	}
 
+	// ── Skip quota check if model has zero cost ────────────────────────────────
+	if e.isZeroCostModel(ctx, req) {
+		return nil, nil
+	}
+
 	// ── Per-user quota check (effective = min of user quota and org quota) ──────
 	effectiveQuota, err := e.quotaResolver.ResolveEffectiveQuota(ctx, userID, orgID)
 	if err != nil {
@@ -106,11 +111,6 @@ func (e *XoloQuotaEnforcer) PreRequest(ctx context.Context, req *genaiProxy.Prox
 				)),
 			}, nil
 		}
-	}
-
-	// ── Skip quota check if model has zero cost ────────────────────────────────
-	if e.isZeroCostModel(ctx, req) {
-		return nil, nil
 	}
 
 	// ── Org-wide quota check (total spending by all users in the org) ──────────
