@@ -141,7 +141,7 @@ func applyUsageFilter(query *gorm.DB, filter port.UsageFilter) *gorm.DB {
 }
 
 // SumCostSinceByCurrency implements port.UsageStore.
-func (s *Store) SumCostSinceByCurrency(ctx context.Context, userID *model.UserID, orgID model.OrgID, since time.Time) (map[string]int64, error) {
+func (s *Store) SumCostSinceByCurrency(ctx context.Context, userIDs []model.UserID, orgID model.OrgID, since time.Time) (map[string]int64, error) {
 	var rows []struct {
 		Currency string
 		Total    int64
@@ -151,8 +151,12 @@ func (s *Store) SumCostSinceByCurrency(ctx context.Context, userID *model.UserID
 		query := db.Model(&UsageRecord{}).
 			Select("currency, COALESCE(SUM(cost), 0) as total").
 			Where("org_id = ? AND created_at >= ?", string(orgID), since)
-		if userID != nil {
-			query = query.Where("user_id = ?", string(*userID))
+		if len(userIDs) > 0 {
+			ids := make([]string, len(userIDs))
+			for i, uid := range userIDs {
+				ids[i] = string(uid)
+			}
+			query = query.Where("user_id IN ?", ids)
 		}
 		return errors.WithStack(query.Group("currency").Scan(&rows).Error)
 	}, sqlite3.BUSY, sqlite3.LOCKED)

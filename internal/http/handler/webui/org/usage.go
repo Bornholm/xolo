@@ -90,7 +90,7 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 
 	// Compute total cost with per-currency conversion
 	if agg != nil {
-		byCurrency, sumErr := h.usageStore.SumCostSinceByCurrency(ctx, nil, orgID, since)
+		byCurrency, sumErr := h.usageStore.SumCostSinceByCurrency(ctx, userIDs, orgID, since)
 		if sumErr != nil {
 			slog.ErrorContext(ctx, "could not sum cost by currency", slogx.Error(sumErr))
 		} else {

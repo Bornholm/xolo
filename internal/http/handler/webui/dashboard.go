@@ -332,7 +332,7 @@ func dashChartByDate(m map[string]int64) []component.ProfileChartDataPoint {
 // converting each currency's sub-total to targetCurrency using the exchange
 // rate service. Falls back to the raw amount when conversion is unavailable.
 func (h *Handler) sumCostConverted(ctx context.Context, userID model.UserID, orgID model.OrgID, targetCurrency string, since time.Time) (int64, error) {
-	byCurrency, err := h.usageStore.SumCostSinceByCurrency(ctx, &userID, orgID, since)
+	byCurrency, err := h.usageStore.SumCostSinceByCurrency(ctx, []model.UserID{userID}, orgID, since)
 	if err != nil {
 		return 0, err
 	}
