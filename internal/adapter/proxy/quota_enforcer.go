@@ -226,16 +226,33 @@ func formatMicrocents(v int64, currency string) string {
 
 // isZeroCostModel checks if the requested model has zero prompt and completion cost.
 // If the model cannot be resolved or costs are unavailable, it returns false to be safe.
+// At PreRequest time ResolveModel has not yet run, so MetaModelID is not set;
+// we fall back to a direct lookup by proxy name + orgID.
 func (e *XoloQuotaEnforcer) isZeroCostModel(ctx context.Context, req *genaiProxy.ProxyRequest) bool {
-	modelID := ModelIDFromMeta(req.Metadata)
-	if modelID == "" {
-		return false
-	}
+	var llmModel model.LLMModel
 
-	llmModel, err := e.providerStore.GetLLMModelByID(ctx, modelID)
-	if err != nil {
-		slog.DebugContext(ctx, "quota enforcer: could not load model for zero-cost check", slog.Any("error", err), slog.String("modelID", string(modelID)))
-		return false
+	if modelID := ModelIDFromMeta(req.Metadata); modelID != "" {
+		m, err := e.providerStore.GetLLMModelByID(ctx, modelID)
+		if err != nil {
+			slog.DebugContext(ctx, "quota enforcer: could not load model by ID for zero-cost check", slog.Any("error", err), slog.String("modelID", string(modelID)))
+			return false
+		}
+		llmModel = m
+	} else {
+		orgID := OrgIDFromMeta(req.Metadata)
+		if orgID == "" {
+			return false
+		}
+		_, proxyName, err := parseQualifiedModelName(req.Model)
+		if err != nil {
+			return false
+		}
+		m, err := e.providerStore.GetLLMModelByProxyName(ctx, orgID, proxyName)
+		if err != nil {
+			slog.DebugContext(ctx, "quota enforcer: could not load model by proxy name for zero-cost check", slog.Any("error", err), slog.String("model", req.Model))
+			return false
+		}
+		llmModel = m
 	}
 
 	return llmModel.PromptCostPer1KTokens() == 0 && llmModel.CompletionCostPer1KTokens() == 0
