@@ -3,6 +3,7 @@ package proxy
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	genaiProxy "github.com/bornholm/genai/proxy"
@@ -23,14 +24,16 @@ type XoloQuotaEnforcer struct {
 	quotaStore    port.QuotaStore // for org-level GetQuota + SumCost checks
 	usageStore    port.UsageStore
 	userStore     port.UserStore
+	providerStore port.ProviderStore
 }
 
-func NewXoloQuotaEnforcer(quotaResolver quotaResolver, quotaStore port.QuotaStore, usageStore port.UsageStore, userStore port.UserStore) *XoloQuotaEnforcer {
+func NewXoloQuotaEnforcer(quotaResolver quotaResolver, quotaStore port.QuotaStore, usageStore port.UsageStore, userStore port.UserStore, providerStore port.ProviderStore) *XoloQuotaEnforcer {
 	return &XoloQuotaEnforcer{
 		quotaResolver: quotaResolver,
 		quotaStore:    quotaStore,
 		usageStore:    usageStore,
 		userStore:     userStore,
+		providerStore: providerStore,
 	}
 }
 
@@ -103,6 +106,11 @@ func (e *XoloQuotaEnforcer) PreRequest(ctx context.Context, req *genaiProxy.Prox
 				)),
 			}, nil
 		}
+	}
+
+	// ── Skip quota check if model has zero cost ────────────────────────────────
+	if e.isZeroCostModel(ctx, req) {
+		return nil, nil
 	}
 
 	// ── Org-wide quota check (total spending by all users in the org) ──────────
@@ -214,6 +222,23 @@ func formatMicrocents(v int64, currency string) string {
 		symbol = s
 	}
 	return fmt.Sprintf("%.2f%s", float64(v)/1_000_000, symbol)
+}
+
+// isZeroCostModel checks if the requested model has zero prompt and completion cost.
+// If the model cannot be resolved or costs are unavailable, it returns false to be safe.
+func (e *XoloQuotaEnforcer) isZeroCostModel(ctx context.Context, req *genaiProxy.ProxyRequest) bool {
+	modelID := ModelIDFromMeta(req.Metadata)
+	if modelID == "" {
+		return false
+	}
+
+	llmModel, err := e.providerStore.GetLLMModelByID(ctx, modelID)
+	if err != nil {
+		slog.DebugContext(ctx, "quota enforcer: could not load model for zero-cost check", slog.Any("error", err), slog.String("modelID", string(modelID)))
+		return false
+	}
+
+	return llmModel.PromptCostPer1KTokens() == 0 && llmModel.CompletionCostPer1KTokens() == 0
 }
 
 var _ genaiProxy.PreRequestHook = &XoloQuotaEnforcer{}
