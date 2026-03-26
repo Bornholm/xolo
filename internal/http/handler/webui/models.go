@@ -77,6 +77,7 @@ func (h *Handler) getModelsPage(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) loadModelUsages(ctx context.Context, userID model.UserID, memberships []model.Membership, since time.Time) []component.ModelUsage {
 	var modelUsages []component.ModelUsage
 	for _, m := range memberships {
+		// Load regular LLM models
 		models, err := h.providerStore.ListEnabledLLMModels(ctx, m.OrgID())
 		if err != nil {
 			slog.ErrorContext(ctx, "could not list models", slogx.Error(err), slog.String("orgID", string(m.OrgID())))
@@ -102,6 +103,38 @@ func (h *Handler) loadModelUsages(ctx context.Context, userID model.UserID, memb
 				Org:       org,
 				Aggregate: modelAgg,
 			})
+		}
+
+		// Load virtual models
+		if h.virtualModelStore != nil {
+			vms, err := h.virtualModelStore.ListVirtualModels(ctx, m.OrgID())
+			if err != nil {
+				slog.ErrorContext(ctx, "could not list virtual models", slogx.Error(err), slog.String("orgID", string(m.OrgID())))
+				continue
+			}
+			var orgValue model.Organization
+			if m.Org() != nil {
+				orgValue = m.Org()
+			}
+			for _, vm := range vms {
+				// For virtual models, aggregate usage by the virtual model's qualified name
+				qualifiedName := orgValue.Slug() + "/" + vm.Name()
+				modelAgg, err := h.usageStore.AggregateUsage(ctx, port.UsageFilter{
+					UserID:         &userID,
+					ProxyModelName: &qualifiedName,
+					Since:          &since,
+				})
+				if err != nil {
+					slog.ErrorContext(ctx, "could not aggregate virtual model usage", slogx.Error(err))
+					modelAgg = nil
+				}
+				wrappedModel := &virtualModelAsLLMModel{vm: vm, org: orgValue}
+				modelUsages = append(modelUsages, component.ModelUsage{
+					Model:     wrappedModel,
+					Org:       orgValue,
+					Aggregate: modelAgg,
+				})
+			}
 		}
 	}
 	return modelUsages

@@ -19,6 +19,7 @@ type Handler struct {
 	mux                   *http.ServeMux
 	orgStore              port.OrgStore
 	providerStore         port.ProviderStore
+	virtualModelStore     port.VirtualModelStore
 	usageStore            port.UsageStore
 	inviteStore           port.InviteStore
 	userStore             port.UserStore
@@ -38,6 +39,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func NewHandler(
 	orgStore port.OrgStore,
 	providerStore port.ProviderStore,
+	virtualModelStore port.VirtualModelStore,
 	usageStore port.UsageStore,
 	inviteStore port.InviteStore,
 	userStore port.UserStore,
@@ -52,6 +54,7 @@ func NewHandler(
 		mux:                   http.NewServeMux(),
 		orgStore:              orgStore,
 		providerStore:         providerStore,
+		virtualModelStore:     virtualModelStore,
 		usageStore:            usageStore,
 		inviteStore:           inviteStore,
 		userStore:             userStore,
@@ -124,6 +127,13 @@ func NewHandler(
 
 	h.mux.Handle("GET /{orgSlug}/admin/settings", assertOrgAdmin(http.HandlerFunc(h.getSettingsPage)))
 	h.mux.Handle("POST /{orgSlug}/admin/settings", assertOrgAdmin(http.HandlerFunc(h.saveSettings)))
+
+	h.mux.Handle("GET /{orgSlug}/admin/virtual-models", assertOrgAdmin(http.HandlerFunc(h.getVirtualModelsPage)))
+	h.mux.Handle("GET /{orgSlug}/admin/virtual-models/new", assertOrgAdmin(http.HandlerFunc(h.getNewVirtualModelPage)))
+	h.mux.Handle("POST /{orgSlug}/admin/virtual-models", assertOrgAdmin(http.HandlerFunc(h.createVirtualModel)))
+	h.mux.Handle("GET /{orgSlug}/admin/virtual-models/{modelID}/edit", assertOrgAdmin(http.HandlerFunc(h.getEditVirtualModelPage)))
+	h.mux.Handle("POST /{orgSlug}/admin/virtual-models/{modelID}/edit", assertOrgAdmin(http.HandlerFunc(h.updateVirtualModel)))
+	h.mux.Handle("DELETE /{orgSlug}/admin/virtual-models/{modelID}", assertOrgAdmin(http.HandlerFunc(h.deleteVirtualModel)))
 
 	h.mux.Handle("GET /{orgSlug}/admin/plugins", assertOrgAdmin(http.HandlerFunc(h.getPluginsPage)))
 	h.mux.Handle("POST /{orgSlug}/admin/plugins/{pluginName}/activate", assertOrgAdmin(http.HandlerFunc(h.postActivatePlugin)))

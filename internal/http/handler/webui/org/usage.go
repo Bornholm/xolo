@@ -139,10 +139,15 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 	records := make([]component.OrgDisplayUsageRecord, 0, len(rawRecords))
 	var totalEnergyWh, totalCO2GramsMid float64
 	for _, rec := range rawRecords {
+		displayModelName := rec.ProxyModelName()
+		if rec.ResolvedModelName() != "" && rec.ResolvedModelName() != rec.ProxyModelName() {
+			displayModelName = rec.ProxyModelName() + " → " + rec.ResolvedModelName()
+		}
 		dr := component.OrgDisplayUsageRecord{
-			Record:          rec,
-			DisplayCost:     rec.Cost(),
-			DisplayCurrency: rec.Currency(),
+			Record:           rec,
+			DisplayModelName: displayModelName,
+			DisplayCost:      rec.Cost(),
+			DisplayCurrency:  rec.Currency(),
 		}
 		if orgCurrency != rec.Currency() {
 			converted, convErr := h.exchangeRateService.Convert(ctx, rec.Cost(), rec.Currency(), orgCurrency)
@@ -235,23 +240,23 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vmodel := component.OrgUsagePageVModel{
-		Org:           org,
-		Aggregate:     agg,
-		Records:       records,
-		Users:         users,
-		Since:         since,
-		Range:         rangeParam,
-		Page:          page,
-		PageSize:      usagePageSize,
-		HasNext:       hasNext,
-		OrgQuota:      orgQuota,
-		DailyCost:     dailyCost,
-		MonthlyCost:   monthlyCost,
-		YearlyCost:    yearlyCost,
-		Currency:      orgCurrency,
-		ChartPerDay:   chartByDate(perDay),
-		ChartPerModel: chartByValue(perModel),
-		ChartPerUser:  chartByValue(perUser),
+		Org:              org,
+		Aggregate:        agg,
+		Records:          records,
+		Users:            users,
+		Since:            since,
+		Range:            rangeParam,
+		Page:             page,
+		PageSize:         usagePageSize,
+		HasNext:          hasNext,
+		OrgQuota:         orgQuota,
+		DailyCost:        dailyCost,
+		MonthlyCost:      monthlyCost,
+		YearlyCost:       yearlyCost,
+		Currency:         orgCurrency,
+		ChartPerDay:      chartByDate(perDay),
+		ChartPerModel:    chartByValue(perModel),
+		ChartPerUser:     chartByValue(perUser),
 		TotalEnergyWh:    totalEnergyWh,
 		TotalCO2GramsMid: totalCO2GramsMid,
 		AppLayoutVModel: common.AppLayoutVModel{

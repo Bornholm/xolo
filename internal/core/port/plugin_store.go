@@ -15,6 +15,8 @@ type PluginActivationStore interface {
 
 type PluginConfigStore interface {
 	GetConfig(ctx context.Context, orgID model.OrgID, pluginName string, scope model.PluginConfigScope, scopeID string) (*model.PluginConfig, error)
+	// ListConfigsByPlugin returns all configs for a specific plugin across all orgs.
+	ListConfigsByPlugin(ctx context.Context, pluginName string) ([]model.PluginConfig, error)
 	SaveConfig(ctx context.Context, cfg *model.PluginConfig) error
 	DeleteConfig(ctx context.Context, orgID model.OrgID, pluginName string, scope model.PluginConfigScope, scopeID string) error
 }

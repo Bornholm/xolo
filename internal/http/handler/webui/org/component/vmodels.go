@@ -91,16 +91,17 @@ type OrgSettingsPageVModel struct {
 }
 
 type OrgDisplayUsageRecord struct {
-	Record          model.UsageRecord
-	DisplayCost     int64
-	DisplayCurrency string
-	Converted       bool
-	EnergyWh        float64 // midpoint estimation in Wh (0 = unknown)
-	EnergyLowWh     float64
-	EnergyHighWh    float64
-	CO2GramsMid     float64 // gCO₂ at world-average carbon intensity
-	CO2GramsMin     float64 // gCO₂ at France nuclear intensity (best case)
-	CO2GramsMax     float64 // gCO₂ at coal plant intensity (worst case)
+	Record           model.UsageRecord
+	DisplayModelName string // display name: "virtual -> resolved" or just the model name
+	DisplayCost      int64
+	DisplayCurrency  string
+	Converted        bool
+	EnergyWh         float64 // midpoint estimation in Wh (0 = unknown)
+	EnergyLowWh      float64
+	EnergyHighWh     float64
+	CO2GramsMid      float64 // gCO₂ at world-average carbon intensity
+	CO2GramsMin      float64 // gCO₂ at France nuclear intensity (best case)
+	CO2GramsMax      float64 // gCO₂ at coal plant intensity (worst case)
 }
 
 type ChartDataPoint struct {
@@ -120,11 +121,11 @@ type OrgUsagePageVModel struct {
 	PageSize  int
 	HasNext   bool
 	// Chart/quota fields
-	OrgQuota      model.Quota        // may be nil if no quota defined
-	DailyCost     int64              // today's org cost in org currency (microcents)
-	MonthlyCost   int64              // this month's org cost in org currency (microcents)
-	YearlyCost    int64              // this year's org cost in org currency (microcents)
-	Currency      string             // org currency
+	OrgQuota      model.Quota // may be nil if no quota defined
+	DailyCost     int64       // today's org cost in org currency (microcents)
+	MonthlyCost   int64       // this month's org cost in org currency (microcents)
+	YearlyCost    int64       // this year's org cost in org currency (microcents)
+	Currency      string      // org currency
 	ChartPerDay   []ChartDataPoint
 	ChartPerModel []ChartDataPoint
 	ChartPerUser  []ChartDataPoint
@@ -148,4 +149,23 @@ type PluginConfigPageVModel struct {
 	Values      map[string]string
 	FieldErrors map[string]string
 	HasHTTPUI   bool // true → render iframe instead of JSONSchemaForm
+}
+
+type VirtualModelsPageVModel struct {
+	common.AppLayoutVModel
+	Org           model.Organization
+	VirtualModels []model.VirtualModel
+	BaseURL       string
+	Success       string
+	Error         string
+}
+
+type VirtualModelFormVModel struct {
+	common.AppLayoutVModel
+	Org          model.Organization
+	VirtualModel model.VirtualModel
+	IsNew        bool
+	Name         string
+	Description  string
+	Error        string
 }

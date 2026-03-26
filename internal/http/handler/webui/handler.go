@@ -27,6 +27,7 @@ type Handler struct {
 	userStore             port.UserStore
 	orgStore              port.OrgStore
 	providerStore         port.ProviderStore
+	virtualModelStore     port.VirtualModelStore
 	exchangeRateService   *service.ExchangeRateService
 	pluginManager         pluginManagerIface
 	pluginActivationStore port.PluginActivationStore
@@ -43,6 +44,7 @@ func NewHandler(
 	userStore port.UserStore,
 	orgStore port.OrgStore,
 	providerStore port.ProviderStore,
+	virtualModelStore port.VirtualModelStore,
 	usageStore port.UsageStore,
 	inviteStore port.InviteStore,
 	quotaStore port.QuotaStore,
@@ -61,6 +63,7 @@ func NewHandler(
 		userStore:             userStore,
 		orgStore:              orgStore,
 		providerStore:         providerStore,
+		virtualModelStore:     virtualModelStore,
 		exchangeRateService:   exchangeRateService,
 		pluginManager:         pluginManager,
 		pluginActivationStore: pluginActivationStore,
@@ -76,7 +79,7 @@ func NewHandler(
 	mount(h.mux, "/models", isActive(http.HandlerFunc(h.getModelsPage)))
 	mount(h.mux, "/profile/", isActive(profile.NewHandler(userStore, orgStore, inviteStore)))
 	mount(h.mux, "/admin/", isActive(admin.NewHandler(userStore, orgStore, taskRunner, exchangeRateService, pluginManager)))
-	mount(h.mux, "/orgs/", isActive(org.NewHandler(orgStore, providerStore, usageStore, inviteStore, userStore, exchangeRateService, quotaStore, secretKey, pluginManager, pluginActivationStore, pluginConfigStore)))
+	mount(h.mux, "/orgs/", isActive(org.NewHandler(orgStore, providerStore, virtualModelStore, usageStore, inviteStore, userStore, exchangeRateService, quotaStore, secretKey, pluginManager, pluginActivationStore, pluginConfigStore)))
 
 	// Public join flow — no isActive wrapper (unauthenticated users get a sign-in prompt)
 	h.mux.Handle("/join/", http.StripPrefix("/join", join.NewHandler(orgStore, inviteStore)))

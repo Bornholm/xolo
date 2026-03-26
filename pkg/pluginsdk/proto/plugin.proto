@@ -71,6 +71,14 @@ message ModelInfo {
   double prompt_cost_per_1k_tokens = 4;
   double completion_cost_per_1k_tokens = 5;
   int64 token_limit = 6;
+  bool is_virtual = 7;
+}
+
+message VirtualModelInfo {
+  string id = 1;
+  string name = 2;
+  string org_id = 3;
+  string description = 4;
 }
 
 message PreRequestInput {
@@ -99,6 +107,7 @@ message ResolveModelInput {
   string requested_model = 2;
   repeated ModelInfo available_models = 3;
   string messages_json = 4;
+  repeated VirtualModelInfo virtual_models = 5;
 }
 
 message ResolveModelOutput {

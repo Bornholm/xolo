@@ -28,7 +28,24 @@ func (p *Plugin) ResolveModel(_ context.Context, in *proto.ResolveModelInput) (*
 		return &proto.ResolveModelOutput{ResolvedProxyName: ""}, nil
 	}
 
-	if in.RequestedModel != cfg.VirtualModel {
+	// Check if requested model matches any virtual model from the host.
+	var matchedVM *proto.VirtualModelInfo
+	for _, vm := range in.GetVirtualModels() {
+		qualifiedName := vm.OrgId + "/" + vm.Name
+		if in.RequestedModel == qualifiedName {
+			matchedVM = vm
+			break
+		}
+	}
+
+	// If no match from VirtualModels, check config-based virtual_model for backward compatibility.
+	// If requested model ends with the configured virtual model name, proceed with resolution.
+	useConfigFallback := matchedVM == nil && cfg.VirtualModel != "" &&
+		(in.RequestedModel == cfg.VirtualModel ||
+			(len(in.RequestedModel) > len(cfg.VirtualModel)+1 &&
+				in.RequestedModel[len(in.RequestedModel)-len(cfg.VirtualModel)-1:] == "/"+cfg.VirtualModel))
+
+	if matchedVM == nil && !useConfigFallback {
 		return &proto.ResolveModelOutput{ResolvedProxyName: ""}, nil
 	}
 

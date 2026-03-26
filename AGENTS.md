@@ -71,6 +71,7 @@ internal/
 - UI components are in `internal/http/handler/webui/templui/` (shadcn-inspired, via templui)
 - Tailwind CSS is generated from `misc/tailwind/templui.css` → `internal/http/handler/webui/common/assets/templui.css`
 - Run `make generate` after editing any `.templ` file or CSS
+- NEVER edit generated templ components Go files. ALWAYS edit .templ files instead THEN generate the Go code.
 
 **IMPORTANT — composants UI :** toute nouvelle interface doit **obligatoirement** utiliser les composants templui disponibles sous `internal/http/handler/webui/templui/component/` (input, button, checkbox, label, card, badge, alert, etc.). Ne jamais utiliser de balises HTML brutes (`<input>`, `<button>`, `<select>`) là où un composant templui équivalent existe.
 

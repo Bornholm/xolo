@@ -47,6 +47,8 @@ type LLMModel interface {
 	CreatedAt() time.Time
 	UpdatedAt() time.Time
 	TokenLimitConfig() *TokenLimitConfig
+	// IsVirtual returns true if this is a virtual model (not associated with a provider).
+	IsVirtual() bool
 }
 
 type BaseLLMModel struct {
@@ -70,33 +72,34 @@ type BaseLLMModel struct {
 	tokenLimitConfig          *TokenLimitConfig
 }
 
-func (m *BaseLLMModel) ID() LLMModelID                     { return m.id }
-func (m *BaseLLMModel) ProviderID() ProviderID             { return m.providerID }
-func (m *BaseLLMModel) OrgID() OrgID                       { return m.orgID }
-func (m *BaseLLMModel) ProxyName() string                  { return m.proxyName }
-func (m *BaseLLMModel) RealModel() string                  { return m.realModel }
-func (m *BaseLLMModel) Description() string                { return m.description }
-func (m *BaseLLMModel) Enabled() bool                      { return m.enabled }
-func (m *BaseLLMModel) PromptCostPer1KTokens() int64       { return m.promptCostPer1KTokens }
-func (m *BaseLLMModel) CompletionCostPer1KTokens() int64   { return m.completionCostPer1KTokens }
-func (m *BaseLLMModel) ContextWindow() int64               { return m.contextWindow }
-func (m *BaseLLMModel) OutputWindow() int64                { return m.outputWindow }
-func (m *BaseLLMModel) Capabilities() ModelCapabilities    { return m.capabilities }
-func (m *BaseLLMModel) CreatedAt() time.Time               { return m.createdAt }
-func (m *BaseLLMModel) UpdatedAt() time.Time               { return m.updatedAt }
-func (m *BaseLLMModel) TokenLimitConfig() *TokenLimitConfig     { return m.tokenLimitConfig }
+func (m *BaseLLMModel) ID() LLMModelID                      { return m.id }
+func (m *BaseLLMModel) ProviderID() ProviderID              { return m.providerID }
+func (m *BaseLLMModel) OrgID() OrgID                        { return m.orgID }
+func (m *BaseLLMModel) ProxyName() string                   { return m.proxyName }
+func (m *BaseLLMModel) RealModel() string                   { return m.realModel }
+func (m *BaseLLMModel) Description() string                 { return m.description }
+func (m *BaseLLMModel) Enabled() bool                       { return m.enabled }
+func (m *BaseLLMModel) PromptCostPer1KTokens() int64        { return m.promptCostPer1KTokens }
+func (m *BaseLLMModel) CompletionCostPer1KTokens() int64    { return m.completionCostPer1KTokens }
+func (m *BaseLLMModel) ContextWindow() int64                { return m.contextWindow }
+func (m *BaseLLMModel) OutputWindow() int64                 { return m.outputWindow }
+func (m *BaseLLMModel) Capabilities() ModelCapabilities     { return m.capabilities }
+func (m *BaseLLMModel) CreatedAt() time.Time                { return m.createdAt }
+func (m *BaseLLMModel) UpdatedAt() time.Time                { return m.updatedAt }
+func (m *BaseLLMModel) TokenLimitConfig() *TokenLimitConfig { return m.tokenLimitConfig }
 
-func (m *BaseLLMModel) ActiveParams() int64                     { return m.activeParams }
-func (m *BaseLLMModel) TokensPerSecLow() float64               { return m.tokensPerSecLow }
-func (m *BaseLLMModel) TokensPerSecHigh() float64              { return m.tokensPerSecHigh }
+func (m *BaseLLMModel) ActiveParams() int64       { return m.activeParams }
+func (m *BaseLLMModel) TokensPerSecLow() float64  { return m.tokensPerSecLow }
+func (m *BaseLLMModel) TokensPerSecHigh() float64 { return m.tokensPerSecHigh }
+func (m *BaseLLMModel) IsVirtual() bool           { return m.providerID == "" }
 
-func (m *BaseLLMModel) SetContextWindow(v int64)               { m.contextWindow = v }
-func (m *BaseLLMModel) SetOutputWindow(v int64)                { m.outputWindow = v }
-func (m *BaseLLMModel) SetCapabilities(c ModelCapabilities)    { m.capabilities = c }
+func (m *BaseLLMModel) SetContextWindow(v int64)                { m.contextWindow = v }
+func (m *BaseLLMModel) SetOutputWindow(v int64)                 { m.outputWindow = v }
+func (m *BaseLLMModel) SetCapabilities(c ModelCapabilities)     { m.capabilities = c }
 func (m *BaseLLMModel) SetTokenLimitConfig(c *TokenLimitConfig) { m.tokenLimitConfig = c }
-func (m *BaseLLMModel) SetActiveParams(v int64)                { m.activeParams = v }
-func (m *BaseLLMModel) SetTokensPerSecLow(v float64)           { m.tokensPerSecLow = v }
-func (m *BaseLLMModel) SetTokensPerSecHigh(v float64)          { m.tokensPerSecHigh = v }
+func (m *BaseLLMModel) SetActiveParams(v int64)                 { m.activeParams = v }
+func (m *BaseLLMModel) SetTokensPerSecLow(v float64)            { m.tokensPerSecLow = v }
+func (m *BaseLLMModel) SetTokensPerSecHigh(v float64)           { m.tokensPerSecHigh = v }
 
 var _ LLMModel = &BaseLLMModel{}
 

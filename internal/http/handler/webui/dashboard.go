@@ -177,10 +177,15 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 	displayRecords := make([]component.DisplayUsageRecord, 0, len(records))
 	var totalEnergyWh, totalCO2GramsMid float64
 	for _, rec := range records {
+		displayModelName := rec.ProxyModelName()
+		if rec.ResolvedModelName() != "" && rec.ResolvedModelName() != rec.ProxyModelName() {
+			displayModelName = rec.ProxyModelName() + " → " + rec.ResolvedModelName()
+		}
 		dr := component.DisplayUsageRecord{
-			Record:          rec,
-			DisplayCost:     rec.Cost(),
-			DisplayCurrency: rec.Currency(),
+			Record:           rec,
+			DisplayModelName: displayModelName,
+			DisplayCost:      rec.Cost(),
+			DisplayCurrency:  rec.Currency(),
 		}
 		if org, ok := orgs[rec.OrgID()]; ok {
 			orgCurrency := org.Currency()

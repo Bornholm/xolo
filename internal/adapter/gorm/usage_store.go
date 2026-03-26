@@ -121,6 +121,9 @@ func applyUsageFilter(query *gorm.DB, filter port.UsageFilter) *gorm.DB {
 	if filter.Currency != nil {
 		query = query.Where("currency = ?", *filter.Currency)
 	}
+	if filter.ProxyModelName != nil {
+		query = query.Where("proxy_model_name = ?", *filter.ProxyModelName)
+	}
 	if filter.Since != nil {
 		query = query.Where("created_at >= ?", *filter.Since)
 	}

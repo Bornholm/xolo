@@ -17,12 +17,13 @@ import (
 // It implements PreRequestHook, PostResponseHook, and ModelListerHook (which
 // embeds ModelResolverHook).
 type PluginHookAdapter struct {
-	clients         map[string]proto.XoloPluginClient
-	descriptors     map[string]*proto.PluginDescriptor
-	activationStore port.PluginActivationStore
-	configStore     port.PluginConfigStore
-	userStore       tokenFinder
-	providerStore   port.ProviderStore
+	clients           map[string]proto.XoloPluginClient
+	descriptors       map[string]*proto.PluginDescriptor
+	activationStore   port.PluginActivationStore
+	configStore       port.PluginConfigStore
+	userStore         tokenFinder
+	providerStore     port.ProviderStore
+	virtualModelStore port.VirtualModelStore
 }
 
 // NewPluginHookAdapter creates a PluginHookAdapter wired to the given plugin clients and stores.
@@ -33,14 +34,16 @@ func NewPluginHookAdapter(
 	configStore port.PluginConfigStore,
 	userStore tokenFinder,
 	providerStore port.ProviderStore,
+	virtualModelStore port.VirtualModelStore,
 ) *PluginHookAdapter {
 	return &PluginHookAdapter{
-		clients:         clients,
-		descriptors:     descriptors,
-		activationStore: activationStore,
-		configStore:     configStore,
-		userStore:       userStore,
-		providerStore:   providerStore,
+		clients:           clients,
+		descriptors:       descriptors,
+		activationStore:   activationStore,
+		configStore:       configStore,
+		userStore:         userStore,
+		providerStore:     providerStore,
+		virtualModelStore: virtualModelStore,
 	}
 }
 
@@ -247,6 +250,22 @@ func (a *PluginHookAdapter) ResolveModel(ctx context.Context, req *genaiProxy.Pr
 			PromptCostPer_1KTokens:     float64(m.PromptCostPer1KTokens()),
 			CompletionCostPer_1KTokens: float64(m.CompletionCostPer1KTokens()),
 			TokenLimit:                 m.ContextWindow(),
+			IsVirtual:                  m.IsVirtual(),
+		})
+	}
+
+	// Get virtual models for this org.
+	var virtualModels []model.VirtualModel
+	if a.virtualModelStore != nil {
+		virtualModels, _ = a.virtualModelStore.ListVirtualModels(ctx, orgID)
+	}
+	protoVirtualModels := make([]*proto.VirtualModelInfo, 0, len(virtualModels))
+	for _, vm := range virtualModels {
+		protoVirtualModels = append(protoVirtualModels, &proto.VirtualModelInfo{
+			Id:          string(vm.ID()),
+			Name:        vm.Name(),
+			OrgId:       string(vm.OrgID()),
+			Description: vm.Description(),
 		})
 	}
 
@@ -299,9 +318,15 @@ func (a *PluginHookAdapter) ResolveModel(ctx context.Context, req *genaiProxy.Pr
 
 		if out.ResolvedProxyName != "" {
 			req.Model = out.ResolvedProxyName
+			req.Metadata[MetaOriginalModel] = req.Model             // original before resolution
+			req.Metadata[MetaResolvedModel] = out.ResolvedProxyName // actual model used
 			return nil, "", genaiProxy.ErrModelNotFound
 		}
 	}
+
+	// No plugin resolved the model - store original as both
+	req.Metadata[MetaOriginalModel] = req.Model
+	req.Metadata[MetaResolvedModel] = req.Model
 
 	return nil, "", genaiProxy.ErrModelNotFound
 }

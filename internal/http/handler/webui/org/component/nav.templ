@@ -12,6 +12,7 @@ templ OrgNavItems(orgSlug string, selectedItem string) {
 	@common.NavItem(icon.Users, "Membres", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/members")), selectedItem == "org-"+orgSlug+"-members")
 	@common.NavItem(icon.Mail, "Invitations", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/invites")), selectedItem == "org-"+orgSlug+"-invites")
 	@common.NavItem(icon.Server, "Fournisseurs", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/providers")), selectedItem == "org-"+orgSlug+"-providers")
+	@common.NavItem(icon.BrainCircuit, "Modèles virtuels", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/virtual-models")), selectedItem == "org-"+orgSlug+"-virtual-models")
 	@common.NavItem(icon.Plug, "Plugins", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/plugins")), selectedItem == "org-"+orgSlug+"-plugins")
 	@common.NavItem(icon.Settings, "Paramètres", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/settings")), selectedItem == "org-"+orgSlug+"-settings")
 }

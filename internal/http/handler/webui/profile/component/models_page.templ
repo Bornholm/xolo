@@ -66,6 +66,9 @@ templ ModelsPage(vmodel ModelsPageVModel) {
 										} else {
 											{ mu.Model.ProxyName() }
 										}
+										if mu.Model.IsVirtual() {
+											<span class="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Virtuel</span>
+										}
 									}
 									if mu.Org != nil {
 										<p class="text-xs text-muted-foreground">{ mu.Org.Name() }</p>
@@ -76,16 +79,18 @@ templ ModelsPage(vmodel ModelsPageVModel) {
 										if mu.Model.Description() != "" {
 											<p class="text-sm text-muted-foreground">{ mu.Model.Description() }</p>
 										}
-										<div class="grid grid-cols-2 gap-2 text-sm">
-											<div>
-												<span class="text-muted-foreground">Prompt (1M tokens)</span>
-												<p class="font-medium">{ formatCostPerM(mu.Model.PromptCostPer1KTokens(), orgCurrency(mu.Org)) }</p>
+										if !mu.Model.IsVirtual() {
+											<div class="grid grid-cols-2 gap-2 text-sm">
+												<div>
+													<span class="text-muted-foreground">Prompt (1M tokens)</span>
+													<p class="font-medium">{ formatCostPerM(mu.Model.PromptCostPer1KTokens(), orgCurrency(mu.Org)) }</p>
+												</div>
+												<div>
+													<span class="text-muted-foreground">Complétion (1M tokens)</span>
+													<p class="font-medium">{ formatCostPerM(mu.Model.CompletionCostPer1KTokens(), orgCurrency(mu.Org)) }</p>
+												</div>
 											</div>
-											<div>
-												<span class="text-muted-foreground">Complétion (1M tokens)</span>
-												<p class="font-medium">{ formatCostPerM(mu.Model.CompletionCostPer1KTokens(), orgCurrency(mu.Org)) }</p>
-											</div>
-										</div>
+										}
 										if mu.Aggregate != nil && mu.Aggregate.TotalRequests > 0 {
 											<div class="border-t pt-3 grid grid-cols-3 gap-2 text-sm">
 												<div>

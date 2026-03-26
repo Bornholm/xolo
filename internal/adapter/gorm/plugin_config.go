@@ -67,6 +67,22 @@ func (s *Store) GetConfig(ctx context.Context, orgID model.OrgID, pluginName str
 	return toPluginConfig(&rec), nil
 }
 
+// ListConfigsByPlugin implements port.PluginConfigStore.
+func (s *Store) ListConfigsByPlugin(ctx context.Context, pluginName string) ([]model.PluginConfig, error) {
+	var recs []PluginConfigRecord
+	err := s.withRetry(ctx, false, func(ctx context.Context, db *gorm.DB) error {
+		return errors.WithStack(db.Where("plugin_name = ?", pluginName).Find(&recs).Error)
+	}, sqlite3.BUSY, sqlite3.LOCKED)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]model.PluginConfig, 0, len(recs))
+	for _, rec := range recs {
+		result = append(result, *toPluginConfig(&rec))
+	}
+	return result, nil
+}
+
 // SaveConfig implements port.PluginConfigStore (upsert on org_id+plugin_name+scope+scope_id).
 func (s *Store) SaveConfig(ctx context.Context, cfg *model.PluginConfig) error {
 	return s.withRetry(ctx, true, func(ctx context.Context, db *gorm.DB) error {

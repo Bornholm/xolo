@@ -75,6 +75,8 @@ func NewStore(db *gorm.DB) *Store {
 			&Organization{}, &Membership{},
 			// Provider store
 			&Provider{}, &LLMModel{},
+			// Virtual model store
+			&VirtualModel{},
 			// Quota store
 			&Quota{},
 			// Usage store

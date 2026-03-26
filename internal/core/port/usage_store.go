@@ -21,15 +21,16 @@ type UsageStore interface {
 }
 
 type UsageFilter struct {
-	UserID      *model.UserID
-	OrgID       *model.OrgID
-	ModelID     *model.LLMModelID
-	AuthTokenID *string
-	Currency    *string
-	Since       *time.Time
-	Until       *time.Time
-	Limit       *int
-	Offset      *int
+	UserID         *model.UserID
+	OrgID          *model.OrgID
+	ModelID        *model.LLMModelID
+	AuthTokenID    *string
+	Currency       *string
+	ProxyModelName *string
+	Since          *time.Time
+	Until          *time.Time
+	Limit          *int
+	Offset         *int
 }
 
 type UsageAggregate struct {

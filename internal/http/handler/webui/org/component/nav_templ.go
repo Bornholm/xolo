@@ -55,6 +55,10 @@ func OrgNavItems(orgSlug string, selectedItem string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
+		templ_7745c5c3_Err = common.NavItem(icon.BrainCircuit, "Modèles virtuels", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/virtual-models")), selectedItem == "org-"+orgSlug+"-virtual-models").Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
 		templ_7745c5c3_Err = common.NavItem(icon.Plug, "Plugins", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/plugins")), selectedItem == "org-"+orgSlug+"-plugins").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err

@@ -10,6 +10,7 @@ import (
 	genaiProxy "github.com/bornholm/genai/proxy"
 	proxyAdapter "github.com/bornholm/xolo/internal/adapter/proxy"
 	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/bornholm/xolo/internal/core/port"
 	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -25,11 +26,11 @@ type stubAuthToken struct {
 }
 
 func (t *stubAuthToken) ID() model.AuthTokenID { return t.id }
-func (t *stubAuthToken) Owner() model.User      { return t.owner }
-func (t *stubAuthToken) Label() string          { return "test-token" }
-func (t *stubAuthToken) Value() string          { return "raw-token" }
-func (t *stubAuthToken) OrgID() model.OrgID     { return t.orgID }
-func (t *stubAuthToken) ExpiresAt() *time.Time  { return nil }
+func (t *stubAuthToken) Owner() model.User     { return t.owner }
+func (t *stubAuthToken) Label() string         { return "test-token" }
+func (t *stubAuthToken) Value() string         { return "raw-token" }
+func (t *stubAuthToken) OrgID() model.OrgID    { return t.orgID }
+func (t *stubAuthToken) ExpiresAt() *time.Time { return nil }
 
 var _ model.AuthToken = &stubAuthToken{}
 
@@ -63,7 +64,10 @@ type stubConfigStore struct{}
 func (s *stubConfigStore) GetConfig(_ context.Context, _ model.OrgID, _ string, _ model.PluginConfigScope, _ string) (*model.PluginConfig, error) {
 	return nil, nil
 }
-func (s *stubConfigStore) SaveConfig(_ context.Context, _ *model.PluginConfig) error   { return nil }
+func (s *stubConfigStore) ListConfigsByPlugin(_ context.Context, _ string) ([]model.PluginConfig, error) {
+	return nil, nil
+}
+func (s *stubConfigStore) SaveConfig(_ context.Context, _ *model.PluginConfig) error { return nil }
 func (s *stubConfigStore) DeleteConfig(_ context.Context, _ model.OrgID, _ string, _ model.PluginConfigScope, _ string) error {
 	return nil
 }
@@ -77,9 +81,9 @@ func (s *stubProviderStore) GetProviderByID(_ context.Context, _ model.ProviderI
 func (s *stubProviderStore) ListProviders(_ context.Context, _ model.OrgID) ([]model.Provider, error) {
 	return nil, nil
 }
-func (s *stubProviderStore) SaveProvider(_ context.Context, _ model.Provider) error   { return nil }
+func (s *stubProviderStore) SaveProvider(_ context.Context, _ model.Provider) error     { return nil }
 func (s *stubProviderStore) DeleteProvider(_ context.Context, _ model.ProviderID) error { return nil }
-func (s *stubProviderStore) CreateLLMModel(_ context.Context, _ model.LLMModel) error { return nil }
+func (s *stubProviderStore) CreateLLMModel(_ context.Context, _ model.LLMModel) error   { return nil }
 func (s *stubProviderStore) GetLLMModelByID(_ context.Context, _ model.LLMModelID) (model.LLMModel, error) {
 	return nil, nil
 }
@@ -92,8 +96,31 @@ func (s *stubProviderStore) ListLLMModels(_ context.Context, _ model.OrgID) ([]m
 func (s *stubProviderStore) ListEnabledLLMModels(_ context.Context, _ model.OrgID) ([]model.LLMModel, error) {
 	return nil, nil
 }
-func (s *stubProviderStore) SaveLLMModel(_ context.Context, _ model.LLMModel) error   { return nil }
+func (s *stubProviderStore) SaveLLMModel(_ context.Context, _ model.LLMModel) error     { return nil }
 func (s *stubProviderStore) DeleteLLMModel(_ context.Context, _ model.LLMModelID) error { return nil }
+
+type stubVirtualModelStore struct{}
+
+func (s *stubVirtualModelStore) GetVirtualModelByID(_ context.Context, _ model.VirtualModelID) (model.VirtualModel, error) {
+	var vm model.VirtualModel
+	return vm, port.ErrNotFound
+}
+func (s *stubVirtualModelStore) GetVirtualModelByName(_ context.Context, _ model.OrgID, _ string) (model.VirtualModel, error) {
+	var vm model.VirtualModel
+	return vm, port.ErrNotFound
+}
+func (s *stubVirtualModelStore) ListVirtualModels(_ context.Context, _ model.OrgID) ([]model.VirtualModel, error) {
+	return nil, nil
+}
+func (s *stubVirtualModelStore) CreateVirtualModel(_ context.Context, _ model.VirtualModel) error {
+	return nil
+}
+func (s *stubVirtualModelStore) SaveVirtualModel(_ context.Context, _ model.VirtualModel) error {
+	return nil
+}
+func (s *stubVirtualModelStore) DeleteVirtualModel(_ context.Context, _ model.VirtualModelID) error {
+	return nil
+}
 
 // ── in-process gRPC plugin server ─────────────────────────────────────────
 
@@ -201,7 +228,7 @@ func TestPluginHookAdapter_PreRequest_Allowed(t *testing.T) {
 		},
 	}
 
-	adapter := proxyAdapter.NewPluginHookAdapter(clients, descriptors, activationStore, configStore, userStore, &stubProviderStore{})
+	adapter := proxyAdapter.NewPluginHookAdapter(clients, descriptors, activationStore, configStore, userStore, &stubProviderStore{}, &stubVirtualModelStore{})
 
 	req := makeRequest(t)
 	result, err := adapter.PreRequest(ctx, req)
@@ -240,7 +267,7 @@ func TestPluginHookAdapter_PreRequest_Blocked(t *testing.T) {
 		},
 	}
 
-	adapter := proxyAdapter.NewPluginHookAdapter(clients, descriptors, activationStore, configStore, userStore, &stubProviderStore{})
+	adapter := proxyAdapter.NewPluginHookAdapter(clients, descriptors, activationStore, configStore, userStore, &stubProviderStore{}, &stubVirtualModelStore{})
 
 	req := makeRequest(t)
 	result, err := adapter.PreRequest(ctx, req)

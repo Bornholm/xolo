@@ -1338,7 +1338,7 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 											}
 										}
 										@table.Cell() {
-											{ dr.Record.ProxyModelName() }
+											{ dr.DisplayModelName }
 										}
 										@table.Cell() {
 											{ fmt.Sprintf("%d", dr.Record.PromptTokens()) }

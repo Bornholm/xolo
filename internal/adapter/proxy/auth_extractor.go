@@ -70,9 +70,11 @@ func OrgIDFromContext(ctx context.Context) string {
 
 // MetaAuthTokenID and MetaOrgID are the req.Metadata keys used by hooks.
 const (
-	MetaAuthTokenID = "authTokenID"
-	MetaOrgID       = "orgID"
-	MetaModelID     = "modelID"
+	MetaAuthTokenID   = "authTokenID"
+	MetaOrgID         = "orgID"
+	MetaModelID       = "modelID"
+	MetaOriginalModel = "originalModel" // requested model before plugin resolution
+	MetaResolvedModel = "resolvedModel" // actual model after plugin resolution
 )
 
 // SetRequestMeta is a PreRequestHook (priority 0) that copies context values
@@ -83,7 +85,10 @@ type SetRequestMetaHook struct{}
 func (h *SetRequestMetaHook) Name() string  { return "xolo.set-request-meta" }
 func (h *SetRequestMetaHook) Priority() int { return 0 }
 
-func (h *SetRequestMetaHook) PreRequest(ctx context.Context, req interface{ GetMetadata() map[string]any; GetHeaders() http.Header }) (interface{}, error) {
+func (h *SetRequestMetaHook) PreRequest(ctx context.Context, req interface {
+	GetMetadata() map[string]any
+	GetHeaders() http.Header
+}) (interface{}, error) {
 	return nil, nil
 }
 

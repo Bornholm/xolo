@@ -56,6 +56,16 @@ func (t *XoloUsageTracker) PostResponse(ctx context.Context, req *genaiProxy.Pro
 		return nil, nil
 	}
 
+	// Get original and resolved model names from metadata.
+	originalModel := req.Model
+	resolvedModel := req.Model
+	if v, ok := req.Metadata[MetaOriginalModel].(string); ok && v != "" {
+		originalModel = v
+	}
+	if v, ok := req.Metadata[MetaResolvedModel].(string); ok && v != "" {
+		resolvedModel = v
+	}
+
 	authTokenID := AuthTokenIDFromMeta(req.Metadata)
 
 	llmModel, err := t.providerStore.GetLLMModelByID(ctx, modelID)
@@ -103,12 +113,13 @@ func (t *XoloUsageTracker) PostResponse(ctx context.Context, req *genaiProxy.Pro
 		orgID,
 		llmModel.ProviderID(),
 		modelID,
-		req.Model,
+		originalModel,
 		authTokenID,
 		promptTokens,
 		completionTokens,
 		recordCost,
 		recordCurrency,
+		resolvedModel,
 	)
 
 	if err := t.usageStore.RecordUsage(ctx, record); err != nil {

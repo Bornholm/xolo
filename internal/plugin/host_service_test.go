@@ -44,6 +44,16 @@ func (s *stubConfigStore) DeleteConfig(_ context.Context, orgID model.OrgID, plu
 	return nil
 }
 
+func (s *stubConfigStore) ListConfigsByPlugin(_ context.Context, pluginName string) ([]model.PluginConfig, error) {
+	var configs []model.PluginConfig
+	for _, cfg := range s.data {
+		if cfg.PluginName == pluginName {
+			configs = append(configs, *cfg)
+		}
+	}
+	return configs, nil
+}
+
 func TestGetConfig_NotFound_ReturnsEmpty(t *testing.T) {
 	svc := plugin.NewXoloHostService(newStubConfigStore())
 	resp, err := svc.GetConfig(context.Background(), &proto.GetConfigRequest{

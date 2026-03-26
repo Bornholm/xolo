@@ -568,6 +568,7 @@ type ModelInfo struct {
 	PromptCostPer_1KTokens     float64                `protobuf:"fixed64,4,opt,name=prompt_cost_per_1k_tokens,json=promptCostPer1kTokens,proto3" json:"prompt_cost_per_1k_tokens,omitempty"`
 	CompletionCostPer_1KTokens float64                `protobuf:"fixed64,5,opt,name=completion_cost_per_1k_tokens,json=completionCostPer1kTokens,proto3" json:"completion_cost_per_1k_tokens,omitempty"`
 	TokenLimit                 int64                  `protobuf:"varint,6,opt,name=token_limit,json=tokenLimit,proto3" json:"token_limit,omitempty"`
+	IsVirtual                  bool                   `protobuf:"varint,7,opt,name=is_virtual,json=isVirtual,proto3" json:"is_virtual,omitempty"`
 	unknownFields              protoimpl.UnknownFields
 	sizeCache                  protoimpl.SizeCache
 }
@@ -644,6 +645,81 @@ func (x *ModelInfo) GetTokenLimit() int64 {
 	return 0
 }
 
+func (x *ModelInfo) GetIsVirtual() bool {
+	if x != nil {
+		return x.IsVirtual
+	}
+	return false
+}
+
+type VirtualModelInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	OrgId         string                 `protobuf:"bytes,3,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	Description   string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VirtualModelInfo) Reset() {
+	*x = VirtualModelInfo{}
+	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VirtualModelInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VirtualModelInfo) ProtoMessage() {}
+
+func (x *VirtualModelInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VirtualModelInfo.ProtoReflect.Descriptor instead.
+func (*VirtualModelInfo) Descriptor() ([]byte, []int) {
+	return file_pkg_pluginsdk_proto_plugin_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *VirtualModelInfo) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *VirtualModelInfo) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *VirtualModelInfo) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+func (x *VirtualModelInfo) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
 type PreRequestInput struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Ctx           *RequestContext        `protobuf:"bytes,1,opt,name=ctx,proto3" json:"ctx,omitempty"`
@@ -655,7 +731,7 @@ type PreRequestInput struct {
 
 func (x *PreRequestInput) Reset() {
 	*x = PreRequestInput{}
-	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[10]
+	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -667,7 +743,7 @@ func (x *PreRequestInput) String() string {
 func (*PreRequestInput) ProtoMessage() {}
 
 func (x *PreRequestInput) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[10]
+	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -680,7 +756,7 @@ func (x *PreRequestInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreRequestInput.ProtoReflect.Descriptor instead.
 func (*PreRequestInput) Descriptor() ([]byte, []int) {
-	return file_pkg_pluginsdk_proto_plugin_proto_rawDescGZIP(), []int{10}
+	return file_pkg_pluginsdk_proto_plugin_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *PreRequestInput) GetCtx() *RequestContext {
@@ -714,7 +790,7 @@ type PreRequestOutput struct {
 
 func (x *PreRequestOutput) Reset() {
 	*x = PreRequestOutput{}
-	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[11]
+	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -726,7 +802,7 @@ func (x *PreRequestOutput) String() string {
 func (*PreRequestOutput) ProtoMessage() {}
 
 func (x *PreRequestOutput) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[11]
+	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -739,7 +815,7 @@ func (x *PreRequestOutput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreRequestOutput.ProtoReflect.Descriptor instead.
 func (*PreRequestOutput) Descriptor() ([]byte, []int) {
-	return file_pkg_pluginsdk_proto_plugin_proto_rawDescGZIP(), []int{11}
+	return file_pkg_pluginsdk_proto_plugin_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *PreRequestOutput) GetAllowed() bool {
@@ -769,7 +845,7 @@ type PostResponseInput struct {
 
 func (x *PostResponseInput) Reset() {
 	*x = PostResponseInput{}
-	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[12]
+	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -781,7 +857,7 @@ func (x *PostResponseInput) String() string {
 func (*PostResponseInput) ProtoMessage() {}
 
 func (x *PostResponseInput) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[12]
+	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -794,7 +870,7 @@ func (x *PostResponseInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PostResponseInput.ProtoReflect.Descriptor instead.
 func (*PostResponseInput) Descriptor() ([]byte, []int) {
-	return file_pkg_pluginsdk_proto_plugin_proto_rawDescGZIP(), []int{12}
+	return file_pkg_pluginsdk_proto_plugin_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *PostResponseInput) GetCtx() *RequestContext {
@@ -840,7 +916,7 @@ type PostResponseOutput struct {
 
 func (x *PostResponseOutput) Reset() {
 	*x = PostResponseOutput{}
-	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[13]
+	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -852,7 +928,7 @@ func (x *PostResponseOutput) String() string {
 func (*PostResponseOutput) ProtoMessage() {}
 
 func (x *PostResponseOutput) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[13]
+	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -865,7 +941,7 @@ func (x *PostResponseOutput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PostResponseOutput.ProtoReflect.Descriptor instead.
 func (*PostResponseOutput) Descriptor() ([]byte, []int) {
-	return file_pkg_pluginsdk_proto_plugin_proto_rawDescGZIP(), []int{13}
+	return file_pkg_pluginsdk_proto_plugin_proto_rawDescGZIP(), []int{14}
 }
 
 type ResolveModelInput struct {
@@ -874,13 +950,14 @@ type ResolveModelInput struct {
 	RequestedModel  string                 `protobuf:"bytes,2,opt,name=requested_model,json=requestedModel,proto3" json:"requested_model,omitempty"`
 	AvailableModels []*ModelInfo           `protobuf:"bytes,3,rep,name=available_models,json=availableModels,proto3" json:"available_models,omitempty"`
 	MessagesJson    string                 `protobuf:"bytes,4,opt,name=messages_json,json=messagesJson,proto3" json:"messages_json,omitempty"`
+	VirtualModels   []*VirtualModelInfo    `protobuf:"bytes,5,rep,name=virtual_models,json=virtualModels,proto3" json:"virtual_models,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ResolveModelInput) Reset() {
 	*x = ResolveModelInput{}
-	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[14]
+	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -892,7 +969,7 @@ func (x *ResolveModelInput) String() string {
 func (*ResolveModelInput) ProtoMessage() {}
 
 func (x *ResolveModelInput) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[14]
+	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -905,7 +982,7 @@ func (x *ResolveModelInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveModelInput.ProtoReflect.Descriptor instead.
 func (*ResolveModelInput) Descriptor() ([]byte, []int) {
-	return file_pkg_pluginsdk_proto_plugin_proto_rawDescGZIP(), []int{14}
+	return file_pkg_pluginsdk_proto_plugin_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ResolveModelInput) GetCtx() *RequestContext {
@@ -936,6 +1013,13 @@ func (x *ResolveModelInput) GetMessagesJson() string {
 	return ""
 }
 
+func (x *ResolveModelInput) GetVirtualModels() []*VirtualModelInfo {
+	if x != nil {
+		return x.VirtualModels
+	}
+	return nil
+}
+
 type ResolveModelOutput struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	ResolvedProxyName string                 `protobuf:"bytes,1,opt,name=resolved_proxy_name,json=resolvedProxyName,proto3" json:"resolved_proxy_name,omitempty"`
@@ -945,7 +1029,7 @@ type ResolveModelOutput struct {
 
 func (x *ResolveModelOutput) Reset() {
 	*x = ResolveModelOutput{}
-	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[15]
+	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -957,7 +1041,7 @@ func (x *ResolveModelOutput) String() string {
 func (*ResolveModelOutput) ProtoMessage() {}
 
 func (x *ResolveModelOutput) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[15]
+	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -970,7 +1054,7 @@ func (x *ResolveModelOutput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveModelOutput.ProtoReflect.Descriptor instead.
 func (*ResolveModelOutput) Descriptor() ([]byte, []int) {
-	return file_pkg_pluginsdk_proto_plugin_proto_rawDescGZIP(), []int{15}
+	return file_pkg_pluginsdk_proto_plugin_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ResolveModelOutput) GetResolvedProxyName() string {
@@ -990,7 +1074,7 @@ type ListModelsInput struct {
 
 func (x *ListModelsInput) Reset() {
 	*x = ListModelsInput{}
-	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[16]
+	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1002,7 +1086,7 @@ func (x *ListModelsInput) String() string {
 func (*ListModelsInput) ProtoMessage() {}
 
 func (x *ListModelsInput) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[16]
+	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1015,7 +1099,7 @@ func (x *ListModelsInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListModelsInput.ProtoReflect.Descriptor instead.
 func (*ListModelsInput) Descriptor() ([]byte, []int) {
-	return file_pkg_pluginsdk_proto_plugin_proto_rawDescGZIP(), []int{16}
+	return file_pkg_pluginsdk_proto_plugin_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ListModelsInput) GetCtx() *RequestContext {
@@ -1041,7 +1125,7 @@ type ListModelsOutput struct {
 
 func (x *ListModelsOutput) Reset() {
 	*x = ListModelsOutput{}
-	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[17]
+	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1053,7 +1137,7 @@ func (x *ListModelsOutput) String() string {
 func (*ListModelsOutput) ProtoMessage() {}
 
 func (x *ListModelsOutput) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[17]
+	mi := &file_pkg_pluginsdk_proto_plugin_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1066,7 +1150,7 @@ func (x *ListModelsOutput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListModelsOutput.ProtoReflect.Descriptor instead.
 func (*ListModelsOutput) Descriptor() ([]byte, []int) {
-	return file_pkg_pluginsdk_proto_plugin_proto_rawDescGZIP(), []int{17}
+	return file_pkg_pluginsdk_proto_plugin_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ListModelsOutput) GetAdditionalProxyNames() []string {
@@ -1122,7 +1206,7 @@ const file_pkg_pluginsdk_proto_plugin_proto_rawDesc = "" +
 	"\btoken_id\x18\x03 \x01(\tR\atokenId\x12\x1f\n" +
 	"\vconfig_json\x18\x04 \x01(\tR\n" +
 	"configJson\x12(\n" +
-	"\x10user_config_json\x18\x05 \x01(\tR\x0euserConfigJson\"\x87\x02\n" +
+	"\x10user_config_json\x18\x05 \x01(\tR\x0euserConfigJson\"\xa6\x02\n" +
 	"\tModelInfo\x12\x1d\n" +
 	"\n" +
 	"proxy_name\x18\x01 \x01(\tR\tproxyName\x12\x1d\n" +
@@ -1133,7 +1217,14 @@ const file_pkg_pluginsdk_proto_plugin_proto_rawDesc = "" +
 	"\x19prompt_cost_per_1k_tokens\x18\x04 \x01(\x01R\x15promptCostPer1kTokens\x12@\n" +
 	"\x1dcompletion_cost_per_1k_tokens\x18\x05 \x01(\x01R\x19completionCostPer1kTokens\x12\x1f\n" +
 	"\vtoken_limit\x18\x06 \x01(\x03R\n" +
-	"tokenLimit\"~\n" +
+	"tokenLimit\x12\x1d\n" +
+	"\n" +
+	"is_virtual\x18\a \x01(\bR\tisVirtual\"o\n" +
+	"\x10VirtualModelInfo\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x15\n" +
+	"\x06org_id\x18\x03 \x01(\tR\x05orgId\x12 \n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescription\"~\n" +
 	"\x0fPreRequestInput\x120\n" +
 	"\x03ctx\x18\x01 \x01(\v2\x1e.xolo.plugin.v1.RequestContextR\x03ctx\x12\x14\n" +
 	"\x05model\x18\x02 \x01(\tR\x05model\x12#\n" +
@@ -1147,12 +1238,13 @@ const file_pkg_pluginsdk_proto_plugin_proto_rawDesc = "" +
 	"\rprompt_tokens\x18\x03 \x01(\x03R\fpromptTokens\x12+\n" +
 	"\x11completion_tokens\x18\x04 \x01(\x03R\x10completionTokens\x12\x1b\n" +
 	"\thad_error\x18\x05 \x01(\bR\bhadError\"\x14\n" +
-	"\x12PostResponseOutput\"\xd9\x01\n" +
+	"\x12PostResponseOutput\"\xa2\x02\n" +
 	"\x11ResolveModelInput\x120\n" +
 	"\x03ctx\x18\x01 \x01(\v2\x1e.xolo.plugin.v1.RequestContextR\x03ctx\x12'\n" +
 	"\x0frequested_model\x18\x02 \x01(\tR\x0erequestedModel\x12D\n" +
 	"\x10available_models\x18\x03 \x03(\v2\x19.xolo.plugin.v1.ModelInfoR\x0favailableModels\x12#\n" +
-	"\rmessages_json\x18\x04 \x01(\tR\fmessagesJson\"D\n" +
+	"\rmessages_json\x18\x04 \x01(\tR\fmessagesJson\x12G\n" +
+	"\x0evirtual_models\x18\x05 \x03(\v2 .xolo.plugin.v1.VirtualModelInfoR\rvirtualModels\"D\n" +
 	"\x12ResolveModelOutput\x12.\n" +
 	"\x13resolved_proxy_name\x18\x01 \x01(\tR\x11resolvedProxyName\"\x89\x01\n" +
 	"\x0fListModelsInput\x120\n" +
@@ -1189,7 +1281,7 @@ func file_pkg_pluginsdk_proto_plugin_proto_rawDescGZIP() []byte {
 }
 
 var file_pkg_pluginsdk_proto_plugin_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_pkg_pluginsdk_proto_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_pkg_pluginsdk_proto_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_pkg_pluginsdk_proto_plugin_proto_goTypes = []any{
 	(PluginDescriptor_Capability)(0), // 0: xolo.plugin.v1.PluginDescriptor.Capability
 	(*InitializeRequest)(nil),        // 1: xolo.plugin.v1.InitializeRequest
@@ -1202,14 +1294,15 @@ var file_pkg_pluginsdk_proto_plugin_proto_goTypes = []any{
 	(*PluginDescriptor)(nil),         // 8: xolo.plugin.v1.PluginDescriptor
 	(*RequestContext)(nil),           // 9: xolo.plugin.v1.RequestContext
 	(*ModelInfo)(nil),                // 10: xolo.plugin.v1.ModelInfo
-	(*PreRequestInput)(nil),          // 11: xolo.plugin.v1.PreRequestInput
-	(*PreRequestOutput)(nil),         // 12: xolo.plugin.v1.PreRequestOutput
-	(*PostResponseInput)(nil),        // 13: xolo.plugin.v1.PostResponseInput
-	(*PostResponseOutput)(nil),       // 14: xolo.plugin.v1.PostResponseOutput
-	(*ResolveModelInput)(nil),        // 15: xolo.plugin.v1.ResolveModelInput
-	(*ResolveModelOutput)(nil),       // 16: xolo.plugin.v1.ResolveModelOutput
-	(*ListModelsInput)(nil),          // 17: xolo.plugin.v1.ListModelsInput
-	(*ListModelsOutput)(nil),         // 18: xolo.plugin.v1.ListModelsOutput
+	(*VirtualModelInfo)(nil),         // 11: xolo.plugin.v1.VirtualModelInfo
+	(*PreRequestInput)(nil),          // 12: xolo.plugin.v1.PreRequestInput
+	(*PreRequestOutput)(nil),         // 13: xolo.plugin.v1.PreRequestOutput
+	(*PostResponseInput)(nil),        // 14: xolo.plugin.v1.PostResponseInput
+	(*PostResponseOutput)(nil),       // 15: xolo.plugin.v1.PostResponseOutput
+	(*ResolveModelInput)(nil),        // 16: xolo.plugin.v1.ResolveModelInput
+	(*ResolveModelOutput)(nil),       // 17: xolo.plugin.v1.ResolveModelOutput
+	(*ListModelsInput)(nil),          // 18: xolo.plugin.v1.ListModelsInput
+	(*ListModelsOutput)(nil),         // 19: xolo.plugin.v1.ListModelsOutput
 }
 var file_pkg_pluginsdk_proto_plugin_proto_depIdxs = []int32{
 	0,  // 0: xolo.plugin.v1.PluginDescriptor.capabilities:type_name -> xolo.plugin.v1.PluginDescriptor.Capability
@@ -1217,29 +1310,30 @@ var file_pkg_pluginsdk_proto_plugin_proto_depIdxs = []int32{
 	9,  // 2: xolo.plugin.v1.PostResponseInput.ctx:type_name -> xolo.plugin.v1.RequestContext
 	9,  // 3: xolo.plugin.v1.ResolveModelInput.ctx:type_name -> xolo.plugin.v1.RequestContext
 	10, // 4: xolo.plugin.v1.ResolveModelInput.available_models:type_name -> xolo.plugin.v1.ModelInfo
-	9,  // 5: xolo.plugin.v1.ListModelsInput.ctx:type_name -> xolo.plugin.v1.RequestContext
-	10, // 6: xolo.plugin.v1.ListModelsInput.available_models:type_name -> xolo.plugin.v1.ModelInfo
-	7,  // 7: xolo.plugin.v1.XoloPlugin.Describe:input_type -> xolo.plugin.v1.DescribeRequest
-	1,  // 8: xolo.plugin.v1.XoloPlugin.Initialize:input_type -> xolo.plugin.v1.InitializeRequest
-	11, // 9: xolo.plugin.v1.XoloPlugin.PreRequest:input_type -> xolo.plugin.v1.PreRequestInput
-	13, // 10: xolo.plugin.v1.XoloPlugin.PostResponse:input_type -> xolo.plugin.v1.PostResponseInput
-	15, // 11: xolo.plugin.v1.XoloPlugin.ResolveModel:input_type -> xolo.plugin.v1.ResolveModelInput
-	17, // 12: xolo.plugin.v1.XoloPlugin.ListModels:input_type -> xolo.plugin.v1.ListModelsInput
-	3,  // 13: xolo.plugin.v1.XoloHostService.GetConfig:input_type -> xolo.plugin.v1.GetConfigRequest
-	5,  // 14: xolo.plugin.v1.XoloHostService.SaveConfig:input_type -> xolo.plugin.v1.SaveConfigRequest
-	8,  // 15: xolo.plugin.v1.XoloPlugin.Describe:output_type -> xolo.plugin.v1.PluginDescriptor
-	2,  // 16: xolo.plugin.v1.XoloPlugin.Initialize:output_type -> xolo.plugin.v1.InitializeResponse
-	12, // 17: xolo.plugin.v1.XoloPlugin.PreRequest:output_type -> xolo.plugin.v1.PreRequestOutput
-	14, // 18: xolo.plugin.v1.XoloPlugin.PostResponse:output_type -> xolo.plugin.v1.PostResponseOutput
-	16, // 19: xolo.plugin.v1.XoloPlugin.ResolveModel:output_type -> xolo.plugin.v1.ResolveModelOutput
-	18, // 20: xolo.plugin.v1.XoloPlugin.ListModels:output_type -> xolo.plugin.v1.ListModelsOutput
-	4,  // 21: xolo.plugin.v1.XoloHostService.GetConfig:output_type -> xolo.plugin.v1.GetConfigResponse
-	6,  // 22: xolo.plugin.v1.XoloHostService.SaveConfig:output_type -> xolo.plugin.v1.SaveConfigResponse
-	15, // [15:23] is the sub-list for method output_type
-	7,  // [7:15] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	11, // 5: xolo.plugin.v1.ResolveModelInput.virtual_models:type_name -> xolo.plugin.v1.VirtualModelInfo
+	9,  // 6: xolo.plugin.v1.ListModelsInput.ctx:type_name -> xolo.plugin.v1.RequestContext
+	10, // 7: xolo.plugin.v1.ListModelsInput.available_models:type_name -> xolo.plugin.v1.ModelInfo
+	7,  // 8: xolo.plugin.v1.XoloPlugin.Describe:input_type -> xolo.plugin.v1.DescribeRequest
+	1,  // 9: xolo.plugin.v1.XoloPlugin.Initialize:input_type -> xolo.plugin.v1.InitializeRequest
+	12, // 10: xolo.plugin.v1.XoloPlugin.PreRequest:input_type -> xolo.plugin.v1.PreRequestInput
+	14, // 11: xolo.plugin.v1.XoloPlugin.PostResponse:input_type -> xolo.plugin.v1.PostResponseInput
+	16, // 12: xolo.plugin.v1.XoloPlugin.ResolveModel:input_type -> xolo.plugin.v1.ResolveModelInput
+	18, // 13: xolo.plugin.v1.XoloPlugin.ListModels:input_type -> xolo.plugin.v1.ListModelsInput
+	3,  // 14: xolo.plugin.v1.XoloHostService.GetConfig:input_type -> xolo.plugin.v1.GetConfigRequest
+	5,  // 15: xolo.plugin.v1.XoloHostService.SaveConfig:input_type -> xolo.plugin.v1.SaveConfigRequest
+	8,  // 16: xolo.plugin.v1.XoloPlugin.Describe:output_type -> xolo.plugin.v1.PluginDescriptor
+	2,  // 17: xolo.plugin.v1.XoloPlugin.Initialize:output_type -> xolo.plugin.v1.InitializeResponse
+	13, // 18: xolo.plugin.v1.XoloPlugin.PreRequest:output_type -> xolo.plugin.v1.PreRequestOutput
+	15, // 19: xolo.plugin.v1.XoloPlugin.PostResponse:output_type -> xolo.plugin.v1.PostResponseOutput
+	17, // 20: xolo.plugin.v1.XoloPlugin.ResolveModel:output_type -> xolo.plugin.v1.ResolveModelOutput
+	19, // 21: xolo.plugin.v1.XoloPlugin.ListModels:output_type -> xolo.plugin.v1.ListModelsOutput
+	4,  // 22: xolo.plugin.v1.XoloHostService.GetConfig:output_type -> xolo.plugin.v1.GetConfigResponse
+	6,  // 23: xolo.plugin.v1.XoloHostService.SaveConfig:output_type -> xolo.plugin.v1.SaveConfigResponse
+	16, // [16:24] is the sub-list for method output_type
+	8,  // [8:16] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_pkg_pluginsdk_proto_plugin_proto_init() }
@@ -1253,7 +1347,7 @@ func file_pkg_pluginsdk_proto_plugin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_pluginsdk_proto_plugin_proto_rawDesc), len(file_pkg_pluginsdk_proto_plugin_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   18,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

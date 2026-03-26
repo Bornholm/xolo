@@ -1,0 +1,158 @@
+package component
+
+import (
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
+)
+
+templ VirtualModelsPage(vmodel VirtualModelsPageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Modèles virtuels — "+vmodel.Org.Name())) {
+		<div class="space-y-6">
+			<div class="flex items-center justify-between">
+				<h1 class="text-2xl font-semibold">Modèles virtuels</h1>
+				@button.Button(button.Props{
+					Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/new")),
+				}) {
+					Nouveau modèle virtuel
+				}
+			</div>
+			if vmodel.Success == "created" {
+				<div class="bg-green-50 border border-green-200 text-green-800 px-4 py-2 rounded-md">
+					Modèle virtuel créé avec succès.
+				</div>
+			}
+			if vmodel.Success == "updated" {
+				<div class="bg-green-50 border border-green-200 text-green-800 px-4 py-2 rounded-md">
+					Modèle virtuel mis à jour avec succès.
+				</div>
+			}
+			if vmodel.Success == "deleted" {
+				<div class="bg-green-50 border border-green-200 text-green-800 px-4 py-2 rounded-md">
+					Modèle virtuel supprimé avec succès.
+				</div>
+			}
+			if vmodel.Error == "exists" {
+				<div class="bg-red-50 border border-red-200 text-red-800 px-4 py-2 rounded-md">
+					Un modèle virtuel avec ce nom existe déjà.
+				</div>
+			}
+			if vmodel.Error == "create_failed" {
+				<div class="bg-red-50 border border-red-200 text-red-800 px-4 py-2 rounded-md">
+					Erreur lors de la création du modèle virtuel.
+				</div>
+			}
+			if len(vmodel.VirtualModels) == 0 {
+				<div class="rounded-lg border p-6 text-center text-muted-foreground">
+					Aucun modèle virtuel configuré.
+				</div>
+			} else {
+				@card.Card() {
+					@card.Content() {
+						@table.Table() {
+							@table.Header() {
+								@table.Head() {
+									Nom
+								}
+								@table.Head() {
+									Description
+								}
+								@table.Head() {
+									Actions
+								}
+							}
+							@table.Body() {
+								for _, vm := range vmodel.VirtualModels {
+									@table.Row() {
+										@table.Cell() {
+											<code class="text-sm bg-muted px-2 py-1 rounded">{ vmodel.Org.Slug() }/{ vm.Name() }</code>
+										}
+										@table.Cell() {
+											<span class="text-muted-foreground">{ vm.Description() }</span>
+										}
+										@table.Cell() {
+											<div class="flex justify-end gap-2">
+												@button.Button(button.Props{
+													Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()), "/edit")),
+													Variant: button.VariantOutline,
+													Size:    button.SizeSm,
+												}) {
+													Modifier
+												}
+												@button.Button(button.Props{
+													Attributes: map[string]any{
+														"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()))),
+														"onclick":  "if(confirm('Supprimer ce modèle virtuel ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
+													},
+													Variant: button.VariantDestructive,
+													Size:    button.SizeSm,
+												}) {
+													Supprimer
+												}
+											</div>
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		</div>
+	}
+}
+
+templ VirtualModelFormPage(vmodel VirtualModelFormVModel) {
+	{{ title := "Nouveau modèle virtuel" }}
+	{{ action := common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models")) }}
+	if !vmodel.IsNew {
+		{{ title = "Modifier le modèle virtuel" }}
+		{{ action = common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", vmodel.Name, "/edit")) }}
+	}
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(title)) {
+		<div class="space-y-6">
+			<h1 class="text-2xl font-semibold">{ title }</h1>
+			if vmodel.Error != "" {
+				<div class="bg-red-50 border border-red-200 text-red-800 px-4 py-2 rounded-md">
+					{ vmodel.Error }
+				</div>
+			}
+			<form method="POST" action={ templ.SafeURL(action) } class="space-y-4">
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Nom</label>
+					if vmodel.IsNew {
+						@input.Input(input.Props{
+							Name:        "name",
+							Placeholder: "ex: auto, fast, smart",
+							Attributes:  templ.Attributes{"required": true},
+						})
+						<p class="text-sm text-muted-foreground">Le nom sera utilisé comme suffixe du nom qualifié (ex: acme/auto)</p>
+					} else {
+						@input.Input(input.Props{
+							Name:     "name",
+							Value:    vmodel.Name,
+							Readonly: true,
+						})
+					}
+				</div>
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Description</label>
+					<textarea name="description" rows="3" class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-base shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm">{ vmodel.Description }</textarea>
+				</div>
+				<div class="flex gap-2">
+					@button.Button(button.Props{Type: button.TypeSubmit}) {
+						Enregistrer
+					}
+					@button.Button(button.Props{
+						Href:   common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models")),
+						Variant: button.VariantOutline,
+					}) {
+						Annuler
+					}
+				</div>
+			</form>
+		</div>
+	}
+}

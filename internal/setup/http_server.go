@@ -2,6 +2,7 @@ package setup
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/bornholm/genai/proxy"
 	proxyAdapter "github.com/bornholm/xolo/internal/adapter/proxy"
@@ -130,6 +131,16 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		}
 	}
 
+	virtualModelStore, err := getVirtualModelStoreFromConfig(ctx, conf)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	// Migrate existing virtual_model configs from plugins to VirtualModel table.
+	if err := migrateVirtualModelConfigs(ctx, conf); err != nil {
+		slog.WarnContext(ctx, "could not run virtual model migration", slog.Any("error", err))
+	}
+
 	pluginHookAdapter := proxyAdapter.NewPluginHookAdapter(
 		pluginClients,
 		pluginDescriptors,
@@ -137,11 +148,12 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		pluginConfigStore,
 		userStore,
 		providerStore,
+		virtualModelStore,
 	)
 
 	withMemberships := membershipsMiddleware.Middleware(orgStore)
 
-	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, providerStore, usageStore, inviteStore, quotaStore, quotaService, exchangeRateService, conf.SecretKey, pluginManager, pluginActivationStore, pluginConfigStore)
+	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, providerStore, virtualModelStore, usageStore, inviteStore, quotaStore, quotaService, exchangeRateService, conf.SecretKey, pluginManager, pluginActivationStore, pluginConfigStore)
 
 	apiHandler := api.NewHandler(providerStore, orgStore, exchangeRateService)
 
