@@ -17,6 +17,7 @@ type JoinSuccessVModel struct {
 	common.AppLayoutVModel
 	OrgName string
 	OrgSlug string
+	Role    string
 }
 
 type JoinErrorVModel struct {
@@ -72,8 +73,14 @@ templ JoinSuccess(vmodel JoinSuccessVModel) {
 				@card.Content() {
 					<div class="space-y-4">
 						<p class="text-sm">Vous avez rejoint l'organisation <strong>{ vmodel.OrgName }</strong>.</p>
-						@button.Button(button.Props{Href: "/orgs/" + vmodel.OrgSlug + "/usage"}) {
-							Accéder à l'organisation
+						if vmodel.Role == "admin" {
+							@button.Button(button.Props{Href: "/orgs/" + vmodel.OrgSlug + "/usage"}) {
+								Accéder à l'organisation
+							}
+						} else {
+							@button.Button(button.Props{Href: "/usage"}) {
+								Accéder à mon espace
+							}
 						}
 					</div>
 				}

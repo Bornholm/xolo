@@ -97,17 +97,12 @@ templ MembersPage(vmodel MembersPageVModel) {
 					@icon.UserPlus(icon.Props{Class: "h-4 w-4 mr-2"})
 					Inviter
 				}
-				if vmodel.Success != "" {
-					@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-						@alert.Description() {
-							Opération réussie.
-						}
-					}
-				}
 			</div>
 			if vmodel.Success != "" {
 				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-					Opération réussie.
+					@alert.Description() {
+						Opération réussie.
+					}
 				}
 			}
 			if len(vmodel.Members) == 0 {
@@ -184,17 +179,12 @@ templ ProvidersPage(vmodel ProvidersPageVModel) {
 					@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
 					Ajouter
 				}
-				if vmodel.Success != "" {
-					@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-						@alert.Description() {
-							Opération réussie.
-						}
-					}
-				}
 			</div>
 			if vmodel.Success != "" {
 				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-					Opération réussie.
+					@alert.Description() {
+						Opération réussie.
+					}
 				}
 			}
 			if len(vmodel.Providers) == 0 {
@@ -457,17 +447,12 @@ templ ModelsPage(vmodel ModelsPageVModel) {
 					@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
 					Ajouter un modèle
 				}
-				if vmodel.Success != "" {
-					@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-						@alert.Description() {
-							Opération réussie.
-						}
-					}
-				}
 			</div>
 			if vmodel.Success != "" {
 				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-					Opération réussie.
+					@alert.Description() {
+						Opération réussie.
+					}
 				}
 			}
 			if len(vmodel.Models) == 0 {

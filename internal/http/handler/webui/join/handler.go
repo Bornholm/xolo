@@ -148,6 +148,7 @@ func (h *Handler) acceptInvite(w http.ResponseWriter, r *http.Request) {
 	vmodel := component.JoinSuccessVModel{
 		OrgName: org.Name(),
 		OrgSlug: org.Slug(),
+		Role:    invite.Role(),
 		AppLayoutVModel: common.AppLayoutVModel{
 			User: user,
 			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
