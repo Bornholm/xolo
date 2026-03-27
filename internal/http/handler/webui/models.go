@@ -42,6 +42,7 @@ func (h *Handler) getModelsPage(w http.ResponseWriter, r *http.Request) {
 		return a.TotalRequests > b.TotalRequests
 	})
 
+	allModelUsages := modelUsages
 	totalCount := len(modelUsages)
 	remainingCount := totalCount - component.DefaultMaxDisplayedModels
 
@@ -67,6 +68,7 @@ func (h *Handler) getModelsPage(w http.ResponseWriter, r *http.Request) {
 			},
 		},
 		ModelUsages:    modelUsages,
+		AllModelUsages: allModelUsages,
 		Range:          rangeParam,
 		RemainingCount: remainingCount,
 	}
