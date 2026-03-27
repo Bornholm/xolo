@@ -29,17 +29,21 @@ type PluginEntry struct {
 
 // Manager discovers and manages plugin subprocess lifecycles.
 type Manager struct {
-	dir         string
-	configStore port.PluginConfigStore // may be nil (no UI support)
-	mu          sync.RWMutex
-	plugins     []*PluginEntry
+	dir               string
+	configStore       port.PluginConfigStore // may be nil (no UI support)
+	providerStore     port.ProviderStore     // may be nil
+	virtualModelStore port.VirtualModelStore // may be nil
+	mu                sync.RWMutex
+	plugins           []*PluginEntry
 }
 
 // NewManager creates a Manager that will scan dir for plugin binaries.
 // configStore is used by XoloHostService to serve GetConfig/SaveConfig to plugins.
-// Pass nil if plugin UI is not needed (e.g. in tests that don't exercise UI).
-func NewManager(dir string, configStore port.PluginConfigStore) *Manager {
-	return &Manager{dir: dir, configStore: configStore}
+// providerStore is used by XoloHostService to serve ListModels to plugins.
+// virtualModelStore is used by XoloHostService to expose virtual models to plugins.
+// Pass nil for any store if not needed (e.g. in tests).
+func NewManager(dir string, configStore port.PluginConfigStore, providerStore port.ProviderStore, virtualModelStore port.VirtualModelStore) *Manager {
+	return &Manager{dir: dir, configStore: configStore, providerStore: providerStore, virtualModelStore: virtualModelStore}
 }
 
 // Start scans the plugin directory and launches each plugin subprocess.
@@ -215,7 +219,7 @@ func (m *Manager) initialize(ctx context.Context, client proto.XoloPluginClient,
 	}
 
 	brokerID := broker.NextId()
-	hostSvc := NewXoloHostService(m.configStore)
+	hostSvc := NewXoloHostService(m.configStore, m.providerStore, m.virtualModelStore)
 
 	// AcceptAndServe blocks until the plugin connects, so it must run in a goroutine.
 	// We call it before client.Initialize so the listener is ready when the plugin

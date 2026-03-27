@@ -263,7 +263,11 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 				cost = converted
 			}
 		}
-		perModel[rec.ProxyModelName()] += cost
+		effectiveModel := rec.ProxyModelName()
+		if rec.ResolvedModelName() != "" {
+			effectiveModel = rec.ResolvedModelName()
+		}
+		perModel[effectiveModel] += cost
 		uid := rec.UserID()
 		userName := string(uid)
 		if u, ok := users[uid]; ok {

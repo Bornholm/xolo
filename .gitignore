@@ -6,3 +6,4 @@ index.bleve
 /data
 /dist
 /node_modules
+*.jsonl

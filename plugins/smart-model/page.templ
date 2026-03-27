@@ -1,0 +1,445 @@
+package main
+
+import (
+	"fmt"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/label"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/popover"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/tabs"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/tagsinput"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/textarea"
+)
+
+// page renders the full smart-model plugin UI page.
+// It sets <base href> so all relative URLs resolve under the plugin's base path.
+templ page(pd uiPageData) {
+	<!DOCTYPE html>
+	<html class="dark">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<base href={ pd.BasePath }/>
+			<link rel="stylesheet" href="/assets/templui.css"/>
+		</head>
+		<body class="bg-background text-foreground min-h-screen p-4 space-y-4">
+			@tabs.Tabs() {
+				@tabs.List(tabs.ListProps{Class: "w-full justify-start"}) {
+					@tabs.Trigger(tabs.TriggerProps{Value: "trigger", IsActive: pd.ActiveTab == "trigger"}) {
+						Déclenchement
+					}
+					@tabs.Trigger(tabs.TriggerProps{Value: "models", IsActive: pd.ActiveTab == "models"}) {
+						Modèles
+					}
+					@tabs.Trigger(tabs.TriggerProps{Value: "rules", IsActive: pd.ActiveTab == "rules"}) {
+						Règles
+					}
+					@tabs.Trigger(tabs.TriggerProps{Value: "test", IsActive: pd.ActiveTab == "test"}) {
+						Tester
+					}
+					@tabs.Trigger(tabs.TriggerProps{Value: "logs", IsActive: pd.ActiveTab == "logs"}) {
+						Logs
+					}
+					@tabs.Trigger(tabs.TriggerProps{Value: "settings", IsActive: pd.ActiveTab == "settings"}) {
+						Paramètres
+					}
+				}
+				@tabs.Content(tabs.ContentProps{Value: "trigger", IsActive: pd.ActiveTab == "trigger"}) {
+					@tabTrigger(pd)
+				}
+				@tabs.Content(tabs.ContentProps{Value: "models", IsActive: pd.ActiveTab == "models"}) {
+					@tabModels(pd)
+				}
+				@tabs.Content(tabs.ContentProps{Value: "rules", IsActive: pd.ActiveTab == "rules"}) {
+					@tabRules(pd)
+				}
+				@tabs.Content(tabs.ContentProps{Value: "test", IsActive: pd.ActiveTab == "test"}) {
+					@tabTest(pd)
+				}
+				@tabs.Content(tabs.ContentProps{Value: "logs", IsActive: pd.ActiveTab == "logs"}) {
+					@tabLogs(pd)
+				}
+				@tabs.Content(tabs.ContentProps{Value: "settings", IsActive: pd.ActiveTab == "settings"}) {
+					@tabSettings(pd)
+				}
+			}
+			@tabs.Script()
+			@popover.Script()
+			@tagsinput.Script()
+		</body>
+	</html>
+}
+
+// ── Modèles ───────────────────────────────────────────────────────────────────
+
+templ tabModels(pd uiPageData) {
+	<div class="space-y-4 pt-4">
+		<p class="text-sm text-muted-foreground">
+			Configurez l'activation, le power level et les catégories préférées par modèle.
+			Le power level est calculé automatiquement depuis les paramètres du modèle si aucun override n'est défini.
+		</p>
+		if len(pd.AllModels) == 0 {
+			<p class="text-sm text-muted-foreground italic">Aucun modèle disponible pour cette organisation.</p>
+		} else {
+			for _, m := range pd.AllModels {
+				{{
+					effectiveCfg := pd.Config.modelOverride(m.ProxyName)
+					autoPL := computePowerLevel(m.ActiveParamsBillions)
+					plValue := ""
+					if effectiveCfg.PowerLevelOverride != nil {
+						plValue = fmt.Sprintf("%.2f", *effectiveCfg.PowerLevelOverride)
+					}
+					tagsID := "cats-" + m.ProxyName
+				}}
+				@card.Card() {
+					@card.Content(card.ContentProps{Class: "p-4"}) {
+						<form method="POST" action="api/config" class="space-y-3">
+							<input type="hidden" name="tab" value="models"/>
+							<input type="hidden" name="model_proxy_name" value={ m.ProxyName }/>
+							<div class="flex items-start justify-between gap-2">
+								<div>
+									<p class="text-sm font-semibold font-mono">{ m.ProxyName }</p>
+									if m.ActiveParamsBillions > 0 {
+										<p class="text-xs text-muted-foreground">
+											{ fmt.Sprintf("%.1fB params — power level auto : %.2f", float64(m.ActiveParamsBillions), autoPL) }
+										</p>
+									} else {
+										<p class="text-xs text-muted-foreground">
+											{ fmt.Sprintf("power level auto : %.2f", autoPL) }
+										</p>
+									}
+								</div>
+								@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeSm}) {
+									Sauvegarder
+								}
+							</div>
+							<div class="grid grid-cols-2 gap-3">
+								<div class="space-y-1">
+									@label.Label() {
+										Activé
+									}
+									<select name="model_enabled" class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]">
+										if effectiveCfg.Enabled {
+											<option value="true" selected>Oui</option>
+											<option value="false">Non</option>
+										} else {
+											<option value="true">Oui</option>
+											<option value="false" selected>Non</option>
+										}
+									</select>
+								</div>
+								<div class="space-y-1">
+									@label.Label() {
+										Power Level (0–1, vide = auto)
+									}
+									@input.Input(input.Props{
+										Type:        input.TypeNumber,
+										Name:        "model_power_level",
+										Value:       plValue,
+										Placeholder: fmt.Sprintf("auto (%.2f)", autoPL),
+										Attributes:  templ.Attributes{"min": "0", "max": "1", "step": "0.01"},
+									})
+								</div>
+							</div>
+							<div class="space-y-1">
+								@label.Label() {
+									Catégories préférées
+								}
+								@tagsinput.TagsInput(tagsinput.Props{
+									ID:          tagsID,
+									Name:        "model_categories",
+									Value:       effectiveCfg.Categories,
+									Suggestions: pd.Categories,
+									Placeholder: "Ajouter une catégorie…",
+								})
+							</div>
+						</form>
+					}
+				}
+			}
+		}
+	</div>
+}
+
+// ── Règles ────────────────────────────────────────────────────────────────────
+
+templ tabRules(pd uiPageData) {
+	<div class="space-y-4 pt-4">
+		<p class="text-sm text-muted-foreground">
+			Modifiez les variables et règles DSL. Syntaxe : <code class="font-mono text-xs bg-muted px-1 rounded">DEFINE var (TERM name FUNCTION(...));</code> et <code class="font-mono text-xs bg-muted px-1 rounded">IF var IS term THEN out IS term;</code>
+		</p>
+		@card.Card() {
+			@card.Content(card.ContentProps{Class: "space-y-4"}) {
+				<form method="POST" action="api/config" class="space-y-4">
+					<input type="hidden" name="tab" value="rules"/>
+					@textarea.Textarea(textarea.Props{
+						Name:  "rules",
+						Rows:  30,
+						Value: pd.Config.Rules,
+					})
+					<div class="flex gap-2">
+						@button.Button(button.Props{Type: button.TypeSubmit}) {
+							Sauvegarder les règles
+						}
+						@button.Button(button.Props{
+							Type:    button.TypeButton,
+							Variant: button.VariantOutline,
+							Attributes: templ.Attributes{
+								"onclick": "resetRules()",
+							},
+						}) {
+							Réinitialiser par défaut
+						}
+					</div>
+				</form>
+			}
+		}
+		<script>
+			function resetRules() {
+				if (confirm('Réinitialiser aux règles par défaut ?')) {
+					document.querySelector('textarea[name=rules]').value = defaultRulesDSL;
+				}
+			}
+		</script>
+		<script id="default-rules-dsl" type="application/x-default-rules">
+			{ DefaultRulesDSL }
+		</script>
+		<script>
+			const defaultRulesDSL = document.getElementById('default-rules-dsl').textContent;
+		</script>
+	</div>
+}
+
+// ── Tester ────────────────────────────────────────────────────────────────────
+
+templ tabTest(pd uiPageData) {
+	<div class="space-y-4 pt-4">
+		@card.Card() {
+			@card.Header() {
+				@card.Title() {
+					Tester une requête
+				}
+			}
+			@card.Content(card.ContentProps{Class: "space-y-4"}) {
+				@textarea.Textarea(textarea.Props{
+					ID:          "test-prompt",
+					Rows:        6,
+					Placeholder: "Entrez une requête utilisateur...",
+				})
+				@button.Button(button.Props{
+					Type:       button.TypeButton,
+					Attributes: templ.Attributes{"onclick": "testPrompt()"},
+				}) {
+					Analyser
+				}
+			}
+		}
+		<div id="test-result" class="hidden">
+			@card.Card() {
+				@card.Header() {
+					@card.Title() {
+						Résultats
+					}
+				}
+				@card.Content(card.ContentProps{Class: "space-y-4"}) {
+					<div id="r-selected-model-row" class="hidden rounded-md border border-ring bg-muted px-4 py-3 flex items-center gap-3">
+						<p class="text-xs text-muted-foreground font-medium shrink-0">Modèle sélectionné</p>
+						<p id="r-selected-model" class="text-sm font-semibold font-mono"></p>
+					</div>
+					<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+						<div class="space-y-1">
+							<p class="text-xs text-muted-foreground font-medium">Complexité</p>
+							<p id="r-complexity" class="text-sm font-semibold"></p>
+							<p id="r-complexity-label" class="text-xs text-muted-foreground italic"></p>
+						</div>
+						<div class="space-y-1">
+							<p class="text-xs text-muted-foreground font-medium">Catégorie</p>
+							<p id="r-category" class="text-sm font-semibold"></p>
+						</div>
+						<div class="space-y-1">
+							<p class="text-xs text-muted-foreground font-medium">Power level désiré</p>
+							<p id="r-powerLevel" class="text-sm font-semibold"></p>
+						</div>
+						<div class="space-y-1">
+							<p class="text-xs text-muted-foreground font-medium">Énergie (kWh)</p>
+							<p id="r-energy" class="text-sm font-semibold"></p>
+						</div>
+						<div class="space-y-1">
+							<p class="text-xs text-muted-foreground font-medium">Pression budget</p>
+							<p id="r-budget" class="text-sm font-semibold"></p>
+						</div>
+					</div>
+					<pre id="r-json" class="rounded-md bg-muted px-4 py-3 text-xs font-mono overflow-auto max-h-64"></pre>
+				}
+			}
+		</div>
+		<script>
+			async function testPrompt() {
+				const prompt = document.getElementById('test-prompt').value;
+				const res = await fetch('api/test', {
+					method: 'POST',
+					headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+					body: 'prompt=' + encodeURIComponent(prompt)
+				});
+				const data = await res.json();
+				document.getElementById('test-result').classList.remove('hidden');
+				const selRow = document.getElementById('r-selected-model-row');
+				if (data.selected_model) {
+					document.getElementById('r-selected-model').textContent = data.selected_model;
+					selRow.classList.remove('hidden');
+				} else {
+					selRow.classList.add('hidden');
+				}
+				document.getElementById('r-complexity').textContent = (data.vars.complexity * 100).toFixed(1) + '%';
+				document.getElementById('r-complexity-label').textContent = data.vars.complexity_label || '';
+				document.getElementById('r-category').textContent = data.vars.category;
+				document.getElementById('r-powerLevel').textContent = (data.desired_power_level * 100).toFixed(1) + '%';
+				document.getElementById('r-energy').textContent = data.vars.energy_kwh.toExponential(3) + ' kWh';
+				document.getElementById('r-budget').textContent = (data.vars.budget_pressure * 100).toFixed(1) + '%';
+				document.getElementById('r-json').textContent = JSON.stringify(data, null, 2);
+			}
+		</script>
+	</div>
+}
+
+// ── Logs ──────────────────────────────────────────────────────────────────────
+
+templ tabLogs(pd uiPageData) {
+	<div class="space-y-4 pt-4">
+		@card.Card() {
+			@card.Header() {
+				@card.Title() {
+					Logs de décision
+				}
+			}
+			@card.Content() {
+				if !pd.Config.LogEnabled {
+					<p class="text-sm text-muted-foreground">
+						Les logs sont <strong>désactivés</strong>. Activez-les dans l'onglet Paramètres.
+					</p>
+				} else if len(pd.LogLines) == 0 {
+					<p class="text-sm text-muted-foreground">
+						Fichier : <code class="font-mono text-xs bg-muted px-1 rounded">{ pd.Config.LogPath }</code> — aucune entrée pour l'instant.
+					</p>
+				} else {
+					<p class="text-xs text-muted-foreground mb-2">
+						Fichier : <code class="font-mono text-xs bg-muted px-1 rounded">{ pd.Config.LogPath }</code> — 50 dernières entrées
+					</p>
+					<pre class="rounded-md bg-muted px-4 py-3 text-xs font-mono overflow-auto max-h-96">
+						for _, line := range pd.LogLines {
+							{ line }
+							{ "\n" }
+						}
+					</pre>
+				}
+			}
+		}
+	</div>
+}
+
+// ── Paramètres ────────────────────────────────────────────────────────────────
+
+templ tabSettings(pd uiPageData) {
+	<div class="space-y-4 pt-4">
+		<form method="POST" action="api/config" class="space-y-4">
+			<input type="hidden" name="tab" value="settings"/>
+			@card.Card() {
+				@card.Header() {
+					@card.Title() {
+						Frugalité énergétique
+					}
+					@card.Description() {
+						0 = ignorer l'énergie, 1 = maximiser la frugalité
+					}
+				}
+				@card.Content() {
+					@input.Input(input.Props{
+						Type:       input.TypeNumber,
+						Name:       "energy_sensitivity",
+						Value:      fmt.Sprintf("%.2f", pd.Config.EnergySensitivity),
+						Attributes: templ.Attributes{"min": "0", "max": "1", "step": "0.05"},
+					})
+				}
+			}
+			@card.Card() {
+				@card.Header() {
+					@card.Title() {
+						Logs de décision
+					}
+				}
+				@card.Content(card.ContentProps{Class: "space-y-4"}) {
+					<div class="space-y-2">
+						@label.Label() {
+							Activer les logs
+						}
+						<select name="log_enabled" class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]">
+							if pd.Config.LogEnabled {
+								<option value="true" selected>Oui</option>
+								<option value="false">Non</option>
+							} else {
+								<option value="true">Oui</option>
+								<option value="false" selected>Non</option>
+							}
+						</select>
+					</div>
+					<div class="space-y-2">
+						@label.Label() {
+							Chemin du fichier de log
+						}
+						@input.Input(input.Props{
+							Name:        "log_path",
+							Value:       pd.Config.LogPath,
+							Placeholder: "smart-model.jsonl",
+						})
+					</div>
+				}
+			}
+			@button.Button(button.Props{Type: button.TypeSubmit}) {
+				Sauvegarder
+			}
+		</form>
+	</div>
+}
+
+// ── Déclenchement ─────────────────────────────────────────────────────────────
+
+templ tabTrigger(pd uiPageData) {
+	<div class="space-y-4 pt-4">
+		<p class="text-sm text-muted-foreground">
+			Sélectionnez les modèles virtuels sur lesquels le plugin doit s'activer.
+			Si aucun modèle n'est sélectionné, le plugin est <strong>inactif</strong>.
+		</p>
+		@card.Card() {
+			@card.Content(card.ContentProps{Class: "space-y-4"}) {
+				<form method="POST" action="api/config" class="space-y-4">
+					<input type="hidden" name="tab" value="trigger"/>
+					if len(pd.VirtualModels) == 0 {
+						<p class="text-sm text-muted-foreground italic">
+							Aucun modèle virtuel disponible pour cette organisation.
+							Créez-en un depuis la section <strong>Modèles</strong> de l'organisation.
+						</p>
+					} else {
+						<div class="space-y-2">
+							for _, vm := range pd.VirtualModels {
+								<label class="flex items-center gap-3 cursor-pointer rounded-md border p-3 hover:bg-muted/50 transition-colors">
+									<input
+										type="checkbox"
+										name="trigger_models"
+										value={ vm.ProxyName }
+										class="h-4 w-4 rounded border-input"
+										if isTriggerSelected(vm.ProxyName, pd.Config.TriggerModels) { checked }
+									/>
+									<span class="text-sm font-mono">{ vm.ProxyName }</span>
+								</label>
+							}
+						</div>
+					}
+					@button.Button(button.Props{Type: button.TypeSubmit}) {
+						Sauvegarder
+					}
+				</form>
+			}
+		}
+	</div>
+}

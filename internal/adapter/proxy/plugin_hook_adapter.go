@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"strings"
+	"time"
 
 	"github.com/bornholm/genai/llm"
 	genaiProxy "github.com/bornholm/genai/proxy"
@@ -24,6 +26,8 @@ type PluginHookAdapter struct {
 	userStore         tokenFinder
 	providerStore     port.ProviderStore
 	virtualModelStore port.VirtualModelStore
+	quotaResolver     quotaResolver
+	usageStore        port.UsageStore
 }
 
 // NewPluginHookAdapter creates a PluginHookAdapter wired to the given plugin clients and stores.
@@ -35,6 +39,8 @@ func NewPluginHookAdapter(
 	userStore tokenFinder,
 	providerStore port.ProviderStore,
 	virtualModelStore port.VirtualModelStore,
+	quotaResolver quotaResolver,
+	usageStore port.UsageStore,
 ) *PluginHookAdapter {
 	return &PluginHookAdapter{
 		clients:           clients,
@@ -44,6 +50,8 @@ func NewPluginHookAdapter(
 		userStore:         userStore,
 		providerStore:     providerStore,
 		virtualModelStore: virtualModelStore,
+		quotaResolver:     quotaResolver,
+		usageStore:        usageStore,
 	}
 }
 
@@ -243,6 +251,7 @@ func (a *PluginHookAdapter) ResolveModel(ctx context.Context, req *genaiProxy.Pr
 	}
 	protoModels := make([]*proto.ModelInfo, 0, len(models))
 	for _, m := range models {
+		caps := m.Capabilities()
 		protoModels = append(protoModels, &proto.ModelInfo{
 			ProxyName:                  m.ProxyName(),
 			RealModel:                  m.RealModel(),
@@ -251,6 +260,10 @@ func (a *PluginHookAdapter) ResolveModel(ctx context.Context, req *genaiProxy.Pr
 			CompletionCostPer_1KTokens: float64(m.CompletionCostPer1KTokens()),
 			TokenLimit:                 m.ContextWindow(),
 			IsVirtual:                  m.IsVirtual(),
+			ContextLength:              m.ContextWindow(),
+			SupportsVision:             caps.Vision,
+			SupportsReasoning:          caps.Reasoning,
+			ActiveParamsBillions:       float32(m.ActiveParams()) / 1e9,
 		})
 	}
 
@@ -268,6 +281,9 @@ func (a *PluginHookAdapter) ResolveModel(ctx context.Context, req *genaiProxy.Pr
 			Description: vm.Description(),
 		})
 	}
+
+	// Compute quota info for the requesting user/org.
+	protoQuota := a.buildQuotaInfo(ctx, model.UserID(req.UserID), orgID)
 
 	// Extract messages JSON from raw request body (chat completions only).
 	var messagesJSON string
@@ -307,6 +323,9 @@ func (a *PluginHookAdapter) ResolveModel(ctx context.Context, req *genaiProxy.Pr
 			RequestedModel:  req.Model,
 			AvailableModels: protoModels,
 			MessagesJson:    messagesJSON,
+			VirtualModels:   protoVirtualModels,
+			Quota:           protoQuota,
+			BodyJson:        string(req.Body),
 		})
 		if err != nil {
 			slog.WarnContext(ctx, "plugin_hook_adapter: ResolveModel gRPC error",
@@ -317,9 +336,17 @@ func (a *PluginHookAdapter) ResolveModel(ctx context.Context, req *genaiProxy.Pr
 		}
 
 		if out.ResolvedProxyName != "" {
-			req.Model = out.ResolvedProxyName
-			req.Metadata[MetaOriginalModel] = req.Model             // original before resolution
-			req.Metadata[MetaResolvedModel] = out.ResolvedProxyName // actual model used
+			originalModel := req.Model
+			// Qualify the resolved name with the org slug if the original request
+			// used the qualified format ("org-slug/model-name") and the resolved
+			// name is local (no "/"). OrgModelRouter requires the qualified format.
+			resolved := out.ResolvedProxyName
+			if idx := strings.IndexByte(req.Model, '/'); idx > 0 && !strings.Contains(resolved, "/") {
+				resolved = req.Model[:idx] + "/" + resolved
+			}
+			req.Model = resolved
+			req.Metadata[MetaOriginalModel] = originalModel
+			req.Metadata[MetaResolvedModel] = resolved
 			return nil, "", genaiProxy.ErrModelNotFound
 		}
 	}
@@ -379,6 +406,51 @@ func (a *PluginHookAdapter) ListModels(ctx context.Context) ([]genaiProxy.ModelI
 	}
 
 	return result, nil
+}
+
+// buildQuotaInfo computes remaining budget for the user/org and returns a QuotaInfo proto.
+// Returns nil if quota stores are not configured.
+func (a *PluginHookAdapter) buildQuotaInfo(ctx context.Context, userID model.UserID, orgID model.OrgID) *proto.QuotaInfo {
+	if a.quotaResolver == nil || a.usageStore == nil {
+		return nil
+	}
+	effectiveQuota, err := a.quotaResolver.ResolveEffectiveQuota(ctx, userID, orgID)
+	if err != nil {
+		slog.WarnContext(ctx, "plugin_hook_adapter: failed to resolve effective quota for QuotaInfo",
+			slog.Any("error", err),
+		)
+		return nil
+	}
+
+	now := time.Now()
+	info := &proto.QuotaInfo{}
+
+	if effectiveQuota.DailyBudget != nil {
+		total := float64(*effectiveQuota.DailyBudget)
+		spent, err := a.usageStore.SumCostSince(ctx, userID, orgID, startOfDay(now))
+		if err == nil {
+			info.DailyTotal = total
+			info.DailyRemaining = max(0, total-float64(spent))
+		}
+	}
+	if effectiveQuota.MonthlyBudget != nil {
+		total := float64(*effectiveQuota.MonthlyBudget)
+		spent, err := a.usageStore.SumCostSince(ctx, userID, orgID, startOfMonth(now))
+		if err == nil {
+			info.MonthlyTotal = total
+			info.MonthlyRemaining = max(0, total-float64(spent))
+		}
+	}
+	if effectiveQuota.YearlyBudget != nil {
+		total := float64(*effectiveQuota.YearlyBudget)
+		spent, err := a.usageStore.SumCostSince(ctx, userID, orgID, startOfYear(now))
+		if err == nil {
+			info.YearlyTotal = total
+			info.YearlyRemaining = max(0, total-float64(spent))
+		}
+	}
+
+	return info
 }
 
 func forbiddenResponse(reason string) *genaiProxy.ProxyResponse {

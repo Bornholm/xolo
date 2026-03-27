@@ -55,7 +55,7 @@ func (s *stubConfigStore) ListConfigsByPlugin(_ context.Context, pluginName stri
 }
 
 func TestGetConfig_NotFound_ReturnsEmpty(t *testing.T) {
-	svc := plugin.NewXoloHostService(newStubConfigStore())
+	svc := plugin.NewXoloHostService(newStubConfigStore(), nil, nil)
 	resp, err := svc.GetConfig(context.Background(), &proto.GetConfigRequest{
 		OrgId: "org-1", PluginName: "my-plugin",
 	})
@@ -69,7 +69,7 @@ func TestGetConfig_NotFound_ReturnsEmpty(t *testing.T) {
 
 func TestSaveAndGetConfig_RoundTrip(t *testing.T) {
 	store := newStubConfigStore()
-	svc := plugin.NewXoloHostService(store)
+	svc := plugin.NewXoloHostService(store, nil, nil)
 
 	_, err := svc.SaveConfig(context.Background(), &proto.SaveConfigRequest{
 		OrgId:      "org-1",

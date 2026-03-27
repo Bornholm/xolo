@@ -12,15 +12,17 @@ import (
 )
 
 // XoloHostService implements proto.XoloHostServiceServer.
-// It gives plugin HTTP servers access to Xolo's plugin config store.
+// It gives plugin HTTP servers access to Xolo's plugin config store and model list.
 type XoloHostService struct {
 	proto.UnimplementedXoloHostServiceServer
-	configStore port.PluginConfigStore
+	configStore        port.PluginConfigStore
+	providerStore      port.ProviderStore
+	virtualModelStore  port.VirtualModelStore
 }
 
-// NewXoloHostService creates an XoloHostService backed by the given config store.
-func NewXoloHostService(configStore port.PluginConfigStore) *XoloHostService {
-	return &XoloHostService{configStore: configStore}
+// NewXoloHostService creates an XoloHostService backed by the given stores.
+func NewXoloHostService(configStore port.PluginConfigStore, providerStore port.ProviderStore, virtualModelStore port.VirtualModelStore) *XoloHostService {
+	return &XoloHostService{configStore: configStore, providerStore: providerStore, virtualModelStore: virtualModelStore}
 }
 
 func (s *XoloHostService) GetConfig(ctx context.Context, req *proto.GetConfigRequest) (*proto.GetConfigResponse, error) {
@@ -38,6 +40,49 @@ func (s *XoloHostService) GetConfig(ctx context.Context, req *proto.GetConfigReq
 		json = "{}"
 	}
 	return &proto.GetConfigResponse{ConfigJson: json}, nil
+}
+
+func (s *XoloHostService) ListModels(ctx context.Context, req *proto.ListModelsForOrgRequest) (*proto.ListModelsForOrgResponse, error) {
+	if s.providerStore == nil {
+		return &proto.ListModelsForOrgResponse{}, nil
+	}
+	orgID := model.OrgID(req.OrgId)
+	models, err := s.providerStore.ListEnabledLLMModels(ctx, orgID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "list models: %v", err)
+	}
+	protoModels := make([]*proto.ModelInfo, 0, len(models))
+	for _, m := range models {
+		caps := m.Capabilities()
+		protoModels = append(protoModels, &proto.ModelInfo{
+			ProxyName:                  m.ProxyName(),
+			RealModel:                  m.RealModel(),
+			ProviderId:                 string(m.ProviderID()),
+			PromptCostPer_1KTokens:     float64(m.PromptCostPer1KTokens()),
+			CompletionCostPer_1KTokens: float64(m.CompletionCostPer1KTokens()),
+			TokenLimit:                 m.ContextWindow(),
+			IsVirtual:                  m.IsVirtual(),
+			ContextLength:              m.ContextWindow(),
+			SupportsVision:             caps.Vision,
+			SupportsReasoning:          caps.Reasoning,
+			ActiveParamsBillions:       float32(m.ActiveParams()) / 1e9,
+		})
+	}
+	// Append virtual models from the virtual model store.
+	if s.virtualModelStore != nil {
+		virtualModels, err := s.virtualModelStore.ListVirtualModels(ctx, orgID)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "list virtual models: %v", err)
+		}
+		for _, vm := range virtualModels {
+			protoModels = append(protoModels, &proto.ModelInfo{
+				ProxyName: vm.Name(),
+				IsVirtual: true,
+			})
+		}
+	}
+
+	return &proto.ListModelsForOrgResponse{Models: protoModels}, nil
 }
 
 func (s *XoloHostService) SaveConfig(ctx context.Context, req *proto.SaveConfigRequest) (*proto.SaveConfigResponse, error) {

@@ -8,11 +8,12 @@ import (
 	"google.golang.org/grpc"
 )
 
-// HostClient is the interface plugins use to read and write their configuration
-// via Xolo's XoloHostService gRPC.
+// HostClient is the interface plugins use to interact with Xolo's XoloHostService gRPC.
 type HostClient interface {
 	GetConfig(ctx context.Context, orgID, pluginName string) (string, error)
 	SaveConfig(ctx context.Context, orgID, pluginName, configJSON string) error
+	// ListModels returns all enabled LLM models available for the given org.
+	ListModels(ctx context.Context, orgID string) ([]*proto.ModelInfo, error)
 }
 
 // grpcHostClient implements HostClient over gRPC.
@@ -48,4 +49,12 @@ func (c *grpcHostClient) SaveConfig(ctx context.Context, orgID, pluginName, conf
 		return fmt.Errorf("SaveConfig gRPC: %w", err)
 	}
 	return nil
+}
+
+func (c *grpcHostClient) ListModels(ctx context.Context, orgID string) ([]*proto.ModelInfo, error) {
+	resp, err := c.client.ListModels(ctx, &proto.ListModelsForOrgRequest{OrgId: orgID})
+	if err != nil {
+		return nil, fmt.Errorf("ListModels gRPC: %w", err)
+	}
+	return resp.Models, nil
 }

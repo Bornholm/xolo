@@ -228,7 +228,7 @@ func TestPluginHookAdapter_PreRequest_Allowed(t *testing.T) {
 		},
 	}
 
-	adapter := proxyAdapter.NewPluginHookAdapter(clients, descriptors, activationStore, configStore, userStore, &stubProviderStore{}, &stubVirtualModelStore{})
+	adapter := proxyAdapter.NewPluginHookAdapter(clients, descriptors, activationStore, configStore, userStore, &stubProviderStore{}, &stubVirtualModelStore{}, nil, nil)
 
 	req := makeRequest(t)
 	result, err := adapter.PreRequest(ctx, req)
@@ -267,7 +267,7 @@ func TestPluginHookAdapter_PreRequest_Blocked(t *testing.T) {
 		},
 	}
 
-	adapter := proxyAdapter.NewPluginHookAdapter(clients, descriptors, activationStore, configStore, userStore, &stubProviderStore{}, &stubVirtualModelStore{})
+	adapter := proxyAdapter.NewPluginHookAdapter(clients, descriptors, activationStore, configStore, userStore, &stubProviderStore{}, &stubVirtualModelStore{}, nil, nil)
 
 	req := makeRequest(t)
 	result, err := adapter.PreRequest(ctx, req)

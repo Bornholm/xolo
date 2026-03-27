@@ -1,0 +1,505 @@
+label,text
+code,Write a Python function to check if a string is a palindrome
+code,Fix this NullPointerException in my Java code
+code,Écris une fonction Go qui calcule le PGCD de deux entiers
+code,Implement a binary search tree with insert and delete operations
+code,How do I make an HTTP GET request in Rust
+code,Debug this SQL query — it returns duplicate rows
+code,Create a React component that fetches data from an API
+code,Refactor this function to reduce cyclomatic complexity
+code,Write a shell script to backup files older than 7 days
+code,Écris un middleware Express.js pour la gestion des erreurs
+code,Convert this callback-based code to async/await
+code,Implement a thread-safe queue in C++
+code,Write a Dockerfile for a Node.js application
+code,Add pagination to this SQLAlchemy query
+code,Génère des tests unitaires pour cette classe Python
+code,How do I parse JSON in Go using the standard library
+code,Write a regex to extract email addresses from text
+code,Implement the Observer design pattern in TypeScript
+code,Crée un script Python pour lire et analyser un fichier CSV
+code,Fix the race condition in this concurrent Go program
+code,Write a GraphQL resolver for a user profile query
+code,How do I use dependency injection in Spring Boot
+code,Implémente un cache LRU en Python
+code,Create a CLI tool that accepts flags and subcommands in Go
+code,Write a function to flatten a nested JSON object
+code,How do I debounce a function in JavaScript
+code,Écris une requête SQL pour trouver les doublons dans une table
+code,Implement OAuth2 token refresh logic in Python
+code,What is the difference between a goroutine and a thread
+code,Write a recursive function to traverse a directory tree
+code,Crée une API REST avec FastAPI et une base SQLite
+code,How do I mock an HTTP client in Go unit tests
+code,Implement a rate limiter using a token bucket algorithm
+code,Debug why my React component re-renders infinitely
+code,Écris un pipeline de traitement de données avec pandas
+code,Write a WebSocket server in Node.js
+code,How do I use generics in Go
+code,Implémente un algorithme de tri fusion en JavaScript
+code,Add retry logic with exponential backoff to this HTTP client
+code,Write a cron job in Python to send daily email reports
+code,How do I handle database migrations in a Go project
+code,Écris un hook React pour gérer le fetch de données avec cache
+code,Implement a simple pub/sub event bus in TypeScript
+code,Why is my Docker container using so much memory
+code,Write a function that deep-clones a JavaScript object
+code,Comment optimiser cette requête Postgres qui est lente
+code,Generate a Terraform resource to create an S3 bucket with versioning
+code,Write a Python decorator to measure function execution time
+code,How do I implement server-sent events in Go
+code,Écris un parseur de fichier INI en C
+translation,Translate this email from English to French
+translation,Traduis ce contrat en anglais
+translation,How do you say the word deadline in German
+translation,Translate the following product description to Spanish
+translation,Traduis ce message d'erreur en français
+translation,What is the Japanese word for software engineer
+translation,Translate these UI labels to Italian
+translation,Traduis ce rapport technique en anglais pour nos partenaires
+translation,Convert this French user manual to English
+translation,How do you say we apologize for the inconvenience in Portuguese
+translation,Translate the tagline of this marketing campaign to Dutch
+translation,Traduis en arabe ce texte de présentation
+translation,What is the Russian translation of open source
+translation,Translate this legal disclaimer to Chinese
+translation,Traduis en espagnol la description de ce poste
+translation,How do you greet someone formally in Korean
+translation,Translate the README of this project to French
+translation,Traduis ce tweet en anglais
+translation,Give me the German translation of this customer complaint
+translation,Translate this academic abstract to French
+translation,How do I say out of scope in Italian
+translation,Traduis cette fiche produit du français vers l'anglais
+translation,Translate this press release to Brazilian Portuguese
+translation,Comment dit-on pull request en français
+translation,Translate these error messages to Japanese for localization
+translation,Traduis ce texte juridique de l'espagnol vers le français
+translation,Translate this user guide from English to simplified Chinese
+translation,Comment traduire le mot throughput en français
+translation,Translate the onboarding emails to German
+translation,Traduis cet extrait de roman du russe vers le français
+translation,Translate this invoice from French to English
+translation,Comment dit-on bande passante en anglais
+translation,Translate this support ticket response to Spanish
+translation,Traduis les sous-titres de cette vidéo en français
+translation,What is the Hebrew translation of thank you for your patience
+translation,Translate this changelog entry from English to French
+translation,Comment dit-on réseau de neurones en anglais
+translation,Translate the privacy policy into plain French
+translation,Traduis ce message Slack de mon collègue anglophone
+translation,What does this German technical term mean in English
+translation,Translate this medical consent form to Spanish
+translation,Traduis ce contenu marketing pour le marché japonais
+translation,How do you express urgency politely in formal Japanese
+translation,Translate this README from Portuguese to English
+translation,Traduis ce guide d'installation du coréen vers le français
+translation,How do I say we are experiencing technical difficulties in Arabic
+translation,Translate this onboarding form to Polish
+translation,Comment traduire user story en français
+translation,Translate this product roadmap slide deck to German
+translation,Traduis cette FAQ du site en anglais
+summarization,Summarize this research paper in 5 bullet points
+summarization,Résume cet article de presse en deux phrases
+summarization,Give me the key takeaways from this quarterly earnings report
+summarization,TLDR this long Slack thread
+summarization,Condense this 20-page white paper into an executive summary
+summarization,Fais un résumé de cette réunion à partir des notes
+summarization,What are the main conclusions of this study
+summarization,Summarize the changelog of this release in plain English
+summarization,Donne-moi les points essentiels de cette proposition commerciale
+summarization,Give a one-paragraph summary of this book chapter
+summarization,Résume les retours clients de ce mois en quelques points
+summarization,Summarize the plot of this movie without spoilers
+summarization,What are the action items from this meeting transcript
+summarization,Fais une synthèse de ces trois articles sur le même sujet
+summarization,Summarize the pros and cons mentioned in these reviews
+summarization,Condense these interview notes into a hiring recommendation
+summarization,Donne-moi un résumé exécutif de ce business plan en une page
+summarization,Summarize this legal contract highlighting key obligations
+summarization,Can you give me a quick overview of this 50-page report
+summarization,Résume les principaux changements de cette mise à jour logicielle
+summarization,Shorten this blog post to the 3 most important ideas
+summarization,Fais le point sur les décisions prises lors de cette réunion
+summarization,Give me a brief summary of what happened in this incident postmortem
+summarization,Résume l'essentiel de ce livre blanc en cinq points clés
+summarization,Summarize the weekly team updates into a digest
+summarization,Donne-moi les grandes lignes de ce rapport annuel
+summarization,What is this academic paper actually arguing in plain terms
+summarization,Résume ces échanges de support en une fiche incident
+summarization,Extract the key risks mentioned in this audit report
+summarization,Fais une synthèse de l'état d'avancement de ce projet
+summarization,Summarize the competitor analysis section of this document
+summarization,Donne-moi un résumé de ce fil de discussion GitHub
+summarization,Condense these user feedback responses into themes
+summarization,Résume ce chapitre de thèse en quelques lignes
+summarization,What is the bottom line of this financial report
+summarization,Fais un résumé des contributions de chaque équipe ce sprint
+summarization,Summarize this podcast transcript into key takeaways
+summarization,Résume ce contrat de prestation en points importants pour le client
+summarization,Give me the TL;DR of this terms of service document
+summarization,Fais une synthèse comparative de ces deux études
+creative,Write a short story about an AI that discovers emotions
+creative,Compose a haiku about a foggy autumn morning
+creative,Écris un poème sur la nostalgie de l'enfance
+creative,Generate five creative taglines for a sustainable fashion brand
+creative,Write a dialogue between a time traveler and Napoleon Bonaparte
+creative,Invente une légende sur l'origine d'une constellation
+creative,Create a villain backstory for a fantasy novel
+creative,Write a funny monologue for a stand-up comedy routine about remote work
+creative,Rédige la scène d'ouverture d'un roman policier
+creative,Generate creative names for a board game about space exploration
+creative,Write a bedtime story for a child who loves dinosaurs
+creative,Imagine a world where gravity works sideways
+creative,Écris les paroles d'une chanson folk sur la mer
+creative,Write a horror scene set in a modern data center
+creative,Invente un mythe expliquant pourquoi le ciel est bleu
+creative,Create a pitch for a TV show set in ancient Rome with a modern detective
+creative,Write a love letter from the perspective of a robot
+creative,Génère des idées créatives pour une campagne publicitaire virale
+creative,Write a plot twist for the third act of this screenplay
+creative,Compose a short song about debugging code at 3am
+creative,Écris une fable moderne avec un entrepreneur et une tortue
+creative,Write a satirical news article about software developers
+creative,Invente un nom de personnage et son histoire pour mon jeu de rôle
+creative,Write a children's poem about the letter Q
+creative,Écris le discours d'inauguration d'un président fictif de Mars
+creative,Create a surreal dream sequence for a literary fiction piece
+creative,Imagine a conversation between the Internet and electricity
+creative,Écris une courte pièce de théâtre entre un humain et son IA personnelle
+creative,Write a series of fortune cookie messages for software engineers
+creative,Invente trois noms de startups absurdes avec leurs slogans
+creative,Write a flash fiction story that ends with the word serendipity
+creative,Compose a lullaby for a baby born during a thunderstorm
+creative,Rédige la biographie imaginaire d'un explorateur du XVIIe siècle
+creative,Write an alternative history where Tesla won over Edison
+creative,Invente un sport pratiqué par des extraterrestres
+creative,Write a mysterious note found in an old library book
+creative,Écris une scène de rupture entre deux robots
+creative,Invent a ritual for a fictional society that worships data
+creative,Write a cinematic description of a city at the end of the world
+creative,Imagine a restaurant menu from the year 2150
+factual,What is the boiling point of water at high altitude
+factual,Who invented the World Wide Web
+factual,Quelle est la superficie de l'Amazonie
+factual,When did the Berlin Wall fall
+factual,What is the chemical formula for glucose
+factual,How far is the Moon from Earth
+factual,Qui a écrit Les Misérables
+factual,What is the GDP of Germany
+factual,When was Python first released
+factual,What is the largest desert in the world
+factual,Quel est le pays le plus peuplé d'Afrique
+factual,What causes the northern lights
+factual,How many bones are in the human body
+factual,Who was the first person to walk on the Moon
+factual,Quelle est la monnaie officielle du Japon
+factual,What is the speed of sound in air
+factual,When was the French Revolution
+factual,What is the atomic number of carbon
+factual,Quel est le plus haut sommet d'Europe
+factual,Who wrote the theory of general relativity
+factual,What year was the Eiffel Tower completed
+factual,Quelle est la profondeur maximale de l'océan Pacifique
+factual,Who is the author of 1984
+factual,What is the capital city of Canada
+factual,How long does it take light to travel from the Sun to Earth
+factual,Quel est le symbole chimique de l'or
+factual,When was the first iPhone released
+factual,What language is spoken in Brazil
+factual,How many countries are in the European Union
+factual,Quelle est la durée de révolution de la Terre autour du Soleil
+factual,Who discovered penicillin
+factual,What is the tallest building in the world currently
+factual,Quel est le fleuve le plus long du monde
+factual,How many chromosomes do humans have
+factual,What year did humans first land on the Moon
+factual,Quelle est la distance entre Paris et Tokyo
+factual,Who painted the Sistine Chapel ceiling
+factual,What is the chemical symbol for sodium
+factual,Quand a eu lieu la Révolution russe
+factual,What ocean borders the west coast of the United States
+factual,Combien de langues officielles a la Suisse
+factual,When was the United Nations founded
+factual,What is the largest organ in the human body
+factual,Quel est le point le plus bas de la Terre
+factual,How many strings does a standard guitar have
+factual,Qui a fondé Microsoft
+factual,What is the half-life of carbon-14
+factual,Quelle est la capitale de l'Australie
+factual,What is the powerhouse of the cell
+factual,When was the first computer virus created
+math,Solve the quadratic equation x² - 5x + 6 = 0
+math,Calculate the surface area of a sphere with radius 7
+math,Résous ce système d'équations : 3x + y = 10 et x - 2y = 1
+math,What is the derivative of ln(x²+1)
+math,Prove by induction that the sum of the first n integers is n(n+1)/2
+math,Calcule l'intégrale de cos(x) entre 0 et π
+math,Find the inverse of this 3x3 matrix
+math,How many ways can 8 people sit around a circular table
+math,Résous cette inégalité : 2x - 3 > 7
+math,What is the probability that two dice sum to 9
+math,Simplify this Boolean expression using De Morgan's laws
+math,Calculate the compound interest after 5 years at 4.5% annually
+math,Trouve les zéros de ce polynôme de degré 3
+math,What is the Fourier transform of a rectangular pulse
+math,Compute the dot product and cross product of these two vectors
+math,Résous cette équation différentielle : dy/dx = 2xy
+math,How many prime numbers are there between 1 and 100
+math,Calculate the standard deviation of this dataset
+math,Explain and apply the central limit theorem
+math,Prove that the square root of 3 is irrational
+math,What is the limit of sin(x)/x as x approaches 0
+math,Calcule le volume d'un cône de rayon 5 et de hauteur 12
+math,How do I compute the eigenvalues and eigenvectors of a matrix
+math,Résous cette suite récurrente : a(n+1) = 2a(n) + 1 avec a(0) = 1
+math,What is the general solution to the wave equation
+math,Calcule la médiane et la variance de cette série statistique
+math,How many distinct permutations does the word mathematics have
+math,Prove that the sum of angles in a triangle is 180 degrees
+math,What is the Taylor series expansion of e^x around 0
+math,Résous ce problème de probabilités avec la loi de Bayes
+math,Find all integer solutions to 3x + 7y = 1
+math,Calcule le déterminant de cette matrice 4x4
+math,What is the formula for the area of a regular hexagon
+math,Démontre l'identité trigonométrique cos(2x) = 1 - 2sin²(x)
+math,How do I compute a confidence interval for a sample proportion
+math,Résous ce problème d'optimisation par la méthode des multiplicateurs de Lagrange
+math,What is the expected value of rolling a fair six-sided die
+math,Calcule la transformée de Laplace de t * e^(-2t)
+math,How many combinations of 4 items can be chosen from 10
+math,Résous ce système linéaire par la méthode de Gauss-Jordan
+math,"What is the gradient of f(x,y) = x²y + sin(xy)"
+math,Calcule l'aire sous la courbe y = x² entre x = 0 et x = 3
+math,Find the radius of convergence of this power series
+math,Résous cette équation complexe z² + 2z + 5 = 0
+math,What is the Pythagorean theorem and prove it geometrically
+math,Calcule le PGCD de 252 et 198 par l'algorithme d'Euclide
+math,How do I solve a system of equations using matrix inversion
+math,What is the formula for the nth term of the Fibonacci sequence
+math,Résous ce problème de géométrie dans l'espace : plan et droite
+math,Calculate the arc length of y = x^(3/2) from x=0 to x=4
+analysis,Compare the performance trade-offs of PostgreSQL vs MongoDB
+analysis,Analyse les forces et faiblesses de cette architecture microservices
+analysis,What are the risks and opportunities in expanding to the Asian market
+analysis,Evaluate the environmental impact of electric vehicles vs hybrids
+analysis,Compare agile and waterfall methodologies for large enterprise projects
+analysis,Fais une analyse SWOT de ce produit SaaS
+analysis,What are the long-term implications of generative AI on knowledge work
+analysis,Assess the scalability of this system design under 10x traffic growth
+analysis,Analyse les causes de l'échec de ce lancement de produit
+analysis,Compare the security models of OAuth 2.0 and API keys
+analysis,What are the trade-offs of using a monorepo vs separate repositories
+analysis,Évalue les différentes stratégies de tarification pour ce service
+analysis,Analyze the sentiment trends in these customer reviews
+analysis,Compare the UX of these two onboarding flows
+analysis,What are the bottlenecks in this data pipeline architecture
+analysis,Analyse les indicateurs financiers de cette startup sur 3 ans
+analysis,Evaluate the pros and cons of remote-first vs hybrid work policies
+analysis,Compare REST and GraphQL for a mobile app with complex data needs
+analysis,Fais une analyse concurrentielle des trois principaux acteurs du marché
+analysis,What factors explain the drop in conversion rate this quarter
+analysis,Compare Kubernetes and Docker Swarm for container orchestration
+analysis,Évalue les risques techniques de cette migration de base de données
+analysis,What are the ethical implications of using facial recognition in public spaces
+analysis,Analyse l'impact de cette décision sur les différentes parties prenantes
+analysis,Compare the cost model of on-premise vs cloud infrastructure
+analysis,What went wrong in this A/B test and how can we fix the methodology
+analysis,Évalue la pertinence de ces KPIs pour mesurer la performance produit
+analysis,Analyze the churn patterns in this user cohort data
+analysis,Compare the developer experience of Svelte vs React
+analysis,Quels sont les avantages et inconvénients d'un modèle freemium
+analysis,Assess the technical debt in this legacy codebase
+analysis,Analyse les tendances du marché de l'IA générative en 2024
+analysis,What are the trade-offs between consistency and availability in distributed systems
+analysis,Évalue l'impact de ce changement de prix sur la rétention client
+analysis,Compare TypeScript strict mode vs loose mode for a large team
+analysis,What is causing the latency spike visible in these metrics
+analysis,Analyse les différences culturelles à prendre en compte pour ce lancement international
+analysis,Compare the adoption risks of GraphQL vs tRPC for an internal API
+analysis,What are the security implications of this architecture decision
+analysis,Évalue les scénarios possibles si on passe de SQL à NoSQL
+conversation,Hey what's up
+conversation,Salut comment ça se passe aujourd'hui
+conversation,Thanks so much that was really helpful
+conversation,Tell me something interesting
+conversation,What do you enjoy doing
+conversation,Merci c'est exactement ce que je cherchais
+conversation,Can you help me with something
+conversation,Good morning hope you have a great day
+conversation,Tu peux m'expliquer ce que tu es capable de faire
+conversation,I'm bored let's chat
+conversation,Bonne nuit à demain
+conversation,Are you doing okay
+conversation,C'est quoi ton film préféré
+conversation,Wow that's amazing I didn't know that
+conversation,Just checking in how are things
+conversation,Je suis fatigué j'ai du mal à me concentrer
+conversation,You're really good at this
+conversation,Haha that joke was terrible but I laughed anyway
+conversation,C'est cool de parler avec toi
+conversation,I just wanted to say thanks for all your help today
+conversation,What kind of music do you like
+conversation,T'as passé une bonne journée
+conversation,Do you ever get tired of answering questions
+conversation,Je ne sais pas trop quoi faire ce soir
+conversation,Tell me a joke about programmers
+conversation,Tu préfères la mer ou la montagne
+conversation,I think I need a break what do you think
+conversation,C'est quoi ton avis sur le café
+conversation,Happy Friday hope your week was good
+conversation,Tu as des recommandations de podcasts
+conversation,I just finished a big project feeling relieved
+conversation,Raconte-moi quelque chose de drôle
+conversation,It's raining again today pretty gloomy
+conversation,Tu connais des bons restaurants à Paris
+conversation,What is your favorite thing about helping people
+conversation,Je suis stressé par ma présentation demain
+conversation,Morning already had three coffees
+conversation,T'as déjà joué à des jeux vidéo
+conversation,Long day finally home time to relax
+conversation,Je viens de regarder un super film
+instruction,How do I install Redis on Debian
+instruction,Comment configurer HTTPS avec Let's Encrypt sur Apache
+instruction,Step by step guide to set up a local Kubernetes cluster with kind
+instruction,How do I migrate a SQLite database to PostgreSQL
+instruction,Explique comment créer un pipeline CI/CD avec GitLab
+instruction,How to configure environment variables in a Docker Compose setup
+instruction,Walk me through deploying a Go application on a VPS
+instruction,Comment configurer un pare-feu avec ufw sur Ubuntu
+instruction,How do I set up two-factor authentication on GitHub
+instruction,Guide me through creating a virtual Python environment and installing dependencies
+instruction,Comment sauvegarder automatiquement une base de données PostgreSQL avec cron
+instruction,How do I profile a Go application to find memory leaks
+instruction,Walk me through setting up Prometheus and Grafana for monitoring
+instruction,Explique comment configurer un reverse proxy Nginx devant plusieurs services
+instruction,How do I set up a pre-commit hook to run linters
+instruction,Comment créer un utilisateur avec des droits limités sous Linux
+instruction,How do I enable CORS in a Go HTTP server
+instruction,Guide me through configuring SSH key-based authentication
+instruction,Explique comment déployer une image Docker sur un registre privé
+instruction,How do I set up log rotation for my application logs
+instruction,Comment installer et configurer Elasticsearch sur un serveur Ubuntu
+instruction,How do I set up a wildcard SSL certificate with Certbot
+instruction,Walk me through creating a GitHub Actions workflow to deploy to AWS
+instruction,Comment configurer le pooling de connexions avec PgBouncer
+instruction,How do I run multiple versions of Node.js on the same machine
+instruction,Explique comment mettre en place une stratégie de sauvegarde 3-2-1
+instruction,How do I configure rate limiting in Nginx
+instruction,Comment créer et publier un package npm
+instruction,How do I set up a VPN server on a Linux box
+instruction,Explique comment initialiser un projet Go avec des modules
+instruction,How do I forward a port from a Docker container to the host
+instruction,Comment configurer un cluster Redis Sentinel
+instruction,Walk me through setting up a self-hosted Gitea instance
+instruction,How do I enable query logging in PostgreSQL
+instruction,Explique comment déployer une application Python avec Gunicorn et systemd
+instruction,How do I set up automatic database backups in a Kubernetes CronJob
+instruction,Comment configurer Datadog pour surveiller une application Go
+instruction,How do I generate and rotate API keys securely
+instruction,Explique comment utiliser Ansible pour provisionner un serveur
+instruction,How do I configure a GitHub webhook to trigger a deployment script
+rewriting,Rewrite this email to be more concise and professional
+rewriting,Reformule ce paragraphe pour le rendre plus percutant
+rewriting,Make this user-facing error message clearer and friendlier
+rewriting,Rephrase this technical explanation for a non-technical audience
+rewriting,Améliore la fluidité de ce texte marketing
+rewriting,Rewrite this job description to be more inclusive
+rewriting,Simplify this terms of service clause into plain language
+rewriting,Reformule cette réponse d'assistance pour qu'elle soit plus empathique
+rewriting,Make this blog post introduction more engaging
+rewriting,Rephrase this commit message to be more descriptive
+rewriting,Améliore ce résumé de présentation pour le rendre plus accrocheur
+rewriting,Rewrite this API documentation to be clearer for beginners
+rewriting,Make this onboarding email sequence more conversational
+rewriting,Reformule ce feedback pour qu'il soit plus constructif
+rewriting,Simplify this medical report summary for the patient
+rewriting,Rewrite this product description to emphasize benefits over features
+rewriting,Rends ce message d'erreur moins technique et plus actionnable
+rewriting,Polish this pull request description to be more informative
+rewriting,Reformule cette introduction de lettre de motivation
+rewriting,Make this internal announcement more motivating and positive
+rewriting,Rewrite this legal clause to be easier to understand for non-lawyers
+rewriting,Améliore la clarté de ce README pour les nouveaux contributeurs
+rewriting,Make this rejection email more compassionate and professional
+rewriting,Reformule cette question de sondage pour éviter le biais de confirmation
+rewriting,Rewrite this warning message so it does not sound alarming
+rewriting,Améliore la structure de cette réponse pour qu'elle soit plus lisible
+rewriting,Make this passive voice sentence active
+rewriting,Reformule cette politique de confidentialité dans un langage accessible
+rewriting,Rewrite this marketing copy to be less salesy and more trustworthy
+rewriting,Améliore le ton de ce message de relance client
+rewriting,Make this error log message more useful for on-call engineers
+rewriting,Reformule cet objectif de sprint de manière SMART
+rewriting,Rewrite this executive summary to be punchier and more impactful
+rewriting,Améliore la lisibilité de ce rapport en restructurant les paragraphes
+rewriting,Make these release notes understandable to non-technical users
+rewriting,Reformule cette description de bug en termes d'impact utilisateur
+rewriting,Rewrite this FAQ answer to be shorter and clearer
+rewriting,Rends cette procédure interne plus facile à suivre étape par étape
+rewriting,Rewrite this call-to-action to be more compelling
+rewriting,Améliore ce message de commit pour qu'il explique le pourquoi
+code,Implémente un plugin qui sélectionne dynamiquement le meilleur modèle LLM selon la complexité de la requête et les quotas utilisateur
+code,"Crée un système de routage automatique de requêtes LLM basé sur un moteur de logique floue avec les critères : complexité, coût énergétique, budget restant"
+code,Développe une interface multi-onglets pour configurer un plugin de sélection automatique de modèles dans un gateway LLM d'entreprise
+code,Implémente un classificateur de texte NaiveBayes pour catégoriser les requêtes utilisateur selon dix catégories distinctes
+code,Crée un estimateur de coût énergétique pour les requêtes LLM basé sur les paramètres du modèle et le nombre de tokens
+code,Implement a plugin system for automatic LLM model selection based on request complexity and energy cost metrics
+code,"Design a fuzzy logic engine that selects the optimal LLM model based on complexity score, budget pressure, and energy sensitivity"
+code,"Create a NaiveBayes text classifier with training pipeline, model serialization, and embedded model data"
+code,Implement a gRPC plugin server that exposes model selection capabilities to an LLM gateway via a defined proto contract
+code,Build a web UI with multiple configuration tabs for a smart model selection plugin using server-rendered HTML templates
+code,"Crée un système d'estimation de la complexité d'une requête combinant entropie de Shannon, richesse lexicale et profondeur structurelle"
+code,"Implémente le protocole gRPC pour un plugin de sélection de modèles avec les endpoints ResolveModel, ListModels et Initialize"
+code,"Développe un module de scoring qui calcule la complexité, la catégorie, le coût énergétique et la pression budgétaire d'une requête"
+code,Create a multi-tenant LLM gateway plugin that routes requests to different models using fuzzy logic rules defined in a custom DSL
+code,Implement a decision logging system for LLM model selection that writes JSON-lines entries to a configurable file path
+code,"Crée une architecture hexagonale pour un plugin LLM avec adaptateurs gRPC, interface web et moteur de règles métier"
+code,"Implémente la sélection du meilleur modèle parmi une liste en calculant un score basé sur power level, frugalité énergétique et faisabilité"
+code,Design and implement a configurable model router using a domain-specific language for fuzzy logic inference
+code,Écris un plugin Go qui utilise hashicorp/go-plugin et gRPC pour exposer des capacités de sélection de modèle LLM
+code,"Crée une architecture de plugin où chaque plugin déclare ses capacités telles que RESOLVE_MODEL, PRE_REQUEST et POST_RESPONSE"
+code,Je veux implémenter un système qui évalue automatiquement la complexité et la catégorie d'une requête afin de choisir le modèle LLM le plus adapté
+code,"Je souhaite créer un plugin de sélection automatique qui prend en compte la complexité de la requête, le coût énergétique, le budget restant et les capacités du modèle"
+code,Développe les règles floues par défaut pour un plugin de frugalité qui maintient un bon rapport performance et coût selon la complexité détectée
+code,Je voudrais un système multi-critères qui sélectionne le modèle LLM optimal en combinant logique floue et indicateurs de requête comme la catégorie et les tokens estimés
+conversation,Bonjour !
+conversation,Bonjour
+conversation,Salut !
+conversation,Salut
+conversation,Hello !
+conversation,Hello
+conversation,Hi
+conversation,Hey
+conversation,Coucou
+conversation,Bonsoir
+conversation,Bonsoir !
+conversation,Good morning
+conversation,Good evening
+conversation,Yo
+conversation,"Bonjour, comment vas-tu ?"
+conversation,"Salut, ça va ?"
+conversation,"Hello, how are you today?"
+conversation,"Hey, what's new?"
+conversation,"Coucou, tu es là ?"
+conversation,"Bonsoir, tout va bien ?"
+conversation,Bonjour à tous
+conversation,Salut tout le monde
+conversation,"Bonjour, j'ai une question"
+conversation,Hi there
+conversation,"Hey there, how's it going?"
+conversation,"Good morning, hope you're well"
+conversation,Bonjour ! J'aurais besoin d'aide
+conversation,Salut ! Tu peux m'aider ?
+conversation,Hello ! Can you help me?
+conversation,Merci beaucoup
+conversation,Merci
+conversation,Thanks
+conversation,Thank you
+conversation,De rien
+conversation,Au revoir
+conversation,Goodbye
+conversation,Bye
+conversation,À bientôt
+conversation,See you later
+conversation,"Super, merci !"

@@ -313,6 +313,7 @@ var XoloPlugin_ServiceDesc = grpc.ServiceDesc{
 const (
 	XoloHostService_GetConfig_FullMethodName  = "/xolo.plugin.v1.XoloHostService/GetConfig"
 	XoloHostService_SaveConfig_FullMethodName = "/xolo.plugin.v1.XoloHostService/SaveConfig"
+	XoloHostService_ListModels_FullMethodName = "/xolo.plugin.v1.XoloHostService/ListModels"
 )
 
 // XoloHostServiceClient is the client API for XoloHostService service.
@@ -321,6 +322,7 @@ const (
 type XoloHostServiceClient interface {
 	GetConfig(ctx context.Context, in *GetConfigRequest, opts ...grpc.CallOption) (*GetConfigResponse, error)
 	SaveConfig(ctx context.Context, in *SaveConfigRequest, opts ...grpc.CallOption) (*SaveConfigResponse, error)
+	ListModels(ctx context.Context, in *ListModelsForOrgRequest, opts ...grpc.CallOption) (*ListModelsForOrgResponse, error)
 }
 
 type xoloHostServiceClient struct {
@@ -351,12 +353,23 @@ func (c *xoloHostServiceClient) SaveConfig(ctx context.Context, in *SaveConfigRe
 	return out, nil
 }
 
+func (c *xoloHostServiceClient) ListModels(ctx context.Context, in *ListModelsForOrgRequest, opts ...grpc.CallOption) (*ListModelsForOrgResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListModelsForOrgResponse)
+	err := c.cc.Invoke(ctx, XoloHostService_ListModels_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // XoloHostServiceServer is the server API for XoloHostService service.
 // All implementations must embed UnimplementedXoloHostServiceServer
 // for forward compatibility.
 type XoloHostServiceServer interface {
 	GetConfig(context.Context, *GetConfigRequest) (*GetConfigResponse, error)
 	SaveConfig(context.Context, *SaveConfigRequest) (*SaveConfigResponse, error)
+	ListModels(context.Context, *ListModelsForOrgRequest) (*ListModelsForOrgResponse, error)
 	mustEmbedUnimplementedXoloHostServiceServer()
 }
 
@@ -372,6 +385,9 @@ func (UnimplementedXoloHostServiceServer) GetConfig(context.Context, *GetConfigR
 }
 func (UnimplementedXoloHostServiceServer) SaveConfig(context.Context, *SaveConfigRequest) (*SaveConfigResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SaveConfig not implemented")
+}
+func (UnimplementedXoloHostServiceServer) ListModels(context.Context, *ListModelsForOrgRequest) (*ListModelsForOrgResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListModels not implemented")
 }
 func (UnimplementedXoloHostServiceServer) mustEmbedUnimplementedXoloHostServiceServer() {}
 func (UnimplementedXoloHostServiceServer) testEmbeddedByValue()                         {}
@@ -430,6 +446,24 @@ func _XoloHostService_SaveConfig_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _XoloHostService_ListModels_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListModelsForOrgRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(XoloHostServiceServer).ListModels(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: XoloHostService_ListModels_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(XoloHostServiceServer).ListModels(ctx, req.(*ListModelsForOrgRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // XoloHostService_ServiceDesc is the grpc.ServiceDesc for XoloHostService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -444,6 +478,10 @@ var XoloHostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SaveConfig",
 			Handler:    _XoloHostService_SaveConfig_Handler,
+		},
+		{
+			MethodName: "ListModels",
+			Handler:    _XoloHostService_ListModels_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -14,6 +14,14 @@ service XoloPlugin {
 service XoloHostService {
   rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);
   rpc SaveConfig(SaveConfigRequest) returns (SaveConfigResponse);
+  rpc ListModels(ListModelsForOrgRequest) returns (ListModelsForOrgResponse);
+}
+
+message ListModelsForOrgRequest {
+  string org_id = 1;
+}
+message ListModelsForOrgResponse {
+  repeated ModelInfo models = 1;
 }
 
 message InitializeRequest {
@@ -72,6 +80,20 @@ message ModelInfo {
   double completion_cost_per_1k_tokens = 5;
   int64 token_limit = 6;
   bool is_virtual = 7;
+  int64 context_length = 8;
+  bool supports_vision = 9;
+  bool supports_files = 10;
+  float active_params_billions = 11;
+  bool supports_reasoning = 12;
+}
+
+message QuotaInfo {
+  double daily_remaining = 1;
+  double daily_total = 2;
+  double monthly_remaining = 3;
+  double monthly_total = 4;
+  double yearly_remaining = 5;
+  double yearly_total = 6;
 }
 
 message VirtualModelInfo {
@@ -108,6 +130,8 @@ message ResolveModelInput {
   repeated ModelInfo available_models = 3;
   string messages_json = 4;
   repeated VirtualModelInfo virtual_models = 5;
+  QuotaInfo quota = 6;
+  string body_json = 7;
 }
 
 message ResolveModelOutput {

@@ -149,6 +149,8 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		userStore,
 		providerStore,
 		virtualModelStore,
+		quotaService,
+		usageStore,
 	)
 
 	withMemberships := membershipsMiddleware.Middleware(orgStore)

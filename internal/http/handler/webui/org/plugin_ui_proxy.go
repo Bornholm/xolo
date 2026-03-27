@@ -47,6 +47,7 @@ func (h *Handler) servePluginUI(w http.ResponseWriter, r *http.Request) {
 	proxy.Director = func(req *http.Request) {
 		originalDirector(req)
 		req.Header.Set("X-Xolo-Org-Id", string(org.ID()))
+		req.Header.Set("X-Xolo-Plugin-Base-Path", pluginBasePath+"/")
 		uiPath := r.PathValue("uiPath")
 		if uiPath == "" {
 			uiPath = "/"

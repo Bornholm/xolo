@@ -252,7 +252,11 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		perDay[rec.CreatedAt().Format("2006-01-02")] += cost
-		perModel[rec.ProxyModelName()] += cost
+		effectiveModel := rec.ProxyModelName()
+		if rec.ResolvedModelName() != "" {
+			effectiveModel = rec.ResolvedModelName()
+		}
+		perModel[effectiveModel] += cost
 	}
 
 	vmodel := component.DashboardPageVModel{
