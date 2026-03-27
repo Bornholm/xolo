@@ -25,11 +25,11 @@ builds:
     ldflags:
       - -w -s
 
-  - id: xolo-plugin-model-auto-select
+  - id: xolo-plugin-smart-model
     targets: [go_first_class]
     mod_timestamp: "{{ .CommitTimestamp }}"
-    dir: ./plugins/model-auto-select
-    binary: xolo-plugin-model-auto-select
+    dir: ./plugins/smart-model
+    binary: xolo-plugin-smart-model
     flags:
       - -trimpath
     ldflags:
@@ -54,7 +54,7 @@ dockers:
     ids:
       - xolo-server
       - xolo-plugin-time-restriction
-      - xolo-plugin-model-auto-select
+      - xolo-plugin-smart-model
     use: docker
     dockerfile: misc/docker/xolo-server.Dockerfile
     image_templates:
