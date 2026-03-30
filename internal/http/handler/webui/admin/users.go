@@ -190,9 +190,15 @@ func (h *Handler) fillUsersPageVModelUsers(ctx context.Context, vmodel *componen
 		}
 	}
 
+	filterOpts := port.QueryUsersOptions{}
 	opts := port.QueryUsersOptions{
 		Page:  &page,
 		Limit: &limit,
+	}
+
+	total, err := h.userStore.CountUsers(ctx, filterOpts)
+	if err != nil {
+		return errors.WithStack(err)
 	}
 
 	users, err := h.userStore.QueryUsers(ctx, opts)
@@ -203,7 +209,7 @@ func (h *Handler) fillUsersPageVModelUsers(ctx context.Context, vmodel *componen
 	vmodel.Users = users
 	vmodel.CurrentPage = page + 1 // Convert back to 1-based
 	vmodel.PageSize = limit
-	vmodel.TotalUsers = len(users)
+	vmodel.TotalUsers = int(total)
 
 	return nil
 }

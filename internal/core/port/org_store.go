@@ -20,12 +20,17 @@ type OrgStore interface {
 	RemoveMember(ctx context.Context, id model.MembershipID) error
 	GetMembership(ctx context.Context, id model.MembershipID) (model.Membership, error)
 	GetUserOrgMembership(ctx context.Context, userID model.UserID, orgID model.OrgID) (model.Membership, error)
-	ListOrgMembers(ctx context.Context, orgID model.OrgID) ([]model.Membership, error)
+	ListOrgMembers(ctx context.Context, orgID model.OrgID, opts ListOrgMembersOptions) ([]model.Membership, int64, error)
 	GetUserMemberships(ctx context.Context, userID model.UserID) ([]model.Membership, error)
 	IsMember(ctx context.Context, userID model.UserID, orgID model.OrgID) (bool, error)
 }
 
 type ListOrgsOptions struct {
+	Page  *int
+	Limit *int
+}
+
+type ListOrgMembersOptions struct {
 	Page  *int
 	Limit *int
 }

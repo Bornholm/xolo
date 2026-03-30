@@ -170,21 +170,37 @@ func (s *Store) GetUserOrgMembership(ctx context.Context, userID model.UserID, o
 }
 
 // ListOrgMembers implements port.OrgStore.
-func (s *Store) ListOrgMembers(ctx context.Context, orgID model.OrgID) ([]model.Membership, error) {
+func (s *Store) ListOrgMembers(ctx context.Context, orgID model.OrgID, opts port.ListOrgMembersOptions) ([]model.Membership, int64, error) {
 	var members []*Membership
+	var total int64
+
 	err := s.withRetry(ctx, false, func(ctx context.Context, db *gorm.DB) error {
-		return errors.WithStack(db.Preload("User").Preload("Org").
-			Where("org_id = ?", string(orgID)).
-			Find(&members).Error)
+		base := db.Model(&Membership{}).Where("org_id = ?", string(orgID))
+
+		if err := base.Count(&total).Error; err != nil {
+			return errors.WithStack(err)
+		}
+
+		query := db.Preload("User").Preload("Org").Where("org_id = ?", string(orgID))
+
+		if opts.Page != nil && opts.Limit != nil {
+			query = query.Offset(*opts.Page * *opts.Limit)
+		}
+		if opts.Limit != nil {
+			query = query.Limit(*opts.Limit)
+		}
+
+		return errors.WithStack(query.Find(&members).Error)
 	}, sqlite3.BUSY, sqlite3.LOCKED)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
+
 	result := make([]model.Membership, 0, len(members))
 	for _, m := range members {
 		result = append(result, &wrappedMembership{m})
 	}
-	return result, nil
+	return result, total, nil
 }
 
 // GetUserMemberships implements port.OrgStore.

@@ -3,6 +3,7 @@ package org
 import (
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/a-h/templ"
 	"github.com/bornholm/go-x/slogx"
@@ -26,7 +27,21 @@ func (h *Handler) getMembersPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	members, err := h.orgStore.ListOrgMembers(ctx, org.ID())
+	const membersPageSize = 20
+
+	page := 0
+	if p := r.URL.Query().Get("page"); p != "" {
+		if n, err := strconv.Atoi(p); err == nil && n > 1 {
+			page = n - 1
+		}
+	}
+
+	opts := port.ListOrgMembersOptions{
+		Page:  &page,
+		Limit: func() *int { l := membersPageSize; return &l }(),
+	}
+
+	members, total, err := h.orgStore.ListOrgMembers(ctx, org.ID(), opts)
 	if err != nil {
 		slog.ErrorContext(ctx, "could not list members", slogx.Error(err))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -34,9 +49,12 @@ func (h *Handler) getMembersPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vmodel := component.MembersPageVModel{
-		Org:     org,
-		Members: members,
-		Success: r.URL.Query().Get("success"),
+		Org:          org,
+		Members:      members,
+		Success:      r.URL.Query().Get("success"),
+		CurrentPage:  page + 1,
+		PageSize:     membersPageSize,
+		TotalMembers: int(total),
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "org-" + orgSlug + "-members",

@@ -7,6 +7,7 @@ import (
 	"github.com/a-h/templ"
 	"github.com/bornholm/go-x/slogx"
 	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/bornholm/xolo/internal/core/port"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/org/component"
@@ -42,7 +43,7 @@ func (h *Handler) getSettingsPage(w http.ResponseWriter, r *http.Request) {
 	if org.ShareQuotaEqually() {
 		orgQuota, err := h.quotaStore.GetQuota(ctx, model.QuotaScopeOrg, string(org.ID()))
 		if err == nil && orgQuota != nil {
-			members, err := h.orgStore.ListOrgMembers(ctx, org.ID())
+			members, _, err := h.orgStore.ListOrgMembers(ctx, org.ID(), port.ListOrgMembersOptions{})
 			if err == nil && len(members) > 0 {
 				n := int64(len(members))
 				vmodel.MemberCount = len(members)

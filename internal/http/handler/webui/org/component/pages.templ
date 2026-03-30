@@ -165,7 +165,39 @@ templ MembersPage(vmodel MembersPageVModel) {
 					}
 				}
 			}
+		@membersPagination(vmodel)
 		</div>
+	}
+}
+
+templ membersPagination(vmodel MembersPageVModel) {
+	{{ totalPages := (vmodel.TotalMembers + vmodel.PageSize - 1) / vmodel.PageSize }}
+	if totalPages > 1 {
+		{{ paginator := pagination.CreatePagination(vmodel.CurrentPage, totalPages, 5) }}
+		@pagination.Pagination() {
+			@pagination.Content() {
+				@pagination.Previous(pagination.PreviousProps{
+					Href:     string(common.CurrentURL(ctx, common.WithValues("page", strconv.Itoa(vmodel.CurrentPage-1)))),
+					Disabled: !paginator.HasPrevious,
+					Label:    "Précédent",
+				})
+				for _, page := range paginator.Pages {
+					@pagination.Item() {
+						@pagination.Link(pagination.LinkProps{
+							Href:     string(common.CurrentURL(ctx, common.WithValues("page", strconv.Itoa(page)))),
+							IsActive: page == vmodel.CurrentPage,
+						}) {
+							{ strconv.Itoa(page) }
+						}
+					}
+				}
+				@pagination.Next(pagination.NextProps{
+					Href:     string(common.CurrentURL(ctx, common.WithValues("page", strconv.Itoa(vmodel.CurrentPage+1)))),
+					Disabled: !paginator.HasNext,
+					Label:    "Suivant",
+				})
+			}
+		}
 	}
 }
 

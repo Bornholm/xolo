@@ -211,6 +211,32 @@ func (s *Store) DeleteAuthToken(ctx context.Context, tokenID model.AuthTokenID) 
 	return nil
 }
 
+// CountUsers implements port.UserStore.
+func (s *Store) CountUsers(ctx context.Context, opts port.QueryUsersOptions) (int64, error) {
+	var count int64
+
+	err := s.withRetry(ctx, false, func(ctx context.Context, db *gorm.DB) error {
+		query := db.Model(&User{})
+
+		if len(opts.Roles) > 0 {
+			query = query.Joins("JOIN user_roles ON users.id = user_roles.user_id").
+				Where("user_roles.role IN ?", opts.Roles).
+				Distinct()
+		}
+
+		if opts.Active != nil {
+			query = query.Where("active = ?", *opts.Active)
+		}
+
+		return errors.WithStack(query.Count(&count).Error)
+	}, sqlite3.LOCKED, sqlite3.BUSY)
+	if err != nil {
+		return 0, errors.WithStack(err)
+	}
+
+	return count, nil
+}
+
 // QueryUsers implements port.UserStore.
 func (s *Store) QueryUsers(ctx context.Context, opts port.QueryUsersOptions) ([]model.User, error) {
 	var users []*User

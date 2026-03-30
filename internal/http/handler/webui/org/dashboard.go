@@ -6,6 +6,7 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/bornholm/go-x/slogx"
+	"github.com/bornholm/xolo/internal/core/port"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/org/component"
@@ -25,7 +26,7 @@ func (h *Handler) getDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	members, err := h.orgStore.ListOrgMembers(ctx, org.ID())
+	members, _, err := h.orgStore.ListOrgMembers(ctx, org.ID(), port.ListOrgMembersOptions{})
 	if err != nil {
 		slog.ErrorContext(ctx, "could not list members", slogx.Error(err))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

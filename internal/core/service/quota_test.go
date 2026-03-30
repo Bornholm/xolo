@@ -50,8 +50,8 @@ type fakeOrgProvider struct {
 func (f *fakeOrgProvider) GetOrgByID(_ context.Context, _ model.OrgID) (model.Organization, error) {
 	return f.org, nil
 }
-func (f *fakeOrgProvider) ListOrgMembers(_ context.Context, _ model.OrgID) ([]model.Membership, error) {
-	return f.members, f.listErr
+func (f *fakeOrgProvider) ListOrgMembers(_ context.Context, _ model.OrgID, _ port.ListOrgMembersOptions) ([]model.Membership, int64, error) {
+	return f.members, int64(len(f.members)), f.listErr
 }
 
 // fakeMembership satisfies model.Membership minimally.

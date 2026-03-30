@@ -57,7 +57,7 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch org members for filter
-	members, err := h.orgStore.ListOrgMembers(ctx, org.ID())
+	members, _, err := h.orgStore.ListOrgMembers(ctx, org.ID(), port.ListOrgMembersOptions{})
 	if err != nil {
 		slog.WarnContext(ctx, "could not list org members", slogx.Error(err))
 		members = nil

@@ -79,6 +79,11 @@ func (s *UserStore) QueryUsers(ctx context.Context, opts port.QueryUsersOptions)
 	return s.backend.QueryUsers(ctx, opts)
 }
 
+// CountUsers implements [port.UserStore].
+func (s *UserStore) CountUsers(ctx context.Context, opts port.QueryUsersOptions) (int64, error) {
+	return s.backend.CountUsers(ctx, opts)
+}
+
 // SaveUser implements [port.UserStore].
 func (s *UserStore) SaveUser(ctx context.Context, user model.User) error {
 	defer s.userCache.Remove(string(user.ID()))

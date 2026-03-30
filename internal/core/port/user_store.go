@@ -17,6 +17,9 @@ type UserStore interface {
 	// QueryUsers returns a paginated list of users
 	QueryUsers(ctx context.Context, opts QueryUsersOptions) ([]model.User, error)
 
+	// CountUsers returns the total number of users matching the given filters (pagination ignored)
+	CountUsers(ctx context.Context, opts QueryUsersOptions) (int64, error)
+
 	// SaveUser saves a user in the store
 	SaveUser(ctx context.Context, user model.User) error
 

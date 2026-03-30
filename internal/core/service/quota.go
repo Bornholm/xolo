@@ -12,7 +12,7 @@ import (
 // It is satisfied by port.OrgStore (and any fake with just these two methods).
 type OrgProvider interface {
 	GetOrgByID(ctx context.Context, id model.OrgID) (model.Organization, error)
-	ListOrgMembers(ctx context.Context, orgID model.OrgID) ([]model.Membership, error)
+	ListOrgMembers(ctx context.Context, orgID model.OrgID, opts port.ListOrgMembersOptions) ([]model.Membership, int64, error)
 }
 
 type QuotaService struct {
@@ -68,7 +68,7 @@ func (s *QuotaService) ResolveEffectiveQuota(
 
 	// Sharing: distribute org quota equally only when user has no personal quota.
 	if !userHasPersonalQuota && org.ShareQuotaEqually() && orgQuota != nil {
-		members, err := s.orgStore.ListOrgMembers(ctx, orgID)
+		members, _, err := s.orgStore.ListOrgMembers(ctx, orgID, port.ListOrgMembersOptions{})
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

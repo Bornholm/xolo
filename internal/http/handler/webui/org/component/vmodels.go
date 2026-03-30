@@ -18,9 +18,12 @@ type OrgDashboardVModel struct {
 
 type MembersPageVModel struct {
 	common.AppLayoutVModel
-	Org     model.Organization
-	Members []model.Membership
-	Success string
+	Org          model.Organization
+	Members      []model.Membership
+	Success      string
+	CurrentPage  int
+	PageSize     int
+	TotalMembers int
 }
 
 type ProvidersPageVModel struct {
