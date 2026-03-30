@@ -1,0 +1,64 @@
+package main
+
+import (
+	"slices"
+
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+)
+
+// page renders the dummy-model plugin configuration UI.
+// It sets <base href> so all relative URLs resolve under the plugin's base path.
+templ page(pd uiPageData) {
+	<!DOCTYPE html>
+	<html class="dark">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<base href={ pd.BasePath }/>
+			<link rel="stylesheet" href="/assets/templui.css"/>
+		</head>
+		<body class="bg-background text-foreground min-h-screen p-4 space-y-4">
+			@triggerSection(pd)
+		</body>
+	</html>
+}
+
+templ triggerSection(pd uiPageData) {
+	<div class="space-y-4">
+		<p class="text-sm text-muted-foreground">
+			Sélectionnez les modèles virtuels sur lesquels le plugin doit s'activer.
+			Si aucun modèle n'est sélectionné, le plugin est <strong>inactif</strong>.
+		</p>
+		@card.Card() {
+			@card.Content(card.ContentProps{Class: "space-y-4"}) {
+				<form method="POST" action="api/config" class="space-y-4">
+					if len(pd.VirtualModels) == 0 {
+						<p class="text-sm text-muted-foreground italic">
+							Aucun modèle virtuel disponible pour cette organisation.
+							Créez-en un depuis la section <strong>Modèles</strong> de l'organisation.
+						</p>
+					} else {
+						<div class="space-y-2">
+							for _, vm := range pd.VirtualModels {
+								<label class="flex items-center gap-3 cursor-pointer rounded-md border p-3 hover:bg-muted/50 transition-colors">
+									<input
+										type="checkbox"
+										name="trigger_models"
+										value={ vm.ProxyName }
+										class="h-4 w-4 rounded border-input"
+										if slices.Contains(pd.Config.TriggerModels, vm.ProxyName) { checked }
+									/>
+									<span class="text-sm font-mono">{ vm.ProxyName }</span>
+								</label>
+							}
+						</div>
+					}
+					@button.Button(button.Props{Type: button.TypeSubmit}) {
+						Sauvegarder
+					}
+				</form>
+			}
+		}
+	</div>
+}

@@ -70,6 +70,7 @@ message RequestContext {
   string token_id = 3;
   string config_json = 4;
   string user_config_json = 5;
+  string display_name = 6;
 }
 
 message ModelInfo {
@@ -112,6 +113,7 @@ message PreRequestInput {
 message PreRequestOutput {
   bool allowed = 1;
   string rejection_reason = 2;
+  string response_json = 3;
 }
 
 message PostResponseInput {
@@ -136,6 +138,10 @@ message ResolveModelInput {
 
 message ResolveModelOutput {
   string resolved_proxy_name = 1;
+  // response_content, when non-empty, instructs the proxy to short-circuit the
+  // request and return the provided text directly without calling any real LLM.
+  // The proxy handles both streaming (SSE) and non-streaming transparently.
+  string response_content = 2;
 }
 
 message ListModelsInput {

@@ -30,6 +30,7 @@ RUN apk add \
 COPY --from=build /src/dist/xolo-server_linux_amd64_v1/xolo-server /usr/local/bin/xolo-server
 COPY --from=build /src/dist/xolo-plugin-time-restriction_linux_amd64_v1/xolo-plugin-time-restriction /plugins/time-restriction
 COPY --from=build /src/dist/xolo-plugin-smart-model_linux_amd64_v1/xolo-plugin-smart-model /plugins/smart-model
+COPY --from=build /src/dist/xolo-plugin-dummy-model_linux_amd64_v1/xolo-plugin-dummy-model /plugins/dummy-model
 
 ENV XOLO_STORAGE_DATABASE_DSN=/data/data.sqlite
 ENV XOLO_PLUGINS_DIR=/plugins

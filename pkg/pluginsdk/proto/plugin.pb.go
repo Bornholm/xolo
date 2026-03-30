@@ -579,6 +579,7 @@ type RequestContext struct {
 	TokenId        string                 `protobuf:"bytes,3,opt,name=token_id,json=tokenId,proto3" json:"token_id,omitempty"`
 	ConfigJson     string                 `protobuf:"bytes,4,opt,name=config_json,json=configJson,proto3" json:"config_json,omitempty"`
 	UserConfigJson string                 `protobuf:"bytes,5,opt,name=user_config_json,json=userConfigJson,proto3" json:"user_config_json,omitempty"`
+	DisplayName    string                 `protobuf:"bytes,6,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -644,6 +645,13 @@ func (x *RequestContext) GetConfigJson() string {
 func (x *RequestContext) GetUserConfigJson() string {
 	if x != nil {
 		return x.UserConfigJson
+	}
+	return ""
+}
+
+func (x *RequestContext) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
 	}
 	return ""
 }
@@ -996,6 +1004,7 @@ type PreRequestOutput struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Allowed         bool                   `protobuf:"varint,1,opt,name=allowed,proto3" json:"allowed,omitempty"`
 	RejectionReason string                 `protobuf:"bytes,2,opt,name=rejection_reason,json=rejectionReason,proto3" json:"rejection_reason,omitempty"`
+	ResponseJson    string                 `protobuf:"bytes,3,opt,name=response_json,json=responseJson,proto3" json:"response_json,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -1040,6 +1049,13 @@ func (x *PreRequestOutput) GetAllowed() bool {
 func (x *PreRequestOutput) GetRejectionReason() string {
 	if x != nil {
 		return x.RejectionReason
+	}
+	return ""
+}
+
+func (x *PreRequestOutput) GetResponseJson() string {
+	if x != nil {
+		return x.ResponseJson
 	}
 	return ""
 }
@@ -1251,8 +1267,12 @@ func (x *ResolveModelInput) GetBodyJson() string {
 type ResolveModelOutput struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	ResolvedProxyName string                 `protobuf:"bytes,1,opt,name=resolved_proxy_name,json=resolvedProxyName,proto3" json:"resolved_proxy_name,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// response_content, when non-empty, instructs the proxy to short-circuit the
+	// request and return the provided text directly without calling any real LLM.
+	// The proxy handles both streaming (SSE) and non-streaming transparently.
+	ResponseContent string `protobuf:"bytes,2,opt,name=response_content,json=responseContent,proto3" json:"response_content,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ResolveModelOutput) Reset() {
@@ -1288,6 +1308,13 @@ func (*ResolveModelOutput) Descriptor() ([]byte, []int) {
 func (x *ResolveModelOutput) GetResolvedProxyName() string {
 	if x != nil {
 		return x.ResolvedProxyName
+	}
+	return ""
+}
+
+func (x *ResolveModelOutput) GetResponseContent() string {
+	if x != nil {
+		return x.ResponseContent
 	}
 	return ""
 }
@@ -1431,14 +1458,15 @@ const file_pkg_pluginsdk_proto_plugin_proto_rawDesc = "" +
 	"\vPRE_REQUEST\x10\x01\x12\x11\n" +
 	"\rPOST_RESPONSE\x10\x02\x12\x11\n" +
 	"\rRESOLVE_MODEL\x10\x03\x12\x0f\n" +
-	"\vLIST_MODELS\x10\x04\"\xa6\x01\n" +
+	"\vLIST_MODELS\x10\x04\"\xc9\x01\n" +
 	"\x0eRequestContext\x12\x15\n" +
 	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x19\n" +
 	"\btoken_id\x18\x03 \x01(\tR\atokenId\x12\x1f\n" +
 	"\vconfig_json\x18\x04 \x01(\tR\n" +
 	"configJson\x12(\n" +
-	"\x10user_config_json\x18\x05 \x01(\tR\x0euserConfigJson\"\x82\x04\n" +
+	"\x10user_config_json\x18\x05 \x01(\tR\x0euserConfigJson\x12!\n" +
+	"\fdisplay_name\x18\x06 \x01(\tR\vdisplayName\"\x82\x04\n" +
 	"\tModelInfo\x12\x1d\n" +
 	"\n" +
 	"proxy_name\x18\x01 \x01(\tR\tproxyName\x12\x1d\n" +
@@ -1474,10 +1502,11 @@ const file_pkg_pluginsdk_proto_plugin_proto_rawDesc = "" +
 	"\x0fPreRequestInput\x120\n" +
 	"\x03ctx\x18\x01 \x01(\v2\x1e.xolo.plugin.v1.RequestContextR\x03ctx\x12\x14\n" +
 	"\x05model\x18\x02 \x01(\tR\x05model\x12#\n" +
-	"\rmessages_json\x18\x03 \x01(\tR\fmessagesJson\"W\n" +
+	"\rmessages_json\x18\x03 \x01(\tR\fmessagesJson\"|\n" +
 	"\x10PreRequestOutput\x12\x18\n" +
 	"\aallowed\x18\x01 \x01(\bR\aallowed\x12)\n" +
-	"\x10rejection_reason\x18\x02 \x01(\tR\x0frejectionReason\"\xca\x01\n" +
+	"\x10rejection_reason\x18\x02 \x01(\tR\x0frejectionReason\x12#\n" +
+	"\rresponse_json\x18\x03 \x01(\tR\fresponseJson\"\xca\x01\n" +
 	"\x11PostResponseInput\x120\n" +
 	"\x03ctx\x18\x01 \x01(\v2\x1e.xolo.plugin.v1.RequestContextR\x03ctx\x12\x14\n" +
 	"\x05model\x18\x02 \x01(\tR\x05model\x12#\n" +
@@ -1492,9 +1521,10 @@ const file_pkg_pluginsdk_proto_plugin_proto_rawDesc = "" +
 	"\rmessages_json\x18\x04 \x01(\tR\fmessagesJson\x12G\n" +
 	"\x0evirtual_models\x18\x05 \x03(\v2 .xolo.plugin.v1.VirtualModelInfoR\rvirtualModels\x12/\n" +
 	"\x05quota\x18\x06 \x01(\v2\x19.xolo.plugin.v1.QuotaInfoR\x05quota\x12\x1b\n" +
-	"\tbody_json\x18\a \x01(\tR\bbodyJson\"D\n" +
+	"\tbody_json\x18\a \x01(\tR\bbodyJson\"o\n" +
 	"\x12ResolveModelOutput\x12.\n" +
-	"\x13resolved_proxy_name\x18\x01 \x01(\tR\x11resolvedProxyName\"\x89\x01\n" +
+	"\x13resolved_proxy_name\x18\x01 \x01(\tR\x11resolvedProxyName\x12)\n" +
+	"\x10response_content\x18\x02 \x01(\tR\x0fresponseContent\"\x89\x01\n" +
 	"\x0fListModelsInput\x120\n" +
 	"\x03ctx\x18\x01 \x01(\v2\x1e.xolo.plugin.v1.RequestContextR\x03ctx\x12D\n" +
 	"\x10available_models\x18\x02 \x03(\v2\x19.xolo.plugin.v1.ModelInfoR\x0favailableModels\"H\n" +

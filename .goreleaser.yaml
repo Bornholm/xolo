@@ -35,6 +35,16 @@ builds:
     ldflags:
       - -w -s
 
+  - id: xolo-plugin-dummy-model
+    targets: [go_first_class]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    dir: ./plugins/dummy-model
+    binary: xolo-plugin-dummy-model
+    flags:
+      - -trimpath
+    ldflags:
+      - -w -s
+
 checksum:
   name_template: "checksums.txt"
 snapshot:

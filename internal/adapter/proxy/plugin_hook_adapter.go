@@ -72,6 +72,12 @@ func (a *PluginHookAdapter) hasCapability(pluginName string, cap proto.PluginDes
 func (a *PluginHookAdapter) Name() string  { return "xolo.plugin-hook-adapter" }
 func (a *PluginHookAdapter) Priority() int { return 3 }
 
+// userGetter is an optional extension of tokenFinder that allows fetching a user by ID.
+// port.UserStore satisfies this interface.
+type userGetter interface {
+	GetUserByID(ctx context.Context, userID model.UserID) (model.User, error)
+}
+
 // buildRequestContext loads org and user config for a plugin and assembles a RequestContext.
 func (a *PluginHookAdapter) buildRequestContext(ctx context.Context, orgID model.OrgID, userID string, tokenID string, pluginName string) (*proto.RequestContext, error) {
 	reqCtx := &proto.RequestContext{
@@ -95,6 +101,12 @@ func (a *PluginHookAdapter) buildRequestContext(ctx context.Context, orgID model
 		}
 		if userCfg != nil {
 			reqCtx.UserConfigJson = userCfg.ConfigJSON
+		}
+
+		if ug, ok := a.userStore.(userGetter); ok {
+			if u, err := ug.GetUserByID(ctx, model.UserID(userID)); err == nil {
+				reqCtx.DisplayName = u.DisplayName()
+			}
 		}
 	}
 
@@ -140,9 +152,20 @@ func (a *PluginHookAdapter) PreRequest(ctx context.Context, req *genaiProxy.Prox
 			continue
 		}
 
+		var messagesJSON string
+		if len(req.Body) > 0 {
+			var bodyMessages struct {
+				Messages json.RawMessage `json:"messages"`
+			}
+			if err := json.Unmarshal(req.Body, &bodyMessages); err == nil && len(bodyMessages.Messages) > 0 {
+				messagesJSON = string(bodyMessages.Messages)
+			}
+		}
+
 		out, err := client.PreRequest(ctx, &proto.PreRequestInput{
-			Ctx:   reqCtx,
-			Model: req.Model,
+			Ctx:          reqCtx,
+			Model:        req.Model,
+			MessagesJson: messagesJSON,
 		})
 		if err != nil {
 			slog.WarnContext(ctx, "plugin_hook_adapter: PreRequest gRPC error",
@@ -153,6 +176,21 @@ func (a *PluginHookAdapter) PreRequest(ctx context.Context, req *genaiProxy.Prox
 				return &genaiProxy.HookResult{Response: serviceUnavailableResponse(act.PluginName)}, nil
 			}
 			continue
+		}
+
+		if out.ResponseJson != "" {
+			var body map[string]any
+			if err := json.Unmarshal([]byte(out.ResponseJson), &body); err == nil {
+				return &genaiProxy.HookResult{
+					Response: &genaiProxy.ProxyResponse{
+						StatusCode: 200,
+						Body:       body,
+					},
+				}, nil
+			}
+			slog.WarnContext(ctx, "plugin_hook_adapter: failed to parse response_json from plugin",
+				slog.String("plugin", act.PluginName),
+			)
 		}
 
 		if !out.Allowed {
@@ -333,6 +371,12 @@ func (a *PluginHookAdapter) ResolveModel(ctx context.Context, req *genaiProxy.Pr
 				slog.Any("error", err),
 			)
 			continue
+		}
+
+		if out.ResponseContent != "" {
+			req.Metadata[MetaOriginalModel] = req.Model
+			req.Metadata[MetaResolvedModel] = req.Model
+			return NewDummyLLMClient(out.ResponseContent, req.Model), req.Model, nil
 		}
 
 		if out.ResolvedProxyName != "" {
