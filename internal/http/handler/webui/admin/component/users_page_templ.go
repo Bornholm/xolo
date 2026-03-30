@@ -728,7 +728,7 @@ func usersPagination(vmodel UsersPageVModel) templ.Component {
 					}
 					ctx = templ.InitializeContext(ctx)
 					templ_7745c5c3_Err = pagination.Previous(pagination.PreviousProps{
-						Href:     string(commonComp.CurrentURL(ctx, commonComp.WithValues("page", strconv.Itoa(vmodel.CurrentPage-1)))),
+						Href:     commonComp.BaseURLString(ctx, commonComp.WithPath("/admin/users"), commonComp.WithValues("page", strconv.Itoa(vmodel.CurrentPage-1))),
 						Disabled: !paginator.HasPrevious,
 						Label:    "Précédent",
 					}).Render(ctx, templ_7745c5c3_Buffer)
@@ -772,7 +772,7 @@ func usersPagination(vmodel UsersPageVModel) templ.Component {
 								return nil
 							})
 							templ_7745c5c3_Err = pagination.Link(pagination.LinkProps{
-								Href:     string(commonComp.CurrentURL(ctx, commonComp.WithValues("page", strconv.Itoa(page)))),
+								Href:     commonComp.BaseURLString(ctx, commonComp.WithPath("/admin/users"), commonComp.WithValues("page", strconv.Itoa(page))),
 								IsActive: page == vmodel.CurrentPage,
 							}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var35), templ_7745c5c3_Buffer)
 							if templ_7745c5c3_Err != nil {
@@ -790,7 +790,7 @@ func usersPagination(vmodel UsersPageVModel) templ.Component {
 						return templ_7745c5c3_Err
 					}
 					templ_7745c5c3_Err = pagination.Next(pagination.NextProps{
-						Href:     string(commonComp.CurrentURL(ctx, commonComp.WithValues("page", strconv.Itoa(vmodel.CurrentPage+1)))),
+						Href:     commonComp.BaseURLString(ctx, commonComp.WithPath("/admin/users"), commonComp.WithValues("page", strconv.Itoa(vmodel.CurrentPage+1))),
 						Disabled: !paginator.HasNext,
 						Label:    "Suivant",
 					}).Render(ctx, templ_7745c5c3_Buffer)

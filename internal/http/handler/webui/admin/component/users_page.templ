@@ -128,14 +128,14 @@ templ usersPagination(vmodel UsersPageVModel) {
 		@pagination.Pagination() {
 			@pagination.Content() {
 				@pagination.Previous(pagination.PreviousProps{
-					Href:     string(commonComp.CurrentURL(ctx, commonComp.WithValues("page", strconv.Itoa(vmodel.CurrentPage-1)))),
+					Href:     commonComp.BaseURLString(ctx, commonComp.WithPath("/admin/users"), commonComp.WithValues("page", strconv.Itoa(vmodel.CurrentPage-1))),
 					Disabled: !paginator.HasPrevious,
 					Label:    "Précédent",
 				})
 				for _, page := range paginator.Pages {
 					@pagination.Item() {
 						@pagination.Link(pagination.LinkProps{
-							Href:     string(commonComp.CurrentURL(ctx, commonComp.WithValues("page", strconv.Itoa(page)))),
+							Href:     commonComp.BaseURLString(ctx, commonComp.WithPath("/admin/users"), commonComp.WithValues("page", strconv.Itoa(page))),
 							IsActive: page == vmodel.CurrentPage,
 						}) {
 							{ strconv.Itoa(page) }
@@ -143,7 +143,7 @@ templ usersPagination(vmodel UsersPageVModel) {
 					}
 				}
 				@pagination.Next(pagination.NextProps{
-					Href:     string(commonComp.CurrentURL(ctx, commonComp.WithValues("page", strconv.Itoa(vmodel.CurrentPage+1)))),
+					Href:     commonComp.BaseURLString(ctx, commonComp.WithPath("/admin/users"), commonComp.WithValues("page", strconv.Itoa(vmodel.CurrentPage+1))),
 					Disabled: !paginator.HasNext,
 					Label:    "Suivant",
 				})

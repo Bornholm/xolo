@@ -177,14 +177,14 @@ templ membersPagination(vmodel MembersPageVModel) {
 		@pagination.Pagination() {
 			@pagination.Content() {
 				@pagination.Previous(pagination.PreviousProps{
-					Href:     string(common.CurrentURL(ctx, common.WithValues("page", strconv.Itoa(vmodel.CurrentPage-1)))),
+					Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members"), common.WithValues("page", strconv.Itoa(vmodel.CurrentPage-1))),
 					Disabled: !paginator.HasPrevious,
 					Label:    "Précédent",
 				})
 				for _, page := range paginator.Pages {
 					@pagination.Item() {
 						@pagination.Link(pagination.LinkProps{
-							Href:     string(common.CurrentURL(ctx, common.WithValues("page", strconv.Itoa(page)))),
+							Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members"), common.WithValues("page", strconv.Itoa(page))),
 							IsActive: page == vmodel.CurrentPage,
 						}) {
 							{ strconv.Itoa(page) }
@@ -192,7 +192,7 @@ templ membersPagination(vmodel MembersPageVModel) {
 					}
 				}
 				@pagination.Next(pagination.NextProps{
-					Href:     string(common.CurrentURL(ctx, common.WithValues("page", strconv.Itoa(vmodel.CurrentPage+1)))),
+					Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members"), common.WithValues("page", strconv.Itoa(vmodel.CurrentPage+1))),
 					Disabled: !paginator.HasNext,
 					Label:    "Suivant",
 				})
