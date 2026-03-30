@@ -65,6 +65,7 @@ dockers:
       - xolo-server
       - xolo-plugin-time-restriction
       - xolo-plugin-smart-model
+      - xolo-plugin-dummy-model
     use: docker
     dockerfile: misc/docker/xolo-server.Dockerfile
     image_templates:
