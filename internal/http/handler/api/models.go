@@ -17,14 +17,16 @@ import (
 type Handler struct {
 	providerStore       port.ProviderStore
 	orgStore            port.OrgStore
+	virtualModelStore   port.VirtualModelStore
 	exchangeRateService *service.ExchangeRateService
 	mux                 *http.ServeMux
 }
 
-func NewHandler(providerStore port.ProviderStore, orgStore port.OrgStore, exchangeRateService *service.ExchangeRateService) *Handler {
+func NewHandler(providerStore port.ProviderStore, orgStore port.OrgStore, virtualModelStore port.VirtualModelStore, exchangeRateService *service.ExchangeRateService) *Handler {
 	h := &Handler{
 		providerStore:       providerStore,
 		orgStore:            orgStore,
+		virtualModelStore:   virtualModelStore,
 		exchangeRateService: exchangeRateService,
 		mux:                 http.NewServeMux(),
 	}
@@ -122,6 +124,19 @@ func (h *Handler) handleModels(w http.ResponseWriter, r *http.Request) {
 				Created: 0,
 				OwnedBy: "xolo",
 			})
+		}
+		virtualModels, err := h.virtualModelStore.ListVirtualModels(ctx, orgID)
+		if err != nil {
+			slog.WarnContext(ctx, "could not list virtual models", slogx.Error(err), slog.String("orgID", string(orgID)))
+		} else {
+			for _, vm := range virtualModels {
+				data = append(data, modelObj{
+					ID:      org.Slug() + "/" + vm.Name(),
+					Object:  "model",
+					Created: 0,
+					OwnedBy: "xolo",
+				})
+			}
 		}
 	}
 
