@@ -16,7 +16,11 @@ func (h *Handler) Authenticate(w http.ResponseWriter, r *http.Request) (*authn.U
 
 	if token != "" {
 		user, err := h.getUserFromToken(r.Context(), token)
-		if err != nil && !errors.Is(err, port.ErrNotFound) {
+		if err != nil {
+			if errors.Is(err, port.ErrNotFound) {
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				return nil, authn.ErrSkipRequest
+			}
 			return nil, errors.WithStack(err)
 		}
 
