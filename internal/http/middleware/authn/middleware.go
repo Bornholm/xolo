@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/bornholm/xolo/internal/http/handler/webui/common"
+	"github.com/bornholm/xolo/internal/metrics"
 	"github.com/pkg/errors"
 )
 
@@ -44,6 +45,7 @@ func Middleware(onUnauthorized func(w http.ResponseWriter, r *http.Request), aut
 				return
 			}
 
+			metrics.AuthFailures.Inc()
 			onUnauthorized(w, r)
 		}
 

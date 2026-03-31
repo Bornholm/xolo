@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bornholm/xolo/internal/metrics"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"golang.org/x/time/rate"
 )
@@ -57,6 +58,7 @@ func Middleware(trustHeaders bool, interval time.Duration, maxBurst int, cacheSi
 
 			reservation := limiter.Reserve()
 			if !reservation.OK() {
+				metrics.RateLimitRejections.Inc()
 				http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 				return
 			}
@@ -64,6 +66,7 @@ func Middleware(trustHeaders bool, interval time.Duration, maxBurst int, cacheSi
 			if reservation.Delay() > 0 {
 				reservation.Cancel()
 
+				metrics.RateLimitRejections.Inc()
 				w.Header().Set("Retry-After", strconv.Itoa(int(math.Ceil(reservation.Delay().Seconds()))))
 				http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 				return

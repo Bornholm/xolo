@@ -8,7 +8,9 @@ import (
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
 	"github.com/bornholm/xolo/internal/core/service"
+	"github.com/bornholm/xolo/internal/metrics"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // XoloUsageTracker is a PostResponseHook that records one UsageRecord per
@@ -82,6 +84,18 @@ func (t *XoloUsageTracker) PostResponse(ctx context.Context, req *genaiProxy.Pro
 
 	promptTokens := res.TokensUsed.PromptTokens
 	completionTokens := res.TokensUsed.CompletionTokens
+
+	metrics.ChatCompletionRequests.With(prometheus.Labels{
+		metrics.LabelOrg: string(orgID),
+	}).Inc()
+
+	metrics.CompletionTokens.With(prometheus.Labels{
+		metrics.LabelOrg: string(orgID),
+	}).Add(float64(completionTokens))
+
+	metrics.PromptTokens.With(prometheus.Labels{
+		metrics.LabelOrg: string(orgID),
+	}).Add(float64(promptTokens))
 
 	providerCost := (int64(promptTokens) * llmModel.PromptCostPer1KTokens() / 1000) +
 		(int64(completionTokens) * llmModel.CompletionCostPer1KTokens() / 1000)

@@ -12,6 +12,7 @@ import (
 
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	"github.com/bornholm/xolo/internal/http/middleware/colorscheme"
+	"github.com/bornholm/xolo/internal/http/middleware/httpmetrics"
 )
 
 type Server struct {
@@ -32,6 +33,7 @@ func (s *Server) Run(ctx context.Context) error {
 
 	handler := sloghttp.Recovery(mux)
 	handler = sloghttp.New(slog.Default())(handler)
+	handler = httpmetrics.Middleware()(handler)
 
 	cors := cors.New(s.opts.CORS)
 
