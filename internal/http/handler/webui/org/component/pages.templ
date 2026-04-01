@@ -1063,10 +1063,109 @@ templ InviteForm(vmodel InviteFormVModel) {
 
 // ── Org Usage Page ────────────────────────────────────────────────────────────
 templ OrgUsagePage(vmodel OrgUsagePageVModel) {
-	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Usage — "+vmodel.Org.Name()), common.WithScripts(chart.Script(), popover.Script(), selectbox.Script())) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Quotas — "+vmodel.Org.Name()), common.WithScripts(chart.Script(), popover.Script(), selectbox.Script())) {
 		<div class="space-y-6">
-			<div class="flex items-center justify-between">
-				<h1 class="text-2xl font-semibold">Usage</h1>
+			<!-- Quotas title -->
+			<div class="flex items-center gap-4">
+				@icon.ChartPie(icon.Props{Class: "h-8 w-8"})
+				<h1 class="text-2xl font-semibold">Quotas</h1>
+			</div>
+			if vmodel.OrgQuota != nil {
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+					if vmodel.OrgQuota.DailyBudget() != nil {
+						{{ budget := microToFloat(*vmodel.OrgQuota.DailyBudget()) }}
+						{{ spent := microToFloat(vmodel.DailyCost) }}
+						@card.Card() {
+							@card.Header() {
+								@card.Title() {
+									Budget journalier
+									<p class="text-sm font-medium shadow-xs py-2">{ fmt.Sprintf("Restant: %d%%", 100-int(spent/budget*100)) }</p>
+								}
+							}
+							@card.Content() {
+								{{ remaining := maxFloat(0, budget-spent) }}
+								@chart.Chart(chart.Props{
+									Variant:    chart.VariantDoughnut,
+									ShowLegend: true,
+									Class:      "h-48",
+									Data: chart.Data{
+										Labels: []string{fmt.Sprintf("Utilisé"), "Disponible"},
+										Datasets: []chart.Dataset{{
+											Data:            []float64{spent, remaining},
+											BackgroundColor: []string{"rgba(239,68,68,0.8)", "rgba(34,197,94,0.8)"},
+											BorderWidth:     0,
+										}},
+									},
+								})
+							}
+						}
+					}
+					if vmodel.OrgQuota.MonthlyBudget() != nil {
+						{{ budget := microToFloat(*vmodel.OrgQuota.MonthlyBudget()) }}
+						{{ spent := microToFloat(vmodel.MonthlyCost) }}
+						@card.Card() {
+							@card.Header() {
+								@card.Title() {
+									Budget mensuel
+									<p class="text-sm font-medium shadow-xs py-2">{ fmt.Sprintf("Restant: %d%%", 100-int(spent/budget*100)) }</p>
+								}
+							}
+							@card.Content() {
+								{{ remaining := maxFloat(0, budget-spent) }}
+								@chart.Chart(chart.Props{
+									Variant:    chart.VariantDoughnut,
+									ShowLegend: true,
+									Class:      "h-48",
+									Data: chart.Data{
+										Labels: []string{"Utilisé", "Disponible"},
+										Datasets: []chart.Dataset{{
+											Data:            []float64{spent, remaining},
+											BackgroundColor: []string{"rgba(239,68,68,0.8)", "rgba(34,197,94,0.8)"},
+											BorderWidth:     0,
+										}},
+									},
+								})
+							}
+						}
+					}
+					if vmodel.OrgQuota.YearlyBudget() != nil {
+						{{ budget := microToFloat(*vmodel.OrgQuota.YearlyBudget()) }}
+						{{ spent := microToFloat(vmodel.YearlyCost) }}
+						@card.Card() {
+							@card.Header() {
+								@card.Title() {
+									Budget annuel
+									<p class="text-sm font-medium shadow-xs py-2">{ fmt.Sprintf("Restant: %d%%", 100-int(spent/budget*100)) }</p>
+								}
+							}
+							@card.Content() {
+								{{ budget := microToFloat(*vmodel.OrgQuota.YearlyBudget()) }}
+								{{ spent := microToFloat(vmodel.YearlyCost) }}
+								{{ remaining := maxFloat(0, budget-spent) }}
+								@chart.Chart(chart.Props{
+									Variant:    chart.VariantDoughnut,
+									ShowLegend: true,
+									Class:      "h-48",
+									Data: chart.Data{
+										Labels: []string{"Utilisé", "Disponible"},
+										Datasets: []chart.Dataset{{
+											Data:            []float64{spent, remaining},
+											BackgroundColor: []string{"rgba(239,68,68,0.8)", "rgba(34,197,94,0.8)"},
+											BorderWidth:     0,
+										}},
+									},
+								})
+							}
+						}
+					}
+				</div>
+			}
+			<!-- Statistiques title + period selector -->
+			<div class="flex items-center justify-between mt-8">
+				<div class="flex items-center gap-4">
+					@icon.TrendingUp(icon.Props{Class: "h-8 w-8"})
+					<h1 class="text-2xl font-semibold">Statistiques</h1>
+				</div>
 				<form method="GET" class="flex items-center gap-3 flex-wrap">
 					<label class="text-sm text-muted-foreground">Période :</label>
 					<select name="range" onchange="this.form.submit()" class="h-9 rounded-md border border-input bg-background px-3 text-sm">
@@ -1177,96 +1276,6 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 					}
 				}
 			</div>
-			if vmodel.OrgQuota != nil {
-				<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-					if vmodel.OrgQuota.DailyBudget() != nil {
-						{{ budget := microToFloat(*vmodel.OrgQuota.DailyBudget()) }}
-						{{ spent := microToFloat(vmodel.DailyCost) }}
-						@card.Card() {
-							@card.Header() {
-								@card.Title() {
-									Budget journalier
-									<p class="text-sm font-medium shadow-xs py-2">{ fmt.Sprintf("Restant: %d%%", 100-int(spent/budget*100)) }</p>
-								}
-							}
-							@card.Content() {
-								{{ remaining := maxFloat(0, budget-spent) }}
-								@chart.Chart(chart.Props{
-									Variant:    chart.VariantDoughnut,
-									ShowLegend: true,
-									Class:      "h-48",
-									Data: chart.Data{
-										Labels: []string{fmt.Sprintf("Utilisé"), "Disponible"},
-										Datasets: []chart.Dataset{{
-											Data:            []float64{spent, remaining},
-											BackgroundColor: []string{"rgba(239,68,68,0.8)", "rgba(34,197,94,0.8)"},
-											BorderWidth:     0,
-										}},
-									},
-								})
-							}
-						}
-					}
-					if vmodel.OrgQuota.MonthlyBudget() != nil {
-						{{ budget := microToFloat(*vmodel.OrgQuota.MonthlyBudget()) }}
-						{{ spent := microToFloat(vmodel.MonthlyCost) }}
-						@card.Card() {
-							@card.Header() {
-								@card.Title() {
-									Budget mensuel
-									<p class="text-sm font-medium shadow-xs py-2">{ fmt.Sprintf("Restant: %d%%", 100-int(spent/budget*100)) }</p>
-								}
-							}
-							@card.Content() {
-								{{ remaining := maxFloat(0, budget-spent) }}
-								@chart.Chart(chart.Props{
-									Variant:    chart.VariantDoughnut,
-									ShowLegend: true,
-									Class:      "h-48",
-									Data: chart.Data{
-										Labels: []string{"Utilisé", "Disponible"},
-										Datasets: []chart.Dataset{{
-											Data:            []float64{spent, remaining},
-											BackgroundColor: []string{"rgba(239,68,68,0.8)", "rgba(34,197,94,0.8)"},
-											BorderWidth:     0,
-										}},
-									},
-								})
-							}
-						}
-					}
-					if vmodel.OrgQuota.YearlyBudget() != nil {
-						{{ budget := microToFloat(*vmodel.OrgQuota.YearlyBudget()) }}
-						{{ spent := microToFloat(vmodel.YearlyCost) }}
-						@card.Card() {
-							@card.Header() {
-								@card.Title() {
-									Budget annuel
-									<p class="text-sm font-medium shadow-xs py-2">{ fmt.Sprintf("Restant: %d%%", 100-int(spent/budget*100)) }</p>
-								}
-							}
-							@card.Content() {
-								{{ budget := microToFloat(*vmodel.OrgQuota.YearlyBudget()) }}
-								{{ spent := microToFloat(vmodel.YearlyCost) }}
-								{{ remaining := maxFloat(0, budget-spent) }}
-								@chart.Chart(chart.Props{
-									Variant:    chart.VariantDoughnut,
-									ShowLegend: true,
-									Class:      "h-48",
-									Data: chart.Data{
-										Labels: []string{"Utilisé", "Disponible"},
-										Datasets: []chart.Dataset{{
-											Data:            []float64{spent, remaining},
-											BackgroundColor: []string{"rgba(239,68,68,0.8)", "rgba(34,197,94,0.8)"},
-											BorderWidth:     0,
-										}},
-									},
-								})
-							}
-						}
-					}
-				</div>
-			}
 			if len(vmodel.ChartPerDay) > 0 || len(vmodel.ChartPerModel) > 0 || len(vmodel.ChartPerUser) > 0 {
 				{{ trueVal := true }}
 				<div class="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -106,13 +106,118 @@ func usagePercent(used int64, budget *int64) int {
 }
 
 templ DashboardPage(vmodel DashboardPageVModel) {
-	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Usage"), common.WithScripts(chart.Script())) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Quotas"), common.WithScripts(chart.Script())) {
 		<div class="space-y-6">
-			<!-- Header + period selector -->
-			<div class="flex items-center justify-between">
+			<!-- Quotas title -->
+			<div class="flex items-center gap-4">
+				@icon.ChartPie(icon.Props{Class: "h-8 w-8"})
+				<h1 class="text-2xl font-semibold">Quotas</h1>
+			</div>
+			<!-- Per-org quota doughnut charts -->
+			for _, ou := range vmodel.OrgUsages {
+				<h2 class="text-xl font-semibold mt-6">
+					if ou.Membership.Org() != nil {
+						{ ou.Membership.Org().Name() }
+					} else {
+						{ string(ou.Membership.OrgID()) }
+					}
+				</h2>
+				if ou.Quota == nil {
+					<p class="text-sm text-muted-foreground mt-2">Aucun quota défini (utilisation illimitée).</p>
+				} else {
+					<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+						if ou.Quota.DailyBudget != nil {
+							{{ budget := float64(*ou.Quota.DailyBudget) / 1_000_000 }}
+							{{ spent := float64(ou.DailyCost) / 1_000_000 }}
+							@card.Card() {
+								@card.Header() {
+									@card.Title() {
+										Budget journalier
+										<p class="text-sm font-medium shadow-xs py-2">{ fmt.Sprintf("Restant: %d%%", 100-int(spent/budget*100)) }</p>
+									}
+								}
+								@card.Content() {
+									{{ remaining := dashMaxFloat(0, budget-spent) }}
+									@chart.Chart(chart.Props{
+										Variant:    chart.VariantDoughnut,
+										ShowLegend: true,
+										Class:      "h-48",
+										Data: chart.Data{
+											Labels: []string{fmt.Sprintf("Utilisé"), "Disponible"},
+											Datasets: []chart.Dataset{{
+												Data:            []float64{spent, remaining},
+												BackgroundColor: []string{"rgba(239,68,68,0.8)", "rgba(34,197,94,0.8)"},
+												BorderWidth:     0,
+											}},
+										},
+									})
+								}
+							}
+						}
+						if ou.Quota.MonthlyBudget != nil {
+							{{ budget := float64(*ou.Quota.MonthlyBudget) / 1_000_000 }}
+							{{ spent := float64(ou.MonthlyCost) / 1_000_000 }}
+							@card.Card() {
+								@card.Header() {
+									@card.Title() {
+										Budget mensuel
+										<p class="text-sm font-medium shadow-xs py-2">{ fmt.Sprintf("Restant: %d%%", 100-int(spent/budget*100)) }</p>
+									}
+								}
+								@card.Content() {
+									{{ remaining := dashMaxFloat(0, budget-spent) }}
+									@chart.Chart(chart.Props{
+										Variant:    chart.VariantDoughnut,
+										ShowLegend: true,
+										Class:      "h-48",
+										Data: chart.Data{
+											Labels: []string{"Utilisé", "Disponible"},
+											Datasets: []chart.Dataset{{
+												Data:            []float64{spent, remaining},
+												BackgroundColor: []string{"rgba(239,68,68,0.8)", "rgba(34,197,94,0.8)"},
+												BorderWidth:     0,
+											}},
+										},
+									})
+								}
+							}
+						}
+						if ou.Quota.YearlyBudget != nil {
+							{{ budget := float64(*ou.Quota.YearlyBudget) / 1_000_000 }}
+							{{ spent := float64(ou.YearlyCost) / 1_000_000 }}
+							@card.Card() {
+								@card.Header() {
+									@card.Title() {
+										Budget annuel
+										<p class="text-sm font-medium shadow-xs py-2">{ fmt.Sprintf("Restant: %d%%", 100-int(spent/budget*100)) }</p>
+									}
+								}
+								@card.Content() {
+									{{ remaining := dashMaxFloat(0, budget-spent) }}
+									@chart.Chart(chart.Props{
+										Variant:    chart.VariantDoughnut,
+										ShowLegend: true,
+										Class:      "h-48",
+										Data: chart.Data{
+											Labels: []string{"Utilisé", "Disponible"},
+											Datasets: []chart.Dataset{{
+												Data:            []float64{spent, remaining},
+												BackgroundColor: []string{"rgba(239,68,68,0.8)", "rgba(34,197,94,0.8)"},
+												BorderWidth:     0,
+											}},
+										},
+									})
+								}
+							}
+						}
+					</div>
+				}
+			}
+			<!-- Statistiques title + period selector -->
+			<div class="flex items-center justify-between mt-8">
 				<div class="flex items-center gap-4">
-					@icon.ChartBar(icon.Props{Class: "h-8 w-8"})
-					<h1 class="text-2xl font-semibold">Usage</h1>
+					@icon.TrendingUp(icon.Props{Class: "h-8 w-8"})
+					<h1 class="text-2xl font-semibold">Statistiques</h1>
 				</div>
 				<form method="GET" class="flex items-center gap-2">
 					<label class="text-sm text-muted-foreground">Période :</label>
@@ -191,102 +296,6 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 						}
 					}
 				</div>
-			}
-			<!-- Per-org quota doughnut charts -->
-			for _, ou := range vmodel.OrgUsages {
-				@card.Card() {
-					@card.Header() {
-						@card.Title() {
-							@icon.Building2(icon.Props{Class: "h-5 w-5 inline mr-2"})
-							if ou.Membership.Org() != nil {
-								{ ou.Membership.Org().Name() }
-							} else {
-								{ string(ou.Membership.OrgID()) }
-							}
-						}
-					}
-					@card.Content() {
-						if ou.Quota == nil {
-							<p class="text-sm text-muted-foreground">Aucun quota défini (utilisation illimitée).</p>
-						} else {
-							{{ trueVal := true }}
-							<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-								if ou.Quota.DailyBudget != nil {
-									<div class="space-y-2">
-										{{ spent := float64(ou.DailyCost) / 1_000_000 }}
-										{{ budget := float64(*ou.Quota.DailyBudget) / 1_000_000 }}
-										{{ remaining := dashMaxFloat(0, budget-spent) }}
-										@chart.Chart(chart.Props{
-											Variant:     chart.VariantDoughnut,
-											ShowLegend:  false,
-											BeginAtZero: &trueVal,
-											Class:       "h-36",
-											Data: chart.Data{
-												Labels: []string{"Utilisé", "Disponible"},
-												Datasets: []chart.Dataset{{
-													Data:            []float64{spent, remaining},
-													BackgroundColor: []string{"rgba(239,68,68,0.8)", "rgba(34,197,94,0.8)"},
-													BorderWidth:     0,
-												}},
-											},
-										})
-										<p class="text-xs text-center text-muted-foreground">
-											Aujourd'hui : { formatCost(ou.DailyCost, ou.Currency) } / { formatCost(*ou.Quota.DailyBudget, ou.Currency) }
-										</p>
-									</div>
-								}
-								if ou.Quota.MonthlyBudget != nil {
-									<div class="space-y-2">
-										{{ spent := float64(ou.MonthlyCost) / 1_000_000 }}
-										{{ budget := float64(*ou.Quota.MonthlyBudget) / 1_000_000 }}
-										{{ remaining := dashMaxFloat(0, budget-spent) }}
-										@chart.Chart(chart.Props{
-											Variant:     chart.VariantDoughnut,
-											ShowLegend:  false,
-											BeginAtZero: &trueVal,
-											Class:       "h-36",
-											Data: chart.Data{
-												Labels: []string{"Utilisé", "Disponible"},
-												Datasets: []chart.Dataset{{
-													Data:            []float64{spent, remaining},
-													BackgroundColor: []string{"rgba(239,68,68,0.8)", "rgba(34,197,94,0.8)"},
-													BorderWidth:     0,
-												}},
-											},
-										})
-										<p class="text-xs text-center text-muted-foreground">
-											Ce mois : { formatCost(ou.MonthlyCost, ou.Currency) } / { formatCost(*ou.Quota.MonthlyBudget, ou.Currency) }
-										</p>
-									</div>
-								}
-								if ou.Quota.YearlyBudget != nil {
-									<div class="space-y-2">
-										{{ spent := float64(ou.YearlyCost) / 1_000_000 }}
-										{{ budget := float64(*ou.Quota.YearlyBudget) / 1_000_000 }}
-										{{ remaining := dashMaxFloat(0, budget-spent) }}
-										@chart.Chart(chart.Props{
-											Variant:     chart.VariantDoughnut,
-											ShowLegend:  false,
-											BeginAtZero: &trueVal,
-											Class:       "h-36",
-											Data: chart.Data{
-												Labels: []string{"Utilisé", "Disponible"},
-												Datasets: []chart.Dataset{{
-													Data:            []float64{spent, remaining},
-													BackgroundColor: []string{"rgba(239,68,68,0.8)", "rgba(34,197,94,0.8)"},
-													BorderWidth:     0,
-												}},
-											},
-										})
-										<p class="text-xs text-center text-muted-foreground">
-											Cette année : { formatCost(ou.YearlyCost, ou.Currency) } / { formatCost(*ou.Quota.YearlyBudget, ou.Currency) }
-										</p>
-									</div>
-								}
-							</div>
-						}
-					}
-				}
 			}
 			<!-- Bar charts: cost per day and per model -->
 			if len(vmodel.ChartPerDay) > 0 || len(vmodel.ChartPerModel) > 0 {
@@ -387,11 +396,11 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 											} else {
 												{ string(dr.Record.OrgID()) }
 											}
-									}
-									@table.Cell() {
-										{ dr.DisplayModelName }
-									}
-									@table.Cell() {
+										}
+										@table.Cell() {
+											{ dr.DisplayModelName }
+										}
+										@table.Cell() {
 											{ fmt.Sprintf("%d", dr.Record.PromptTokens()) }
 										}
 										@table.Cell() {
