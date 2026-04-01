@@ -2,6 +2,7 @@ package webui
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/bornholm/go-x/slogx"
+	"github.com/bornholm/xolo/internal/adapter/cache"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
 	"github.com/bornholm/xolo/internal/estimator"
@@ -148,11 +150,13 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Fetch all records (up to 500) for chart aggregation and energy totals
+	// Cache key for energy totals
+	energyCacheKey := fmt.Sprintf("dashboard:%s:%d", userID, since.Unix())
+
+	// Fetch all records for chart aggregation and energy totals
 	chartRecords, _ := h.usageStore.QueryUsage(ctx, port.UsageFilter{
 		UserID: &userID,
 		Since:  &since,
-		Limit:  intPtr(500),
 	})
 
 	// Pre-load models and providers for energy estimation (deduplicated) from chartRecords
@@ -180,26 +184,35 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Calculate energy totals from all chart records (period-based)
+	// Calculate energy totals (from cache or fresh computation)
 	var totalEnergyWh, totalCO2GramsMid float64
-	for _, rec := range chartRecords {
-		if m, ok := modelCache[rec.ModelID()]; ok && m.ActiveParams() > 0 {
-			tier := estimator.TierHyperscaler
-			if p, ok := providerCache[m.ProviderID()]; ok {
-				tier = estimator.CloudTier(p.CloudTier())
+	if cached, ok := cache.EnergyEstimateCache.Get(energyCacheKey); ok {
+		totalEnergyWh = cached.TotalEnergyWh
+		totalCO2GramsMid = cached.TotalCO2GramsMid
+	} else {
+		for _, rec := range chartRecords {
+			if m, ok := modelCache[rec.ModelID()]; ok && m.ActiveParams() > 0 {
+				tier := estimator.TierHyperscaler
+				if p, ok := providerCache[m.ProviderID()]; ok {
+					tier = estimator.CloudTier(p.CloudTier())
+				}
+				est := estimator.NewCloudEstimator(tier).EstimateFromParams(
+					float64(m.ActiveParams()),
+					estimator.InferenceRequest{
+						InputTokens:  int(rec.PromptTokens()),
+						OutputTokens: int(rec.CompletionTokens()),
+					},
+					m.TokensPerSecLow(),
+					m.TokensPerSecHigh(),
+				)
+				totalEnergyWh += est.Mid.TotalWh
+				totalCO2GramsMid += est.Mid.Equivalences.CO2Grams
 			}
-			est := estimator.NewCloudEstimator(tier).EstimateFromParams(
-				float64(m.ActiveParams()),
-				estimator.InferenceRequest{
-					InputTokens:  int(rec.PromptTokens()),
-					OutputTokens: int(rec.CompletionTokens()),
-				},
-				m.TokensPerSecLow(),
-				m.TokensPerSecHigh(),
-			)
-			totalEnergyWh += est.Mid.TotalWh
-			totalCO2GramsMid += est.Mid.Equivalences.CO2Grams
 		}
+		cache.EnergyEstimateCache.Add(energyCacheKey, cache.EnergyTotals{
+			TotalEnergyWh:    totalEnergyWh,
+			TotalCO2GramsMid: totalCO2GramsMid,
+		})
 	}
 
 	// Build display records with cost converted to org currency where needed
