@@ -143,10 +143,18 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 		users[uid] = u
 	}
 
-	// Pre-load models and providers for energy estimation (deduplicated)
+	// Fetch all records (up to 500) for chart aggregation and energy totals
+	chartRecords, _ := h.usageStore.QueryUsage(ctx, port.UsageFilter{
+		OrgID:   &orgID,
+		Since:   &since,
+		Limit:   intPtr(500),
+		UserIDs: userIDs,
+	})
+
+	// Pre-load models and providers for energy estimation (deduplicated) from chartRecords
 	modelCache := make(map[model.LLMModelID]model.LLMModel)
 	providerCache := make(map[model.ProviderID]model.Provider)
-	for _, rec := range rawRecords {
+	for _, rec := range chartRecords {
 		mid := rec.ModelID()
 		if mid == "" {
 			continue
@@ -168,9 +176,30 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Calculate energy totals from all chart records (period-based)
+	var totalEnergyWh, totalCO2GramsMid float64
+	for _, rec := range chartRecords {
+		if m, ok := modelCache[rec.ModelID()]; ok && m.ActiveParams() > 0 {
+			tier := estimator.TierHyperscaler
+			if p, ok := providerCache[m.ProviderID()]; ok {
+				tier = estimator.CloudTier(p.CloudTier())
+			}
+			est := estimator.NewCloudEstimator(tier).EstimateFromParams(
+				float64(m.ActiveParams()),
+				estimator.InferenceRequest{
+					InputTokens:  int(rec.PromptTokens()),
+					OutputTokens: int(rec.CompletionTokens()),
+				},
+				m.TokensPerSecLow(),
+				m.TokensPerSecHigh(),
+			)
+			totalEnergyWh += est.Mid.TotalWh
+			totalCO2GramsMid += est.Mid.Equivalences.CO2Grams
+		}
+	}
+
 	// Build display records with cost converted to org currency where needed
 	records := make([]component.OrgDisplayUsageRecord, 0, len(rawRecords))
-	var totalEnergyWh, totalCO2GramsMid float64
 	for _, rec := range rawRecords {
 		displayModelName := rec.ProxyModelName()
 		if rec.ResolvedModelName() != "" && rec.ResolvedModelName() != rec.ProxyModelName() {
@@ -211,8 +240,6 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 			dr.CO2GramsMid = est.Mid.Equivalences.CO2Grams
 			dr.CO2GramsMin = est.Mid.Equivalences.CO2GramsMin
 			dr.CO2GramsMax = est.Mid.Equivalences.CO2GramsMax
-			totalEnergyWh += est.Mid.TotalWh
-			totalCO2GramsMid += est.Mid.Equivalences.CO2Grams
 		}
 		records = append(records, dr)
 	}
@@ -230,14 +257,6 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 	dailyCost := h.sumConvertedCost(ctx, orgID, startOfPeriod("day", now), orgCurrency)
 	monthlyCost := h.sumConvertedCost(ctx, orgID, startOfPeriod("month", now), orgCurrency)
 	yearlyCost := h.sumConvertedCost(ctx, orgID, startOfPeriod("year", now), orgCurrency)
-
-	// Fetch all records (up to 500) for chart aggregation — separate from paged display records
-	chartRecords, _ := h.usageStore.QueryUsage(ctx, port.UsageFilter{
-		OrgID:   &orgID,
-		Since:   &since,
-		Limit:   intPtr(500),
-		UserIDs: userIDs,
-	})
 
 	// Also load users referenced by chart records that may not be in the paged set
 	for _, rec := range chartRecords {

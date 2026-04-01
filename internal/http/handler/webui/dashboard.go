@@ -148,10 +148,17 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Pre-load models and providers for energy estimation (deduplicated)
+	// Fetch all records (up to 500) for chart aggregation and energy totals
+	chartRecords, _ := h.usageStore.QueryUsage(ctx, port.UsageFilter{
+		UserID: &userID,
+		Since:  &since,
+		Limit:  intPtr(500),
+	})
+
+	// Pre-load models and providers for energy estimation (deduplicated) from chartRecords
 	modelCache := make(map[model.LLMModelID]model.LLMModel)
 	providerCache := make(map[model.ProviderID]model.Provider)
-	for _, rec := range records {
+	for _, rec := range chartRecords {
 		mid := rec.ModelID()
 		if mid == "" {
 			continue
@@ -173,9 +180,30 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Calculate energy totals from all chart records (period-based)
+	var totalEnergyWh, totalCO2GramsMid float64
+	for _, rec := range chartRecords {
+		if m, ok := modelCache[rec.ModelID()]; ok && m.ActiveParams() > 0 {
+			tier := estimator.TierHyperscaler
+			if p, ok := providerCache[m.ProviderID()]; ok {
+				tier = estimator.CloudTier(p.CloudTier())
+			}
+			est := estimator.NewCloudEstimator(tier).EstimateFromParams(
+				float64(m.ActiveParams()),
+				estimator.InferenceRequest{
+					InputTokens:  int(rec.PromptTokens()),
+					OutputTokens: int(rec.CompletionTokens()),
+				},
+				m.TokensPerSecLow(),
+				m.TokensPerSecHigh(),
+			)
+			totalEnergyWh += est.Mid.TotalWh
+			totalCO2GramsMid += est.Mid.Equivalences.CO2Grams
+		}
+	}
+
 	// Build display records with cost converted to org currency where needed
 	displayRecords := make([]component.DisplayUsageRecord, 0, len(records))
-	var totalEnergyWh, totalCO2GramsMid float64
 	for _, rec := range records {
 		displayModelName := rec.ProxyModelName()
 		if rec.ResolvedModelName() != "" && rec.ResolvedModelName() != rec.ProxyModelName() {
@@ -222,18 +250,9 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 			dr.CO2GramsMid = est.Mid.Equivalences.CO2Grams
 			dr.CO2GramsMin = est.Mid.Equivalences.CO2GramsMin
 			dr.CO2GramsMax = est.Mid.Equivalences.CO2GramsMax
-			totalEnergyWh += est.Mid.TotalWh
-			totalCO2GramsMid += est.Mid.Equivalences.CO2Grams
 		}
 		displayRecords = append(displayRecords, dr)
 	}
-
-	// Fetch all records (up to 500) for chart aggregation
-	chartRecords, _ := h.usageStore.QueryUsage(ctx, port.UsageFilter{
-		UserID: &userID,
-		Since:  &since,
-		Limit:  intPtr(500),
-	})
 
 	// Aggregate per-day and per-model (cost converted to org currency when possible)
 	perDay := make(map[string]int64)
