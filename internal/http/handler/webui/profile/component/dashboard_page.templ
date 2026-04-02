@@ -9,7 +9,9 @@ import (
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/chart"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/pagination"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/popover"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/tooltip"
 )
 
 type OrgUsage struct {
@@ -95,6 +97,25 @@ func formatCO2Grams(g float64) string {
 	return fmt.Sprintf("%.3f µgCO₂", g*1_000_000)
 }
 
+// formatCO2ToCarKilometers converts CO2 grams to equivalent car kilometers based on ADEME data (~109g CO2/km for petrol vehicle).
+func formatCO2ToCarKilometers(grams float64) string {
+	if grams <= 0 {
+		return ""
+	}
+	km := grams / 109
+	if km < 1 {
+		return fmt.Sprintf("Soit environ %d m parcouru seul dans un véhicule thermique à essence, selon les chiffres de l'ADEME.", int(km*1000))
+	}
+	if km < 1000 {
+		return fmt.Sprintf("Soit environ %d km parcouru seul dans un véhicule thermique à essence, selon les chiffres de l'ADEME.", int(km))
+	}
+	return fmt.Sprintf("Soit environ %s km parcouru seul dans un véhicule thermique à essence, selon les chiffres de l'ADEME.", formatNumber(km))
+}
+
+func formatNumber(n float64) string {
+	return fmt.Sprintf("%.1f", n)
+}
+
 func usagePercent(used int64, budget *int64) int {
 	if budget == nil || *budget == 0 {
 		return 0
@@ -107,7 +128,7 @@ func usagePercent(used int64, budget *int64) int {
 }
 
 templ DashboardPage(vmodel DashboardPageVModel) {
-	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Quotas"), common.WithScripts(chart.Script())) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Quotas"), common.WithScripts(chart.Script(), popover.Script())) {
 		<div class="space-y-6">
 			<!-- Quotas title -->
 			<div class="flex items-center gap-4">
@@ -277,25 +298,39 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 							<p class="text-3xl font-bold">{ fmt.Sprintf("%d", vmodel.Aggregate.TotalTokens) }</p>
 						}
 					}
-					if vmodel.TotalEnergyWh > 0 {
-						@card.Card() {
-							@card.Header() {
-								@card.Title() {
-									Énergie / CO₂ estimés
-								}
+				if vmodel.TotalEnergyWh > 0 {
+					@card.Card() {
+						@card.Header() {
+							@card.Title() {
+								Énergie / CO₂ estimés
 							}
-							@card.Content() {
-								<p class="text-3xl font-bold">{ formatEnergyWh(vmodel.TotalEnergyWh) }</p>
-								if vmodel.TotalCO2GramsMid > 0 {
-									<p class="text-sm font-medium text-muted-foreground mt-1">
+						}
+						@card.Content() {
+							<p class="text-3xl font-bold">{ formatEnergyWh(vmodel.TotalEnergyWh) }</p>
+							if vmodel.TotalCO2GramsMid > 0 {
+								<div class="flex items-center gap-2 mt-1">
+									<p class="text-sm font-medium text-muted-foreground">
 										{ formatCO2Grams(vmodel.TotalCO2GramsMid) }
 										<span class="text-xs">(mix monde)</span>
 									</p>
-								}
-								<p class="text-xs text-muted-foreground mt-1">estimation ±facteur ×3-5</p>
+									{{ co2Message := formatCO2ToCarKilometers(vmodel.TotalCO2GramsMid) }}
+									if co2Message != "" {
+										{{ tooltipID := "co2-tooltip-" + fmt.Sprintf("%.0f", vmodel.TotalCO2GramsMid) }}
+										@tooltip.Tooltip() {
+											@tooltip.Trigger(tooltip.TriggerProps{For: tooltipID, Class: "cursor-help text-muted-foreground hover:text-foreground"}) {
+												@icon.CircleQuestionMark(icon.Props{Class: "h-5 w-5"})
+											}
+											@tooltip.Content(tooltip.ContentProps{ID: tooltipID, Position: tooltip.PositionRight, Class: "max-w-xs"}) {
+												<p>{ co2Message }</p>
+											}
+										}
+									}
+								</div>
 							}
+							<p class="text-xs text-muted-foreground mt-1">estimation ±facteur ×3-5</p>
 						}
 					}
+				}
 				</div>
 			}
 			<!-- Bar charts: cost per day, per model, and per provider -->
