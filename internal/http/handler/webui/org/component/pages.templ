@@ -1276,9 +1276,9 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 					}
 				}
 			</div>
-			if len(vmodel.ChartPerDay) > 0 || len(vmodel.ChartPerModel) > 0 || len(vmodel.ChartPerUser) > 0 {
+			if len(vmodel.ChartPerDay) > 0 || len(vmodel.ChartPerModel) > 0 || len(vmodel.ChartPerUser) > 0 || len(vmodel.ChartPerProvider) > 0 {
 				{{ trueVal := true }}
-				<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 					if len(vmodel.ChartPerDay) > 0 {
 						@card.Card() {
 							@card.Header() {
@@ -1357,6 +1357,34 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 											Label:           vmodel.Currency,
 											Data:            chartValues(vmodel.ChartPerUser),
 											BackgroundColor: "rgba(245,158,11,0.8)",
+										}},
+									},
+								})
+							}
+						}
+					}
+					if len(vmodel.ChartPerProvider) > 0 {
+						@card.Card() {
+							@card.Header() {
+								@card.Title() {
+									Coût par fournisseur
+								}
+							}
+							@card.Content() {
+								@chart.Chart(chart.Props{
+									Variant:     chart.VariantBar,
+									ShowXLabels: true,
+									ShowYLabels: true,
+									ShowYGrid:   true,
+									ShowLegend:  false,
+									BeginAtZero: &trueVal,
+									Class:       "h-64",
+									Data: chart.Data{
+										Labels: chartLabels(vmodel.ChartPerProvider),
+										Datasets: []chart.Dataset{{
+											Label:           vmodel.Currency,
+											Data:            chartValues(vmodel.ChartPerProvider),
+											BackgroundColor: "rgba(168,85,247,0.8)",
 										}},
 									},
 								})

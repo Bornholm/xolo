@@ -267,9 +267,10 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 		displayRecords = append(displayRecords, dr)
 	}
 
-	// Aggregate per-day and per-model (cost converted to org currency when possible)
+	// Aggregate per-day, per-model, and per-provider (cost converted to org currency when possible)
 	perDay := make(map[string]int64)
 	perModel := make(map[string]int64)
+	perProvider := make(map[model.ProviderID]int64)
 	for _, rec := range chartRecords {
 		cost := rec.Cost()
 		if org, ok := orgs[rec.OrgID()]; ok {
@@ -283,12 +284,23 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+		perProvider[rec.ProviderID()] += cost
 		perDay[rec.CreatedAt().Format("2006-01-02")] += cost
 		effectiveModel := rec.ProxyModelName()
 		if rec.ResolvedModelName() != "" {
 			effectiveModel = rec.ResolvedModelName()
 		}
 		perModel[effectiveModel] += cost
+	}
+
+	// Build provider name map for chart labels
+	providerNames := make(map[model.ProviderID]string)
+	for pid := range perProvider {
+		if p, err := h.providerStore.GetProviderByID(ctx, pid); err == nil {
+			providerNames[pid] = p.Name()
+		} else {
+			providerNames[pid] = string(pid)
+		}
 	}
 
 	vmodel := component.DashboardPageVModel{
@@ -315,6 +327,7 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 		HasNext:          hasNext,
 		ChartPerDay:      dashChartByDate(perDay),
 		ChartPerModel:    dashChartByValue(perModel),
+		ChartPerProvider: dashChartByProvider(perProvider, providerNames),
 		TotalEnergyWh:    totalEnergyWh,
 		TotalCO2GramsMid: totalCO2GramsMid,
 	}
@@ -345,6 +358,19 @@ func intPtr(n int) *int { return &n }
 func dashChartByValue(m map[string]int64) []component.ProfileChartDataPoint {
 	pts := make([]component.ProfileChartDataPoint, 0, len(m))
 	for label, cost := range m {
+		pts = append(pts, component.ProfileChartDataPoint{Label: label, Value: float64(cost) / 1_000_000})
+	}
+	sort.Slice(pts, func(i, j int) bool { return pts[i].Value > pts[j].Value })
+	return pts
+}
+
+func dashChartByProvider(m map[model.ProviderID]int64, names map[model.ProviderID]string) []component.ProfileChartDataPoint {
+	pts := make([]component.ProfileChartDataPoint, 0, len(m))
+	for pid, cost := range m {
+		label := names[pid]
+		if label == "" {
+			label = string(pid)
+		}
 		pts = append(pts, component.ProfileChartDataPoint{Label: label, Value: float64(cost) / 1_000_000})
 	}
 	sort.Slice(pts, func(i, j int) bool { return pts[i].Value > pts[j].Value })

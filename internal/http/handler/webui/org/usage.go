@@ -284,10 +284,11 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 		users[uid] = u
 	}
 
-	// Build per-model, per-user, per-day aggregates (cost in org currency)
+	// Build per-model, per-user, per-day, per-provider aggregates (cost in org currency)
 	perModel := make(map[string]int64)
 	perUser := make(map[string]int64)
 	perDay := make(map[string]int64)
+	perProvider := make(map[model.ProviderID]int64)
 	for _, rec := range chartRecords {
 		cost := rec.Cost()
 		if orgCurrency != rec.Currency() {
@@ -295,6 +296,7 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 				cost = converted
 			}
 		}
+		perProvider[rec.ProviderID()] += cost
 		effectiveModel := rec.ProxyModelName()
 		if rec.ResolvedModelName() != "" {
 			effectiveModel = rec.ResolvedModelName()
@@ -307,6 +309,16 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 		}
 		perUser[userName] += cost
 		perDay[rec.CreatedAt().Format("2006-01-02")] += cost
+	}
+
+	// Build provider name map for chart labels
+	providerNames := make(map[model.ProviderID]string)
+	for pid := range perProvider {
+		if p, err := h.providerStore.GetProviderByID(ctx, pid); err == nil {
+			providerNames[pid] = p.Name()
+		} else {
+			providerNames[pid] = string(pid)
+		}
 	}
 
 	vmodel := component.OrgUsagePageVModel{
@@ -329,6 +341,7 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 		ChartPerDay:      chartByDate(perDay),
 		ChartPerModel:    chartByValue(perModel),
 		ChartPerUser:     chartByValue(perUser),
+		ChartPerProvider: chartByProvider(perProvider, providerNames),
 		TotalEnergyWh:    totalEnergyWh,
 		TotalCO2GramsMid: totalCO2GramsMid,
 		AppLayoutVModel: common.AppLayoutVModel{
@@ -399,6 +412,19 @@ func startOfPeriod(period string, t time.Time) time.Time {
 func chartByValue(m map[string]int64) []component.ChartDataPoint {
 	pts := make([]component.ChartDataPoint, 0, len(m))
 	for label, cost := range m {
+		pts = append(pts, component.ChartDataPoint{Label: label, Value: float64(cost) / 1_000_000})
+	}
+	sort.Slice(pts, func(i, j int) bool { return pts[i].Value > pts[j].Value })
+	return pts
+}
+
+func chartByProvider(m map[model.ProviderID]int64, names map[model.ProviderID]string) []component.ChartDataPoint {
+	pts := make([]component.ChartDataPoint, 0, len(m))
+	for pid, cost := range m {
+		label := names[pid]
+		if label == "" {
+			label = string(pid)
+		}
 		pts = append(pts, component.ChartDataPoint{Label: label, Value: float64(cost) / 1_000_000})
 	}
 	sort.Slice(pts, func(i, j int) bool { return pts[i].Value > pts[j].Value })

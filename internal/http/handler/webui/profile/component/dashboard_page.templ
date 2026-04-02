@@ -52,6 +52,7 @@ type DashboardPageVModel struct {
 	HasNext          bool
 	ChartPerDay      []ProfileChartDataPoint
 	ChartPerModel    []ProfileChartDataPoint
+	ChartPerProvider []ProfileChartDataPoint
 	TotalEnergyWh    float64 // sum of midpoint estimates (0 if all unknown)
 	TotalCO2GramsMid float64 // sum of CO₂ midpoints (world average, grams)
 }
@@ -297,10 +298,10 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 					}
 				</div>
 			}
-			<!-- Bar charts: cost per day and per model -->
-			if len(vmodel.ChartPerDay) > 0 || len(vmodel.ChartPerModel) > 0 {
+			<!-- Bar charts: cost per day, per model, and per provider -->
+			if len(vmodel.ChartPerDay) > 0 || len(vmodel.ChartPerModel) > 0 || len(vmodel.ChartPerProvider) > 0 {
 				{{ trueVal := true }}
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 					if len(vmodel.ChartPerDay) > 0 {
 						@card.Card() {
 							@card.Header() {
@@ -351,6 +352,34 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 											Label:           "Coût",
 											Data:            profileChartValues(vmodel.ChartPerModel),
 											BackgroundColor: "rgba(20,184,166,0.8)",
+										}},
+									},
+								})
+							}
+						}
+					}
+					if len(vmodel.ChartPerProvider) > 0 {
+						@card.Card() {
+							@card.Header() {
+								@card.Title() {
+									Coût par fournisseur
+								}
+							}
+							@card.Content() {
+								@chart.Chart(chart.Props{
+									Variant:     chart.VariantBar,
+									ShowXLabels: true,
+									ShowYLabels: true,
+									ShowYGrid:   true,
+									ShowLegend:  false,
+									BeginAtZero: &trueVal,
+									Class:       "h-64",
+									Data: chart.Data{
+										Labels: profileChartLabels(vmodel.ChartPerProvider),
+										Datasets: []chart.Dataset{{
+											Label:           "Coût",
+											Data:            profileChartValues(vmodel.ChartPerProvider),
+											BackgroundColor: "rgba(168,85,247,0.8)",
 										}},
 									},
 								})
