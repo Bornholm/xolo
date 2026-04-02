@@ -5,12 +5,19 @@ package component
 
 //lint:file-ignore SA4006 This context is only used if a nested component is present.
 
-import "github.com/a-h/templ"
-import templruntime "github.com/a-h/templ/runtime"
-
 import (
 	"fmt"
+
+	"github.com/a-h/templ"
+	templruntime "github.com/a-h/templ/runtime"
 	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/bornholm/xolo/internal/estimator/energy"
+
+	"slices"
+	"strconv"
+	"strings"
+	"time"
+
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
@@ -25,10 +32,6 @@ import (
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/separator"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/tooltip"
-	"slices"
-	"strconv"
-	"strings"
-	"time"
 )
 
 // ── Org Dashboard ─────────────────────────────────────────────────────────────
@@ -72,7 +75,7 @@ func OrgDashboard(vmodel OrgDashboardVModel) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(vmodel.Org.Name())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 32, Col: 59}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 33, Col: 59}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -85,7 +88,7 @@ func OrgDashboard(vmodel OrgDashboardVModel) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(vmodel.Org.Description())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 33, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 34, Col: 72}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -178,7 +181,7 @@ func OrgDashboard(vmodel OrgDashboardVModel) templ.Component {
 					var templ_7745c5c3_Var9 string
 					templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", len(vmodel.Members)))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 45, Col: 76}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 46, Col: 76}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 					if templ_7745c5c3_Err != nil {
@@ -319,7 +322,7 @@ func OrgDashboard(vmodel OrgDashboardVModel) templ.Component {
 					var templ_7745c5c3_Var16 string
 					templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", len(vmodel.Providers)))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 60, Col: 78}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 61, Col: 78}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 					if templ_7745c5c3_Err != nil {
@@ -568,7 +571,7 @@ func MembersPage(vmodel MembersPageVModel) templ.Component {
 			var templ_7745c5c3_Var27 string
 			templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(vmodel.Org.Name())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 95, Col: 65}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 96, Col: 65}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 			if templ_7745c5c3_Err != nil {
@@ -855,7 +858,7 @@ func MembersPage(vmodel MembersPageVModel) templ.Component {
 												var templ_7745c5c3_Var42 string
 												templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(m.User().DisplayName())
 												if templ_7745c5c3_Err != nil {
-													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 136, Col: 36}
+													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 137, Col: 36}
 												}
 												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 												if templ_7745c5c3_Err != nil {
@@ -888,7 +891,7 @@ func MembersPage(vmodel MembersPageVModel) templ.Component {
 												var templ_7745c5c3_Var44 string
 												templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(m.User().Email())
 												if templ_7745c5c3_Err != nil {
-													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 141, Col: 30}
+													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 142, Col: 30}
 												}
 												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 												if templ_7745c5c3_Err != nil {
@@ -932,7 +935,7 @@ func MembersPage(vmodel MembersPageVModel) templ.Component {
 												var templ_7745c5c3_Var47 string
 												templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(m.Role())
 												if templ_7745c5c3_Err != nil {
-													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 146, Col: 22}
+													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 147, Col: 22}
 												}
 												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
 												if templ_7745c5c3_Err != nil {
@@ -973,7 +976,7 @@ func MembersPage(vmodel MembersPageVModel) templ.Component {
 											var templ_7745c5c3_Var49 string
 											templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members/", string(m.ID()))))
 											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 152, Col: 129}
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 153, Col: 129}
 											}
 											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
 											if templ_7745c5c3_Err != nil {
@@ -1145,7 +1148,7 @@ func membersPagination(vmodel MembersPageVModel) templ.Component {
 								var templ_7745c5c3_Var56 string
 								templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(page))
 								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 191, Col: 27}
+									return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 192, Col: 27}
 								}
 								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var56))
 								if templ_7745c5c3_Err != nil {
@@ -1510,7 +1513,7 @@ func ProvidersPage(vmodel ProvidersPageVModel) templ.Component {
 											var templ_7745c5c3_Var73 string
 											templ_7745c5c3_Var73, templ_7745c5c3_Err = templ.JoinStringErrs(p.Name())
 											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 249, Col: 21}
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 250, Col: 21}
 											}
 											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var73))
 											if templ_7745c5c3_Err != nil {
@@ -1553,7 +1556,7 @@ func ProvidersPage(vmodel ProvidersPageVModel) templ.Component {
 												var templ_7745c5c3_Var76 string
 												templ_7745c5c3_Var76, templ_7745c5c3_Err = templ.JoinStringErrs(p.Type())
 												if templ_7745c5c3_Err != nil {
-													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 253, Col: 22}
+													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 254, Col: 22}
 												}
 												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var76))
 												if templ_7745c5c3_Err != nil {
@@ -1807,7 +1810,7 @@ func ProviderForm(vmodel ProviderFormVModel) templ.Component {
 			var templ_7745c5c3_Var85 string
 			templ_7745c5c3_Var85, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 298, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 299, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var85))
 			if templ_7745c5c3_Err != nil {
@@ -1845,7 +1848,7 @@ func ProviderForm(vmodel ProviderFormVModel) templ.Component {
 						var templ_7745c5c3_Var88 string
 						templ_7745c5c3_Var88, templ_7745c5c3_Err = templ.JoinStringErrs(vmodel.Error)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 302, Col: 20}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 303, Col: 20}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var88))
 						if templ_7745c5c3_Err != nil {
@@ -1871,7 +1874,7 @@ func ProviderForm(vmodel ProviderFormVModel) templ.Component {
 			var templ_7745c5c3_Var89 templ.SafeURL
 			templ_7745c5c3_Var89, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(action))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 306, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 307, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var89))
 			if templ_7745c5c3_Err != nil {
@@ -1905,7 +1908,7 @@ func ProviderForm(vmodel ProviderFormVModel) templ.Component {
 					var templ_7745c5c3_Var90 string
 					templ_7745c5c3_Var90, templ_7745c5c3_Err = templ.JoinStringErrs(t)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 320, Col: 25}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 321, Col: 25}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var90))
 					if templ_7745c5c3_Err != nil {
@@ -1918,7 +1921,7 @@ func ProviderForm(vmodel ProviderFormVModel) templ.Component {
 					var templ_7745c5c3_Var91 string
 					templ_7745c5c3_Var91, templ_7745c5c3_Err = templ.JoinStringErrs(t)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 320, Col: 40}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 321, Col: 40}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var91))
 					if templ_7745c5c3_Err != nil {
@@ -1936,7 +1939,7 @@ func ProviderForm(vmodel ProviderFormVModel) templ.Component {
 					var templ_7745c5c3_Var92 string
 					templ_7745c5c3_Var92, templ_7745c5c3_Err = templ.JoinStringErrs(t)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 322, Col: 25}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 323, Col: 25}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var92))
 					if templ_7745c5c3_Err != nil {
@@ -1949,7 +1952,7 @@ func ProviderForm(vmodel ProviderFormVModel) templ.Component {
 					var templ_7745c5c3_Var93 string
 					templ_7745c5c3_Var93, templ_7745c5c3_Err = templ.JoinStringErrs(t)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 322, Col: 31}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 323, Col: 31}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var93))
 					if templ_7745c5c3_Err != nil {
@@ -2008,7 +2011,7 @@ func ProviderForm(vmodel ProviderFormVModel) templ.Component {
 					var templ_7745c5c3_Var94 string
 					templ_7745c5c3_Var94, templ_7745c5c3_Err = templ.JoinStringErrs(c)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 351, Col: 25}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 352, Col: 25}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var94))
 					if templ_7745c5c3_Err != nil {
@@ -2021,7 +2024,7 @@ func ProviderForm(vmodel ProviderFormVModel) templ.Component {
 					var templ_7745c5c3_Var95 string
 					templ_7745c5c3_Var95, templ_7745c5c3_Err = templ.JoinStringErrs(c)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 351, Col: 40}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 352, Col: 40}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var95))
 					if templ_7745c5c3_Err != nil {
@@ -2039,7 +2042,7 @@ func ProviderForm(vmodel ProviderFormVModel) templ.Component {
 					var templ_7745c5c3_Var96 string
 					templ_7745c5c3_Var96, templ_7745c5c3_Err = templ.JoinStringErrs(c)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 353, Col: 25}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 354, Col: 25}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var96))
 					if templ_7745c5c3_Err != nil {
@@ -2052,7 +2055,7 @@ func ProviderForm(vmodel ProviderFormVModel) templ.Component {
 					var templ_7745c5c3_Var97 string
 					templ_7745c5c3_Var97, templ_7745c5c3_Err = templ.JoinStringErrs(c)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 353, Col: 31}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 354, Col: 31}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var97))
 					if templ_7745c5c3_Err != nil {
@@ -2346,7 +2349,7 @@ func ProviderForm(vmodel ProviderFormVModel) templ.Component {
 				var templ_7745c5c3_Var100 string
 				templ_7745c5c3_Var100, templ_7745c5c3_Err = templ.JoinStringErrs(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()))))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 459, Col: 138}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 460, Col: 138}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var100))
 				if templ_7745c5c3_Err != nil {
@@ -2412,7 +2415,7 @@ func ModelsPage(vmodel ModelsPageVModel) templ.Component {
 			var templ_7745c5c3_Var103 string
 			templ_7745c5c3_Var103, templ_7745c5c3_Err = templ.JoinStringErrs(vmodel.Provider.Name())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 477, Col: 84}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 478, Col: 84}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var103))
 			if templ_7745c5c3_Err != nil {
@@ -2750,7 +2753,7 @@ func ModelsPage(vmodel ModelsPageVModel) templ.Component {
 											var templ_7745c5c3_Var120 string
 											templ_7745c5c3_Var120, templ_7745c5c3_Err = templ.JoinStringErrs(vmodel.Org.Slug() + "/" + m.ProxyName())
 											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 521, Col: 52}
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 522, Col: 52}
 											}
 											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var120))
 											if templ_7745c5c3_Err != nil {
@@ -2781,7 +2784,7 @@ func ModelsPage(vmodel ModelsPageVModel) templ.Component {
 											var templ_7745c5c3_Var122 string
 											templ_7745c5c3_Var122, templ_7745c5c3_Err = templ.JoinStringErrs(m.RealModel())
 											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 524, Col: 26}
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 525, Col: 26}
 											}
 											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var122))
 											if templ_7745c5c3_Err != nil {
@@ -2812,7 +2815,7 @@ func ModelsPage(vmodel ModelsPageVModel) templ.Component {
 											var templ_7745c5c3_Var124 string
 											templ_7745c5c3_Var124, templ_7745c5c3_Err = templ.JoinStringErrs(formatCostRate(m.PromptCostPer1KTokens(), vmodel.Provider.Currency()))
 											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 527, Col: 82}
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 528, Col: 82}
 											}
 											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var124))
 											if templ_7745c5c3_Err != nil {
@@ -2843,7 +2846,7 @@ func ModelsPage(vmodel ModelsPageVModel) templ.Component {
 											var templ_7745c5c3_Var126 string
 											templ_7745c5c3_Var126, templ_7745c5c3_Err = templ.JoinStringErrs(formatCostRate(m.CompletionCostPer1KTokens(), vmodel.Provider.Currency()))
 											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 530, Col: 86}
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 531, Col: 86}
 											}
 											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var126))
 											if templ_7745c5c3_Err != nil {
@@ -3061,7 +3064,7 @@ func ModelForm(vmodel ModelFormVModel) templ.Component {
 			var templ_7745c5c3_Var134 string
 			templ_7745c5c3_Var134, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 605, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 606, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var134))
 			if templ_7745c5c3_Err != nil {
@@ -3087,7 +3090,7 @@ func ModelForm(vmodel ModelFormVModel) templ.Component {
 					var templ_7745c5c3_Var136 string
 					templ_7745c5c3_Var136, templ_7745c5c3_Err = templ.JoinStringErrs(vmodel.Error)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 608, Col: 19}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 609, Col: 19}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var136))
 					if templ_7745c5c3_Err != nil {
@@ -3107,7 +3110,7 @@ func ModelForm(vmodel ModelFormVModel) templ.Component {
 			var templ_7745c5c3_Var137 templ.SafeURL
 			templ_7745c5c3_Var137, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(action))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 611, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 612, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var137))
 			if templ_7745c5c3_Err != nil {
@@ -3120,7 +3123,7 @@ func ModelForm(vmodel ModelFormVModel) templ.Component {
 			var templ_7745c5c3_Var138 string
 			templ_7745c5c3_Var138, templ_7745c5c3_Err = templ.JoinStringErrs(vmodel.Org.Slug() + "/" + "&lt;nom&gt;")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 614, Col: 128}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 615, Col: 128}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var138))
 			if templ_7745c5c3_Err != nil {
@@ -3148,7 +3151,7 @@ func ModelForm(vmodel ModelFormVModel) templ.Component {
 			var templ_7745c5c3_Var139 string
 			templ_7745c5c3_Var139, templ_7745c5c3_Err = templ.JoinStringErrs(common.BaseURLString(ctx, common.WithPath("/api/models-dev/lookup")))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 626, Col: 93}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 627, Col: 93}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var139))
 			if templ_7745c5c3_Err != nil {
@@ -3161,7 +3164,7 @@ func ModelForm(vmodel ModelFormVModel) templ.Component {
 			var templ_7745c5c3_Var140 string
 			templ_7745c5c3_Var140, templ_7745c5c3_Err = templ.JoinStringErrs(common.BaseURLString(ctx, common.WithPath("/api/exchange-rate")))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 627, Col: 96}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 628, Col: 96}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var140))
 			if templ_7745c5c3_Err != nil {
@@ -3174,7 +3177,7 @@ func ModelForm(vmodel ModelFormVModel) templ.Component {
 			var templ_7745c5c3_Var141 string
 			templ_7745c5c3_Var141, templ_7745c5c3_Err = templ.JoinStringErrs(vmodel.Provider.Currency())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 628, Col: 49}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 629, Col: 49}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var141))
 			if templ_7745c5c3_Err != nil {
@@ -3187,7 +3190,7 @@ func ModelForm(vmodel ModelFormVModel) templ.Component {
 			var templ_7745c5c3_Var142 string
 			templ_7745c5c3_Var142, templ_7745c5c3_Err = templ.JoinStringErrs(vmodel.Provider.Type())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 629, Col: 50}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 630, Col: 50}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var142))
 			if templ_7745c5c3_Err != nil {
@@ -3353,7 +3356,7 @@ func ModelForm(vmodel ModelFormVModel) templ.Component {
 			var templ_7745c5c3_Var143 string
 			templ_7745c5c3_Var143, templ_7745c5c3_Err = templ.JoinStringErrs(vmodel.Provider.Currency())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 723, Col: 105}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 724, Col: 105}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var143))
 			if templ_7745c5c3_Err != nil {
@@ -3381,7 +3384,7 @@ func ModelForm(vmodel ModelFormVModel) templ.Component {
 			var templ_7745c5c3_Var144 string
 			templ_7745c5c3_Var144, templ_7745c5c3_Err = templ.JoinStringErrs(vmodel.Provider.Currency())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 731, Col: 110}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 732, Col: 110}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var144))
 			if templ_7745c5c3_Err != nil {
@@ -3536,7 +3539,7 @@ func ModelForm(vmodel ModelFormVModel) templ.Component {
 				var templ_7745c5c3_Var146 string
 				templ_7745c5c3_Var146, templ_7745c5c3_Err = templ.JoinStringErrs(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()), "/models/", string(vmodel.Model.ID()))))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 786, Col: 177}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 787, Col: 177}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var146))
 				if templ_7745c5c3_Err != nil {
@@ -3608,7 +3611,7 @@ func QuotaPage(vmodel QuotaPageVModel) templ.Component {
 			var templ_7745c5c3_Var149 string
 			templ_7745c5c3_Var149, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 807, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 808, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var149))
 			if templ_7745c5c3_Err != nil {
@@ -3691,7 +3694,7 @@ func QuotaPage(vmodel QuotaPageVModel) templ.Component {
 					var templ_7745c5c3_Var154 string
 					templ_7745c5c3_Var154, templ_7745c5c3_Err = templ.JoinStringErrs(vmodel.Org.Currency())
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 817, Col: 102}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 818, Col: 102}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var154))
 					if templ_7745c5c3_Err != nil {
@@ -3704,7 +3707,7 @@ func QuotaPage(vmodel QuotaPageVModel) templ.Component {
 					var templ_7745c5c3_Var155 templ.SafeURL
 					templ_7745c5c3_Var155, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/settings"))))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 818, Col: 171}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 819, Col: 171}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var155))
 					if templ_7745c5c3_Err != nil {
@@ -3733,7 +3736,7 @@ func QuotaPage(vmodel QuotaPageVModel) templ.Component {
 			var templ_7745c5c3_Var156 templ.SafeURL
 			templ_7745c5c3_Var156, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(action))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 821, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 822, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var156))
 			if templ_7745c5c3_Err != nil {
@@ -3911,7 +3914,7 @@ func OrgSettingsPage(vmodel OrgSettingsPageVModel) templ.Component {
 			var templ_7745c5c3_Var162 templ.SafeURL
 			templ_7745c5c3_Var162, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/settings"))))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 866, Col: 137}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 867, Col: 137}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var162))
 			if templ_7745c5c3_Err != nil {
@@ -3930,7 +3933,7 @@ func OrgSettingsPage(vmodel OrgSettingsPageVModel) templ.Component {
 					var templ_7745c5c3_Var163 string
 					templ_7745c5c3_Var163, templ_7745c5c3_Err = templ.JoinStringErrs(c)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 872, Col: 25}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 873, Col: 25}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var163))
 					if templ_7745c5c3_Err != nil {
@@ -3943,7 +3946,7 @@ func OrgSettingsPage(vmodel OrgSettingsPageVModel) templ.Component {
 					var templ_7745c5c3_Var164 string
 					templ_7745c5c3_Var164, templ_7745c5c3_Err = templ.JoinStringErrs(c)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 872, Col: 40}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 873, Col: 40}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var164))
 					if templ_7745c5c3_Err != nil {
@@ -3961,7 +3964,7 @@ func OrgSettingsPage(vmodel OrgSettingsPageVModel) templ.Component {
 					var templ_7745c5c3_Var165 string
 					templ_7745c5c3_Var165, templ_7745c5c3_Err = templ.JoinStringErrs(c)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 874, Col: 25}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 875, Col: 25}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var165))
 					if templ_7745c5c3_Err != nil {
@@ -3974,7 +3977,7 @@ func OrgSettingsPage(vmodel OrgSettingsPageVModel) templ.Component {
 					var templ_7745c5c3_Var166 string
 					templ_7745c5c3_Var166, templ_7745c5c3_Err = templ.JoinStringErrs(c)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 874, Col: 31}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 875, Col: 31}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var166))
 					if templ_7745c5c3_Err != nil {
@@ -4013,7 +4016,7 @@ func OrgSettingsPage(vmodel OrgSettingsPageVModel) templ.Component {
 				var templ_7745c5c3_Var167 string
 				templ_7745c5c3_Var167, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(vmodel.MemberCount))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 894, Col: 53}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 895, Col: 53}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var167))
 				if templ_7745c5c3_Err != nil {
@@ -4031,7 +4034,7 @@ func OrgSettingsPage(vmodel OrgSettingsPageVModel) templ.Component {
 					var templ_7745c5c3_Var168 string
 					templ_7745c5c3_Var168, templ_7745c5c3_Err = templ.JoinStringErrs(currencySymbol(vmodel.Org.Currency()))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 896, Col: 63}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 897, Col: 63}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var168))
 					if templ_7745c5c3_Err != nil {
@@ -4040,7 +4043,7 @@ func OrgSettingsPage(vmodel OrgSettingsPageVModel) templ.Component {
 					var templ_7745c5c3_Var169 string
 					templ_7745c5c3_Var169, templ_7745c5c3_Err = templ.JoinStringErrs(formatBudgetField(*vmodel.SharedDailyBudget))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 896, Col: 111}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 897, Col: 111}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var169))
 					if templ_7745c5c3_Err != nil {
@@ -4059,7 +4062,7 @@ func OrgSettingsPage(vmodel OrgSettingsPageVModel) templ.Component {
 					var templ_7745c5c3_Var170 string
 					templ_7745c5c3_Var170, templ_7745c5c3_Err = templ.JoinStringErrs(currencySymbol(vmodel.Org.Currency()))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 899, Col: 60}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 900, Col: 60}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var170))
 					if templ_7745c5c3_Err != nil {
@@ -4068,7 +4071,7 @@ func OrgSettingsPage(vmodel OrgSettingsPageVModel) templ.Component {
 					var templ_7745c5c3_Var171 string
 					templ_7745c5c3_Var171, templ_7745c5c3_Err = templ.JoinStringErrs(formatBudgetField(*vmodel.SharedMonthlyBudget))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 899, Col: 110}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 900, Col: 110}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var171))
 					if templ_7745c5c3_Err != nil {
@@ -4087,7 +4090,7 @@ func OrgSettingsPage(vmodel OrgSettingsPageVModel) templ.Component {
 					var templ_7745c5c3_Var172 string
 					templ_7745c5c3_Var172, templ_7745c5c3_Err = templ.JoinStringErrs(currencySymbol(vmodel.Org.Currency()))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 902, Col: 59}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 903, Col: 59}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var172))
 					if templ_7745c5c3_Err != nil {
@@ -4096,7 +4099,7 @@ func OrgSettingsPage(vmodel OrgSettingsPageVModel) templ.Component {
 					var templ_7745c5c3_Var173 string
 					templ_7745c5c3_Var173, templ_7745c5c3_Err = templ.JoinStringErrs(formatBudgetField(*vmodel.SharedYearlyBudget))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 902, Col: 108}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 903, Col: 108}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var173))
 					if templ_7745c5c3_Err != nil {
@@ -4252,7 +4255,7 @@ func InvitesPage(vmodel InvitesPageVModel) templ.Component {
 						var templ_7745c5c3_Var180 string
 						templ_7745c5c3_Var180, templ_7745c5c3_Err = templ.JoinStringErrs(vmodel.NewURL)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 930, Col: 67}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 931, Col: 67}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var180))
 						if templ_7745c5c3_Err != nil {
@@ -4574,7 +4577,7 @@ func InvitesPage(vmodel InvitesPageVModel) templ.Component {
 												var templ_7745c5c3_Var196 string
 												templ_7745c5c3_Var196, templ_7745c5c3_Err = templ.JoinStringErrs(*inv.InviteeEmail())
 												if templ_7745c5c3_Err != nil {
-													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 972, Col: 33}
+													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 973, Col: 33}
 												}
 												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var196))
 												if templ_7745c5c3_Err != nil {
@@ -4611,7 +4614,7 @@ func InvitesPage(vmodel InvitesPageVModel) templ.Component {
 											var templ_7745c5c3_Var198 string
 											templ_7745c5c3_Var198, templ_7745c5c3_Err = templ.JoinStringErrs(inv.Role())
 											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 978, Col: 23}
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 979, Col: 23}
 											}
 											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var198))
 											if templ_7745c5c3_Err != nil {
@@ -4643,7 +4646,7 @@ func InvitesPage(vmodel InvitesPageVModel) templ.Component {
 												var templ_7745c5c3_Var200 string
 												templ_7745c5c3_Var200, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d / %d", inv.UsesCount(), *inv.MaxUses()))
 												if templ_7745c5c3_Err != nil {
-													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 982, Col: 69}
+													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 983, Col: 69}
 												}
 												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var200))
 												if templ_7745c5c3_Err != nil {
@@ -4653,7 +4656,7 @@ func InvitesPage(vmodel InvitesPageVModel) templ.Component {
 												var templ_7745c5c3_Var201 string
 												templ_7745c5c3_Var201, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d / ∞", inv.UsesCount()))
 												if templ_7745c5c3_Err != nil {
-													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 984, Col: 54}
+													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 985, Col: 54}
 												}
 												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var201))
 												if templ_7745c5c3_Err != nil {
@@ -4686,7 +4689,7 @@ func InvitesPage(vmodel InvitesPageVModel) templ.Component {
 												var templ_7745c5c3_Var203 string
 												templ_7745c5c3_Var203, templ_7745c5c3_Err = templ.JoinStringErrs(inv.ExpiresAt().Format("2006-01-02"))
 												if templ_7745c5c3_Err != nil {
-													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 989, Col: 50}
+													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 990, Col: 50}
 												}
 												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var203))
 												if templ_7745c5c3_Err != nil {
@@ -4796,7 +4799,7 @@ func InvitesPage(vmodel InvitesPageVModel) templ.Component {
 											var templ_7745c5c3_Var208 templ.SafeURL
 											templ_7745c5c3_Var208, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(vmodel.BaseURL + "/join/" + string(inv.ID())))
 											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1007, Col: 81}
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1008, Col: 81}
 											}
 											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var208))
 											if templ_7745c5c3_Err != nil {
@@ -4814,7 +4817,7 @@ func InvitesPage(vmodel InvitesPageVModel) templ.Component {
 												var templ_7745c5c3_Var209 string
 												templ_7745c5c3_Var209, templ_7745c5c3_Err = templ.JoinStringErrs(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/", string(inv.ID()))))
 												if templ_7745c5c3_Err != nil {
-													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1011, Col: 133}
+													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1012, Col: 133}
 												}
 												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var209))
 												if templ_7745c5c3_Err != nil {
@@ -4922,7 +4925,7 @@ func InviteForm(vmodel InviteFormVModel) templ.Component {
 			var templ_7745c5c3_Var212 templ.SafeURL
 			templ_7745c5c3_Var212, templ_7745c5c3_Err = templ.JoinURLErrs(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites")))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1036, Col: 121}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1037, Col: 121}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var212))
 			if templ_7745c5c3_Err != nil {
@@ -5089,7 +5092,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 								var templ_7745c5c3_Var219 string
 								templ_7745c5c3_Var219, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("Restant: %d%%", 100-int(spent/budget*100)))
 								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1083, Col: 112}
+									return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1084, Col: 112}
 								}
 								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var219))
 								if templ_7745c5c3_Err != nil {
@@ -5203,7 +5206,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 								var templ_7745c5c3_Var224 string
 								templ_7745c5c3_Var224, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("Restant: %d%%", 100-int(spent/budget*100)))
 								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1111, Col: 112}
+									return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1112, Col: 112}
 								}
 								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var224))
 								if templ_7745c5c3_Err != nil {
@@ -5317,7 +5320,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 								var templ_7745c5c3_Var229 string
 								templ_7745c5c3_Var229, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("Restant: %d%%", 100-int(spent/budget*100)))
 								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1139, Col: 112}
+									return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1140, Col: 112}
 								}
 								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var229))
 								if templ_7745c5c3_Err != nil {
@@ -5420,7 +5423,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 					var templ_7745c5c3_Var231 string
 					templ_7745c5c3_Var231, templ_7745c5c3_Err = templ.JoinStringErrs(opt.Value)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1182, Col: 33}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1183, Col: 33}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var231))
 					if templ_7745c5c3_Err != nil {
@@ -5433,7 +5436,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 					var templ_7745c5c3_Var232 string
 					templ_7745c5c3_Var232, templ_7745c5c3_Err = templ.JoinStringErrs(opt.Label)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1182, Col: 56}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1183, Col: 56}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var232))
 					if templ_7745c5c3_Err != nil {
@@ -5451,7 +5454,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 					var templ_7745c5c3_Var233 string
 					templ_7745c5c3_Var233, templ_7745c5c3_Err = templ.JoinStringErrs(opt.Value)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1184, Col: 33}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1185, Col: 33}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var233))
 					if templ_7745c5c3_Err != nil {
@@ -5464,7 +5467,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 					var templ_7745c5c3_Var234 string
 					templ_7745c5c3_Var234, templ_7745c5c3_Err = templ.JoinStringErrs(opt.Label)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1184, Col: 47}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1185, Col: 47}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var234))
 					if templ_7745c5c3_Err != nil {
@@ -5572,7 +5575,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 										var templ_7745c5c3_Var240 string
 										templ_7745c5c3_Var240, templ_7745c5c3_Err = templ.JoinStringErrs(m.User().DisplayName())
 										if templ_7745c5c3_Err != nil {
-											return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1212, Col: 36}
+											return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1213, Col: 36}
 										}
 										_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var240))
 										if templ_7745c5c3_Err != nil {
@@ -5715,7 +5718,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 					var templ_7745c5c3_Var246 string
 					templ_7745c5c3_Var246, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", vmodel.Aggregate.TotalRequests))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1233, Col: 87}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1234, Col: 87}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var246))
 					if templ_7745c5c3_Err != nil {
@@ -5818,7 +5821,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 						var templ_7745c5c3_Var251 string
 						templ_7745c5c3_Var251, templ_7745c5c3_Err = templ.JoinStringErrs(formatCost(vmodel.Aggregate.TotalCost, vmodel.Aggregate.Currency))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1246, Col: 104}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1247, Col: 104}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var251))
 						if templ_7745c5c3_Err != nil {
@@ -5916,7 +5919,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 					var templ_7745c5c3_Var256 string
 					templ_7745c5c3_Var256, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", vmodel.Aggregate.TotalTokens))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1257, Col: 85}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1258, Col: 85}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var256))
 					if templ_7745c5c3_Err != nil {
@@ -6007,14 +6010,14 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 							}()
 						}
 						ctx = templ.InitializeContext(ctx)
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 331, "<p class=\"text-3xl font-bold\">")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 331, "<div class=\"flex items-center gap-2\"><p class=\"text-3xl font-bold\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var261 string
 						templ_7745c5c3_Var261, templ_7745c5c3_Err = templ.JoinStringErrs(formatEnergyWh(vmodel.TotalEnergyWh))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1268, Col: 75}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1270, Col: 76}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var261))
 						if templ_7745c5c3_Err != nil {
@@ -6024,27 +6027,21 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						if vmodel.TotalCO2GramsMid > 0 {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 333, "<div class=\"flex items-center gap-2 mt-1\"><p class=\"text-sm font-medium text-muted-foreground\">")
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							var templ_7745c5c3_Var262 string
-							templ_7745c5c3_Var262, templ_7745c5c3_Err = templ.JoinStringErrs(formatCO2Grams(vmodel.TotalCO2GramsMid))
-							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1272, Col: 51}
-							}
-							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var262))
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 334, " <span class=\"text-xs\">(mix monde)</span></p>")
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							co2Message := formatCO2ToCarKilometers(vmodel.TotalCO2GramsMid)
-							if co2Message != "" {
-								tooltipID := "co2-tooltip-" + fmt.Sprintf("%.0f", vmodel.TotalCO2GramsMid)
+						energyMessage := formatEnergyToHuman(vmodel.TotalEnergyWh)
+						if energyMessage != "" {
+							tooltipID := "energy-tooltip-" + fmt.Sprintf("%.0f", vmodel.TotalEnergyWh)
+							templ_7745c5c3_Var262 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+								templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+								templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+								if !templ_7745c5c3_IsBuffer {
+									defer func() {
+										templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+										if templ_7745c5c3_Err == nil {
+											templ_7745c5c3_Err = templ_7745c5c3_BufErr
+										}
+									}()
+								}
+								ctx = templ.InitializeContext(ctx)
 								templ_7745c5c3_Var263 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 									templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 									templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
@@ -6057,7 +6054,100 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 										}()
 									}
 									ctx = templ.InitializeContext(ctx)
-									templ_7745c5c3_Var264 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+									templ_7745c5c3_Err = icon.CircleQuestionMark(icon.Props{Class: "h-5 w-5"}).Render(ctx, templ_7745c5c3_Buffer)
+									if templ_7745c5c3_Err != nil {
+										return templ_7745c5c3_Err
+									}
+									return nil
+								})
+								templ_7745c5c3_Err = tooltip.Trigger(tooltip.TriggerProps{For: tooltipID, Class: "cursor-help text-muted-foreground hover:text-foreground"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var263), templ_7745c5c3_Buffer)
+								if templ_7745c5c3_Err != nil {
+									return templ_7745c5c3_Err
+								}
+								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 333, " ")
+								if templ_7745c5c3_Err != nil {
+									return templ_7745c5c3_Err
+								}
+								templ_7745c5c3_Var264 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+									templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+									templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+									if !templ_7745c5c3_IsBuffer {
+										defer func() {
+											templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+											if templ_7745c5c3_Err == nil {
+												templ_7745c5c3_Err = templ_7745c5c3_BufErr
+											}
+										}()
+									}
+									ctx = templ.InitializeContext(ctx)
+									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 334, "<p>")
+									if templ_7745c5c3_Err != nil {
+										return templ_7745c5c3_Err
+									}
+									var templ_7745c5c3_Var265 string
+									templ_7745c5c3_Var265, templ_7745c5c3_Err = templ.JoinStringErrs(energyMessage)
+									if templ_7745c5c3_Err != nil {
+										return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1279, Col: 29}
+									}
+									_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var265))
+									if templ_7745c5c3_Err != nil {
+										return templ_7745c5c3_Err
+									}
+									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 335, "</p>")
+									if templ_7745c5c3_Err != nil {
+										return templ_7745c5c3_Err
+									}
+									return nil
+								})
+								templ_7745c5c3_Err = tooltip.Content(tooltip.ContentProps{ID: tooltipID, Position: tooltip.PositionRight, Class: "max-w-xs"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var264), templ_7745c5c3_Buffer)
+								if templ_7745c5c3_Err != nil {
+									return templ_7745c5c3_Err
+								}
+								return nil
+							})
+							templ_7745c5c3_Err = tooltip.Tooltip().Render(templ.WithChildren(ctx, templ_7745c5c3_Var262), templ_7745c5c3_Buffer)
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 336, "</div>")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						if vmodel.TotalCO2GramsMid > 0 {
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 337, "<div class=\"flex items-center gap-2 mt-1\"><p class=\"text-sm font-medium text-muted-foreground\">")
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+							var templ_7745c5c3_Var266 string
+							templ_7745c5c3_Var266, templ_7745c5c3_Err = templ.JoinStringErrs(formatCO2Grams(vmodel.TotalCO2GramsMid))
+							if templ_7745c5c3_Err != nil {
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1287, Col: 51}
+							}
+							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var266))
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 338, " <span class=\"text-xs\">(mix monde)</span></p>")
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+							co2Message := formatCO2ToCarKilometers(vmodel.TotalCO2GramsMid)
+							if co2Message != "" {
+								tooltipID := "co2-tooltip-" + fmt.Sprintf("%.0f", vmodel.TotalCO2GramsMid)
+								templ_7745c5c3_Var267 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+									templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+									templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+									if !templ_7745c5c3_IsBuffer {
+										defer func() {
+											templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+											if templ_7745c5c3_Err == nil {
+												templ_7745c5c3_Err = templ_7745c5c3_BufErr
+											}
+										}()
+									}
+									ctx = templ.InitializeContext(ctx)
+									templ_7745c5c3_Var268 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 										templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 										templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 										if !templ_7745c5c3_IsBuffer {
@@ -6075,15 +6165,15 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 										}
 										return nil
 									})
-									templ_7745c5c3_Err = tooltip.Trigger(tooltip.TriggerProps{For: tooltipID, Class: "cursor-help text-muted-foreground hover:text-foreground"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var264), templ_7745c5c3_Buffer)
+									templ_7745c5c3_Err = tooltip.Trigger(tooltip.TriggerProps{For: tooltipID, Class: "cursor-help text-muted-foreground hover:text-foreground"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var268), templ_7745c5c3_Buffer)
 									if templ_7745c5c3_Err != nil {
 										return templ_7745c5c3_Err
 									}
-									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 335, " ")
+									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 339, " ")
 									if templ_7745c5c3_Err != nil {
 										return templ_7745c5c3_Err
 									}
-									templ_7745c5c3_Var265 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+									templ_7745c5c3_Var269 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 										templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 										templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 										if !templ_7745c5c3_IsBuffer {
@@ -6095,42 +6185,42 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 											}()
 										}
 										ctx = templ.InitializeContext(ctx)
-										templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 336, "<p>")
+										templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 340, "<p>")
 										if templ_7745c5c3_Err != nil {
 											return templ_7745c5c3_Err
 										}
-										var templ_7745c5c3_Var266 string
-										templ_7745c5c3_Var266, templ_7745c5c3_Err = templ.JoinStringErrs(co2Message)
+										var templ_7745c5c3_Var270 string
+										templ_7745c5c3_Var270, templ_7745c5c3_Err = templ.JoinStringErrs(co2Message)
 										if templ_7745c5c3_Err != nil {
-											return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1283, Col: 27}
+											return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1298, Col: 27}
 										}
-										_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var266))
+										_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var270))
 										if templ_7745c5c3_Err != nil {
 											return templ_7745c5c3_Err
 										}
-										templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 337, "</p>")
+										templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 341, "</p>")
 										if templ_7745c5c3_Err != nil {
 											return templ_7745c5c3_Err
 										}
 										return nil
 									})
-									templ_7745c5c3_Err = tooltip.Content(tooltip.ContentProps{ID: tooltipID, Position: tooltip.PositionRight, Class: "max-w-xs"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var265), templ_7745c5c3_Buffer)
+									templ_7745c5c3_Err = tooltip.Content(tooltip.ContentProps{ID: tooltipID, Position: tooltip.PositionRight, Class: "max-w-xs"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var269), templ_7745c5c3_Buffer)
 									if templ_7745c5c3_Err != nil {
 										return templ_7745c5c3_Err
 									}
 									return nil
 								})
-								templ_7745c5c3_Err = tooltip.Tooltip().Render(templ.WithChildren(ctx, templ_7745c5c3_Var263), templ_7745c5c3_Buffer)
+								templ_7745c5c3_Err = tooltip.Tooltip().Render(templ.WithChildren(ctx, templ_7745c5c3_Var267), templ_7745c5c3_Buffer)
 								if templ_7745c5c3_Err != nil {
 									return templ_7745c5c3_Err
 								}
 							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 338, "</div>")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 342, "</div>")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 339, " <p class=\"text-xs text-muted-foreground mt-1\">estimation ±facteur ×3-5</p>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 343, " <p class=\"text-xs text-muted-foreground mt-1\">estimation ±facteur ×3-5</p>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -6147,119 +6237,17 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 340, "</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 344, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if len(vmodel.ChartPerDay) > 0 || len(vmodel.ChartPerModel) > 0 || len(vmodel.ChartPerUser) > 0 || len(vmodel.ChartPerProvider) > 0 {
 				trueVal := true
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 341, "<div class=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 345, "<div class=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if len(vmodel.ChartPerDay) > 0 {
-					templ_7745c5c3_Var267 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-						templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-						templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-						if !templ_7745c5c3_IsBuffer {
-							defer func() {
-								templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-								if templ_7745c5c3_Err == nil {
-									templ_7745c5c3_Err = templ_7745c5c3_BufErr
-								}
-							}()
-						}
-						ctx = templ.InitializeContext(ctx)
-						templ_7745c5c3_Var268 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-							templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-							templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-							if !templ_7745c5c3_IsBuffer {
-								defer func() {
-									templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-									if templ_7745c5c3_Err == nil {
-										templ_7745c5c3_Err = templ_7745c5c3_BufErr
-									}
-								}()
-							}
-							ctx = templ.InitializeContext(ctx)
-							templ_7745c5c3_Var269 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-								templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-								templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-								if !templ_7745c5c3_IsBuffer {
-									defer func() {
-										templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-										if templ_7745c5c3_Err == nil {
-											templ_7745c5c3_Err = templ_7745c5c3_BufErr
-										}
-									}()
-								}
-								ctx = templ.InitializeContext(ctx)
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 342, "Coût par jour")
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-								return nil
-							})
-							templ_7745c5c3_Err = card.Title().Render(templ.WithChildren(ctx, templ_7745c5c3_Var269), templ_7745c5c3_Buffer)
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							return nil
-						})
-						templ_7745c5c3_Err = card.Header().Render(templ.WithChildren(ctx, templ_7745c5c3_Var268), templ_7745c5c3_Buffer)
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 343, " ")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Var270 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-							templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-							templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-							if !templ_7745c5c3_IsBuffer {
-								defer func() {
-									templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-									if templ_7745c5c3_Err == nil {
-										templ_7745c5c3_Err = templ_7745c5c3_BufErr
-									}
-								}()
-							}
-							ctx = templ.InitializeContext(ctx)
-							templ_7745c5c3_Err = chart.Chart(chart.Props{
-								Variant:     chart.VariantBar,
-								ShowXLabels: true,
-								ShowYLabels: true,
-								ShowYGrid:   true,
-								ShowLegend:  false,
-								BeginAtZero: &trueVal,
-								Class:       "h-64",
-								Data: chart.Data{
-									Labels: chartLabels(vmodel.ChartPerDay),
-									Datasets: []chart.Dataset{{
-										Label:           vmodel.Currency,
-										Data:            chartValues(vmodel.ChartPerDay),
-										BackgroundColor: "rgba(99,102,241,0.8)",
-									}},
-								},
-							}).Render(ctx, templ_7745c5c3_Buffer)
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							return nil
-						})
-						templ_7745c5c3_Err = card.Content().Render(templ.WithChildren(ctx, templ_7745c5c3_Var270), templ_7745c5c3_Buffer)
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						return nil
-					})
-					templ_7745c5c3_Err = card.Card().Render(templ.WithChildren(ctx, templ_7745c5c3_Var267), templ_7745c5c3_Buffer)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				}
-				if len(vmodel.ChartPerModel) > 0 {
 					templ_7745c5c3_Var271 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 						templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 						templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
@@ -6296,7 +6284,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 									}()
 								}
 								ctx = templ.InitializeContext(ctx)
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 344, "Coût par modèle")
+								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 346, "Coût par jour")
 								if templ_7745c5c3_Err != nil {
 									return templ_7745c5c3_Err
 								}
@@ -6312,7 +6300,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 345, " ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 347, " ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -6337,11 +6325,11 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 								BeginAtZero: &trueVal,
 								Class:       "h-64",
 								Data: chart.Data{
-									Labels: chartLabels(vmodel.ChartPerModel),
+									Labels: chartLabels(vmodel.ChartPerDay),
 									Datasets: []chart.Dataset{{
 										Label:           vmodel.Currency,
-										Data:            chartValues(vmodel.ChartPerModel),
-										BackgroundColor: "rgba(20,184,166,0.8)",
+										Data:            chartValues(vmodel.ChartPerDay),
+										BackgroundColor: "rgba(99,102,241,0.8)",
 									}},
 								},
 							}).Render(ctx, templ_7745c5c3_Buffer)
@@ -6361,7 +6349,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				}
-				if len(vmodel.ChartPerUser) > 0 {
+				if len(vmodel.ChartPerModel) > 0 {
 					templ_7745c5c3_Var275 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 						templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 						templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
@@ -6398,7 +6386,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 									}()
 								}
 								ctx = templ.InitializeContext(ctx)
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 346, "Coût par utilisateur")
+								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 348, "Coût par modèle")
 								if templ_7745c5c3_Err != nil {
 									return templ_7745c5c3_Err
 								}
@@ -6414,7 +6402,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 347, " ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 349, " ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -6439,11 +6427,11 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 								BeginAtZero: &trueVal,
 								Class:       "h-64",
 								Data: chart.Data{
-									Labels: chartLabels(vmodel.ChartPerUser),
+									Labels: chartLabels(vmodel.ChartPerModel),
 									Datasets: []chart.Dataset{{
 										Label:           vmodel.Currency,
-										Data:            chartValues(vmodel.ChartPerUser),
-										BackgroundColor: "rgba(245,158,11,0.8)",
+										Data:            chartValues(vmodel.ChartPerModel),
+										BackgroundColor: "rgba(20,184,166,0.8)",
 									}},
 								},
 							}).Render(ctx, templ_7745c5c3_Buffer)
@@ -6463,7 +6451,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				}
-				if len(vmodel.ChartPerProvider) > 0 {
+				if len(vmodel.ChartPerUser) > 0 {
 					templ_7745c5c3_Var279 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 						templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 						templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
@@ -6500,7 +6488,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 									}()
 								}
 								ctx = templ.InitializeContext(ctx)
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 348, "Coût par fournisseur")
+								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 350, "Coût par utilisateur")
 								if templ_7745c5c3_Err != nil {
 									return templ_7745c5c3_Err
 								}
@@ -6516,11 +6504,113 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 349, " ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 351, " ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						templ_7745c5c3_Var282 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+							templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+							templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+							if !templ_7745c5c3_IsBuffer {
+								defer func() {
+									templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+									if templ_7745c5c3_Err == nil {
+										templ_7745c5c3_Err = templ_7745c5c3_BufErr
+									}
+								}()
+							}
+							ctx = templ.InitializeContext(ctx)
+							templ_7745c5c3_Err = chart.Chart(chart.Props{
+								Variant:     chart.VariantBar,
+								ShowXLabels: true,
+								ShowYLabels: true,
+								ShowYGrid:   true,
+								ShowLegend:  false,
+								BeginAtZero: &trueVal,
+								Class:       "h-64",
+								Data: chart.Data{
+									Labels: chartLabels(vmodel.ChartPerUser),
+									Datasets: []chart.Dataset{{
+										Label:           vmodel.Currency,
+										Data:            chartValues(vmodel.ChartPerUser),
+										BackgroundColor: "rgba(245,158,11,0.8)",
+									}},
+								},
+							}).Render(ctx, templ_7745c5c3_Buffer)
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+							return nil
+						})
+						templ_7745c5c3_Err = card.Content().Render(templ.WithChildren(ctx, templ_7745c5c3_Var282), templ_7745c5c3_Buffer)
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						return nil
+					})
+					templ_7745c5c3_Err = card.Card().Render(templ.WithChildren(ctx, templ_7745c5c3_Var279), templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				if len(vmodel.ChartPerProvider) > 0 {
+					templ_7745c5c3_Var283 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+						templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+						templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+						if !templ_7745c5c3_IsBuffer {
+							defer func() {
+								templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+								if templ_7745c5c3_Err == nil {
+									templ_7745c5c3_Err = templ_7745c5c3_BufErr
+								}
+							}()
+						}
+						ctx = templ.InitializeContext(ctx)
+						templ_7745c5c3_Var284 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+							templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+							templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+							if !templ_7745c5c3_IsBuffer {
+								defer func() {
+									templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+									if templ_7745c5c3_Err == nil {
+										templ_7745c5c3_Err = templ_7745c5c3_BufErr
+									}
+								}()
+							}
+							ctx = templ.InitializeContext(ctx)
+							templ_7745c5c3_Var285 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+								templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+								templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+								if !templ_7745c5c3_IsBuffer {
+									defer func() {
+										templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+										if templ_7745c5c3_Err == nil {
+											templ_7745c5c3_Err = templ_7745c5c3_BufErr
+										}
+									}()
+								}
+								ctx = templ.InitializeContext(ctx)
+								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 352, "Coût par fournisseur")
+								if templ_7745c5c3_Err != nil {
+									return templ_7745c5c3_Err
+								}
+								return nil
+							})
+							templ_7745c5c3_Err = card.Title().Render(templ.WithChildren(ctx, templ_7745c5c3_Var285), templ_7745c5c3_Buffer)
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+							return nil
+						})
+						templ_7745c5c3_Err = card.Header().Render(templ.WithChildren(ctx, templ_7745c5c3_Var284), templ_7745c5c3_Buffer)
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 353, " ")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Var286 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 							templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 							templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 							if !templ_7745c5c3_IsBuffer {
@@ -6554,24 +6644,24 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 							}
 							return nil
 						})
-						templ_7745c5c3_Err = card.Content().Render(templ.WithChildren(ctx, templ_7745c5c3_Var282), templ_7745c5c3_Buffer)
+						templ_7745c5c3_Err = card.Content().Render(templ.WithChildren(ctx, templ_7745c5c3_Var286), templ_7745c5c3_Buffer)
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						return nil
 					})
-					templ_7745c5c3_Err = card.Card().Render(templ.WithChildren(ctx, templ_7745c5c3_Var279), templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = card.Card().Render(templ.WithChildren(ctx, templ_7745c5c3_Var283), templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 350, "</div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 354, "</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 			if len(vmodel.Records) > 0 {
-				templ_7745c5c3_Var283 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+				templ_7745c5c3_Var287 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 					templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 					templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 					if !templ_7745c5c3_IsBuffer {
@@ -6583,7 +6673,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 						}()
 					}
 					ctx = templ.InitializeContext(ctx)
-					templ_7745c5c3_Var284 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+					templ_7745c5c3_Var288 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 						templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 						templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 						if !templ_7745c5c3_IsBuffer {
@@ -6595,7 +6685,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 							}()
 						}
 						ctx = templ.InitializeContext(ctx)
-						templ_7745c5c3_Var285 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+						templ_7745c5c3_Var289 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 							templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 							templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 							if !templ_7745c5c3_IsBuffer {
@@ -6607,7 +6697,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 								}()
 							}
 							ctx = templ.InitializeContext(ctx)
-							templ_7745c5c3_Var286 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+							templ_7745c5c3_Var290 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 								templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 								templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 								if !templ_7745c5c3_IsBuffer {
@@ -6619,110 +6709,6 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 									}()
 								}
 								ctx = templ.InitializeContext(ctx)
-								templ_7745c5c3_Var287 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-									templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-									templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-									if !templ_7745c5c3_IsBuffer {
-										defer func() {
-											templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-											if templ_7745c5c3_Err == nil {
-												templ_7745c5c3_Err = templ_7745c5c3_BufErr
-											}
-										}()
-									}
-									ctx = templ.InitializeContext(ctx)
-									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 351, "Utilisateur")
-									if templ_7745c5c3_Err != nil {
-										return templ_7745c5c3_Err
-									}
-									return nil
-								})
-								templ_7745c5c3_Err = table.Head().Render(templ.WithChildren(ctx, templ_7745c5c3_Var287), templ_7745c5c3_Buffer)
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 352, " ")
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-								templ_7745c5c3_Var288 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-									templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-									templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-									if !templ_7745c5c3_IsBuffer {
-										defer func() {
-											templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-											if templ_7745c5c3_Err == nil {
-												templ_7745c5c3_Err = templ_7745c5c3_BufErr
-											}
-										}()
-									}
-									ctx = templ.InitializeContext(ctx)
-									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 353, "Modèle")
-									if templ_7745c5c3_Err != nil {
-										return templ_7745c5c3_Err
-									}
-									return nil
-								})
-								templ_7745c5c3_Err = table.Head().Render(templ.WithChildren(ctx, templ_7745c5c3_Var288), templ_7745c5c3_Buffer)
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 354, " ")
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-								templ_7745c5c3_Var289 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-									templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-									templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-									if !templ_7745c5c3_IsBuffer {
-										defer func() {
-											templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-											if templ_7745c5c3_Err == nil {
-												templ_7745c5c3_Err = templ_7745c5c3_BufErr
-											}
-										}()
-									}
-									ctx = templ.InitializeContext(ctx)
-									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 355, "Tokens prompt")
-									if templ_7745c5c3_Err != nil {
-										return templ_7745c5c3_Err
-									}
-									return nil
-								})
-								templ_7745c5c3_Err = table.Head().Render(templ.WithChildren(ctx, templ_7745c5c3_Var289), templ_7745c5c3_Buffer)
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 356, " ")
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-								templ_7745c5c3_Var290 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-									templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-									templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-									if !templ_7745c5c3_IsBuffer {
-										defer func() {
-											templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-											if templ_7745c5c3_Err == nil {
-												templ_7745c5c3_Err = templ_7745c5c3_BufErr
-											}
-										}()
-									}
-									ctx = templ.InitializeContext(ctx)
-									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 357, "Tokens compl.")
-									if templ_7745c5c3_Err != nil {
-										return templ_7745c5c3_Err
-									}
-									return nil
-								})
-								templ_7745c5c3_Err = table.Head().Render(templ.WithChildren(ctx, templ_7745c5c3_Var290), templ_7745c5c3_Buffer)
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 358, " ")
-								if templ_7745c5c3_Err != nil {
-									return templ_7745c5c3_Err
-								}
 								templ_7745c5c3_Var291 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 									templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 									templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
@@ -6735,7 +6721,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 										}()
 									}
 									ctx = templ.InitializeContext(ctx)
-									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 359, "Coût")
+									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 355, "Utilisateur")
 									if templ_7745c5c3_Err != nil {
 										return templ_7745c5c3_Err
 									}
@@ -6745,7 +6731,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 								if templ_7745c5c3_Err != nil {
 									return templ_7745c5c3_Err
 								}
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 360, " ")
+								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 356, " ")
 								if templ_7745c5c3_Err != nil {
 									return templ_7745c5c3_Err
 								}
@@ -6761,7 +6747,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 										}()
 									}
 									ctx = templ.InitializeContext(ctx)
-									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 361, "Énergie (est.)")
+									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 357, "Modèle")
 									if templ_7745c5c3_Err != nil {
 										return templ_7745c5c3_Err
 									}
@@ -6771,7 +6757,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 								if templ_7745c5c3_Err != nil {
 									return templ_7745c5c3_Err
 								}
-								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 362, " ")
+								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 358, " ")
 								if templ_7745c5c3_Err != nil {
 									return templ_7745c5c3_Err
 								}
@@ -6787,7 +6773,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 										}()
 									}
 									ctx = templ.InitializeContext(ctx)
-									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 363, "Date")
+									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 359, "Tokens prompt")
 									if templ_7745c5c3_Err != nil {
 										return templ_7745c5c3_Err
 									}
@@ -6797,17 +6783,121 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 								if templ_7745c5c3_Err != nil {
 									return templ_7745c5c3_Err
 								}
+								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 360, " ")
+								if templ_7745c5c3_Err != nil {
+									return templ_7745c5c3_Err
+								}
+								templ_7745c5c3_Var294 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+									templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+									templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+									if !templ_7745c5c3_IsBuffer {
+										defer func() {
+											templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+											if templ_7745c5c3_Err == nil {
+												templ_7745c5c3_Err = templ_7745c5c3_BufErr
+											}
+										}()
+									}
+									ctx = templ.InitializeContext(ctx)
+									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 361, "Tokens compl.")
+									if templ_7745c5c3_Err != nil {
+										return templ_7745c5c3_Err
+									}
+									return nil
+								})
+								templ_7745c5c3_Err = table.Head().Render(templ.WithChildren(ctx, templ_7745c5c3_Var294), templ_7745c5c3_Buffer)
+								if templ_7745c5c3_Err != nil {
+									return templ_7745c5c3_Err
+								}
+								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 362, " ")
+								if templ_7745c5c3_Err != nil {
+									return templ_7745c5c3_Err
+								}
+								templ_7745c5c3_Var295 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+									templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+									templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+									if !templ_7745c5c3_IsBuffer {
+										defer func() {
+											templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+											if templ_7745c5c3_Err == nil {
+												templ_7745c5c3_Err = templ_7745c5c3_BufErr
+											}
+										}()
+									}
+									ctx = templ.InitializeContext(ctx)
+									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 363, "Coût")
+									if templ_7745c5c3_Err != nil {
+										return templ_7745c5c3_Err
+									}
+									return nil
+								})
+								templ_7745c5c3_Err = table.Head().Render(templ.WithChildren(ctx, templ_7745c5c3_Var295), templ_7745c5c3_Buffer)
+								if templ_7745c5c3_Err != nil {
+									return templ_7745c5c3_Err
+								}
+								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 364, " ")
+								if templ_7745c5c3_Err != nil {
+									return templ_7745c5c3_Err
+								}
+								templ_7745c5c3_Var296 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+									templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+									templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+									if !templ_7745c5c3_IsBuffer {
+										defer func() {
+											templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+											if templ_7745c5c3_Err == nil {
+												templ_7745c5c3_Err = templ_7745c5c3_BufErr
+											}
+										}()
+									}
+									ctx = templ.InitializeContext(ctx)
+									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 365, "Énergie (est.)")
+									if templ_7745c5c3_Err != nil {
+										return templ_7745c5c3_Err
+									}
+									return nil
+								})
+								templ_7745c5c3_Err = table.Head().Render(templ.WithChildren(ctx, templ_7745c5c3_Var296), templ_7745c5c3_Buffer)
+								if templ_7745c5c3_Err != nil {
+									return templ_7745c5c3_Err
+								}
+								templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 366, " ")
+								if templ_7745c5c3_Err != nil {
+									return templ_7745c5c3_Err
+								}
+								templ_7745c5c3_Var297 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+									templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+									templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+									if !templ_7745c5c3_IsBuffer {
+										defer func() {
+											templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+											if templ_7745c5c3_Err == nil {
+												templ_7745c5c3_Err = templ_7745c5c3_BufErr
+											}
+										}()
+									}
+									ctx = templ.InitializeContext(ctx)
+									templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 367, "Date")
+									if templ_7745c5c3_Err != nil {
+										return templ_7745c5c3_Err
+									}
+									return nil
+								})
+								templ_7745c5c3_Err = table.Head().Render(templ.WithChildren(ctx, templ_7745c5c3_Var297), templ_7745c5c3_Buffer)
+								if templ_7745c5c3_Err != nil {
+									return templ_7745c5c3_Err
+								}
 								return nil
 							})
-							templ_7745c5c3_Err = table.Header().Render(templ.WithChildren(ctx, templ_7745c5c3_Var286), templ_7745c5c3_Buffer)
+							templ_7745c5c3_Err = table.Header().Render(templ.WithChildren(ctx, templ_7745c5c3_Var290), templ_7745c5c3_Buffer)
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 364, " ")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 368, " ")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
-							templ_7745c5c3_Var294 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+							templ_7745c5c3_Var298 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 								templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 								templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 								if !templ_7745c5c3_IsBuffer {
@@ -6820,7 +6910,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 								}
 								ctx = templ.InitializeContext(ctx)
 								for _, dr := range vmodel.Records {
-									templ_7745c5c3_Var295 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+									templ_7745c5c3_Var299 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 										templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 										templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 										if !templ_7745c5c3_IsBuffer {
@@ -6832,7 +6922,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 											}()
 										}
 										ctx = templ.InitializeContext(ctx)
-										templ_7745c5c3_Var296 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+										templ_7745c5c3_Var300 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 											templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 											templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 											if !templ_7745c5c3_IsBuffer {
@@ -6845,95 +6935,33 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 											}
 											ctx = templ.InitializeContext(ctx)
 											if u, ok := vmodel.Users[dr.Record.UserID()]; ok {
-												var templ_7745c5c3_Var297 string
-												templ_7745c5c3_Var297, templ_7745c5c3_Err = templ.JoinStringErrs(u.DisplayName())
+												var templ_7745c5c3_Var301 string
+												templ_7745c5c3_Var301, templ_7745c5c3_Err = templ.JoinStringErrs(u.DisplayName())
 												if templ_7745c5c3_Err != nil {
-													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1443, Col: 29}
+													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1458, Col: 29}
 												}
-												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var297))
+												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var301))
 												if templ_7745c5c3_Err != nil {
 													return templ_7745c5c3_Err
 												}
 											} else {
-												var templ_7745c5c3_Var298 string
-												templ_7745c5c3_Var298, templ_7745c5c3_Err = templ.JoinStringErrs(string(dr.Record.UserID()))
+												var templ_7745c5c3_Var302 string
+												templ_7745c5c3_Var302, templ_7745c5c3_Err = templ.JoinStringErrs(string(dr.Record.UserID()))
 												if templ_7745c5c3_Err != nil {
-													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1445, Col: 40}
+													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1460, Col: 40}
 												}
-												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var298))
+												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var302))
 												if templ_7745c5c3_Err != nil {
 													return templ_7745c5c3_Err
 												}
 											}
 											return nil
 										})
-										templ_7745c5c3_Err = table.Cell().Render(templ.WithChildren(ctx, templ_7745c5c3_Var296), templ_7745c5c3_Buffer)
+										templ_7745c5c3_Err = table.Cell().Render(templ.WithChildren(ctx, templ_7745c5c3_Var300), templ_7745c5c3_Buffer)
 										if templ_7745c5c3_Err != nil {
 											return templ_7745c5c3_Err
 										}
-										templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 365, " ")
-										if templ_7745c5c3_Err != nil {
-											return templ_7745c5c3_Err
-										}
-										templ_7745c5c3_Var299 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-											templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-											templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-											if !templ_7745c5c3_IsBuffer {
-												defer func() {
-													templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-													if templ_7745c5c3_Err == nil {
-														templ_7745c5c3_Err = templ_7745c5c3_BufErr
-													}
-												}()
-											}
-											ctx = templ.InitializeContext(ctx)
-											var templ_7745c5c3_Var300 string
-											templ_7745c5c3_Var300, templ_7745c5c3_Err = templ.JoinStringErrs(dr.DisplayModelName)
-											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1449, Col: 32}
-											}
-											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var300))
-											if templ_7745c5c3_Err != nil {
-												return templ_7745c5c3_Err
-											}
-											return nil
-										})
-										templ_7745c5c3_Err = table.Cell().Render(templ.WithChildren(ctx, templ_7745c5c3_Var299), templ_7745c5c3_Buffer)
-										if templ_7745c5c3_Err != nil {
-											return templ_7745c5c3_Err
-										}
-										templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 366, " ")
-										if templ_7745c5c3_Err != nil {
-											return templ_7745c5c3_Err
-										}
-										templ_7745c5c3_Var301 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-											templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-											templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-											if !templ_7745c5c3_IsBuffer {
-												defer func() {
-													templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-													if templ_7745c5c3_Err == nil {
-														templ_7745c5c3_Err = templ_7745c5c3_BufErr
-													}
-												}()
-											}
-											ctx = templ.InitializeContext(ctx)
-											var templ_7745c5c3_Var302 string
-											templ_7745c5c3_Var302, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", dr.Record.PromptTokens()))
-											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1452, Col: 56}
-											}
-											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var302))
-											if templ_7745c5c3_Err != nil {
-												return templ_7745c5c3_Err
-											}
-											return nil
-										})
-										templ_7745c5c3_Err = table.Cell().Render(templ.WithChildren(ctx, templ_7745c5c3_Var301), templ_7745c5c3_Buffer)
-										if templ_7745c5c3_Err != nil {
-											return templ_7745c5c3_Err
-										}
-										templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 367, " ")
+										templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 369, " ")
 										if templ_7745c5c3_Err != nil {
 											return templ_7745c5c3_Err
 										}
@@ -6950,9 +6978,9 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 											}
 											ctx = templ.InitializeContext(ctx)
 											var templ_7745c5c3_Var304 string
-											templ_7745c5c3_Var304, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", dr.Record.CompletionTokens()))
+											templ_7745c5c3_Var304, templ_7745c5c3_Err = templ.JoinStringErrs(dr.DisplayModelName)
 											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1455, Col: 60}
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1464, Col: 32}
 											}
 											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var304))
 											if templ_7745c5c3_Err != nil {
@@ -6964,7 +6992,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 										if templ_7745c5c3_Err != nil {
 											return templ_7745c5c3_Err
 										}
-										templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 368, " ")
+										templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 370, " ")
 										if templ_7745c5c3_Err != nil {
 											return templ_7745c5c3_Err
 										}
@@ -6980,51 +7008,49 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 												}()
 											}
 											ctx = templ.InitializeContext(ctx)
-											if dr.Converted {
-												templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 369, "<span title=\"")
-												if templ_7745c5c3_Err != nil {
-													return templ_7745c5c3_Err
-												}
-												var templ_7745c5c3_Var306 string
-												templ_7745c5c3_Var306, templ_7745c5c3_Err = templ.JoinStringErrs(formatCost(dr.Record.Cost(), dr.Record.Currency()))
-												if templ_7745c5c3_Err != nil {
-													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1460, Col: 71}
-												}
-												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var306))
-												if templ_7745c5c3_Err != nil {
-													return templ_7745c5c3_Err
-												}
-												templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 370, "\" class=\"cursor-help underline decoration-dotted\">")
-												if templ_7745c5c3_Err != nil {
-													return templ_7745c5c3_Err
-												}
-												var templ_7745c5c3_Var307 string
-												templ_7745c5c3_Var307, templ_7745c5c3_Err = templ.JoinStringErrs(formatCost(dr.DisplayCost, dr.DisplayCurrency))
-												if templ_7745c5c3_Err != nil {
-													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1463, Col: 61}
-												}
-												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var307))
-												if templ_7745c5c3_Err != nil {
-													return templ_7745c5c3_Err
-												}
-												templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 371, "</span>")
-												if templ_7745c5c3_Err != nil {
-													return templ_7745c5c3_Err
-												}
-											} else {
-												var templ_7745c5c3_Var308 string
-												templ_7745c5c3_Var308, templ_7745c5c3_Err = templ.JoinStringErrs(formatCost(dr.DisplayCost, dr.DisplayCurrency))
-												if templ_7745c5c3_Err != nil {
-													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1466, Col: 60}
-												}
-												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var308))
-												if templ_7745c5c3_Err != nil {
-													return templ_7745c5c3_Err
-												}
+											var templ_7745c5c3_Var306 string
+											templ_7745c5c3_Var306, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", dr.Record.PromptTokens()))
+											if templ_7745c5c3_Err != nil {
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1467, Col: 56}
+											}
+											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var306))
+											if templ_7745c5c3_Err != nil {
+												return templ_7745c5c3_Err
 											}
 											return nil
 										})
 										templ_7745c5c3_Err = table.Cell().Render(templ.WithChildren(ctx, templ_7745c5c3_Var305), templ_7745c5c3_Buffer)
+										if templ_7745c5c3_Err != nil {
+											return templ_7745c5c3_Err
+										}
+										templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 371, " ")
+										if templ_7745c5c3_Err != nil {
+											return templ_7745c5c3_Err
+										}
+										templ_7745c5c3_Var307 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+											templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+											templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+											if !templ_7745c5c3_IsBuffer {
+												defer func() {
+													templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+													if templ_7745c5c3_Err == nil {
+														templ_7745c5c3_Err = templ_7745c5c3_BufErr
+													}
+												}()
+											}
+											ctx = templ.InitializeContext(ctx)
+											var templ_7745c5c3_Var308 string
+											templ_7745c5c3_Var308, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", dr.Record.CompletionTokens()))
+											if templ_7745c5c3_Err != nil {
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1470, Col: 60}
+											}
+											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var308))
+											if templ_7745c5c3_Err != nil {
+												return templ_7745c5c3_Err
+											}
+											return nil
+										})
+										templ_7745c5c3_Err = table.Cell().Render(templ.WithChildren(ctx, templ_7745c5c3_Var307), templ_7745c5c3_Buffer)
 										if templ_7745c5c3_Err != nil {
 											return templ_7745c5c3_Err
 										}
@@ -7044,15 +7070,15 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 												}()
 											}
 											ctx = templ.InitializeContext(ctx)
-											if dr.EnergyWh > 0 {
+											if dr.Converted {
 												templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 373, "<span title=\"")
 												if templ_7745c5c3_Err != nil {
 													return templ_7745c5c3_Err
 												}
 												var templ_7745c5c3_Var310 string
-												templ_7745c5c3_Var310, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("min: %s / max: %s", formatEnergyWh(dr.EnergyLowWh), formatEnergyWh(dr.EnergyHighWh)))
+												templ_7745c5c3_Var310, templ_7745c5c3_Err = templ.JoinStringErrs(formatCost(dr.Record.Cost(), dr.Record.Currency()))
 												if templ_7745c5c3_Err != nil {
-													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1472, Col: 118}
+													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1475, Col: 71}
 												}
 												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var310))
 												if templ_7745c5c3_Err != nil {
@@ -7063,52 +7089,25 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 													return templ_7745c5c3_Err
 												}
 												var templ_7745c5c3_Var311 string
-												templ_7745c5c3_Var311, templ_7745c5c3_Err = templ.JoinStringErrs(formatEnergyWh(dr.EnergyWh))
+												templ_7745c5c3_Var311, templ_7745c5c3_Err = templ.JoinStringErrs(formatCost(dr.DisplayCost, dr.DisplayCurrency))
 												if templ_7745c5c3_Err != nil {
-													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1475, Col: 42}
+													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1478, Col: 61}
 												}
 												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var311))
 												if templ_7745c5c3_Err != nil {
 													return templ_7745c5c3_Err
 												}
-												templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 375, "</span> ")
+												templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 375, "</span>")
 												if templ_7745c5c3_Err != nil {
 													return templ_7745c5c3_Err
 												}
-												if dr.CO2GramsMid > 0 {
-													templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 376, "<span title=\"")
-													if templ_7745c5c3_Err != nil {
-														return templ_7745c5c3_Err
-													}
-													var templ_7745c5c3_Var312 string
-													templ_7745c5c3_Var312, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("CO₂ France : %s / monde : %s / charbon : %s", formatCO2Grams(dr.CO2GramsMin), formatCO2Grams(dr.CO2GramsMid), formatCO2Grams(dr.CO2GramsMax)))
-													if templ_7745c5c3_Err != nil {
-														return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1479, Col: 181}
-													}
-													_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var312))
-													if templ_7745c5c3_Err != nil {
-														return templ_7745c5c3_Err
-													}
-													templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 377, "\" class=\"block text-xs text-muted-foreground cursor-help\">")
-													if templ_7745c5c3_Err != nil {
-														return templ_7745c5c3_Err
-													}
-													var templ_7745c5c3_Var313 string
-													templ_7745c5c3_Var313, templ_7745c5c3_Err = templ.JoinStringErrs(formatCO2Grams(dr.CO2GramsMid))
-													if templ_7745c5c3_Err != nil {
-														return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1482, Col: 46}
-													}
-													_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var313))
-													if templ_7745c5c3_Err != nil {
-														return templ_7745c5c3_Err
-													}
-													templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 378, "</span>")
-													if templ_7745c5c3_Err != nil {
-														return templ_7745c5c3_Err
-													}
-												}
 											} else {
-												templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 379, "—")
+												var templ_7745c5c3_Var312 string
+												templ_7745c5c3_Var312, templ_7745c5c3_Err = templ.JoinStringErrs(formatCost(dr.DisplayCost, dr.DisplayCurrency))
+												if templ_7745c5c3_Err != nil {
+													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1481, Col: 60}
+												}
+												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var312))
 												if templ_7745c5c3_Err != nil {
 													return templ_7745c5c3_Err
 												}
@@ -7119,11 +7118,11 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 										if templ_7745c5c3_Err != nil {
 											return templ_7745c5c3_Err
 										}
-										templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 380, " ")
+										templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 376, " ")
 										if templ_7745c5c3_Err != nil {
 											return templ_7745c5c3_Err
 										}
-										templ_7745c5c3_Var314 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+										templ_7745c5c3_Var313 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 											templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 											templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 											if !templ_7745c5c3_IsBuffer {
@@ -7135,57 +7134,148 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 												}()
 											}
 											ctx = templ.InitializeContext(ctx)
-											var templ_7745c5c3_Var315 string
-											templ_7745c5c3_Var315, templ_7745c5c3_Err = templ.JoinStringErrs(dr.Record.CreatedAt().Format("2006-01-02 15:04"))
-											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1490, Col: 61}
+											if dr.EnergyWh > 0 {
+												templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 377, "<span title=\"")
+												if templ_7745c5c3_Err != nil {
+													return templ_7745c5c3_Err
+												}
+												var templ_7745c5c3_Var314 string
+												templ_7745c5c3_Var314, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("min: %s / max: %s", formatEnergyWh(dr.EnergyLowWh), formatEnergyWh(dr.EnergyHighWh)))
+												if templ_7745c5c3_Err != nil {
+													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1487, Col: 118}
+												}
+												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var314))
+												if templ_7745c5c3_Err != nil {
+													return templ_7745c5c3_Err
+												}
+												templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 378, "\" class=\"cursor-help underline decoration-dotted\">")
+												if templ_7745c5c3_Err != nil {
+													return templ_7745c5c3_Err
+												}
+												var templ_7745c5c3_Var315 string
+												templ_7745c5c3_Var315, templ_7745c5c3_Err = templ.JoinStringErrs(formatEnergyWh(dr.EnergyWh))
+												if templ_7745c5c3_Err != nil {
+													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1490, Col: 42}
+												}
+												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var315))
+												if templ_7745c5c3_Err != nil {
+													return templ_7745c5c3_Err
+												}
+												templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 379, "</span> ")
+												if templ_7745c5c3_Err != nil {
+													return templ_7745c5c3_Err
+												}
+												if dr.CO2GramsMid > 0 {
+													templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 380, "<span title=\"")
+													if templ_7745c5c3_Err != nil {
+														return templ_7745c5c3_Err
+													}
+													var templ_7745c5c3_Var316 string
+													templ_7745c5c3_Var316, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("CO₂ France : %s / monde : %s / charbon : %s", formatCO2Grams(dr.CO2GramsMin), formatCO2Grams(dr.CO2GramsMid), formatCO2Grams(dr.CO2GramsMax)))
+													if templ_7745c5c3_Err != nil {
+														return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1494, Col: 181}
+													}
+													_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var316))
+													if templ_7745c5c3_Err != nil {
+														return templ_7745c5c3_Err
+													}
+													templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 381, "\" class=\"block text-xs text-muted-foreground cursor-help\">")
+													if templ_7745c5c3_Err != nil {
+														return templ_7745c5c3_Err
+													}
+													var templ_7745c5c3_Var317 string
+													templ_7745c5c3_Var317, templ_7745c5c3_Err = templ.JoinStringErrs(formatCO2Grams(dr.CO2GramsMid))
+													if templ_7745c5c3_Err != nil {
+														return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1497, Col: 46}
+													}
+													_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var317))
+													if templ_7745c5c3_Err != nil {
+														return templ_7745c5c3_Err
+													}
+													templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 382, "</span>")
+													if templ_7745c5c3_Err != nil {
+														return templ_7745c5c3_Err
+													}
+												}
+											} else {
+												templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 383, "—")
+												if templ_7745c5c3_Err != nil {
+													return templ_7745c5c3_Err
+												}
 											}
-											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var315))
+											return nil
+										})
+										templ_7745c5c3_Err = table.Cell().Render(templ.WithChildren(ctx, templ_7745c5c3_Var313), templ_7745c5c3_Buffer)
+										if templ_7745c5c3_Err != nil {
+											return templ_7745c5c3_Err
+										}
+										templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 384, " ")
+										if templ_7745c5c3_Err != nil {
+											return templ_7745c5c3_Err
+										}
+										templ_7745c5c3_Var318 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+											templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+											templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+											if !templ_7745c5c3_IsBuffer {
+												defer func() {
+													templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+													if templ_7745c5c3_Err == nil {
+														templ_7745c5c3_Err = templ_7745c5c3_BufErr
+													}
+												}()
+											}
+											ctx = templ.InitializeContext(ctx)
+											var templ_7745c5c3_Var319 string
+											templ_7745c5c3_Var319, templ_7745c5c3_Err = templ.JoinStringErrs(dr.Record.CreatedAt().Format("2006-01-02 15:04"))
+											if templ_7745c5c3_Err != nil {
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/pages.templ`, Line: 1505, Col: 61}
+											}
+											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var319))
 											if templ_7745c5c3_Err != nil {
 												return templ_7745c5c3_Err
 											}
 											return nil
 										})
-										templ_7745c5c3_Err = table.Cell().Render(templ.WithChildren(ctx, templ_7745c5c3_Var314), templ_7745c5c3_Buffer)
+										templ_7745c5c3_Err = table.Cell().Render(templ.WithChildren(ctx, templ_7745c5c3_Var318), templ_7745c5c3_Buffer)
 										if templ_7745c5c3_Err != nil {
 											return templ_7745c5c3_Err
 										}
 										return nil
 									})
-									templ_7745c5c3_Err = table.Row().Render(templ.WithChildren(ctx, templ_7745c5c3_Var295), templ_7745c5c3_Buffer)
+									templ_7745c5c3_Err = table.Row().Render(templ.WithChildren(ctx, templ_7745c5c3_Var299), templ_7745c5c3_Buffer)
 									if templ_7745c5c3_Err != nil {
 										return templ_7745c5c3_Err
 									}
 								}
 								return nil
 							})
-							templ_7745c5c3_Err = table.Body().Render(templ.WithChildren(ctx, templ_7745c5c3_Var294), templ_7745c5c3_Buffer)
+							templ_7745c5c3_Err = table.Body().Render(templ.WithChildren(ctx, templ_7745c5c3_Var298), templ_7745c5c3_Buffer)
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 							return nil
 						})
-						templ_7745c5c3_Err = table.Table().Render(templ.WithChildren(ctx, templ_7745c5c3_Var285), templ_7745c5c3_Buffer)
+						templ_7745c5c3_Err = table.Table().Render(templ.WithChildren(ctx, templ_7745c5c3_Var289), templ_7745c5c3_Buffer)
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						return nil
 					})
-					templ_7745c5c3_Err = card.Content().Render(templ.WithChildren(ctx, templ_7745c5c3_Var284), templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = card.Content().Render(templ.WithChildren(ctx, templ_7745c5c3_Var288), templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = card.Card().Render(templ.WithChildren(ctx, templ_7745c5c3_Var283), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = card.Card().Render(templ.WithChildren(ctx, templ_7745c5c3_Var287), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 381, " ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 385, " ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Var316 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+				templ_7745c5c3_Var320 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 					templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 					templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 					if !templ_7745c5c3_IsBuffer {
@@ -7197,7 +7287,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 						}()
 					}
 					ctx = templ.InitializeContext(ctx)
-					templ_7745c5c3_Var317 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+					templ_7745c5c3_Var321 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 						templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 						templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 						if !templ_7745c5c3_IsBuffer {
@@ -7217,7 +7307,7 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 382, " ")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 386, " ")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -7231,18 +7321,18 @@ func OrgUsagePage(vmodel OrgUsagePageVModel) templ.Component {
 						}
 						return nil
 					})
-					templ_7745c5c3_Err = pagination.Content().Render(templ.WithChildren(ctx, templ_7745c5c3_Var317), templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = pagination.Content().Render(templ.WithChildren(ctx, templ_7745c5c3_Var321), templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = pagination.Pagination().Render(templ.WithChildren(ctx, templ_7745c5c3_Var316), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = pagination.Pagination().Render(templ.WithChildren(ctx, templ_7745c5c3_Var320), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 383, "</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 387, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -7371,12 +7461,20 @@ func formatCO2ToCarKilometers(grams float64) string {
 	}
 	km := grams / 109
 	if km < 1 {
-		return fmt.Sprintf("Soit environ %d m parcouru seul dans un véhicule thermique à essence, selon les chiffres de l'ADEME.", int(km*1000))
+		return fmt.Sprintf("Soit environ %d m parcouru seul dans un véhicule thermique à essence.", int(km*1000))
 	}
 	if km < 1000 {
-		return fmt.Sprintf("Soit environ %d km parcouru seul dans un véhicule thermique à essence, selon les chiffres de l'ADEME.", int(km))
+		return fmt.Sprintf("Soit environ %d km parcouru seul dans un véhicule thermique à essence.", int(km))
 	}
-	return fmt.Sprintf("Soit environ %s km parcouru seul dans un véhicule thermique à essence, selon les chiffres de l'ADEME.", formatNumber(km))
+	return fmt.Sprintf("Soit environ %s km parcouru seul dans un véhicule thermique à essence.", formatNumber(km))
+}
+
+// formatEnergyToHuman converts energy in Wh to human-equivalent appliance usage.
+func formatEnergyToHuman(wh float64) string {
+	if wh <= 0 {
+		return ""
+	}
+	return energy.HumanEquivalent(wh)
 }
 
 func formatNumber(n float64) string {

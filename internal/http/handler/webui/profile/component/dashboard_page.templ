@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
+	"github.com/bornholm/xolo/internal/estimator/energy"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/chart"
@@ -110,6 +111,14 @@ func formatCO2ToCarKilometers(grams float64) string {
 		return fmt.Sprintf("Soit environ %d km parcouru seul dans un véhicule thermique à essence, selon les chiffres de l'ADEME.", int(km))
 	}
 	return fmt.Sprintf("Soit environ %s km parcouru seul dans un véhicule thermique à essence, selon les chiffres de l'ADEME.", formatNumber(km))
+}
+
+// formatEnergyToHuman converts energy in Wh to human-equivalent appliance usage.
+func formatEnergyToHuman(wh float64) string {
+	if wh <= 0 {
+		return ""
+	}
+	return energy.HumanEquivalent(wh)
 }
 
 func formatNumber(n float64) string {
@@ -306,7 +315,21 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 							}
 						}
 						@card.Content() {
-							<p class="text-3xl font-bold">{ formatEnergyWh(vmodel.TotalEnergyWh) }</p>
+							<div class="flex items-center gap-2">
+								<p class="text-3xl font-bold">{ formatEnergyWh(vmodel.TotalEnergyWh) }</p>
+								{{ energyMessage := formatEnergyToHuman(vmodel.TotalEnergyWh) }}
+								if energyMessage != "" {
+									{{ tooltipID := "energy-tooltip-" + fmt.Sprintf("%.0f", vmodel.TotalEnergyWh) }}
+									@tooltip.Tooltip() {
+										@tooltip.Trigger(tooltip.TriggerProps{For: tooltipID, Class: "cursor-help text-muted-foreground hover:text-foreground"}) {
+											@icon.CircleQuestionMark(icon.Props{Class: "h-5 w-5"})
+										}
+										@tooltip.Content(tooltip.ContentProps{ID: tooltipID, Position: tooltip.PositionRight, Class: "max-w-xs"}) {
+											<p>{ energyMessage }</p>
+										}
+									}
+								}
+							</div>
 							if vmodel.TotalCO2GramsMid > 0 {
 								<div class="flex items-center gap-2 mt-1">
 									<p class="text-sm font-medium text-muted-foreground">
