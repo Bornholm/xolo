@@ -79,6 +79,11 @@ func (r *OrgModelRouter) ResolveModel(ctx context.Context, req *genaiProxy.Proxy
 		return nil, "", errors.WithStack(err)
 	}
 
+	// Verify capability for embedding requests
+	if req.Type == genaiProxy.RequestTypeEmbedding && !llmModel.Capabilities().Embeddings {
+		return nil, "", errors.Errorf("model '%s' does not support embeddings", req.Model)
+	}
+
 	// Store model ID in metadata for UsageTracker
 	req.Metadata[MetaModelID] = string(llmModel.ID())
 
@@ -98,9 +103,14 @@ func (r *OrgModelRouter) ResolveModel(ctx context.Context, req *genaiProxy.Proxy
 		return nil, "", errors.New("provider configuration error")
 	}
 
-	client, err := provider.Create(ctx,
+	providerOpts := []provider.OptionFunc{
 		withDynamicChatCompletion(provider.Name(p.Type()), p.BaseURL(), decryptedKey, llmModel.RealModel()),
-	)
+	}
+	if llmModel.Capabilities().Embeddings {
+		providerOpts = append(providerOpts, withDynamicEmbeddings(provider.Name(p.Type()), p.BaseURL(), decryptedKey, llmModel.RealModel()))
+	}
+
+	client, err := provider.Create(ctx, providerOpts...)
 	if err != nil {
 		return nil, "", errors.Wrapf(err, "could not create LLM client for provider '%s'", p.Name())
 	}
@@ -167,6 +177,27 @@ func parseQualifiedModelName(name string) (orgSlug, proxyName string, err error)
 
 var _ genaiProxy.ModelResolverHook = &OrgModelRouter{}
 var _ genaiProxy.ModelListerHook = &OrgModelRouter{}
+
+// withDynamicEmbeddings crée une OptionFunc d'embeddings pour un provider identifié à runtime.
+func withDynamicEmbeddings(name provider.Name, baseURL, apiKey, model string) provider.OptionFunc {
+	return func(o *provider.Options) error {
+		opts := provider.NewEmbeddingsProviderOptions(name)
+		if opts == nil {
+			return errors.Errorf("unknown embeddings provider %q", name)
+		}
+		v := reflect.ValueOf(opts).Elem()
+		if common := v.FieldByName("CommonOptions"); common.IsValid() {
+			common.FieldByName("BaseURL").SetString(baseURL)
+			common.FieldByName("APIKey").SetString(apiKey)
+			common.FieldByName("Model").SetString(model)
+		}
+		o.Embeddings = &provider.ResolvedClientOptions{
+			Provider: name,
+			Specific: opts,
+		}
+		return nil
+	}
+}
 
 // withDynamicChatCompletion crée une OptionFunc pour un provider identifié à runtime.
 // Tous les providers enregistrés embarquent provider.CommonOptions, on utilise

@@ -170,6 +170,9 @@ func selectModel(models []*proto.ModelInfo, desiredPL float64, vars InputVars, c
 		if m.IsVirtual {
 			continue
 		}
+		if m.SupportsEmbeddings {
+			continue
+		}
 		override := cfg.modelOverride(m.ProxyName)
 		if !override.Enabled {
 			continue

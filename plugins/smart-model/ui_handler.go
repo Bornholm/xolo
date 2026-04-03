@@ -87,7 +87,7 @@ func loadPageData(r *http.Request, activeTab string) (uiPageData, error) {
 			for _, m := range all {
 				if m.IsVirtual {
 					virtualModels = append(virtualModels, m)
-				} else {
+				} else if !m.SupportsEmbeddings {
 					allModels = append(allModels, m)
 				}
 			}

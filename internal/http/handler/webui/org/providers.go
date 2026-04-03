@@ -563,10 +563,11 @@ func (h *Handler) createModel(w http.ResponseWriter, r *http.Request) {
 	m.SetTokensPerSecLow(parseFloat64Field(r.FormValue("tokens_per_sec_low")))
 	m.SetTokensPerSecHigh(parseFloat64Field(r.FormValue("tokens_per_sec_high")))
 	m.SetCapabilities(model.ModelCapabilities{
-		Tools:     r.FormValue("cap_tools") == "on",
-		Vision:    r.FormValue("cap_vision") == "on",
-		Reasoning: r.FormValue("cap_reasoning") == "on",
-		Audio:     r.FormValue("cap_audio") == "on",
+		Tools:      r.FormValue("cap_tools") == "on",
+		Vision:     r.FormValue("cap_vision") == "on",
+		Reasoning:  r.FormValue("cap_reasoning") == "on",
+		Audio:      r.FormValue("cap_audio") == "on",
+		Embeddings: r.FormValue("cap_embeddings") == "on",
 	})
 
 	if err := h.providerStore.CreateLLMModel(ctx, m); err != nil {
@@ -711,10 +712,11 @@ func (h *Handler) updateModel(w http.ResponseWriter, r *http.Request) {
 		tokensPerSecLow:           parseFloat64Field(r.FormValue("tokens_per_sec_low")),
 		tokensPerSecHigh:          parseFloat64Field(r.FormValue("tokens_per_sec_high")),
 		capabilities: model.ModelCapabilities{
-			Tools:     r.FormValue("cap_tools") == "on",
-			Vision:    r.FormValue("cap_vision") == "on",
-			Reasoning: r.FormValue("cap_reasoning") == "on",
-			Audio:     r.FormValue("cap_audio") == "on",
+			Tools:      r.FormValue("cap_tools") == "on",
+			Vision:     r.FormValue("cap_vision") == "on",
+			Reasoning:  r.FormValue("cap_reasoning") == "on",
+			Audio:      r.FormValue("cap_audio") == "on",
+			Embeddings: r.FormValue("cap_embeddings") == "on",
 		},
 		createdAt:        existing.CreatedAt(),
 		updatedAt:        time.Now(),

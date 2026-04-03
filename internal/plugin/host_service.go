@@ -65,6 +65,7 @@ func (s *XoloHostService) ListModels(ctx context.Context, req *proto.ListModelsF
 			ContextLength:              m.ContextWindow(),
 			SupportsVision:             caps.Vision,
 			SupportsReasoning:          caps.Reasoning,
+			SupportsEmbeddings:         caps.Embeddings,
 			ActiveParamsBillions:       float32(m.ActiveParams()) / 1e9,
 		})
 	}

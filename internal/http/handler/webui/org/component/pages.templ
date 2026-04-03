@@ -596,6 +596,7 @@ templ ModelForm(vmodel ModelFormVModel) {
 				c('cap_vision', !!d.cap_vision);
 				c('cap_reasoning', !!d.cap_reasoning);
 				c('cap_audio', !!d.cap_audio);
+				c('cap_embeddings', !!d.cap_embeddings);
 				if (d.name) { var pn = form.querySelector('[name=proxy_name]'); if (pn && !pn.value) pn.value = d.name; }
 			} finally {
 				btn.disabled = false;
@@ -673,6 +674,7 @@ templ ModelForm(vmodel ModelFormVModel) {
 						{{ capVision := !vmodel.IsNew && vmodel.Model != nil && vmodel.Model.Capabilities().Vision }}
 						{{ capReasoning := !vmodel.IsNew && vmodel.Model != nil && vmodel.Model.Capabilities().Reasoning }}
 						{{ capAudio := !vmodel.IsNew && vmodel.Model != nil && vmodel.Model.Capabilities().Audio }}
+						{{ capEmbeddings := !vmodel.IsNew && vmodel.Model != nil && vmodel.Model.Capabilities().Embeddings }}
 						<label class="flex items-center gap-2 text-sm cursor-pointer">
 							<input type="checkbox" name="cap_tools" value="on" checked?={ capTools }/>
 							Outils (tools)
@@ -688,6 +690,10 @@ templ ModelForm(vmodel ModelFormVModel) {
 						<label class="flex items-center gap-2 text-sm cursor-pointer">
 							<input type="checkbox" name="cap_audio" value="on" checked?={ capAudio }/>
 							Audio
+						</label>
+						<label class="flex items-center gap-2 text-sm cursor-pointer">
+							<input type="checkbox" name="cap_embeddings" value="on" checked?={ capEmbeddings }/>
+							Embeddings
 						</label>
 					</div>
 				</div>

@@ -70,6 +70,9 @@ templ ModelsPage(vmodel ModelsPageVModel) {
 										if mu.Model.IsVirtual() {
 											<span class="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Virtuel</span>
 										}
+										if mu.Model.Capabilities().Embeddings {
+											<span class="ml-2 text-xs bg-secondary/80 text-secondary-foreground px-2 py-0.5 rounded">Embeddings</span>
+										}
 									}
 									if mu.Org != nil {
 										<p class="text-xs text-muted-foreground">{ mu.Org.Name() }</p>
@@ -245,6 +248,9 @@ func openCodeConfigExample(baseURL string, modelUsages []ModelUsage) string {
 
 	models := make(map[string]modelEntry)
 	for _, mu := range modelUsages {
+		if mu.Model.Capabilities().Embeddings {
+			continue
+		}
 		var name string
 		if mu.Org != nil {
 			name = mu.Org.Slug() + "/" + mu.Model.ProxyName()

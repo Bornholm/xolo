@@ -14,10 +14,11 @@ func NewLLMModelID() LLMModelID {
 
 // ModelCapabilities describes the features supported by a model.
 type ModelCapabilities struct {
-	Tools     bool // function / tool calling
-	Vision    bool // image inputs
-	Reasoning bool // extended chain-of-thought / reasoning tokens
-	Audio     bool // audio inputs or outputs
+	Tools      bool // function / tool calling
+	Vision     bool // image inputs
+	Reasoning  bool // extended chain-of-thought / reasoning tokens
+	Audio      bool // audio inputs or outputs
+	Embeddings bool // vector embeddings (/v1/embeddings endpoint)
 }
 
 // LLMModel is a proxy route: what users call it → what the provider sees.

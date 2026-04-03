@@ -670,6 +670,7 @@ type ModelInfo struct {
 	SupportsFiles              bool                   `protobuf:"varint,10,opt,name=supports_files,json=supportsFiles,proto3" json:"supports_files,omitempty"`
 	ActiveParamsBillions       float32                `protobuf:"fixed32,11,opt,name=active_params_billions,json=activeParamsBillions,proto3" json:"active_params_billions,omitempty"`
 	SupportsReasoning          bool                   `protobuf:"varint,12,opt,name=supports_reasoning,json=supportsReasoning,proto3" json:"supports_reasoning,omitempty"`
+	SupportsEmbeddings         bool                   `protobuf:"varint,13,opt,name=supports_embeddings,json=supportsEmbeddings,proto3" json:"supports_embeddings,omitempty"`
 	unknownFields              protoimpl.UnknownFields
 	sizeCache                  protoimpl.SizeCache
 }
@@ -784,6 +785,13 @@ func (x *ModelInfo) GetActiveParamsBillions() float32 {
 func (x *ModelInfo) GetSupportsReasoning() bool {
 	if x != nil {
 		return x.SupportsReasoning
+	}
+	return false
+}
+
+func (x *ModelInfo) GetSupportsEmbeddings() bool {
+	if x != nil {
+		return x.SupportsEmbeddings
 	}
 	return false
 }
@@ -1466,7 +1474,7 @@ const file_pkg_pluginsdk_proto_plugin_proto_rawDesc = "" +
 	"\vconfig_json\x18\x04 \x01(\tR\n" +
 	"configJson\x12(\n" +
 	"\x10user_config_json\x18\x05 \x01(\tR\x0euserConfigJson\x12!\n" +
-	"\fdisplay_name\x18\x06 \x01(\tR\vdisplayName\"\x82\x04\n" +
+	"\fdisplay_name\x18\x06 \x01(\tR\vdisplayName\"\xb3\x04\n" +
 	"\tModelInfo\x12\x1d\n" +
 	"\n" +
 	"proxy_name\x18\x01 \x01(\tR\tproxyName\x12\x1d\n" +
@@ -1485,7 +1493,8 @@ const file_pkg_pluginsdk_proto_plugin_proto_rawDesc = "" +
 	"\x0esupports_files\x18\n" +
 	" \x01(\bR\rsupportsFiles\x124\n" +
 	"\x16active_params_billions\x18\v \x01(\x02R\x14activeParamsBillions\x12-\n" +
-	"\x12supports_reasoning\x18\f \x01(\bR\x11supportsReasoning\"\xf5\x01\n" +
+	"\x12supports_reasoning\x18\f \x01(\bR\x11supportsReasoning\x12/\n" +
+	"\x13supports_embeddings\x18\r \x01(\bR\x12supportsEmbeddings\"\xf5\x01\n" +
 	"\tQuotaInfo\x12'\n" +
 	"\x0fdaily_remaining\x18\x01 \x01(\x01R\x0edailyRemaining\x12\x1f\n" +
 	"\vdaily_total\x18\x02 \x01(\x01R\n" +

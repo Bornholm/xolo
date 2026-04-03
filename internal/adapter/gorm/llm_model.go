@@ -27,6 +27,7 @@ type LLMModel struct {
 	CapVision                 int                                `gorm:"default:0"`
 	CapReasoning              int                                `gorm:"default:0"`
 	CapAudio                  int                                `gorm:"default:0"`
+	CapEmbeddings             int                                `gorm:"default:0"`
 	TokenLimitConfig          JSONColumn[model.TokenLimitConfig] `gorm:"type:text"`
 }
 
@@ -50,10 +51,11 @@ func (w *wrappedLLMModel) TokensPerSecLow() float64         { return w.m.TokensP
 func (w *wrappedLLMModel) TokensPerSecHigh() float64        { return w.m.TokensPerSecHigh }
 func (w *wrappedLLMModel) Capabilities() model.ModelCapabilities {
 	return model.ModelCapabilities{
-		Tools:     w.m.CapTools != 0,
-		Vision:    w.m.CapVision != 0,
-		Reasoning: w.m.CapReasoning != 0,
-		Audio:     w.m.CapAudio != 0,
+		Tools:      w.m.CapTools != 0,
+		Vision:     w.m.CapVision != 0,
+		Reasoning:  w.m.CapReasoning != 0,
+		Audio:      w.m.CapAudio != 0,
+		Embeddings: w.m.CapEmbeddings != 0,
 	}
 }
 func (w *wrappedLLMModel) CreatedAt() time.Time                      { return w.m.CreatedAt }
@@ -84,6 +86,7 @@ func fromLLMModel(m model.LLMModel) *LLMModel {
 		CapVision:                 boolToInt(caps.Vision),
 		CapReasoning:              boolToInt(caps.Reasoning),
 		CapAudio:                  boolToInt(caps.Audio),
+		CapEmbeddings:             boolToInt(caps.Embeddings),
 		TokenLimitConfig:          JSONColumn[model.TokenLimitConfig]{Val: m.TokenLimitConfig()},
 	}
 }

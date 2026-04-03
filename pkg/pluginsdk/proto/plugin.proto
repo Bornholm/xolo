@@ -86,6 +86,7 @@ message ModelInfo {
   bool supports_files = 10;
   float active_params_billions = 11;
   bool supports_reasoning = 12;
+  bool supports_embeddings = 13;
 }
 
 message QuotaInfo {
