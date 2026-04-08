@@ -49,8 +49,9 @@ func (h *Handler) getProvidersPage(w http.ResponseWriter, r *http.Request) {
 		Providers: providers,
 		Success:   r.URL.Query().Get("success"),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "org-" + orgSlug + "-providers",
+			User:          user,
+			SelectedItem:  "org-" + orgSlug + "-providers",
+			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: ""},
@@ -79,8 +80,9 @@ func (h *Handler) getNewProviderPage(w http.ResponseWriter, r *http.Request) {
 		Org:   org,
 		IsNew: true,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "org-" + orgSlug + "-providers",
+			User:          user,
+			SelectedItem:  "org-" + orgSlug + "-providers",
+			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
@@ -157,8 +159,9 @@ func (h *Handler) getEditProviderPage(w http.ResponseWriter, r *http.Request) {
 		Provider: p,
 		IsNew:    false,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "org-" + orgSlug + "-providers",
+			User:          user,
+			SelectedItem:  "org-" + orgSlug + "-providers",
+			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
@@ -398,8 +401,9 @@ func (h *Handler) getModelsPage(w http.ResponseWriter, r *http.Request) {
 		Models:   filtered,
 		Success:  r.URL.Query().Get("success"),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "org-" + orgSlug + "-providers",
+			User:          user,
+			SelectedItem:  "org-" + orgSlug + "-providers",
+			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
@@ -437,8 +441,9 @@ func (h *Handler) getNewModelPage(w http.ResponseWriter, r *http.Request) {
 		Provider: p,
 		IsNew:    true,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "org-" + orgSlug + "-providers",
+			User:          user,
+			SelectedItem:  "org-" + orgSlug + "-providers",
+			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
@@ -611,8 +616,9 @@ func (h *Handler) getEditModelPage(w http.ResponseWriter, r *http.Request) {
 		Model:    m,
 		IsNew:    false,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "org-" + orgSlug + "-providers",
+			User:          user,
+			SelectedItem:  "org-" + orgSlug + "-providers",
+			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
@@ -741,8 +747,9 @@ func (h *Handler) renderModelFormError(w http.ResponseWriter, r *http.Request, c
 		IsNew:    isNew,
 		Error:    errMsg,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "org-" + orgSlug + "-providers",
+			User:          user,
+			SelectedItem:  "org-" + orgSlug + "-providers",
+			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
@@ -765,8 +772,9 @@ func (h *Handler) renderProviderFormError(w http.ResponseWriter, r *http.Request
 		IsNew:    isNew,
 		Error:    errMsg,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "org-" + orgSlug + "-providers",
+			User:          user,
+			SelectedItem:  "org-" + orgSlug + "-providers",
+			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},

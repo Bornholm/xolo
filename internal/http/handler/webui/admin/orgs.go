@@ -29,8 +29,9 @@ func (h *Handler) getOrgsPage(w http.ResponseWriter, r *http.Request) {
 		Orgs:    orgs,
 		Success: r.URL.Query().Get("success"),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "orgs",
+			User:          user,
+			SelectedItem:  "orgs",
+			AdminSubtitle: "Admin. plateforme",
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: "Plateforme", Href: "/admin/"},
 				{Label: "Organisations", Href: "/admin/orgs"},
@@ -54,8 +55,9 @@ func (h *Handler) getNewOrgPage(w http.ResponseWriter, r *http.Request) {
 	vmodel := component.OrgFormVModel{
 		IsNew: true,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "orgs",
+			User:          user,
+			SelectedItem:  "orgs",
+			AdminSubtitle: "Admin. plateforme",
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: "Plateforme", Href: "/admin/"},
 				{Label: "Organisations", Href: "/admin/orgs"},
@@ -119,8 +121,9 @@ func (h *Handler) getEditOrgPage(w http.ResponseWriter, r *http.Request) {
 		Org:   org,
 		IsNew: false,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "orgs",
+			User:          user,
+			SelectedItem:  "orgs",
+			AdminSubtitle: "Admin. plateforme",
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: "Plateforme", Href: "/admin/"},
 				{Label: "Organisations", Href: "/admin/orgs"},

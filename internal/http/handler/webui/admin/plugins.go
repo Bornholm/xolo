@@ -33,9 +33,10 @@ func (h *Handler) fillPluginsDiagnosticsPageViewModel(r *http.Request) (*compone
 
 	vmodel := &component.PluginsDiagnosticsPageVModel{
 		AppLayoutVModel: commonComp.AppLayoutVModel{
-			User:         user,
-			IsAdmin:      isAdmin,
-			SelectedItem: "plugins",
+			User:          user,
+			IsAdmin:       isAdmin,
+			SelectedItem:  "plugins",
+			AdminSubtitle: "Admin. plateforme",
 			Breadcrumbs: []commonComp.BreadcrumbItem{
 				{Label: "Plateforme", Href: "/admin/"},
 				{Label: "Plugins", Href: ""},

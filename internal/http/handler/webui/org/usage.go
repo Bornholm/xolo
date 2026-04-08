@@ -345,8 +345,9 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 		TotalEnergyWh:    totalEnergyWh,
 		TotalCO2GramsMid: totalCO2GramsMid,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "org-" + orgSlug + "-usage",
+			User:          user,
+			SelectedItem:  "org-" + orgSlug + "-usage",
+			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Usage", Href: ""},

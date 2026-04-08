@@ -53,8 +53,9 @@ func (h *Handler) getPluginsPage(w http.ResponseWriter, r *http.Request) {
 		Descriptors: h.pluginManager.List(),
 		Active:      activeMap,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "org-" + orgSlug + "-plugins",
+			User:          user,
+			SelectedItem:  "org-" + orgSlug + "-plugins",
+			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Plugins", Href: ""},
@@ -161,8 +162,9 @@ func (h *Handler) getPluginConfigPage(w http.ResponseWriter, r *http.Request) {
 		Values:     jsonToStringMap(configJSON),
 		HasHTTPUI:  h.pluginManager.HTTPPort(pluginName) > 0,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "org-" + orgSlug + "-plugins",
+			User:          user,
+			SelectedItem:  "org-" + orgSlug + "-plugins",
+			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Plugins", Href: "/orgs/" + orgSlug + "/admin/plugins"},
@@ -227,6 +229,12 @@ func (h *Handler) postPluginConfig(w http.ResponseWriter, r *http.Request) {
 			Properties: renderable, Values: values, FieldErrors: fieldErrors,
 			AppLayoutVModel: common.AppLayoutVModel{
 				User: user, SelectedItem: "org-" + orgSlug + "-plugins",
+				AdminSubtitle: "Admin. " + org.Name(),
+				Breadcrumbs: []common.BreadcrumbItem{
+					{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
+					{Label: "Plugins", Href: "/orgs/" + orgSlug + "/admin/plugins"},
+					{Label: descriptor.Name, Href: ""},
+				},
 				NavigationItems: nav, FooterItems: footer,
 			},
 		}

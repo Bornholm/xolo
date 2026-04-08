@@ -51,9 +51,10 @@ func (h *Handler) fillExchangeRatesPageVModelAppLayout(ctx context.Context, vmod
 	isAdmin := slices.Contains(user.Roles(), authz.RoleAdmin)
 
 	vmodel.AppLayoutVModel = commonComp.AppLayoutVModel{
-		User:         user,
-		IsAdmin:      isAdmin,
-		SelectedItem: "exchange-rates",
+		User:          user,
+		IsAdmin:       isAdmin,
+		SelectedItem:  "exchange-rates",
+		AdminSubtitle: "Admin. plateforme",
 		Breadcrumbs: []commonComp.BreadcrumbItem{
 			{Label: "Plateforme", Href: "/admin/"},
 			{Label: "Taux de change", Href: ""},

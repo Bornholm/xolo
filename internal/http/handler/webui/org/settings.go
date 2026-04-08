@@ -29,8 +29,9 @@ func (h *Handler) getSettingsPage(w http.ResponseWriter, r *http.Request) {
 		Org:     org,
 		Success: r.URL.Query().Get("success"),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "org-" + orgSlug + "-settings",
+			User:          user,
+			SelectedItem:  "org-" + orgSlug + "-settings",
+			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Paramètres", Href: ""},

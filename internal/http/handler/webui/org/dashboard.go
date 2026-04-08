@@ -44,8 +44,9 @@ func (h *Handler) getDashboard(w http.ResponseWriter, r *http.Request) {
 		Members:   members,
 		Providers: providers,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "org-" + orgSlug,
+			User:          user,
+			SelectedItem:  "org-" + orgSlug,
+			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Tableau de bord", Href: ""},

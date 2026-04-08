@@ -44,8 +44,9 @@ func (h *Handler) getInvitesPage(w http.ResponseWriter, r *http.Request) {
 		Success: r.URL.Query().Get("success"),
 		NewURL:  r.URL.Query().Get("new_url"),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "org-" + orgSlug + "-invites",
+			User:          user,
+			SelectedItem:  "org-" + orgSlug + "-invites",
+			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Invitations", Href: ""},
@@ -73,8 +74,9 @@ func (h *Handler) getNewInvitePage(w http.ResponseWriter, r *http.Request) {
 	vmodel := component.InviteFormVModel{
 		Org: org,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "org-" + orgSlug + "-invites",
+			User:          user,
+			SelectedItem:  "org-" + orgSlug + "-invites",
+			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Invitations", Href: "/orgs/" + orgSlug + "/admin/invites"},

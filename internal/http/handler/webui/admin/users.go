@@ -176,9 +176,10 @@ func (h *Handler) fillUsersPageVModelAppLayout(ctx context.Context, vmodel *comp
 	isAdmin := slices.Contains(user.Roles(), authz.RoleAdmin)
 
 	vmodel.AppLayoutVModel = commonComp.AppLayoutVModel{
-		User:         user,
-		IsAdmin:      isAdmin,
-		SelectedItem: "users",
+		User:          user,
+		IsAdmin:       isAdmin,
+		SelectedItem:  "users",
+		AdminSubtitle: "Admin. plateforme",
 		Breadcrumbs: []commonComp.BreadcrumbItem{
 			{Label: "Plateforme", Href: "/admin/"},
 			{Label: "Utilisateurs", Href: "/admin/users"},
@@ -243,9 +244,10 @@ func (h *Handler) fillEditUserPageVModelAppLayout(ctx context.Context, vmodel *c
 	isAdmin := slices.Contains(user.Roles(), authz.RoleAdmin)
 
 	vmodel.AppLayoutVModel = commonComp.AppLayoutVModel{
-		User:         user,
-		IsAdmin:      isAdmin,
-		SelectedItem: "users",
+		User:          user,
+		IsAdmin:       isAdmin,
+		SelectedItem:  "users",
+		AdminSubtitle: "Admin. plateforme",
 		Breadcrumbs: []commonComp.BreadcrumbItem{
 			{Label: "Plateforme", Href: "/admin/"},
 			{Label: "Utilisateurs", Href: "/admin/users"},

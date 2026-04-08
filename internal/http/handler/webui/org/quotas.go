@@ -42,8 +42,9 @@ func (h *Handler) getOrgQuotaPage(w http.ResponseWriter, r *http.Request) {
 		Quota:     existing,
 		Success:   r.URL.Query().Get("success"),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "org-" + orgSlug + "-quota",
+			User:          user,
+			SelectedItem:  "org-" + orgSlug + "-quota",
+			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Budget", Href: "/orgs/" + orgSlug + "/admin/quota"},
@@ -134,8 +135,9 @@ func (h *Handler) getMemberQuotaPage(w http.ResponseWriter, r *http.Request) {
 		Quota:      existing,
 		Success:    r.URL.Query().Get("success"),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "org-" + orgSlug + "-members",
+			User:          user,
+			SelectedItem:  "org-" + orgSlug + "-members",
+			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Membres", Href: "/orgs/" + orgSlug + "/admin/members"},

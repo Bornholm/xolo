@@ -41,8 +41,9 @@ func (h *Handler) getVirtualModelsPage(w http.ResponseWriter, r *http.Request) {
 		Success:       r.URL.Query().Get("success"),
 		Error:         r.URL.Query().Get("error"),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "org-" + orgSlug + "-virtual-models",
+			User:          user,
+			SelectedItem:  "org-" + orgSlug + "-virtual-models",
+			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Modèles virtuels", Href: ""},
@@ -71,8 +72,9 @@ func (h *Handler) getNewVirtualModelPage(w http.ResponseWriter, r *http.Request)
 		Org:   org,
 		IsNew: true,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "org-" + orgSlug + "-virtual-models",
+			User:          user,
+			SelectedItem:  "org-" + orgSlug + "-virtual-models",
+			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Modèles virtuels", Href: "/orgs/" + orgSlug + "/admin/virtual-models"},
@@ -158,8 +160,9 @@ func (h *Handler) getEditVirtualModelPage(w http.ResponseWriter, r *http.Request
 		Name:         vm.Name(),
 		Description:  vm.Description(),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "org-" + orgSlug + "-virtual-models",
+			User:          user,
+			SelectedItem:  "org-" + orgSlug + "-virtual-models",
+			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Modèles virtuels", Href: "/orgs/" + orgSlug + "/admin/virtual-models"},

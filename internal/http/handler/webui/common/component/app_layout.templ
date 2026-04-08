@@ -33,10 +33,12 @@ templ AppFooterItems(vmodel AppLayoutVModel) {
 }
 
 templ AdminFooterItems(vmodel AppLayoutVModel) {
+	@NavItem(icon.ArrowLeft, "Retour espace perso.", string(BaseURL(ctx, WithPath("/usage"))), false)
 	@CommonFooterItems(vmodel)
 }
 
 templ OrgAdminFooterItems(vmodel AppLayoutVModel) {
+	@NavItem(icon.ArrowLeft, "Retour espace perso.", string(BaseURL(ctx, WithPath("/usage"))), false)
 	@CommonFooterItems(vmodel)
 }
 
@@ -167,7 +169,12 @@ templ sidebarContent(vmodel AppLayoutVModel) {
 		<!-- Brand -->
 		<div class="flex h-14 items-center border-b px-4">
 			@Logo("h-7 w-7 mr-2", "height:70%")
-			<a href={ BaseURL(ctx) } title="Home"><span class="font-semibold text-lg">Xolo</span></a>
+			<div class="flex flex-col">
+				<a href={ BaseURL(ctx) } title="Home"><span class="font-semibold text-lg">Xolo</span></a>
+				if vmodel.AdminSubtitle != "" {
+					<span class="text-xs text-muted-foreground">{ vmodel.AdminSubtitle }</span>
+				}
+			</div>
 		</div>
 		<!-- Navigation -->
 		<nav class="flex-1 space-y-1 p-3">

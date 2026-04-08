@@ -56,8 +56,9 @@ func (h *Handler) getMembersPage(w http.ResponseWriter, r *http.Request) {
 		PageSize:     membersPageSize,
 		TotalMembers: int(total),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "org-" + orgSlug + "-members",
+			User:          user,
+			SelectedItem:  "org-" + orgSlug + "-members",
+			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Membres", Href: ""},
