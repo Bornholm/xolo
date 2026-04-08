@@ -91,6 +91,13 @@ func (s *UserStore) SaveUser(ctx context.Context, user model.User) error {
 	return s.backend.SaveUser(ctx, user)
 }
 
+// DeleteUser implements [port.UserStore].
+func (s *UserStore) DeleteUser(ctx context.Context, userID model.UserID) error {
+	defer s.userCache.Remove(string(userID))
+
+	return s.backend.DeleteUser(ctx, userID)
+}
+
 func NewUserStore(backend port.UserStore, size int, ttl time.Duration) *UserStore {
 	return &UserStore{
 		backend:        backend,

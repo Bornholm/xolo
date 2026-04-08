@@ -107,6 +107,26 @@ func (h *Handler) postEditUser(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, string(redirectURL), http.StatusSeeOther)
 }
 
+func (h *Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	userID := model.UserID(r.PathValue("id"))
+	if userID == "" {
+		common.HandleError(w, r, errors.New("user ID is required"))
+		return
+	}
+
+	err := h.userStore.DeleteUser(ctx, userID)
+	if err != nil {
+		common.HandleError(w, r, errors.WithStack(err))
+		return
+	}
+
+	// Redirect to users list
+	redirectURL := commonComp.BaseURL(r.Context(), commonComp.WithPath("/admin/users"))
+	http.Redirect(w, r, string(redirectURL), http.StatusSeeOther)
+}
+
 func (h *Handler) fillUsersPageViewModel(r *http.Request) (*component.UsersPageVModel, error) {
 	vmodel := &component.UsersPageVModel{}
 	ctx := r.Context()

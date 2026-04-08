@@ -46,6 +46,7 @@ func NewHandler(userStore port.UserStore, orgStore port.OrgStore, taskRunner por
 	h.mux.Handle("GET /users", assertAdmin(http.HandlerFunc(h.getUsersPage)))
 	h.mux.Handle("GET /users/{id}/edit", assertAdmin(http.HandlerFunc(h.getEditUserPage)))
 	h.mux.Handle("POST /users/{id}/edit", assertAdmin(http.HandlerFunc(h.postEditUser)))
+	h.mux.Handle("DELETE /users/{id}", assertAdmin(http.HandlerFunc(h.deleteUser)))
 
 	// Org routes
 	h.mux.Handle("GET /orgs", assertAdmin(http.HandlerFunc(h.getOrgsPage)))

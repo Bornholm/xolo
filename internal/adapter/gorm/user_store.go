@@ -211,6 +211,27 @@ func (s *Store) DeleteAuthToken(ctx context.Context, tokenID model.AuthTokenID) 
 	return nil
 }
 
+// DeleteUser implements port.UserStore.
+func (s *Store) DeleteUser(ctx context.Context, userID model.UserID) error {
+	err := s.withRetry(ctx, true, func(ctx context.Context, db *gorm.DB) error {
+		result := db.Delete(&User{}, "id = ?", string(userID))
+		if result.Error != nil {
+			return errors.WithStack(result.Error)
+		}
+
+		if result.RowsAffected == 0 {
+			return errors.WithStack(port.ErrNotFound)
+		}
+
+		return nil
+	}, sqlite3.LOCKED, sqlite3.BUSY)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
 // CountUsers implements port.UserStore.
 func (s *Store) CountUsers(ctx context.Context, opts port.QueryUsersOptions) (int64, error) {
 	var count int64

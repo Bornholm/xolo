@@ -4,6 +4,8 @@ import (
 	formx "github.com/bornholm/go-x/templx/form"
 	"github.com/bornholm/xolo/internal/core/model"
 	commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/dialog"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 	"github.com/bornholm/xolo/templx/form/renderer/templui"
 )
@@ -17,7 +19,7 @@ type EditUserPageVModel struct {
 templ EditUserPage(vmodel EditUserPageVModel) {
 	@commonComp.AppLayout(vmodel.AppLayoutVModel,
 		commonComp.WithTitle("Modifier l'utilisateur"),
-		commonComp.WithScripts(templui.Script()),
+		commonComp.WithScripts(templui.Script(), dialog.Script()),
 	) {
 		<div class="space-y-6">
 			<!-- Header with back button and title -->
@@ -85,6 +87,55 @@ templ EditUserPage(vmodel EditUserPageVModel) {
 					}
 				</div>
 			</div>
+			<!-- Delete User -->
+			<div class="rounded-lg border bg-card text-card-foreground shadow-sm">
+				<div class="flex flex-col space-y-1.5 p-6">
+					<h3 class="text-lg font-semibold">
+						@icon.Trash2(icon.Props{Class: "h-4 w-4 inline mr-2"})
+						Zone dangereuse
+					</h3>
+				</div>
+				<div class="p-6 pt-0">
+					<p class="text-sm text-muted-foreground mb-4">
+						La suppression d'un utilisateur est irréversible. Tous ses tokens API et données associées seront supprimés.
+					</p>
+					@dialog.Trigger(dialog.TriggerProps{For: "delete-user-dialog"}) {
+						@button.Button(button.Props{Variant: button.VariantDestructive}) {
+							@icon.Trash2(icon.Props{Class: "h-4 w-4"})
+							<span>Supprimer l'utilisateur</span>
+						}
+					}
+				</div>
+			</div>
 		</div>
+	}
+	<!-- Delete User Confirmation Dialog -->
+	@dialog.Dialog(dialog.Props{ID: "delete-user-dialog"}) {
+		@dialog.Content() {
+			@dialog.Header() {
+				@dialog.Title(dialog.TitleProps{}) {
+					Supprimer l'utilisateur
+				}
+			}
+			<p class="text-sm text-muted-foreground">
+				Êtes-vous sûr de vouloir supprimer l'utilisateur <strong>{ vmodel.User.Email() }</strong> ? Cette action est irréversible.
+			</p>
+			@dialog.Footer(dialog.FooterProps{}) {
+				@dialog.Close(dialog.CloseProps{}) {
+					@button.Button(button.Props{Variant: button.VariantOutline}) {
+						Annuler
+					}
+				}
+				<button
+					type="button"
+					class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 rounded-md px-4 cursor-pointer"
+					data-url={ commonComp.BaseURLString(ctx, commonComp.WithPath("/admin/users/"+string(vmodel.User.ID()))) }
+					onclick="fetch(this.dataset.url,{method:'DELETE'}).then(()=>window.location.href='/admin/users')"
+				>
+					@icon.Trash2(icon.Props{Class: "h-4 w-4"})
+					<span>Supprimer</span>
+				</button>
+			}
+		}
 	}
 }
