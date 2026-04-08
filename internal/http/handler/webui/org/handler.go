@@ -95,6 +95,11 @@ func NewHandler(
 		orgSlug := r.PathValue("orgSlug")
 		http.Redirect(w, r, "/orgs/"+orgSlug+"/usage", http.StatusMovedPermanently)
 	}))
+	// Redirect /{orgSlug} to /{orgSlug}/usage
+	h.mux.Handle("GET /{orgSlug}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		orgSlug := r.PathValue("orgSlug")
+		http.Redirect(w, r, "/orgs/"+orgSlug+"/usage", http.StatusMovedPermanently)
+	}))
 	h.mux.Handle("GET /{orgSlug}/admin/members", assertOrgAdmin(http.HandlerFunc(h.getMembersPage)))
 	h.mux.Handle("DELETE /{orgSlug}/admin/members/{membershipID}", assertOrgAdmin(http.HandlerFunc(h.deleteMember)))
 

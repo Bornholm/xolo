@@ -60,6 +60,7 @@ func (h *Handler) getProfilePage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "profile",
+			HomeLink:     "/usage",
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: "Espace personnel", Href: "/usage"},
 				{Label: "Profil", Href: ""},
@@ -109,6 +110,7 @@ func (h *Handler) getTokensPage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "tokens",
+			HomeLink:     "/usage",
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: "Espace personnel", Href: "/usage"},
 				{Label: "Profil", Href: "/profile/"},
@@ -275,6 +277,7 @@ func (h *Handler) getInvitationsPage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "profile",
+			HomeLink:     "/usage",
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: "Espace personnel", Href: "/usage"},
 				{Label: "Profil", Href: "/profile/"},

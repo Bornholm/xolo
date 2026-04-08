@@ -5,12 +5,12 @@ import (
 	"net/http"
 
 	"github.com/a-h/templ"
+	"github.com/bornholm/go-x/slogx"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/join/component"
-	"github.com/bornholm/go-x/slogx"
 	"github.com/pkg/errors"
 )
 
@@ -66,7 +66,8 @@ func (h *Handler) getJoinPage(w http.ResponseWriter, r *http.Request) {
 		Invite:   invite,
 		LoginURL: loginURL,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User: user,
+			User:     user,
+			HomeLink: "/usage",
 			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
 				return common.AppNavigationItems(vmodel)
 			},
@@ -150,7 +151,8 @@ func (h *Handler) acceptInvite(w http.ResponseWriter, r *http.Request) {
 		OrgSlug: org.Slug(),
 		Role:    invite.Role(),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User: user,
+			User:     user,
+			HomeLink: "/usage",
 			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
 				return common.AppNavigationItems(vmodel)
 			},
@@ -167,7 +169,8 @@ func (h *Handler) renderError(w http.ResponseWriter, r *http.Request, user model
 	vmodel := component.JoinErrorVModel{
 		Message: msg,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User: user,
+			User:     user,
+			HomeLink: "/usage",
 			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
 				return common.AppNavigationItems(vmodel)
 			},

@@ -43,6 +43,7 @@ func (h *Handler) getVirtualModelsPage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:          user,
 			SelectedItem:  "org-" + orgSlug + "-virtual-models",
+			HomeLink:      "/orgs/" + orgSlug,
 			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
@@ -74,6 +75,7 @@ func (h *Handler) getNewVirtualModelPage(w http.ResponseWriter, r *http.Request)
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:          user,
 			SelectedItem:  "org-" + orgSlug + "-virtual-models",
+			HomeLink:      "/orgs/" + orgSlug,
 			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
@@ -162,6 +164,7 @@ func (h *Handler) getEditVirtualModelPage(w http.ResponseWriter, r *http.Request
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:          user,
 			SelectedItem:  "org-" + orgSlug + "-virtual-models",
+			HomeLink:      "/orgs/" + orgSlug,
 			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},

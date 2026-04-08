@@ -54,6 +54,7 @@ func (h *Handler) fillExchangeRatesPageVModelAppLayout(ctx context.Context, vmod
 		User:          user,
 		IsAdmin:       isAdmin,
 		SelectedItem:  "exchange-rates",
+		HomeLink:      "/admin/",
 		AdminSubtitle: "Admin. plateforme",
 		Breadcrumbs: []commonComp.BreadcrumbItem{
 			{Label: "Plateforme", Href: "/admin/"},

@@ -31,6 +31,7 @@ func (h *Handler) getOrgsPage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:          user,
 			SelectedItem:  "orgs",
+			HomeLink:      "/admin/",
 			AdminSubtitle: "Admin. plateforme",
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: "Plateforme", Href: "/admin/"},
@@ -57,6 +58,7 @@ func (h *Handler) getNewOrgPage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:          user,
 			SelectedItem:  "orgs",
+			HomeLink:      "/admin/",
 			AdminSubtitle: "Admin. plateforme",
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: "Plateforme", Href: "/admin/"},
@@ -123,6 +125,7 @@ func (h *Handler) getEditOrgPage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:          user,
 			SelectedItem:  "orgs",
+			HomeLink:      "/admin/",
 			AdminSubtitle: "Admin. plateforme",
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: "Plateforme", Href: "/admin/"},

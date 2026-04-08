@@ -179,6 +179,7 @@ func (h *Handler) fillUsersPageVModelAppLayout(ctx context.Context, vmodel *comp
 		User:          user,
 		IsAdmin:       isAdmin,
 		SelectedItem:  "users",
+		HomeLink:      "/admin/",
 		AdminSubtitle: "Admin. plateforme",
 		Breadcrumbs: []commonComp.BreadcrumbItem{
 			{Label: "Plateforme", Href: "/admin/"},

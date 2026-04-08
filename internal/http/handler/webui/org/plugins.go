@@ -55,6 +55,7 @@ func (h *Handler) getPluginsPage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:          user,
 			SelectedItem:  "org-" + orgSlug + "-plugins",
+			HomeLink:      "/orgs/" + orgSlug,
 			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
@@ -164,6 +165,7 @@ func (h *Handler) getPluginConfigPage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:          user,
 			SelectedItem:  "org-" + orgSlug + "-plugins",
+			HomeLink:      "/orgs/" + orgSlug,
 			AdminSubtitle: "Admin. " + org.Name(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
@@ -229,6 +231,7 @@ func (h *Handler) postPluginConfig(w http.ResponseWriter, r *http.Request) {
 			Properties: renderable, Values: values, FieldErrors: fieldErrors,
 			AppLayoutVModel: common.AppLayoutVModel{
 				User: user, SelectedItem: "org-" + orgSlug + "-plugins",
+				HomeLink:      "/orgs/" + orgSlug,
 				AdminSubtitle: "Admin. " + org.Name(),
 				Breadcrumbs: []common.BreadcrumbItem{
 					{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},

@@ -47,6 +47,7 @@ func (h *Handler) getNoOrgPage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "usage",
+			HomeLink:     "/usage",
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: "Espace personnel", Href: "/usage"},
 				{Label: "Aucune organisation", Href: ""},

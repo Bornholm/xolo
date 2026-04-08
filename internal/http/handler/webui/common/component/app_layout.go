@@ -16,6 +16,7 @@ type AppLayoutVModel struct {
 	NavigationItems func(AppLayoutVModel) templ.Component
 	FooterItems     func(AppLayoutVModel) templ.Component
 	AdminSubtitle   string
+	HomeLink        string
 }
 
 // BreadcrumbItem represents a single item in the breadcrumb navigation.

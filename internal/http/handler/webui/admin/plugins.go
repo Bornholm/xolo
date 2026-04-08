@@ -36,6 +36,7 @@ func (h *Handler) fillPluginsDiagnosticsPageViewModel(r *http.Request) (*compone
 			User:          user,
 			IsAdmin:       isAdmin,
 			SelectedItem:  "plugins",
+			HomeLink:      "/admin/",
 			AdminSubtitle: "Admin. plateforme",
 			Breadcrumbs: []commonComp.BreadcrumbItem{
 				{Label: "Plateforme", Href: "/admin/"},

@@ -170,7 +170,7 @@ templ sidebarContent(vmodel AppLayoutVModel) {
 		<div class="flex h-14 items-center border-b px-4">
 			@Logo("h-7 w-7 mr-2", "height:70%")
 			<div class="flex flex-col">
-				<a href={ BaseURL(ctx) } title="Home"><span class="font-semibold text-lg">Xolo</span></a>
+				<a href={ templ.SafeURL(vmodel.HomeLink) } title="Home"><span class="font-semibold text-lg">Xolo</span></a>
 				if vmodel.AdminSubtitle != "" {
 					<span class="text-xs text-muted-foreground">{ vmodel.AdminSubtitle }</span>
 				}
