@@ -58,15 +58,17 @@ templ Table(props ...Props) {
 	if len(props) > 0 {
 		{{ p = props[0] }}
 	}
-	<table
-		if p.ID != "" {
-			id={ p.ID }
-		}
-		class={ utils.TwMerge("w-full caption-bottom text-sm", p.Class) }
-		{ p.Attributes... }
-	>
-		{ children... }
-	</table>
+	<div class="overflow-x-auto">
+		<table
+			if p.ID != "" {
+				id={ p.ID }
+			}
+			class={ utils.TwMerge("w-full caption-bottom text-sm", p.Class) }
+			{ p.Attributes... }
+		>
+			{ children... }
+		</table>
+	</div>
 }
 
 templ Header(props ...HeaderProps) {
