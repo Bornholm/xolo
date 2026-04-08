@@ -560,6 +560,15 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 						})
 					}
 				}
+				<div class="flex justify-end mt-4">
+					<a
+						href={ common.BaseURLString(ctx, common.WithPath("/usage"), common.WithValues("range", vmodel.Range, "format", "csv")) }
+						class="text-sm text-muted-foreground hover:text-foreground flex items-center gap-2"
+					>
+						<i class="fa-solid fa-download"></i>
+						Télécharger en CSV
+					</a>
+				</div>
 			}
 		</div>
 	}

@@ -2,6 +2,7 @@ package webui
 
 import (
 	"context"
+	"encoding/csv"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -46,6 +47,12 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 	// Time range
 	rangeParam := r.URL.Query().Get("range")
 	since := dashboardRangeToSince(rangeParam)
+
+	// CSV export
+	if r.URL.Query().Get("format") == "csv" {
+		h.serveUserUsageCSV(w, r, user.ID(), since)
+		return
+	}
 
 	now := time.Now()
 	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
@@ -411,4 +418,103 @@ func (h *Handler) sumCostConverted(ctx context.Context, userID model.UserID, org
 		}
 	}
 	return total, nil
+}
+
+func (h *Handler) serveUserUsageCSV(w http.ResponseWriter, r *http.Request, userID model.UserID, since time.Time) {
+	ctx := r.Context()
+
+	records, err := h.usageStore.QueryUsage(ctx, port.UsageFilter{
+		UserID: &userID,
+		Since:  &since,
+	})
+	if err != nil {
+		slog.ErrorContext(ctx, "could not query usage records for CSV", slogx.Error(err))
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	memberships := httpCtx.Memberships(ctx)
+	orgs := make(map[model.OrgID]model.Organization)
+	for _, m := range memberships {
+		if m.Org() != nil {
+			orgs[m.OrgID()] = m.Org()
+		}
+	}
+
+	modelCache := make(map[model.LLMModelID]model.LLMModel)
+	providerCache := make(map[model.ProviderID]model.Provider)
+	for _, rec := range records {
+		mid := rec.ModelID()
+		if mid == "" {
+			continue
+		}
+		if _, ok := modelCache[mid]; ok {
+			continue
+		}
+		m, err := h.providerStore.GetLLMModelByID(ctx, mid)
+		if err != nil {
+			continue
+		}
+		modelCache[mid] = m
+		pid := m.ProviderID()
+		if _, ok := providerCache[pid]; !ok {
+			p, err := h.providerStore.GetProviderByID(ctx, pid)
+			if err == nil {
+				providerCache[pid] = p
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "text/csv")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"usage-%s.csv\"", time.Now().Format("2006-01-02")))
+
+	writer := csv.NewWriter(w)
+	defer writer.Flush()
+
+	writer.Write([]string{"Organisation", "Modèle", "Tokens prompt", "Tokens completion", "Coût", "Devise", "Énergie (Wh)", "CO₂ (g)", "Date"})
+
+	for _, rec := range records {
+		orgName := string(rec.OrgID())
+		if org, ok := orgs[rec.OrgID()]; ok {
+			orgName = org.Name()
+		}
+
+		modelName := rec.ProxyModelName()
+		if rec.ResolvedModelName() != "" && rec.ResolvedModelName() != rec.ProxyModelName() {
+			modelName = rec.ProxyModelName() + " → " + rec.ResolvedModelName()
+		}
+
+		var energyWh, co2Grams float64
+		if m, ok := modelCache[rec.ModelID()]; ok && m.ActiveParams() > 0 {
+			tier := estimator.TierHyperscaler
+			if p, ok := providerCache[m.ProviderID()]; ok {
+				tier = estimator.CloudTier(p.CloudTier())
+			}
+			est := estimator.NewCloudEstimator(tier).EstimateFromParams(
+				float64(m.ActiveParams()),
+				estimator.InferenceRequest{
+					InputTokens:  int(rec.PromptTokens()),
+					OutputTokens: int(rec.CompletionTokens()),
+				},
+				m.TokensPerSecLow(),
+				m.TokensPerSecHigh(),
+			)
+			energyWh = est.Mid.TotalWh
+			co2Grams = est.Mid.Equivalences.CO2Grams
+		}
+
+		cost := float64(rec.Cost()) / 1_000_000
+
+		writer.Write([]string{
+			orgName,
+			modelName,
+			strconv.Itoa(rec.PromptTokens()),
+			strconv.Itoa(rec.CompletionTokens()),
+			fmt.Sprintf("%.6f", cost),
+			rec.Currency(),
+			fmt.Sprintf("%.6f", energyWh),
+			fmt.Sprintf("%.6f", co2Grams),
+			rec.CreatedAt().Format("2006-01-02 15:04:05"),
+		})
+	}
 }

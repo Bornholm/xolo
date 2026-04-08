@@ -2,6 +2,7 @@ package org
 
 import (
 	"context"
+	"encoding/csv"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -56,6 +57,12 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 				userFilter = append(userFilter, part)
 			}
 		}
+	}
+
+	// CSV export
+	if r.URL.Query().Get("format") == "csv" {
+		h.serveOrgUsageCSV(w, r, org, userFilter, since)
+		return
 	}
 
 	// Fetch org members for filter
@@ -444,4 +451,116 @@ func chartByDate(m map[string]int64) []component.ChartDataPoint {
 		pts = append(pts, component.ChartDataPoint{Label: date, Value: float64(m[date]) / 1_000_000})
 	}
 	return pts
+}
+
+func (h *Handler) serveOrgUsageCSV(w http.ResponseWriter, r *http.Request, org model.Organization, userFilter []string, since time.Time) {
+	ctx := r.Context()
+	orgID := org.ID()
+
+	var userIDs []model.UserID
+	for _, uid := range userFilter {
+		userIDs = append(userIDs, model.UserID(uid))
+	}
+
+	usageFilter := port.UsageFilter{
+		OrgID: &orgID,
+		Since: &since,
+	}
+	if len(userIDs) > 0 {
+		usageFilter.UserIDs = userIDs
+	}
+
+	records, err := h.usageStore.QueryUsage(ctx, usageFilter)
+	if err != nil {
+		slog.ErrorContext(ctx, "could not query usage records for CSV", slogx.Error(err))
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	members, _, err := h.orgStore.ListOrgMembers(ctx, org.ID(), port.ListOrgMembersOptions{})
+	if err != nil {
+		slog.WarnContext(ctx, "could not list org members for CSV", slogx.Error(err))
+	}
+
+	userNames := make(map[model.UserID]string)
+	for _, m := range members {
+		userNames[m.UserID()] = m.User().DisplayName()
+	}
+
+	modelCache := make(map[model.LLMModelID]model.LLMModel)
+	providerCache := make(map[model.ProviderID]model.Provider)
+	for _, rec := range records {
+		mid := rec.ModelID()
+		if mid == "" {
+			continue
+		}
+		if _, ok := modelCache[mid]; ok {
+			continue
+		}
+		m, err := h.providerStore.GetLLMModelByID(ctx, mid)
+		if err != nil {
+			continue
+		}
+		modelCache[mid] = m
+		pid := m.ProviderID()
+		if _, ok := providerCache[pid]; !ok {
+			p, err := h.providerStore.GetProviderByID(ctx, pid)
+			if err == nil {
+				providerCache[pid] = p
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "text/csv")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s-usage-%s.csv\"", org.Slug(), time.Now().Format("2006-01-02")))
+
+	writer := csv.NewWriter(w)
+	defer writer.Flush()
+
+	writer.Write([]string{"Utilisateur", "Modèle", "Tokens prompt", "Tokens completion", "Coût", "Devise", "Énergie (Wh)", "CO₂ (g)", "Date"})
+
+	for _, rec := range records {
+		userName := userNames[rec.UserID()]
+		if userName == "" {
+			userName = string(rec.UserID())
+		}
+
+		modelName := rec.ProxyModelName()
+		if rec.ResolvedModelName() != "" && rec.ResolvedModelName() != rec.ProxyModelName() {
+			modelName = rec.ProxyModelName() + " → " + rec.ResolvedModelName()
+		}
+
+		var energyWh, co2Grams float64
+		if m, ok := modelCache[rec.ModelID()]; ok && m.ActiveParams() > 0 {
+			tier := estimator.TierHyperscaler
+			if p, ok := providerCache[m.ProviderID()]; ok {
+				tier = estimator.CloudTier(p.CloudTier())
+			}
+			est := estimator.NewCloudEstimator(tier).EstimateFromParams(
+				float64(m.ActiveParams()),
+				estimator.InferenceRequest{
+					InputTokens:  int(rec.PromptTokens()),
+					OutputTokens: int(rec.CompletionTokens()),
+				},
+				m.TokensPerSecLow(),
+				m.TokensPerSecHigh(),
+			)
+			energyWh = est.Mid.TotalWh
+			co2Grams = est.Mid.Equivalences.CO2Grams
+		}
+
+		cost := float64(rec.Cost()) / 1_000_000
+
+		writer.Write([]string{
+			userName,
+			modelName,
+			strconv.Itoa(rec.PromptTokens()),
+			strconv.Itoa(rec.CompletionTokens()),
+			fmt.Sprintf("%.6f", cost),
+			rec.Currency(),
+			fmt.Sprintf("%.6f", energyWh),
+			fmt.Sprintf("%.6f", co2Grams),
+			rec.CreatedAt().Format("2006-01-02 15:04:05"),
+		})
+	}
 }
