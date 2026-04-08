@@ -156,6 +156,9 @@ templ MembersPage(vmodel MembersPageVModel) {
 											>
 												Retirer
 											</button>
+											@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members/", string(m.ID()), "/edit")), Variant: button.VariantOutline, Size: button.SizeSm}) {
+												Modifier
+											}
 											@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members/", string(m.ID()), "/quota")), Variant: button.VariantOutline, Size: button.SizeSm}) {
 												Quota
 											}

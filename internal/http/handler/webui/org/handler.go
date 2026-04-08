@@ -102,6 +102,8 @@ func NewHandler(
 	}))
 	h.mux.Handle("GET /{orgSlug}/admin/members", assertOrgAdmin(http.HandlerFunc(h.getMembersPage)))
 	h.mux.Handle("DELETE /{orgSlug}/admin/members/{membershipID}", assertOrgAdmin(http.HandlerFunc(h.deleteMember)))
+	h.mux.Handle("GET /{orgSlug}/admin/members/{membershipID}/edit", assertOrgAdmin(http.HandlerFunc(h.getEditMemberPage)))
+	h.mux.Handle("POST /{orgSlug}/admin/members/{membershipID}/edit", assertOrgAdmin(http.HandlerFunc(h.postEditMember)))
 
 	h.mux.Handle("GET /{orgSlug}/admin/providers", assertOrgAdmin(http.HandlerFunc(h.getProvidersPage)))
 	h.mux.Handle("GET /{orgSlug}/admin/providers/new", assertOrgAdmin(http.HandlerFunc(h.getNewProviderPage)))

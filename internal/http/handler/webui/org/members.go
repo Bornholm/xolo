@@ -106,3 +106,95 @@ func (h *Handler) deleteMember(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, "/orgs/"+orgSlug+"/admin/members?success=removed", http.StatusSeeOther)
 }
+
+func (h *Handler) getEditMemberPage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user := httpCtx.User(ctx)
+	orgSlug := r.PathValue("orgSlug")
+	membershipID := r.PathValue("membershipID")
+	nav, footer := orgAdminNav(orgSlug)
+
+	org, err := h.orgFromSlug(ctx, orgSlug)
+	if err != nil {
+		http.Error(w, "Organization not found", http.StatusNotFound)
+		return
+	}
+
+	membership, err := h.orgStore.GetMembership(ctx, model.MembershipID(membershipID))
+	if err != nil {
+		if errors.Is(err, port.ErrNotFound) {
+			http.Error(w, "Membership not found", http.StatusNotFound)
+			return
+		}
+		slog.ErrorContext(ctx, "could not get membership", slogx.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	if membership.OrgID() != org.ID() {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	vmodel := component.EditMemberPageVModel{
+		Membership: membership,
+		Org:        org,
+		AppLayoutVModel: common.AppLayoutVModel{
+			User:          user,
+			SelectedItem:  "org-" + orgSlug + "-members",
+			HomeLink:      "/orgs/" + orgSlug,
+			AdminSubtitle: "Admin. " + org.Name(),
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
+				{Label: "Membres", Href: "/orgs/" + orgSlug + "/admin/members"},
+				{Label: membership.User().Email(), Href: ""},
+			},
+			NavigationItems: nav,
+			FooterItems:     footer,
+		},
+	}
+
+	templ.Handler(component.EditMemberPage(vmodel)).ServeHTTP(w, r)
+}
+
+func (h *Handler) postEditMember(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	orgSlug := r.PathValue("orgSlug")
+	membershipID := r.PathValue("membershipID")
+
+	org, err := h.orgFromSlug(ctx, orgSlug)
+	if err != nil {
+		http.Error(w, "Organization not found", http.StatusNotFound)
+		return
+	}
+
+	membership, err := h.orgStore.GetMembership(ctx, model.MembershipID(membershipID))
+	if err != nil {
+		if errors.Is(err, port.ErrNotFound) {
+			http.Error(w, "Membership not found", http.StatusNotFound)
+			return
+		}
+		slog.ErrorContext(ctx, "could not get membership", slogx.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	if membership.OrgID() != org.ID() {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	role := r.FormValue("role")
+	if role == "" {
+		http.Error(w, "Role is required", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.orgStore.UpdateMembership(ctx, model.MembershipID(membershipID), role); err != nil {
+		slog.ErrorContext(ctx, "could not update membership", slogx.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/orgs/"+orgSlug+"/admin/members?success=updated", http.StatusSeeOther)
+}

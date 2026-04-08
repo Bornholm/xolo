@@ -235,4 +235,14 @@ func (s *Store) IsMember(ctx context.Context, userID model.UserID, orgID model.O
 	return count > 0, nil
 }
 
+// UpdateMembership implements port.OrgStore.
+func (s *Store) UpdateMembership(ctx context.Context, id model.MembershipID, role string) error {
+	err := s.withRetry(ctx, false, func(ctx context.Context, db *gorm.DB) error {
+		return errors.WithStack(db.Model(&Membership{}).
+			Where("id = ?", string(id)).
+			Update("role", role).Error)
+	}, sqlite3.BUSY, sqlite3.LOCKED)
+	return err
+}
+
 var _ port.OrgStore = &Store{}
