@@ -196,6 +196,22 @@ func (a *PluginHookAdapter) PreRequest(ctx context.Context, req *genaiProxy.Prox
 		if !out.Allowed {
 			return &genaiProxy.HookResult{Response: forbiddenResponse(out.RejectionReason)}, nil
 		}
+
+		if out.ModifiedMessagesJson != "" {
+			if err := applyModifiedMessages(req, out.ModifiedMessagesJson); err != nil {
+				slog.WarnContext(ctx, "plugin_hook_adapter: failed to apply modified messages",
+					slog.String("plugin", act.PluginName),
+					slog.Any("error", err),
+				)
+				if act.Required {
+					return &genaiProxy.HookResult{Response: serviceUnavailableResponse(act.PluginName)}, nil
+				}
+				continue
+			}
+			slog.DebugContext(ctx, "plugin_hook_adapter: applied modified messages",
+				slog.String("plugin", act.PluginName),
+			)
+		}
 	}
 
 	return nil, nil
@@ -525,6 +541,29 @@ func serviceUnavailableResponse(pluginName string) *genaiProxy.ProxyResponse {
 			},
 		},
 	}
+}
+
+// applyModifiedMessages replaces the messages in the request body with the
+// modified messages provided by the plugin. It updates req.Body in place.
+func applyModifiedMessages(req *genaiProxy.ProxyRequest, modifiedMessagesJSON string) error {
+	if len(req.Body) == 0 {
+		return nil
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(req.Body, &body); err != nil {
+		return errors.Wrap(err, "unmarshal request body")
+	}
+
+	body["messages"] = json.RawMessage(modifiedMessagesJSON)
+
+	updatedBody, err := json.Marshal(body)
+	if err != nil {
+		return errors.Wrap(err, "marshal updated body")
+	}
+
+	req.Body = updatedBody
+	return nil
 }
 
 // Compile-time interface assertions.

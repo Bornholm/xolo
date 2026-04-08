@@ -115,6 +115,9 @@ message PreRequestOutput {
   bool allowed = 1;
   string rejection_reason = 2;
   string response_json = 3;
+  // modified_messages_json, when non-empty, replaces the request messages
+  // before the request is sent to the LLM proxy.
+  string modified_messages_json = 4;
 }
 
 message PostResponseInput {

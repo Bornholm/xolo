@@ -1013,8 +1013,11 @@ type PreRequestOutput struct {
 	Allowed         bool                   `protobuf:"varint,1,opt,name=allowed,proto3" json:"allowed,omitempty"`
 	RejectionReason string                 `protobuf:"bytes,2,opt,name=rejection_reason,json=rejectionReason,proto3" json:"rejection_reason,omitempty"`
 	ResponseJson    string                 `protobuf:"bytes,3,opt,name=response_json,json=responseJson,proto3" json:"response_json,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// modified_messages_json, when non-empty, replaces the request messages
+	// before the request is sent to the LLM proxy.
+	ModifiedMessagesJson string `protobuf:"bytes,4,opt,name=modified_messages_json,json=modifiedMessagesJson,proto3" json:"modified_messages_json,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *PreRequestOutput) Reset() {
@@ -1064,6 +1067,13 @@ func (x *PreRequestOutput) GetRejectionReason() string {
 func (x *PreRequestOutput) GetResponseJson() string {
 	if x != nil {
 		return x.ResponseJson
+	}
+	return ""
+}
+
+func (x *PreRequestOutput) GetModifiedMessagesJson() string {
+	if x != nil {
+		return x.ModifiedMessagesJson
 	}
 	return ""
 }
@@ -1511,11 +1521,12 @@ const file_pkg_pluginsdk_proto_plugin_proto_rawDesc = "" +
 	"\x0fPreRequestInput\x120\n" +
 	"\x03ctx\x18\x01 \x01(\v2\x1e.xolo.plugin.v1.RequestContextR\x03ctx\x12\x14\n" +
 	"\x05model\x18\x02 \x01(\tR\x05model\x12#\n" +
-	"\rmessages_json\x18\x03 \x01(\tR\fmessagesJson\"|\n" +
+	"\rmessages_json\x18\x03 \x01(\tR\fmessagesJson\"\xb2\x01\n" +
 	"\x10PreRequestOutput\x12\x18\n" +
 	"\aallowed\x18\x01 \x01(\bR\aallowed\x12)\n" +
 	"\x10rejection_reason\x18\x02 \x01(\tR\x0frejectionReason\x12#\n" +
-	"\rresponse_json\x18\x03 \x01(\tR\fresponseJson\"\xca\x01\n" +
+	"\rresponse_json\x18\x03 \x01(\tR\fresponseJson\x124\n" +
+	"\x16modified_messages_json\x18\x04 \x01(\tR\x14modifiedMessagesJson\"\xca\x01\n" +
 	"\x11PostResponseInput\x120\n" +
 	"\x03ctx\x18\x01 \x01(\v2\x1e.xolo.plugin.v1.RequestContextR\x03ctx\x12\x14\n" +
 	"\x05model\x18\x02 \x01(\tR\x05model\x12#\n" +

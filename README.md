@@ -22,6 +22,11 @@ _Guiding your enterprise safely to the realm of AI._
 
 > TODO
 
+## Documentation
+
+- [Plugin system presentation](./docs/plugin-tutorial.md)
+- [Request energy cost estimation principles](./docs/energy-cost-estimation.md)
+
 ## License
 
 [AGPL-3.0](LICENSE.md)
