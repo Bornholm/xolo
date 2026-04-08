@@ -61,7 +61,7 @@ func (h *Handler) getProfilePage(w http.ResponseWriter, r *http.Request) {
 			User:         user,
 			SelectedItem: "profile",
 			Breadcrumbs: []common.BreadcrumbItem{
-				{Label: "Espace de travail", Href: "/usage"},
+				{Label: "Espace personnel", Href: "/usage"},
 				{Label: "Profil", Href: ""},
 			},
 			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
@@ -110,7 +110,7 @@ func (h *Handler) getTokensPage(w http.ResponseWriter, r *http.Request) {
 			User:         user,
 			SelectedItem: "tokens",
 			Breadcrumbs: []common.BreadcrumbItem{
-				{Label: "Espace de travail", Href: "/usage"},
+				{Label: "Espace personnel", Href: "/usage"},
 				{Label: "Profil", Href: "/profile/"},
 				{Label: "Jetons API", Href: ""},
 			},
@@ -276,7 +276,7 @@ func (h *Handler) getInvitationsPage(w http.ResponseWriter, r *http.Request) {
 			User:         user,
 			SelectedItem: "profile",
 			Breadcrumbs: []common.BreadcrumbItem{
-				{Label: "Espace de travail", Href: "/usage"},
+				{Label: "Espace personnel", Href: "/usage"},
 				{Label: "Profil", Href: "/profile/"},
 				{Label: "Invitations", Href: ""},
 			},

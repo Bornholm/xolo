@@ -137,7 +137,19 @@ func usagePercent(used int64, budget *int64) int {
 }
 
 templ DashboardPage(vmodel DashboardPageVModel) {
-	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Quotas"), common.WithScripts(chart.Script(), popover.Script())) {
+	@common.AppLayout(vmodel.AppLayoutVModel,
+		common.WithTitle("Usage"),
+		common.WithScripts(
+			common.Script{
+				Name:      "chart",
+				Component: chart.Script(),
+			},
+			common.Script{
+				Name:      "popover",
+				Component: popover.Script(),
+			},
+		),
+	) {
 		<div class="space-y-6">
 			<!-- Quotas title -->
 			<div class="flex items-center gap-4">
@@ -307,53 +319,53 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 							<p class="text-3xl font-bold">{ fmt.Sprintf("%d", vmodel.Aggregate.TotalTokens) }</p>
 						}
 					}
-				if vmodel.TotalEnergyWh > 0 {
-					@card.Card() {
-						@card.Header() {
-							@card.Title() {
-								Énergie / CO₂ estimés
-							}
-						}
-						@card.Content() {
-							<div class="flex items-center gap-2">
-								<p class="text-3xl font-bold">{ formatEnergyWh(vmodel.TotalEnergyWh) }</p>
-								{{ energyMessage := formatEnergyToHuman(vmodel.TotalEnergyWh) }}
-								if energyMessage != "" {
-									{{ tooltipID := "energy-tooltip-" + fmt.Sprintf("%.0f", vmodel.TotalEnergyWh) }}
-									@tooltip.Tooltip() {
-										@tooltip.Trigger(tooltip.TriggerProps{For: tooltipID, Class: "cursor-help text-muted-foreground hover:text-foreground"}) {
-											@icon.CircleQuestionMark(icon.Props{Class: "h-5 w-5"})
-										}
-										@tooltip.Content(tooltip.ContentProps{ID: tooltipID, Position: tooltip.PositionRight, Class: "max-w-xs"}) {
-											<p>{ energyMessage }</p>
-										}
-									}
+					if vmodel.TotalEnergyWh > 0 {
+						@card.Card() {
+							@card.Header() {
+								@card.Title() {
+									Énergie / CO₂ estimés
 								}
-							</div>
-							if vmodel.TotalCO2GramsMid > 0 {
-								<div class="flex items-center gap-2 mt-1">
-									<p class="text-sm font-medium text-muted-foreground">
-										{ formatCO2Grams(vmodel.TotalCO2GramsMid) }
-										<span class="text-xs">(mix monde)</span>
-									</p>
-									{{ co2Message := formatCO2ToCarKilometers(vmodel.TotalCO2GramsMid) }}
-									if co2Message != "" {
-										{{ tooltipID := "co2-tooltip-" + fmt.Sprintf("%.0f", vmodel.TotalCO2GramsMid) }}
+							}
+							@card.Content() {
+								<div class="flex items-center gap-2">
+									<p class="text-3xl font-bold">{ formatEnergyWh(vmodel.TotalEnergyWh) }</p>
+									{{ energyMessage := formatEnergyToHuman(vmodel.TotalEnergyWh) }}
+									if energyMessage != "" {
+										{{ tooltipID := "energy-tooltip-" + fmt.Sprintf("%.0f", vmodel.TotalEnergyWh) }}
 										@tooltip.Tooltip() {
 											@tooltip.Trigger(tooltip.TriggerProps{For: tooltipID, Class: "cursor-help text-muted-foreground hover:text-foreground"}) {
 												@icon.CircleQuestionMark(icon.Props{Class: "h-5 w-5"})
 											}
 											@tooltip.Content(tooltip.ContentProps{ID: tooltipID, Position: tooltip.PositionRight, Class: "max-w-xs"}) {
-												<p>{ co2Message }</p>
+												<p>{ energyMessage }</p>
 											}
 										}
 									}
 								</div>
+								if vmodel.TotalCO2GramsMid > 0 {
+									<div class="flex items-center gap-2 mt-1">
+										<p class="text-sm font-medium text-muted-foreground">
+											{ formatCO2Grams(vmodel.TotalCO2GramsMid) }
+											<span class="text-xs">(mix monde)</span>
+										</p>
+										{{ co2Message := formatCO2ToCarKilometers(vmodel.TotalCO2GramsMid) }}
+										if co2Message != "" {
+											{{ tooltipID := "co2-tooltip-" + fmt.Sprintf("%.0f", vmodel.TotalCO2GramsMid) }}
+											@tooltip.Tooltip() {
+												@tooltip.Trigger(tooltip.TriggerProps{For: tooltipID, Class: "cursor-help text-muted-foreground hover:text-foreground"}) {
+													@icon.CircleQuestionMark(icon.Props{Class: "h-5 w-5"})
+												}
+												@tooltip.Content(tooltip.ContentProps{ID: tooltipID, Position: tooltip.PositionRight, Class: "max-w-xs"}) {
+													<p>{ co2Message }</p>
+												}
+											}
+										}
+									</div>
+								}
+								<p class="text-xs text-muted-foreground mt-1">estimation ±facteur ×3-5</p>
 							}
-							<p class="text-xs text-muted-foreground mt-1">estimation ±facteur ×3-5</p>
 						}
 					}
-				}
 				</div>
 			}
 			<!-- Bar charts: cost per day, per model, and per provider -->

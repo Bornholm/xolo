@@ -5,19 +5,9 @@ import (
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/checkbox"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/label"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/popover"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/textarea"
 )
-
-var rendererHandle = templ.NewOnceHandle()
-
-templ Script() {
-	@rendererHandle.Once() {
-		@selectbox.Script()
-		@popover.Script()
-	}
-}
 
 // Input renders a standard text input field using TemplUI components.
 templ Input(fieldCtx form.FieldContext) {

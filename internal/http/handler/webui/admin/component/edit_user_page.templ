@@ -7,7 +7,8 @@ import (
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/dialog"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
-	"github.com/bornholm/xolo/templx/form/renderer/templui"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/popover"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
 )
 
 type EditUserPageVModel struct {
@@ -19,7 +20,19 @@ type EditUserPageVModel struct {
 templ EditUserPage(vmodel EditUserPageVModel) {
 	@commonComp.AppLayout(vmodel.AppLayoutVModel,
 		commonComp.WithTitle("Modifier l'utilisateur"),
-		commonComp.WithScripts(templui.Script(), dialog.Script()),
+		commonComp.WithScripts(
+			commonComp.Script{
+				Name:      "popover",
+				Component: popover.Script(),
+			},
+			commonComp.Script{
+				Name:      "selectbox",
+				Component: selectbox.Script(),
+			},
+			commonComp.Script{
+				Name:      "dialog",
+				Component: dialog.Script(),
+			}),
 	) {
 		<div class="space-y-6">
 			<!-- Header with back button and title -->

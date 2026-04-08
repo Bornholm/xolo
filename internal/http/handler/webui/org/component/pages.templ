@@ -167,7 +167,7 @@ templ MembersPage(vmodel MembersPageVModel) {
 					}
 				}
 			}
-		@membersPagination(vmodel)
+			@membersPagination(vmodel)
 		</div>
 	}
 }
@@ -1071,7 +1071,15 @@ templ InviteForm(vmodel InviteFormVModel) {
 
 // ── Org Usage Page ────────────────────────────────────────────────────────────
 templ OrgUsagePage(vmodel OrgUsagePageVModel) {
-	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Quotas — "+vmodel.Org.Name()), common.WithScripts(chart.Script(), popover.Script(), selectbox.Script())) {
+	@common.AppLayout(
+		vmodel.AppLayoutVModel,
+		common.WithTitle("Usage — "+vmodel.Org.Name()),
+		common.WithScripts(
+			common.Script{Name: "chart", Component: chart.Script()},
+			common.Script{Name: "popover", Component: popover.Script()},
+			common.Script{Name: "selectbox", Component: selectbox.Script()},
+		),
+	) {
 		<div class="space-y-6">
 			<!-- Quotas title -->
 			<div class="flex items-center gap-4">

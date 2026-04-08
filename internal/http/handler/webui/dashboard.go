@@ -308,7 +308,7 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 			User:         user,
 			SelectedItem: "usage",
 			Breadcrumbs: []common.BreadcrumbItem{
-				{Label: "Espace de travail", Href: "/usage"},
+				{Label: "Espace personnel", Href: "/usage"},
 				{Label: "Usage", Href: ""},
 			},
 			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {

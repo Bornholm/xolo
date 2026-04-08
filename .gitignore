@@ -7,3 +7,4 @@ index.bleve
 /dist
 /node_modules
 *.jsonl
+opencode.json

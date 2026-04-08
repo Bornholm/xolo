@@ -12,7 +12,7 @@ type PageOptions struct {
 	Head        func() templ.Component
 	Description string
 	Variant     string
-	Scripts     []templ.Component
+	Scripts     []Script
 }
 
 type PageOptionFunc func(opts *PageOptions)
@@ -41,7 +41,12 @@ func WithVariant(variant string) PageOptionFunc {
 	}
 }
 
-func WithScripts(scripts ...templ.Component) PageOptionFunc {
+type Script struct {
+	Name      string
+	Component templ.Component
+}
+
+func WithScripts(scripts ...Script) PageOptionFunc {
 	return func(opts *PageOptions) {
 		opts.Scripts = append(opts.Scripts, scripts...)
 	}
@@ -52,7 +57,7 @@ func NewPageOptions(funcs ...PageOptionFunc) *PageOptions {
 		Title:   "",
 		Head:    nil,
 		Variant: "",
-		Scripts: make([]templ.Component, 0),
+		Scripts: make([]Script, 0),
 	}
 	for _, fn := range funcs {
 		fn(opts)
@@ -93,7 +98,13 @@ templ Page(funcs ...PageOptionFunc) {
 				@opts.Head()
 			}
 			if len(opts.Scripts) > 0 {
-				@templ.Join(opts.Scripts...)
+				{{ seen := make(map[string]struct{}) }}
+				for _, s := range opts.Scripts {
+					if _, exists := seen[s.Name]; !exists {
+						@s.Component
+						{{ seen[s.Name] = struct{}{} }}
+					}
+				}
 			}
 		</head>
 		<body>

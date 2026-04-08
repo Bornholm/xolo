@@ -3,7 +3,9 @@ package component
 import (
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/dialog"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/dropdown"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/popover"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/sheet"
 	"github.com/bornholm/xolo/internal/http/middleware/authz"
 )
@@ -27,32 +29,14 @@ templ CommonFooterItems(vmodel AppLayoutVModel) {
 }
 
 templ AppFooterItems(vmodel AppLayoutVModel) {
-	if AssertUser(ctx, authz.Has(authz.RoleAdmin)) {
-		@NavItem(icon.CloudCog, "Plateforme", string(BaseURL(ctx, WithPath("/admin/"))), vmodel.SelectedItem == "admin")
-	}
-	for _, m := range OrgAdminMemberships(ctx) {
-		if m.Org() != nil {
-			@NavItem(icon.Building, m.Org().Name(), string(BaseURL(ctx, WithPath("/orgs/", m.Org().Slug(), "/usage"))), false)
-		}
-	}
 	@CommonFooterItems(vmodel)
 }
 
 templ AdminFooterItems(vmodel AppLayoutVModel) {
-	@NavItem(icon.Monitor, "Espace de travail", string(BaseURL(ctx, WithPath("/usage"))), vmodel.SelectedItem == "user-view")
-	for _, m := range OrgAdminMemberships(ctx) {
-		if m.Org() != nil {
-			@NavItem(icon.Building, m.Org().Name(), string(BaseURL(ctx, WithPath("/orgs/", m.Org().Slug(), "/usage"))), false)
-		}
-	}
 	@CommonFooterItems(vmodel)
 }
 
 templ OrgAdminFooterItems(vmodel AppLayoutVModel) {
-	@NavItem(icon.Monitor, "Espace de travail", string(BaseURL(ctx, WithPath("/usage"))), vmodel.SelectedItem == "user-view")
-	if AssertUser(ctx, authz.Has(authz.RoleAdmin)) {
-		@NavItem(icon.CloudCog, "Plateforme", string(BaseURL(ctx, WithPath("/admin/"))), vmodel.SelectedItem == "admin")
-	}
 	@CommonFooterItems(vmodel)
 }
 
@@ -71,9 +55,58 @@ templ PublicShareFooterItems(vmodel AppLayoutVModel) {
 	}
 }
 
+templ AdminDropdown(vmodel AppLayoutVModel) {
+	{{ hasAdminAccess := AssertUser(ctx, authz.Has(authz.RoleAdmin)) || len(OrgAdminMemberships(ctx)) > 0 }}
+	if hasAdminAccess {
+		<div class="ml-auto">
+			@dropdown.Dropdown() {
+				@dropdown.Trigger() {
+					@button.Button(button.Props{
+						Size:    button.SizeIcon,
+						Variant: button.VariantGhost,
+					}) {
+						@icon.Cog(icon.Props{Class: "h-8 w-8"})
+					}
+				}
+				@dropdown.Content() {
+					@dropdown.Label() {
+						Administration
+					}
+					{{ orgs := OrgAdminMemberships(ctx) }}
+					if len(orgs) > 0 {
+						@dropdown.Group() {
+							for _, m := range orgs {
+								if m.Org() != nil {
+									@dropdown.Item(dropdown.ItemProps{Href: string(BaseURL(ctx, WithPath("/orgs/", m.Org().Slug(), "/usage")))}) {
+										@icon.Building(icon.Props{Class: "h-4 w-4 mr-2"})
+										{ m.Org().Name() }
+									}
+								}
+							}
+						}
+						@dropdown.Separator()
+					}
+					if AssertUser(ctx, authz.Has(authz.RoleAdmin)) {
+						@dropdown.Item(dropdown.ItemProps{Href: string(BaseURL(ctx, WithPath("/admin/")))}) {
+							@icon.CloudCog(icon.Props{Class: "h-4 w-4 mr-2"})
+							Plateforme
+						}
+					}
+				}
+			}
+		</div>
+	}
+}
+
 // AppLayout is the main responsive layout shell with sidebar navigation.
 templ AppLayout(vmodel AppLayoutVModel, funcs ...PageOptionFunc) {
-	{{ funcs = append(funcs, WithScripts(dialog.Script())) }}
+	{{
+		funcs = append(funcs, WithScripts(
+			Script{Name: "dialog", Component: dialog.Script()},
+			Script{Name: "dropdown", Component: dialog.Script()},
+			Script{Name: "popover", Component: popover.Script()},
+		))
+	}}
 	{{
 		if vmodel.User != nil {
 			if darkMode, exists := vmodel.User.Preferences().DarkMode(); exists {
@@ -117,6 +150,7 @@ templ AppLayout(vmodel AppLayoutVModel, funcs ...PageOptionFunc) {
 					if len(vmodel.Breadcrumbs) > 0 {
 						@breadcrumb(vmodel.Breadcrumbs)
 					}
+					@AdminDropdown(vmodel)
 				</header>
 				<!-- Page content -->
 				<main class="flex-1 overflow-auto p-4 md:p-6">
