@@ -11,4 +11,6 @@ type QuotaStore interface {
 	GetQuota(ctx context.Context, scope model.QuotaScope, scopeID string) (model.Quota, error)
 	// ResolveEffectiveQuota merges user and org quotas, taking the minimum non-nil value at each period.
 	ResolveEffectiveQuota(ctx context.Context, userID model.UserID, orgID model.OrgID) (*model.EffectiveQuota, error)
+	// ResolveEffectiveQuotaForApplication merges application and org quotas, taking the minimum non-nil value at each period.
+	ResolveEffectiveQuotaForApplication(ctx context.Context, appID model.ApplicationID, orgID model.OrgID) (*model.EffectiveQuota, error)
 }

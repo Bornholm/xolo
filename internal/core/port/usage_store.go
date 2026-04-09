@@ -22,7 +22,9 @@ type UsageStore interface {
 
 type UsageFilter struct {
 	UserID         *model.UserID
-	UserIDs        []model.UserID // pour filtrer par plusieurs utilisateurs
+	UserIDs        []model.UserID
+	ApplicationID  *model.ApplicationID
+	ApplicationIDs []model.ApplicationID
 	OrgID          *model.OrgID
 	ModelID        *model.LLMModelID
 	AuthTokenID    *string

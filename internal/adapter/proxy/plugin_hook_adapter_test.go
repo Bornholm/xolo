@@ -20,17 +20,19 @@ import (
 // ── stubs ──────────────────────────────────────────────────────────────────
 
 type stubAuthToken struct {
-	id    model.AuthTokenID
-	owner model.User
-	orgID model.OrgID
+	id          model.AuthTokenID
+	owner       model.User
+	application model.Application
+	orgID       model.OrgID
 }
 
-func (t *stubAuthToken) ID() model.AuthTokenID { return t.id }
-func (t *stubAuthToken) Owner() model.User     { return t.owner }
-func (t *stubAuthToken) Label() string         { return "test-token" }
-func (t *stubAuthToken) Value() string         { return "raw-token" }
-func (t *stubAuthToken) OrgID() model.OrgID    { return t.orgID }
-func (t *stubAuthToken) ExpiresAt() *time.Time { return nil }
+func (t *stubAuthToken) ID() model.AuthTokenID          { return t.id }
+func (t *stubAuthToken) Owner() model.User              { return t.owner }
+func (t *stubAuthToken) Application() model.Application { return t.application }
+func (t *stubAuthToken) Label() string                  { return "test-token" }
+func (t *stubAuthToken) Value() string                  { return "raw-token" }
+func (t *stubAuthToken) OrgID() model.OrgID             { return t.orgID }
+func (t *stubAuthToken) ExpiresAt() *time.Time          { return nil }
 
 var _ model.AuthToken = &stubAuthToken{}
 

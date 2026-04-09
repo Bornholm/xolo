@@ -48,20 +48,20 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 	since := rangeToSince(rangeParam)
 	orgID := org.ID()
 
-	// Support comma-separated values emitted by the SelectBox component (e.g. user=id1,id2)
-	rawUserFilter := r.URL.Query()["user"]
-	var userFilter []string
-	for _, v := range rawUserFilter {
+	// Support comma-separated owner values (users + applications) via 'owner' param
+	rawOwnerFilter := r.URL.Query()["owner"]
+	var ownerFilter []string
+	for _, v := range rawOwnerFilter {
 		for _, part := range strings.Split(v, ",") {
 			if part != "" {
-				userFilter = append(userFilter, part)
+				ownerFilter = append(ownerFilter, part)
 			}
 		}
 	}
 
 	// CSV export
 	if r.URL.Query().Get("format") == "csv" {
-		h.serveOrgUsageCSV(w, r, org, userFilter, since)
+		h.serveOrgUsageCSV(w, r, org, ownerFilter, since)
 		return
 	}
 
@@ -72,19 +72,42 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 		members = nil
 	}
 
+	// Fetch applications for filter
+	applications, err := h.applicationStore.QueryApplications(ctx, org.ID())
+	if err != nil {
+		slog.WarnContext(ctx, "could not list applications", slogx.Error(err))
+		applications = nil
+	}
+
+	// Build maps for filtering
+	applicationsMap := make(map[model.ApplicationID]model.Application)
+	for _, app := range applications {
+		applicationsMap[app.ID()] = app
+	}
+	userMap := make(map[model.UserID]model.User)
+	for _, m := range members {
+		if m.User() != nil {
+			userMap[m.User().ID()] = m.User()
+		}
+	}
+
 	orgCurrency := org.Currency()
 
-	// Build user filter for queries
+	// Separate owner filter into users and applications
 	var userIDs []model.UserID
-	if len(userFilter) > 0 {
-		for _, uid := range userFilter {
-			userIDs = append(userIDs, model.UserID(uid))
+	var appIDs []model.ApplicationID
+	for _, oid := range ownerFilter {
+		if _, isApp := applicationsMap[model.ApplicationID(oid)]; isApp {
+			appIDs = append(appIDs, model.ApplicationID(oid))
+		} else if _, isUser := userMap[model.UserID(oid)]; isUser {
+			userIDs = append(userIDs, model.UserID(oid))
 		}
 	}
 
 	usageFilter := port.UsageFilter{
-		OrgID: &orgID,
-		Since: &since,
+		OrgID:          &orgID,
+		Since:          &since,
+		ApplicationIDs: appIDs,
 	}
 	if len(userIDs) > 0 {
 		usageFilter.UserIDs = userIDs
@@ -121,11 +144,12 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 
 	// Fetch one extra record to detect whether a next page exists
 	rawRecords, err := h.usageStore.QueryUsage(ctx, port.UsageFilter{
-		OrgID:   &orgID,
-		Since:   &since,
-		Limit:   intPtr(usagePageSize + 1),
-		Offset:  intPtr(offset),
-		UserIDs: userIDs,
+		OrgID:          &orgID,
+		Since:          &since,
+		Limit:          intPtr(usagePageSize + 1),
+		Offset:         intPtr(offset),
+		UserIDs:        userIDs,
+		ApplicationIDs: appIDs,
 	})
 	if err != nil {
 		slog.ErrorContext(ctx, "could not query usage records", slogx.Error(err))
@@ -152,14 +176,33 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 		users[uid] = u
 	}
 
-	// Cache key for energy totals (includes user filter for uniqueness)
-	energyCacheKey := fmt.Sprintf("org-usage:%s:%d:%v", orgID, since.Unix(), userIDs)
+	// Batch-load applications for the records on this page
+	applicationsMap = make(map[model.ApplicationID]model.Application)
+	for _, rec := range rawRecords {
+		aid := rec.ApplicationID()
+		if aid == "" {
+			continue
+		}
+		if _, ok := applicationsMap[aid]; ok {
+			continue
+		}
+		a, err := h.applicationStore.GetApplication(ctx, aid)
+		if err != nil {
+			slog.WarnContext(ctx, "could not fetch application for usage record", slogx.Error(err), slog.String("appID", string(aid)))
+			continue
+		}
+		applicationsMap[aid] = a
+	}
+
+	// Cache key for energy totals (includes user and app filter for uniqueness)
+	energyCacheKey := fmt.Sprintf("org-usage:%s:%d:%v:%v", orgID, since.Unix(), userIDs, appIDs)
 
 	// Fetch all records for chart aggregation and energy totals
 	chartRecords, _ := h.usageStore.QueryUsage(ctx, port.UsageFilter{
-		OrgID:   &orgID,
-		Since:   &since,
-		UserIDs: userIDs,
+		OrgID:          &orgID,
+		Since:          &since,
+		UserIDs:        userIDs,
+		ApplicationIDs: appIDs,
 	})
 
 	// Pre-load models and providers for energy estimation (deduplicated) from chartRecords
@@ -334,7 +377,9 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 		Records:          records,
 		Users:            users,
 		Members:          members,
-		UserFilter:       userFilter,
+		OwnerFilter:      ownerFilter,
+		Applications:     applications,
+		ApplicationsMap:  applicationsMap,
 		Since:            since,
 		Range:            rangeParam,
 		Page:             page,
@@ -453,13 +498,40 @@ func chartByDate(m map[string]int64) []component.ChartDataPoint {
 	return pts
 }
 
-func (h *Handler) serveOrgUsageCSV(w http.ResponseWriter, r *http.Request, org model.Organization, userFilter []string, since time.Time) {
+func (h *Handler) serveOrgUsageCSV(w http.ResponseWriter, r *http.Request, org model.Organization, ownerFilter []string, since time.Time) {
 	ctx := r.Context()
 	orgID := org.ID()
 
+	members, _, err := h.orgStore.ListOrgMembers(ctx, org.ID(), port.ListOrgMembersOptions{})
+	if err != nil {
+		slog.WarnContext(ctx, "could not list org members for CSV", slogx.Error(err))
+	}
+
+	applications, err := h.applicationStore.QueryApplications(ctx, org.ID())
+	if err != nil {
+		slog.WarnContext(ctx, "could not list applications for CSV", slogx.Error(err))
+	}
+
+	applicationsMap := make(map[model.ApplicationID]model.Application)
+	for _, app := range applications {
+		applicationsMap[app.ID()] = app
+	}
+	userMap := make(map[model.UserID]model.User)
+	for _, m := range members {
+		if m.User() != nil {
+			userMap[m.User().ID()] = m.User()
+		}
+	}
+
+	// Separate owner filter into users and applications
 	var userIDs []model.UserID
-	for _, uid := range userFilter {
-		userIDs = append(userIDs, model.UserID(uid))
+	var applicationIDs []model.ApplicationID
+	for _, oid := range ownerFilter {
+		if _, isApp := applicationsMap[model.ApplicationID(oid)]; isApp {
+			applicationIDs = append(applicationIDs, model.ApplicationID(oid))
+		} else if _, isUser := userMap[model.UserID(oid)]; isUser {
+			userIDs = append(userIDs, model.UserID(oid))
+		}
 	}
 
 	usageFilter := port.UsageFilter{
@@ -469,6 +541,9 @@ func (h *Handler) serveOrgUsageCSV(w http.ResponseWriter, r *http.Request, org m
 	if len(userIDs) > 0 {
 		usageFilter.UserIDs = userIDs
 	}
+	if len(applicationIDs) > 0 {
+		usageFilter.ApplicationIDs = applicationIDs
+	}
 
 	records, err := h.usageStore.QueryUsage(ctx, usageFilter)
 	if err != nil {
@@ -477,14 +552,14 @@ func (h *Handler) serveOrgUsageCSV(w http.ResponseWriter, r *http.Request, org m
 		return
 	}
 
-	members, _, err := h.orgStore.ListOrgMembers(ctx, org.ID(), port.ListOrgMembersOptions{})
-	if err != nil {
-		slog.WarnContext(ctx, "could not list org members for CSV", slogx.Error(err))
-	}
-
 	userNames := make(map[model.UserID]string)
 	for _, m := range members {
 		userNames[m.UserID()] = m.User().DisplayName()
+	}
+
+	appNames := make(map[model.ApplicationID]string)
+	for _, app := range applications {
+		appNames[app.ID()] = app.Name()
 	}
 
 	modelCache := make(map[model.LLMModelID]model.LLMModel)
@@ -517,12 +592,23 @@ func (h *Handler) serveOrgUsageCSV(w http.ResponseWriter, r *http.Request, org m
 	writer := csv.NewWriter(w)
 	defer writer.Flush()
 
-	writer.Write([]string{"Utilisateur", "Modèle", "Tokens prompt", "Tokens completion", "Coût", "Devise", "Énergie (Wh)", "CO₂ (g)", "Date"})
+	writer.Write([]string{"Utilisateur", "Type", "Modèle", "Tokens prompt", "Tokens completion", "Coût", "Devise", "Énergie (Wh)", "CO₂ (g)", "Date"})
 
 	for _, rec := range records {
-		userName := userNames[rec.UserID()]
-		if userName == "" {
-			userName = string(rec.UserID())
+		var ownerName string
+		var ownerType string
+		if appID := rec.ApplicationID(); appID != "" {
+			ownerName = appNames[model.ApplicationID(appID)]
+			if ownerName == "" {
+				ownerName = string(appID)
+			}
+			ownerType = "application"
+		} else {
+			ownerName = userNames[rec.UserID()]
+			if ownerName == "" {
+				ownerName = string(rec.UserID())
+			}
+			ownerType = "user"
 		}
 
 		modelName := rec.ProxyModelName()
@@ -552,7 +638,8 @@ func (h *Handler) serveOrgUsageCSV(w http.ResponseWriter, r *http.Request, org m
 		cost := float64(rec.Cost()) / 1_000_000
 
 		writer.Write([]string{
-			userName,
+			ownerName,
+			ownerType,
 			modelName,
 			strconv.Itoa(rec.PromptTokens()),
 			strconv.Itoa(rec.CompletionTokens()),

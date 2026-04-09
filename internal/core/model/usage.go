@@ -17,6 +17,7 @@ type UsageRecord interface {
 	WithID[UsageRecordID]
 
 	UserID() UserID
+	ApplicationID() ApplicationID
 	OrgID() OrgID
 	ProviderID() ProviderID
 	ModelID() LLMModelID
@@ -36,6 +37,7 @@ type UsageRecord interface {
 type BaseUsageRecord struct {
 	id                UsageRecordID
 	userID            UserID
+	applicationID     ApplicationID
 	orgID             OrgID
 	providerID        ProviderID
 	modelID           LLMModelID
@@ -50,27 +52,28 @@ type BaseUsageRecord struct {
 	createdAt         time.Time
 }
 
-func (r *BaseUsageRecord) ID() UsageRecordID         { return r.id }
-func (r *BaseUsageRecord) UserID() UserID            { return r.userID }
-func (r *BaseUsageRecord) OrgID() OrgID              { return r.orgID }
-func (r *BaseUsageRecord) ProviderID() ProviderID    { return r.providerID }
-func (r *BaseUsageRecord) ModelID() LLMModelID       { return r.modelID }
-func (r *BaseUsageRecord) ProxyModelName() string    { return r.proxyModelName }
-func (r *BaseUsageRecord) AuthTokenID() string       { return r.authTokenID }
-func (r *BaseUsageRecord) PromptTokens() int         { return r.promptTokens }
-func (r *BaseUsageRecord) CompletionTokens() int     { return r.completionTokens }
-func (r *BaseUsageRecord) TotalTokens() int          { return r.totalTokens }
-func (r *BaseUsageRecord) Cost() int64               { return r.cost }
-func (r *BaseUsageRecord) Currency() string          { return r.currency }
-func (r *BaseUsageRecord) ResolvedModelName() string { return r.resolvedModelName }
-func (r *BaseUsageRecord) CreatedAt() time.Time      { return r.createdAt }
+func (r *BaseUsageRecord) ID() UsageRecordID            { return r.id }
+func (r *BaseUsageRecord) UserID() UserID               { return r.userID }
+func (r *BaseUsageRecord) ApplicationID() ApplicationID { return r.applicationID }
+func (r *BaseUsageRecord) OrgID() OrgID                 { return r.orgID }
+func (r *BaseUsageRecord) ProviderID() ProviderID       { return r.providerID }
+func (r *BaseUsageRecord) ModelID() LLMModelID          { return r.modelID }
+func (r *BaseUsageRecord) ProxyModelName() string       { return r.proxyModelName }
+func (r *BaseUsageRecord) AuthTokenID() string          { return r.authTokenID }
+func (r *BaseUsageRecord) PromptTokens() int            { return r.promptTokens }
+func (r *BaseUsageRecord) CompletionTokens() int        { return r.completionTokens }
+func (r *BaseUsageRecord) TotalTokens() int             { return r.totalTokens }
+func (r *BaseUsageRecord) Cost() int64                  { return r.cost }
+func (r *BaseUsageRecord) Currency() string             { return r.currency }
+func (r *BaseUsageRecord) ResolvedModelName() string    { return r.resolvedModelName }
+func (r *BaseUsageRecord) CreatedAt() time.Time         { return r.createdAt }
 
 func (r *BaseUsageRecord) SetResolvedModelName(v string) { r.resolvedModelName = v }
 
 var _ UsageRecord = &BaseUsageRecord{}
 
 func NewUsageRecord(
-	userID UserID, orgID OrgID, providerID ProviderID, modelID LLMModelID,
+	userID UserID, applicationID ApplicationID, orgID OrgID, providerID ProviderID, modelID LLMModelID,
 	proxyModelName, authTokenID string,
 	promptTokens, completionTokens int,
 	cost int64,
@@ -81,6 +84,7 @@ func NewUsageRecord(
 	return &BaseUsageRecord{
 		id:                NewUsageRecordID(),
 		userID:            userID,
+		applicationID:     applicationID,
 		orgID:             orgID,
 		providerID:        providerID,
 		modelID:           modelID,

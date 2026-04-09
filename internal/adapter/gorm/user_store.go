@@ -14,9 +14,15 @@ import (
 
 // fromAuthToken converts a model.AuthToken to a GORM AuthToken
 func fromAuthToken(t model.AuthToken) *AuthToken {
+	var ownerID *string
+	if t.Owner() != nil {
+		id := string(t.Owner().ID())
+		ownerID = &id
+	}
+
 	return &AuthToken{
 		ID:        string(t.ID()),
-		OwnerID:   string(t.Owner().ID()),
+		OwnerID:   ownerID,
 		Label:     t.Label(),
 		Value:     t.Value(),
 		OrgID:     string(t.OrgID()),
@@ -130,7 +136,7 @@ func (s *Store) FindAuthToken(ctx context.Context, token string) (model.AuthToke
 	var authToken AuthToken
 
 	err := s.withRetry(ctx, false, func(ctx context.Context, db *gorm.DB) error {
-		if err := db.Preload("Owner").First(&authToken, "value = ?", token).Error; err != nil {
+		if err := db.Preload("Owner").Preload("Application").First(&authToken, "value = ?", token).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return errors.WithStack(port.ErrNotFound)
 			}

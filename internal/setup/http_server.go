@@ -47,10 +47,6 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		return nil, errors.Wrap(err, "could not configure bridge middleware from config")
 	}
 
-	authChain := func(h gohttp.Handler) gohttp.Handler {
-		return authnMiddleware(bridgeMiddleware(h))
-	}
-
 	assets := common.NewHandler()
 
 	rateLimiter := ratelimit.Middleware(
@@ -60,6 +56,10 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		conf.HTTP.RateLimit.CacheSize,
 		conf.HTTP.RateLimit.CacheTTL,
 	)
+
+	authChain := func(h gohttp.Handler) gohttp.Handler {
+		return authnMiddleware(bridgeMiddleware(h))
+	}
 
 	taskRunner, err := getTaskRunner(ctx, conf)
 	if err != nil {
@@ -155,7 +155,12 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 
 	withMemberships := membershipsMiddleware.Middleware(orgStore)
 
-	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, providerStore, virtualModelStore, usageStore, inviteStore, quotaStore, quotaService, exchangeRateService, conf.SecretKey, pluginManager, pluginActivationStore, pluginConfigStore)
+	applicationStore, err := getApplicationStoreFromConfig(ctx, conf)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create application store from config")
+	}
+
+	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, providerStore, virtualModelStore, usageStore, inviteStore, applicationStore, quotaStore, quotaService, exchangeRateService, conf.SecretKey, pluginManager, pluginActivationStore, pluginConfigStore)
 
 	apiHandler := api.NewHandler(providerStore, orgStore, virtualModelStore, exchangeRateService)
 
@@ -175,7 +180,7 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		http.WithMount("/auth/oidc/", rateLimiter(oidcAuthn)),
 		http.WithMount("/auth/token/", rateLimiter(tokenAuthn)),
 		http.WithMount("/metrics/", rateLimiter(authChain(metrics.NewHandler()))),
-		http.WithMount("/api/v1/", rateLimiter(authChain(proxyServer))),
+		http.WithMount("/api/v1/", rateLimiter(proxyServer)),
 		http.WithRoute("GET /api/v1/models", rateLimiter(authChain(apiHandler))),
 		http.WithRoute("GET /api/models-dev/lookup", rateLimiter(authChain(apiHandler))),
 		http.WithRoute("GET /api/exchange-rate", rateLimiter(authChain(apiHandler))),

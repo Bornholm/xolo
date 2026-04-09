@@ -136,6 +136,7 @@ func NewAuthTokenID() AuthTokenID {
 type AuthToken interface {
 	WithID[AuthTokenID]
 	WithOwner
+	WithApplication
 
 	Label() string
 	Value() string
@@ -144,12 +145,13 @@ type AuthToken interface {
 }
 
 type BaseAuthToken struct {
-	id        AuthTokenID
-	owner     User
-	label     string
-	value     string
-	orgID     OrgID
-	expiresAt *time.Time
+	id          AuthTokenID
+	owner       User
+	application Application
+	label       string
+	value       string
+	orgID       OrgID
+	expiresAt   *time.Time
 }
 
 // ID implements AuthToken.
@@ -157,6 +159,9 @@ func (t *BaseAuthToken) ID() AuthTokenID { return t.id }
 
 // Owner implements AuthToken.
 func (t *BaseAuthToken) Owner() User { return t.owner }
+
+// Application implements AuthToken.
+func (t *BaseAuthToken) Application() Application { return t.application }
 
 // Label implements AuthToken.
 func (t *BaseAuthToken) Label() string { return t.label }
@@ -180,6 +185,17 @@ func NewAuthToken(owner User, orgID OrgID, label, value string, expiresAt *time.
 		label:     label,
 		value:     value,
 		expiresAt: expiresAt,
+	}
+}
+
+func NewApplicationAuthToken(application Application, orgID OrgID, label, value string, expiresAt *time.Time) *BaseAuthToken {
+	return &BaseAuthToken{
+		id:          NewAuthTokenID(),
+		application: application,
+		orgID:       orgID,
+		label:       label,
+		value:       value,
+		expiresAt:   expiresAt,
 	}
 }
 

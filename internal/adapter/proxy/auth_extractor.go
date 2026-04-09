@@ -14,8 +14,9 @@ import (
 type contextKey string
 
 const (
-	contextKeyAuthTokenID contextKey = "authTokenID"
-	contextKeyOrgID       contextKey = "orgID"
+	contextKeyAuthTokenID   contextKey = "authTokenID"
+	contextKeyOrgID         contextKey = "orgID"
+	contextKeyApplicationID contextKey = "applicationID"
 )
 
 // XoloAuthExtractor extracts the user identity from a Bearer token,
@@ -48,10 +49,20 @@ func XoloAuthExtractor(userStore port.UserStore) func(r *http.Request) (string, 
 		// Stash into context for usage tracker and quota enforcer
 		newCtx := context.WithValue(ctx, contextKeyAuthTokenID, string(token.ID()))
 		newCtx = context.WithValue(newCtx, contextKeyOrgID, string(token.OrgID()))
+		if app := token.Application(); app != nil {
+			newCtx = context.WithValue(newCtx, contextKeyApplicationID, string(app.ID()))
+		}
 		// Replace the request context — the proxy server reads UserID from AuthExtractor
 		// but we need to carry extra data; we attach it to the request in-place.
 		*r = *r.WithContext(newCtx)
 
+		// Return Application ID if token has Application, otherwise return User ID
+		if app := token.Application(); app != nil {
+			return string(app.ID()), nil
+		}
+		if token.Owner() == nil {
+			return "", nil
+		}
 		return string(token.Owner().ID()), nil
 	}
 }
@@ -59,6 +70,12 @@ func XoloAuthExtractor(userStore port.UserStore) func(r *http.Request) (string, 
 // AuthTokenIDFromContext retrieves the auth token ID stored by XoloAuthExtractor.
 func AuthTokenIDFromContext(ctx context.Context) string {
 	v, _ := ctx.Value(contextKeyAuthTokenID).(string)
+	return v
+}
+
+// ApplicationIDFromContext retrieves the application ID stored by XoloAuthExtractor.
+func ApplicationIDFromContext(ctx context.Context) string {
+	v, _ := ctx.Value(contextKeyApplicationID).(string)
 	return v
 }
 
@@ -72,6 +89,7 @@ func OrgIDFromContext(ctx context.Context) string {
 const (
 	MetaAuthTokenID   = "authTokenID"
 	MetaOrgID         = "orgID"
+	MetaApplicationID = "applicationID"
 	MetaModelID       = "modelID"
 	MetaOriginalModel = "originalModel" // requested model before plugin resolution
 	MetaResolvedModel = "resolvedModel" // actual model after plugin resolution
@@ -101,6 +119,9 @@ func PopulateMetaFromContext(ctx context.Context, meta map[string]any) {
 	if id := OrgIDFromContext(ctx); id != "" {
 		meta[MetaOrgID] = id
 	}
+	if id := ApplicationIDFromContext(ctx); id != "" {
+		meta[MetaApplicationID] = id
+	}
 }
 
 // OrgIDFromMeta reads orgID from the proxy request Metadata.
@@ -119,6 +140,12 @@ func AuthTokenIDFromMeta(meta map[string]any) string {
 func ModelIDFromMeta(meta map[string]any) model.LLMModelID {
 	v, _ := meta[MetaModelID].(string)
 	return model.LLMModelID(v)
+}
+
+// ApplicationIDFromMeta reads applicationID from the proxy request Metadata.
+func ApplicationIDFromMeta(meta map[string]any) model.ApplicationID {
+	v, _ := meta[MetaApplicationID].(string)
+	return model.ApplicationID(v)
 }
 
 // tokenFinder is a minimal interface satisfied by port.UserStore.
@@ -153,4 +180,7 @@ func populateMetaFromHeader(ctx context.Context, store tokenFinder, req *genaiPr
 	}
 	req.Metadata[MetaOrgID] = string(token.OrgID())
 	req.Metadata[MetaAuthTokenID] = string(token.ID())
+	if app := token.Application(); app != nil {
+		req.Metadata[MetaApplicationID] = string(app.ID())
+	}
 }

@@ -23,6 +23,7 @@ type Handler struct {
 	usageStore            port.UsageStore
 	inviteStore           port.InviteStore
 	userStore             port.UserStore
+	applicationStore      port.ApplicationStore
 	quotaStore            port.QuotaStore
 	secretKey             string
 	exchangeRateService   *service.ExchangeRateService
@@ -43,6 +44,7 @@ func NewHandler(
 	usageStore port.UsageStore,
 	inviteStore port.InviteStore,
 	userStore port.UserStore,
+	applicationStore port.ApplicationStore,
 	exchangeRateService *service.ExchangeRateService,
 	quotaStore port.QuotaStore,
 	secretKey string,
@@ -58,6 +60,7 @@ func NewHandler(
 		usageStore:            usageStore,
 		inviteStore:           inviteStore,
 		userStore:             userStore,
+		applicationStore:      applicationStore,
 		quotaStore:            quotaStore,
 		secretKey:             secretKey,
 		exchangeRateService:   exchangeRateService,
@@ -141,6 +144,15 @@ func NewHandler(
 	h.mux.Handle("GET /{orgSlug}/admin/virtual-models/{modelID}/edit", assertOrgAdmin(http.HandlerFunc(h.getEditVirtualModelPage)))
 	h.mux.Handle("POST /{orgSlug}/admin/virtual-models/{modelID}/edit", assertOrgAdmin(http.HandlerFunc(h.updateVirtualModel)))
 	h.mux.Handle("DELETE /{orgSlug}/admin/virtual-models/{modelID}", assertOrgAdmin(http.HandlerFunc(h.deleteVirtualModel)))
+
+	h.mux.Handle("GET /{orgSlug}/admin/applications", assertOrgAdmin(http.HandlerFunc(h.getApplicationsPage)))
+	h.mux.Handle("GET /{orgSlug}/admin/applications/new", assertOrgAdmin(http.HandlerFunc(h.getNewApplicationPage)))
+	h.mux.Handle("POST /{orgSlug}/admin/applications", assertOrgAdmin(http.HandlerFunc(h.createApplication)))
+	h.mux.Handle("GET /{orgSlug}/admin/applications/{appID}/edit", assertOrgAdmin(http.HandlerFunc(h.getEditApplicationPage)))
+	h.mux.Handle("POST /{orgSlug}/admin/applications/{appID}/edit", assertOrgAdmin(http.HandlerFunc(h.updateApplication)))
+	h.mux.Handle("POST /{orgSlug}/admin/applications/{appID}/delete", assertOrgAdmin(http.HandlerFunc(h.deleteApplication)))
+	h.mux.Handle("POST /{orgSlug}/admin/applications/{appID}/tokens", assertOrgAdmin(http.HandlerFunc(h.createApplicationToken)))
+	h.mux.Handle("POST /{orgSlug}/admin/applications/{appID}/tokens/{tokenID}/delete", assertOrgAdmin(http.HandlerFunc(h.deleteApplicationToken)))
 
 	h.mux.Handle("GET /{orgSlug}/admin/plugins", assertOrgAdmin(http.HandlerFunc(h.getPluginsPage)))
 	h.mux.Handle("POST /{orgSlug}/admin/plugins/{pluginName}/activate", assertOrgAdmin(http.HandlerFunc(h.postActivatePlugin)))

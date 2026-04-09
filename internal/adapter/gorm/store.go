@@ -72,7 +72,7 @@ func NewStore(db *gorm.DB) *Store {
 			// User store
 			&User{}, &AuthToken{}, &UserRole{}, &UserPreferences{},
 			// Org store
-			&Organization{}, &Membership{},
+			&Organization{}, &Membership{}, &Application{},
 			// Provider store
 			&Provider{}, &LLMModel{},
 			// Virtual model store

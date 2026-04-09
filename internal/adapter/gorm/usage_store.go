@@ -2,6 +2,8 @@ package gorm
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/bornholm/xolo/internal/core/model"
@@ -106,15 +108,71 @@ func (s *Store) SumCostSince(ctx context.Context, userID model.UserID, orgID mod
 }
 
 func applyUsageFilter(query *gorm.DB, filter port.UsageFilter) *gorm.DB {
-	if filter.UserID != nil {
-		query = query.Where("user_id = ?", string(*filter.UserID))
-	}
-	if len(filter.UserIDs) > 0 {
-		userIDStrings := make([]string, len(filter.UserIDs))
-		for i, uid := range filter.UserIDs {
-			userIDStrings[i] = string(uid)
+	hasUserFilter := filter.UserID != nil || len(filter.UserIDs) > 0
+	hasAppFilter := filter.ApplicationID != nil || len(filter.ApplicationIDs) > 0
+
+	if hasUserFilter && hasAppFilter {
+		var userConditions []string
+		var appConditions []string
+		if filter.UserID != nil {
+			userConditions = append(userConditions, "user_id = "+string(*filter.UserID))
 		}
-		query = query.Where("user_id IN ?", userIDStrings)
+		if len(filter.UserIDs) > 0 {
+			userIDStrings := make([]string, len(filter.UserIDs))
+			for i, uid := range filter.UserIDs {
+				userIDStrings[i] = fmt.Sprintf("'%s'", uid)
+			}
+			userConditions = append(userConditions, "user_id IN ("+strings.Join(userIDStrings, ",")+")")
+		}
+		if filter.ApplicationID != nil {
+			appConditions = append(appConditions, "application_id = "+string(*filter.ApplicationID))
+		}
+		if len(filter.ApplicationIDs) > 0 {
+			appIDStrings := make([]string, len(filter.ApplicationIDs))
+			for i, aid := range filter.ApplicationIDs {
+				appIDStrings[i] = fmt.Sprintf("'%s'", aid)
+			}
+			appConditions = append(appConditions, "application_id IN ("+strings.Join(appIDStrings, ",")+")")
+		}
+		userClause := ""
+		if len(userConditions) > 0 {
+			userClause = "(" + strings.Join(userConditions, " OR ") + ")"
+		}
+		appClause := ""
+		if len(appConditions) > 0 {
+			appClause = "(" + strings.Join(appConditions, " OR ") + ")"
+		}
+		orClause := userClause
+		if appClause != "" {
+			if orClause != "" {
+				orClause += " OR " + appClause
+			} else {
+				orClause = appClause
+			}
+		}
+		query = query.Where(orClause)
+	} else if hasUserFilter {
+		if filter.UserID != nil {
+			query = query.Where("user_id = ?", string(*filter.UserID))
+		}
+		if len(filter.UserIDs) > 0 {
+			userIDStrings := make([]string, len(filter.UserIDs))
+			for i, uid := range filter.UserIDs {
+				userIDStrings[i] = string(uid)
+			}
+			query = query.Where("user_id IN ?", userIDStrings)
+		}
+	} else if hasAppFilter {
+		if filter.ApplicationID != nil {
+			query = query.Where("application_id = ?", string(*filter.ApplicationID))
+		}
+		if len(filter.ApplicationIDs) > 0 {
+			appIDStrings := make([]string, len(filter.ApplicationIDs))
+			for i, aid := range filter.ApplicationIDs {
+				appIDStrings[i] = string(aid)
+			}
+			query = query.Where("application_id IN ?", appIDStrings)
+		}
 	}
 	if filter.OrgID != nil {
 		query = query.Where("org_id = ?", string(*filter.OrgID))

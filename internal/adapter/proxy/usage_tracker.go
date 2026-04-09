@@ -69,6 +69,7 @@ func (t *XoloUsageTracker) PostResponse(ctx context.Context, req *genaiProxy.Pro
 	}
 
 	authTokenID := AuthTokenIDFromMeta(req.Metadata)
+	applicationID := ApplicationIDFromMeta(req.Metadata)
 
 	llmModel, err := t.providerStore.GetLLMModelByID(ctx, modelID)
 	if err != nil {
@@ -124,6 +125,7 @@ func (t *XoloUsageTracker) PostResponse(ctx context.Context, req *genaiProxy.Pro
 
 	record := model.NewUsageRecord(
 		model.UserID(req.UserID),
+		applicationID,
 		orgID,
 		llmModel.ProviderID(),
 		modelID,

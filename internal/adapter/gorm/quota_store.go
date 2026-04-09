@@ -76,6 +76,37 @@ func (s *Store) ResolveEffectiveQuota(ctx context.Context, userID model.UserID, 
 	return effective, nil
 }
 
+// ResolveEffectiveQuotaForApplication implements port.QuotaStore.
+// Takes the minimum non-nil budget at each period across application and org quotas.
+func (s *Store) ResolveEffectiveQuotaForApplication(ctx context.Context, appID model.ApplicationID, orgID model.OrgID) (*model.EffectiveQuota, error) {
+	effective := &model.EffectiveQuota{}
+
+	appQuota, err := s.GetQuota(ctx, model.QuotaScopeApplication, string(appID))
+	if err != nil && !errors.Is(err, port.ErrNotFound) {
+		return nil, errors.WithStack(err)
+	}
+
+	orgQuota, err := s.GetQuota(ctx, model.QuotaScopeOrg, string(orgID))
+	if err != nil && !errors.Is(err, port.ErrNotFound) {
+		return nil, errors.WithStack(err)
+	}
+
+	switch {
+	case orgQuota != nil:
+		effective.Currency = orgQuota.Currency()
+	case appQuota != nil:
+		effective.Currency = appQuota.Currency()
+	default:
+		effective.Currency = model.DefaultCurrency
+	}
+
+	effective.DailyBudget = minPtr(quotaDaily(appQuota), quotaDaily(orgQuota))
+	effective.MonthlyBudget = minPtr(quotaMonthly(appQuota), quotaMonthly(orgQuota))
+	effective.YearlyBudget = minPtr(quotaYearly(appQuota), quotaYearly(orgQuota))
+
+	return effective, nil
+}
+
 func quotaDaily(q model.Quota) *int64 {
 	if q == nil {
 		return nil

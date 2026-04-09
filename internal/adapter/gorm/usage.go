@@ -9,7 +9,8 @@ import (
 type UsageRecord struct {
 	ID                string `gorm:"primaryKey;autoIncrement:false"`
 	CreatedAt         time.Time
-	UserID            string `gorm:"index;not null"`
+	UserID            string `gorm:"index"`
+	ApplicationID     string `gorm:"index"`
 	OrgID             string `gorm:"index;not null"`
 	ProviderID        string `gorm:"index;not null"`
 	ModelID           string `gorm:"index;not null"`
@@ -27,8 +28,11 @@ type wrappedUsageRecord struct {
 	r *UsageRecord
 }
 
-func (w *wrappedUsageRecord) ID() model.UsageRecordID      { return model.UsageRecordID(w.r.ID) }
-func (w *wrappedUsageRecord) UserID() model.UserID         { return model.UserID(w.r.UserID) }
+func (w *wrappedUsageRecord) ID() model.UsageRecordID { return model.UsageRecordID(w.r.ID) }
+func (w *wrappedUsageRecord) UserID() model.UserID    { return model.UserID(w.r.UserID) }
+func (w *wrappedUsageRecord) ApplicationID() model.ApplicationID {
+	return model.ApplicationID(w.r.ApplicationID)
+}
 func (w *wrappedUsageRecord) OrgID() model.OrgID           { return model.OrgID(w.r.OrgID) }
 func (w *wrappedUsageRecord) ProviderID() model.ProviderID { return model.ProviderID(w.r.ProviderID) }
 func (w *wrappedUsageRecord) ModelID() model.LLMModelID    { return model.LLMModelID(w.r.ModelID) }
@@ -48,6 +52,7 @@ func fromUsageRecord(r model.UsageRecord) *UsageRecord {
 	return &UsageRecord{
 		ID:                string(r.ID()),
 		UserID:            string(r.UserID()),
+		ApplicationID:     string(r.ApplicationID()),
 		OrgID:             string(r.OrgID()),
 		ProviderID:        string(r.ProviderID()),
 		ModelID:           string(r.ModelID()),

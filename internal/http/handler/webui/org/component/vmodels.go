@@ -114,17 +114,19 @@ type ChartDataPoint struct {
 
 type OrgUsagePageVModel struct {
 	common.AppLayoutVModel
-	Org        model.Organization
-	Aggregate  *port.UsageAggregate
-	Records    []OrgDisplayUsageRecord
-	Users      map[model.UserID]model.User
-	Members    []model.Membership // pour le filtre utilisateur
-	UserFilter []string           // IDs sélectionnés pour le filtre
-	Since      time.Time
-	Range      string // "7d", "30d", "90d", "180d", "365d"
-	Page       int
-	PageSize   int
-	HasNext    bool
+	Org             model.Organization
+	Aggregate       *port.UsageAggregate
+	Records         []OrgDisplayUsageRecord
+	Users           map[model.UserID]model.User
+	Members         []model.Membership // pour le filtre utilisateur
+	OwnerFilter     []string           // IDs sélectionnés (users + applications)
+	Applications    []model.Application
+	ApplicationsMap map[model.ApplicationID]model.Application
+	Since           time.Time
+	Range           string // "7d", "30d", "90d", "180d", "365d"
+	Page            int
+	PageSize        int
+	HasNext         bool
 	// Chart/quota fields
 	OrgQuota         model.Quota // may be nil if no quota defined
 	DailyCost        int64       // today's org cost in org currency (microcents)

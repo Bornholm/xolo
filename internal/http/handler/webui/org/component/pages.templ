@@ -1203,14 +1203,14 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 							}
 						}
 					</select>
-					if len(vmodel.Members) > 0 {
-						<label class="text-sm text-muted-foreground">Utilisateurs :</label>
-						@selectbox.SelectBox(selectbox.Props{Multiple: true, Class: "w-56"}) {
+					if len(vmodel.Members) > 0 || len(vmodel.Applications) > 0 {
+						<label class="text-sm text-muted-foreground">Owner :</label>
+						@selectbox.SelectBox(selectbox.Props{Multiple: true, Class: "w-64"}) {
 							@selectbox.Trigger(selectbox.TriggerProps{
-								Name:              "user",
+								Name:              "owner",
 								Multiple:          true,
 								ShowPills:         false,
-								SelectedCountText: "{n} utilisateurs",
+								SelectedCountText: "{n} sélectionnées",
 							}) {
 								@selectbox.Value(selectbox.ValueProps{
 									Placeholder: "Tous",
@@ -1225,18 +1225,34 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 										if m.User() != nil {
 											@selectbox.Item(selectbox.ItemProps{
 												Value:    string(m.User().ID()),
-												Selected: slices.Contains(vmodel.UserFilter, string(m.User().ID())),
+												Selected: slices.Contains(vmodel.OwnerFilter, string(m.User().ID())),
 											}) {
-												{ m.User().DisplayName() }
+												<span class="flex items-center gap-2">
+													<i class="fa-solid fa-user text-muted-foreground"></i>
+													{ m.User().DisplayName() }
+												</span>
 											}
+										}
+									}
+								}
+								@selectbox.Group() {
+									for _, app := range vmodel.Applications {
+										@selectbox.Item(selectbox.ItemProps{
+											Value:    string(app.ID()),
+											Selected: slices.Contains(vmodel.OwnerFilter, string(app.ID())),
+										}) {
+											<span class="flex items-center gap-2">
+												<i class="fa-solid fa-window-restore text-muted-foreground"></i>
+												{ app.Name() }
+											</span>
 										}
 									}
 								}
 							}
 						}
-						@button.Button(button.Props{Type: "submit", Variant: button.VariantOutline, Size: button.SizeSm}) {
-							Filtrer
-						}
+					}
+					@button.Button(button.Props{Type: "submit", Variant: button.VariantOutline, Size: button.SizeSm}) {
+						Filtrer
 					}
 				</form>
 			</div>
@@ -1446,7 +1462,7 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 						@table.Table() {
 							@table.Header() {
 								@table.Head() {
-									Utilisateur
+									Utilisateur / Application
 								}
 								@table.Head() {
 									Modèle
@@ -1471,11 +1487,7 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 								for _, dr := range vmodel.Records {
 									@table.Row() {
 										@table.Cell() {
-											if u, ok := vmodel.Users[dr.Record.UserID()]; ok {
-												{ u.DisplayName() }
-											} else {
-												{ string(dr.Record.UserID()) }
-											}
+											{ displayOwner(vmodel.Users, vmodel.ApplicationsMap, dr.Record) }
 										}
 										@table.Cell() {
 											{ dr.DisplayModelName }
@@ -1530,12 +1542,12 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 				@pagination.Pagination() {
 					@pagination.Content() {
 						@pagination.Previous(pagination.PreviousProps{
-							Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage"), common.WithValues("range", vmodel.Range, "page", fmt.Sprintf("%d", vmodel.Page-1), "user", strings.Join(vmodel.UserFilter, ","))),
+							Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage"), common.WithValues("range", vmodel.Range, "page", fmt.Sprintf("%d", vmodel.Page-1), "owner", strings.Join(vmodel.OwnerFilter, ","))),
 							Disabled: vmodel.Page <= 1,
 							Label:    "Précédent",
 						})
 						@pagination.Next(pagination.NextProps{
-							Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage"), common.WithValues("range", vmodel.Range, "page", fmt.Sprintf("%d", vmodel.Page+1), "user", strings.Join(vmodel.UserFilter, ","))),
+							Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage"), common.WithValues("range", vmodel.Range, "page", fmt.Sprintf("%d", vmodel.Page+1), "owner", strings.Join(vmodel.OwnerFilter, ","))),
 							Disabled: !vmodel.HasNext,
 							Label:    "Suivant",
 						})
@@ -1543,7 +1555,7 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 				}
 				<div class="flex justify-end mt-4">
 					<a
-						href={ common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage"), common.WithValues("range", vmodel.Range, "user", strings.Join(vmodel.UserFilter, ","), "format", "csv")) }
+						href={ common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage"), common.WithValues("range", vmodel.Range, "owner", strings.Join(vmodel.OwnerFilter, ","), "format", "csv")) }
 						class="text-sm text-muted-foreground hover:text-foreground flex items-center gap-2"
 					>
 						<i class="fa-solid fa-download"></i>
@@ -1571,6 +1583,23 @@ func chartValues(pts []ChartDataPoint) []float64 {
 		vals[i] = p.Value
 	}
 	return vals
+}
+
+func displayOwner(users map[model.UserID]model.User, apps map[model.ApplicationID]model.Application, rec model.UsageRecord) string {
+	// Check if this is an Application record (has non-empty ApplicationID)
+	appID := rec.ApplicationID()
+	if appID != "" {
+		if app, ok := apps[appID]; ok {
+			return app.Name()
+		}
+		return string(appID)
+	}
+	// Otherwise it's a User record
+	uid := rec.UserID()
+	if u, ok := users[uid]; ok {
+		return u.DisplayName()
+	}
+	return string(uid)
 }
 
 func microToFloat(v int64) float64 { return float64(v) / 1_000_000 }

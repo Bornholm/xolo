@@ -6,11 +6,11 @@ import (
 	"net/http"
 
 	"github.com/a-h/templ"
+	"github.com/bornholm/go-x/slogx"
 	"github.com/bornholm/xolo/internal/core/port"
 	"github.com/bornholm/xolo/internal/http/handler/webui/common"
 	"github.com/bornholm/xolo/internal/http/middleware/authn"
 	"github.com/bornholm/xolo/internal/http/middleware/authn/token/component"
-	"github.com/bornholm/go-x/slogx"
 	"github.com/pkg/errors"
 
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
@@ -69,6 +69,10 @@ func (h *Handler) getUserFromToken(ctx context.Context, token string) (*authn.Us
 	authToken, err := h.userStore.FindAuthToken(ctx, token)
 	if err != nil {
 		return nil, errors.WithStack(err)
+	}
+
+	if authToken.Application() != nil || authToken.Owner() == nil {
+		return nil, errors.WithStack(port.ErrNotFound)
 	}
 
 	user, err := h.userStore.GetUserByID(ctx, authToken.Owner().ID())

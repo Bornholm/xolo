@@ -1,0 +1,208 @@
+package component
+
+import (
+	"github.com/bornholm/xolo/internal/core/model"
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
+)
+
+type ApplicationsPageVModel struct {
+	common.AppLayoutVModel
+	Org     model.Organization
+	Apps    []model.Application
+	Success string
+}
+
+type ApplicationFormVModel struct {
+	common.AppLayoutVModel
+	Org    model.Organization
+	App    model.Application
+	Tokens []model.AuthToken
+	IsNew  bool
+	Error  string
+}
+
+templ ApplicationsPage(vmodel ApplicationsPageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Applications")) {
+		<div class="space-y-6">
+			<div class="flex items-center justify-between">
+				<h1 class="text-2xl font-semibold">Applications</h1>
+				@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/applications/new"))}) {
+					Nouvelle application
+				}
+			</div>
+			if vmodel.Success != "" {
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					@alert.Description() { Opération réussie. }
+				}
+			}
+			if len(vmodel.Apps) == 0 {
+				<div class="rounded-lg border p-6 text-center text-muted-foreground">
+					Aucune application. Créez la première application pour commencer.
+				</div>
+			} else {
+				@card.Card() {
+					@card.Content() {
+						@table.Table() {
+							@table.Header() {
+								@table.Head() { Nom }
+								@table.Head() { Description }
+								@table.Head() { Statut }
+								@table.Head() { Créé le }
+								@table.Head() { Actions }
+							}
+							@table.Body() {
+								for _, app := range vmodel.Apps {
+									@table.Row() {
+										@table.Cell() { { app.Name() } }
+										@table.Cell() { { app.Description() } }
+										@table.Cell() {
+											if app.Active() {
+												@badge.Badge(badge.Props{Variant: badge.VariantDefault}) { Actif }
+											} else {
+												@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) { Inactif }
+											}
+										}
+										@table.Cell() { { app.CreatedAt().Format("02/01/2006") } }
+										@table.Cell() {
+											<div class="flex gap-2">
+												@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/applications/", string(app.ID()), "/edit")), Variant: button.VariantOutline, Size: button.SizeSm}) {
+													Modifier
+												}
+											</div>
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		</div>
+	}
+}
+
+templ ApplicationForm(vmodel ApplicationFormVModel) {
+	{{ title := "Nouvelle application" }}
+	{{ action := common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/applications")) }}
+	if !vmodel.IsNew && vmodel.App != nil {
+		{{ title = "Modifier — " + vmodel.App.Name() }}
+		{{ action = common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/applications/", string(vmodel.App.ID()), "/edit")) }}
+	}
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(title)) {
+		<div class="space-y-6">
+			<h1 class="text-2xl font-semibold">{ title }</h1>
+			if vmodel.Error != "" {
+				@alert.Alert(alert.Props{Variant: alert.VariantDestructive}) {
+					@alert.Description() { { vmodel.Error } }
+				}
+			}
+			<form method="POST" action={ templ.SafeURL(action) } class="space-y-4">
+				@card.Card() {
+					@card.Content() {
+						<div class="space-y-4 pt-4">
+							<div class="space-y-2">
+								<label class="text-sm font-medium">Nom</label>
+								if !vmodel.IsNew && vmodel.App != nil {
+									@input.Input(input.Props{Name: "name", Value: vmodel.App.Name()})
+								} else {
+									@input.Input(input.Props{Name: "name", Placeholder: "Mon application"})
+								}
+							</div>
+							<div class="space-y-2">
+								<label class="text-sm font-medium">Description</label>
+								if !vmodel.IsNew && vmodel.App != nil {
+									@input.Input(input.Props{Name: "description", Value: vmodel.App.Description()})
+								} else {
+									@input.Input(input.Props{Name: "description", Placeholder: "Description"})
+								}
+							</div>
+							if !vmodel.IsNew && vmodel.App != nil {
+								<div class="flex items-center gap-2">
+									<input type="checkbox" name="active" id="active" value="on" checked?={ vmodel.App.Active() }/>
+									<label for="active" class="text-sm font-medium">Active</label>
+								</div>
+							}
+						</div>
+					}
+					@card.Footer() {
+						@button.Button(button.Props{Type: "submit"}) { Enregistrer }
+					}
+				}
+			</form>
+			if !vmodel.IsNew && vmodel.App != nil {
+				{{ deleteAction := common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/applications/", string(vmodel.App.ID()), "/delete")) }}
+				<div class="space-y-4">
+					<h2 class="text-xl font-semibold mt-8">Tokens API</h2>
+					{{ tokenAction := common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/applications/", string(vmodel.App.ID()), "/tokens")) }}
+					<form method="POST" action={ templ.SafeURL(tokenAction) } class="space-y-4">
+						@card.Card() {
+							@card.Content() {
+								<div class="space-y-4 pt-4">
+									<div class="space-y-2">
+										<label class="text-sm font-medium">Label du token</label>
+										@input.Input(input.Props{Name: "label", Placeholder: "Mon token"})
+									</div>
+									<div class="space-y-2">
+										<label class="text-sm font-medium">Expiration (jours)</label>
+										@input.Input(input.Props{Name: "expiry", Value: "365"})
+									</div>
+								</div>
+							}
+							@card.Footer() {
+								@button.Button(button.Props{Type: "submit"}) { Générer un token }
+							}
+						}
+					</form>
+					if len(vmodel.Tokens) > 0 {
+						@card.Card() {
+							@card.Content() {
+								@table.Table() {
+									@table.Header() {
+										@table.Head() { Label }
+										@table.Head() { Token }
+										@table.Head() { Expiration }
+										@table.Head() { Actions }
+									}
+									@table.Body() {
+										for _, token := range vmodel.Tokens {
+											@table.Row() {
+												@table.Cell() { { token.Label() } }
+												@table.Cell() { <code class="text-sm bg-muted px-2 py-1 rounded">{ token.Value() }</code> }
+												@table.Cell() {
+													if token.ExpiresAt() != nil {
+														{ token.ExpiresAt().Format("02/01/2006") }
+													} else {
+														Jamais
+													}
+												}
+												@table.Cell() {
+													{{ tokenDeleteAction := common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/applications/", string(vmodel.App.ID()), "/tokens/", string(token.ID()), "/delete")) }}
+													<form method="POST" action={ templ.SafeURL(tokenDeleteAction) }>
+														@button.Button(button.Props{Type: "submit", Variant: button.VariantDestructive, Size: button.SizeSm}) {
+															Révoquer
+														}
+													</form>
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+					<form method="POST" action={ templ.SafeURL(deleteAction) } class="mt-8">
+						@button.Button(button.Props{Type: "submit", Variant: button.VariantDestructive}) {
+							Supprimer l'application
+						}
+					</form>
+				</div>
+			}
+		</div>
+	}
+}

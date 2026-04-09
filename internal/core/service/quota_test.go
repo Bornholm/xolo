@@ -40,6 +40,10 @@ func (f *fakeQuotaStore) ResolveEffectiveQuota(_ context.Context, _ model.UserID
 	return nil, nil // not used by QuotaService
 }
 
+func (f *fakeQuotaStore) ResolveEffectiveQuotaForApplication(_ context.Context, _ model.ApplicationID, _ model.OrgID) (*model.EffectiveQuota, error) {
+	return nil, nil
+}
+
 // fakeOrgProvider satisfies service.OrgProvider (narrow interface used by QuotaService).
 type fakeOrgProvider struct {
 	org     model.Organization
@@ -57,12 +61,12 @@ func (f *fakeOrgProvider) ListOrgMembers(_ context.Context, _ model.OrgID, _ por
 // fakeMembership satisfies model.Membership minimally.
 type fakeMembership struct{}
 
-func (m *fakeMembership) ID() model.MembershipID { return "" }
-func (m *fakeMembership) OrgID() model.OrgID     { return "" }
-func (m *fakeMembership) UserID() model.UserID   { return "" }
-func (m *fakeMembership) Role() string           { return "" }
-func (m *fakeMembership) CreatedAt() time.Time   { return time.Time{} }
-func (m *fakeMembership) User() model.User       { return nil }
+func (m *fakeMembership) ID() model.MembershipID  { return "" }
+func (m *fakeMembership) OrgID() model.OrgID      { return "" }
+func (m *fakeMembership) UserID() model.UserID    { return "" }
+func (m *fakeMembership) Role() string            { return "" }
+func (m *fakeMembership) CreatedAt() time.Time    { return time.Time{} }
+func (m *fakeMembership) User() model.User        { return nil }
 func (m *fakeMembership) Org() model.Organization { return nil }
 
 // ptr is a convenience helper.

@@ -15,8 +15,9 @@ func NewQuotaID() QuotaID {
 type QuotaScope string
 
 const (
-	QuotaScopeOrg  QuotaScope = "org"
-	QuotaScopeUser QuotaScope = "user"
+	QuotaScopeOrg         QuotaScope = "org"
+	QuotaScopeUser        QuotaScope = "user"
+	QuotaScopeApplication QuotaScope = "application"
 )
 
 // Quota defines a monetary budget constraint for an org or user.
@@ -47,15 +48,15 @@ type BaseQuota struct {
 	updatedAt     time.Time
 }
 
-func (q *BaseQuota) ID() QuotaID             { return q.id }
-func (q *BaseQuota) Scope() QuotaScope        { return q.scope }
-func (q *BaseQuota) ScopeID() string          { return q.scopeID }
-func (q *BaseQuota) Currency() string         { return q.currency }
-func (q *BaseQuota) DailyBudget() *int64      { return q.dailyBudget }
-func (q *BaseQuota) MonthlyBudget() *int64    { return q.monthlyBudget }
-func (q *BaseQuota) YearlyBudget() *int64     { return q.yearlyBudget }
-func (q *BaseQuota) CreatedAt() time.Time     { return q.createdAt }
-func (q *BaseQuota) UpdatedAt() time.Time     { return q.updatedAt }
+func (q *BaseQuota) ID() QuotaID           { return q.id }
+func (q *BaseQuota) Scope() QuotaScope     { return q.scope }
+func (q *BaseQuota) ScopeID() string       { return q.scopeID }
+func (q *BaseQuota) Currency() string      { return q.currency }
+func (q *BaseQuota) DailyBudget() *int64   { return q.dailyBudget }
+func (q *BaseQuota) MonthlyBudget() *int64 { return q.monthlyBudget }
+func (q *BaseQuota) YearlyBudget() *int64  { return q.yearlyBudget }
+func (q *BaseQuota) CreatedAt() time.Time  { return q.createdAt }
+func (q *BaseQuota) UpdatedAt() time.Time  { return q.updatedAt }
 
 var _ Quota = &BaseQuota{}
 

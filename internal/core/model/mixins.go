@@ -12,6 +12,10 @@ type WithOwner interface {
 	Owner() User
 }
 
+type WithApplication interface {
+	Application() Application
+}
+
 type WithLifecycle interface {
 	CreatedAt() time.Time
 	UpdatedAt() time.Time

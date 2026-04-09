@@ -84,6 +84,7 @@ func fromUser(u model.User) *User {
 	return user
 }
 
+// Update AuthToken to support Application owner
 type AuthToken struct {
 	ID string `gorm:"primaryKey;autoIncrement:false"`
 
@@ -91,13 +92,42 @@ type AuthToken struct {
 	UpdatedAt time.Time
 
 	Owner   *User
-	OwnerID string
+	OwnerID *string // Nullable for Application
+
+	Application   *Application
+	ApplicationID *string // Nullable for User
 
 	Label     string
 	Value     string     `gorm:"unique"`
 	OrgID     string     `gorm:"index"`
 	ExpiresAt *time.Time `gorm:"index"`
 }
+
+type Application struct {
+	ID          string `gorm:"primaryKey;autoIncrement:false"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	OrgID       string `gorm:"index"`
+	Name        string
+	Description string
+	Active      bool
+
+	AuthTokens []*AuthToken `gorm:"foreignKey:ApplicationID;constraint:OnDelete:CASCADE;"`
+}
+
+type wrappedApplication struct {
+	a *Application
+}
+
+func (w *wrappedApplication) ID() model.ApplicationID { return model.ApplicationID(w.a.ID) }
+func (w *wrappedApplication) OrgID() model.OrgID      { return model.OrgID(w.a.OrgID) }
+func (w *wrappedApplication) Name() string            { return w.a.Name }
+func (w *wrappedApplication) Description() string     { return w.a.Description }
+func (w *wrappedApplication) Active() bool            { return w.a.Active }
+func (w *wrappedApplication) CreatedAt() time.Time    { return w.a.CreatedAt }
+func (w *wrappedApplication) UpdatedAt() time.Time    { return w.a.UpdatedAt }
+
+var _ model.Application = &wrappedApplication{}
 
 type UserRole struct {
 	ID uint `gorm:"primaryKey"`
@@ -172,10 +202,46 @@ type wrappedAuthToken struct {
 }
 
 func (w *wrappedAuthToken) ID() model.AuthTokenID { return model.AuthTokenID(w.t.ID) }
-func (w *wrappedAuthToken) Owner() model.User     { return &wrappedUser{w.t.Owner} }
+func (w *wrappedAuthToken) Owner() model.User {
+	if w.t.Owner == nil {
+		return nil
+	}
+	return &wrappedUser{w.t.Owner}
+}
+func (w *wrappedAuthToken) Application() model.Application {
+	if w.t.Application == nil {
+		return nil
+	}
+	return &wrappedApplication{w.t.Application}
+}
 func (w *wrappedAuthToken) Label() string         { return w.t.Label }
 func (w *wrappedAuthToken) Value() string         { return w.t.Value }
 func (w *wrappedAuthToken) OrgID() model.OrgID    { return model.OrgID(w.t.OrgID) }
 func (w *wrappedAuthToken) ExpiresAt() *time.Time { return w.t.ExpiresAt }
 
 var _ model.AuthToken = &wrappedAuthToken{}
+
+// wrappedApplicationAuthToken implements the model.AuthToken interface for application tokens
+type wrappedApplicationAuthToken struct {
+	t *AuthToken
+}
+
+func (w *wrappedApplicationAuthToken) ID() model.AuthTokenID { return model.AuthTokenID(w.t.ID) }
+func (w *wrappedApplicationAuthToken) Owner() model.User {
+	if w.t.Owner != nil {
+		return &wrappedUser{w.t.Owner}
+	}
+	return nil
+}
+func (w *wrappedApplicationAuthToken) Application() model.Application {
+	if w.t.Application != nil {
+		return &wrappedApplication{w.t.Application}
+	}
+	return nil
+}
+func (w *wrappedApplicationAuthToken) Label() string         { return w.t.Label }
+func (w *wrappedApplicationAuthToken) Value() string         { return w.t.Value }
+func (w *wrappedApplicationAuthToken) OrgID() model.OrgID    { return model.OrgID(w.t.OrgID) }
+func (w *wrappedApplicationAuthToken) ExpiresAt() *time.Time { return w.t.ExpiresAt }
+
+var _ model.AuthToken = &wrappedApplicationAuthToken{}
