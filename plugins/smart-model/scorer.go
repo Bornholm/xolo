@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"math"
+	"strings"
 
 	"github.com/bornholm/xolo/internal/estimator"
 	"github.com/bornholm/xolo/pkg/pluginsdk/proto"
@@ -39,7 +40,7 @@ func ScoreRequest(messagesJSON string, bodyJSON string, quota *proto.QuotaInfo, 
 	vars := InputVars{}
 
 	// ── Complexity & category ────────────────────────────────────────────────
-	fullText := extractText(messagesJSON)
+	fullText := extractTextForComplexity(messagesJSON)
 	analysis := complexity.AnalyzeDefault(fullText)
 	vars.Complexity = analysis.Composite
 	vars.ComplexityLabel = analysis.Level
@@ -106,7 +107,61 @@ func computeBudgetPressure(quota *proto.QuotaInfo) float64 {
 	return math.Max(0, math.Min(1, maxPressure))
 }
 
-// extractText concatenates user/system message text for complexity analysis.
+// extractTextForComplexity concatène les textes des messages system, user,
+// tool (résultats), et les arguments des tool_calls assistant.
+// Utilisé pour l'analyse de complexité et l'estimation de tokens.
+func extractTextForComplexity(messagesJSON string) string {
+	if messagesJSON == "" {
+		return ""
+	}
+	var messages []struct {
+		Role      string          `json:"role"`
+		Content   json.RawMessage `json:"content"`
+		ToolCalls []struct {
+			Function struct {
+				Arguments string `json:"arguments"`
+			} `json:"function"`
+		} `json:"tool_calls"`
+	}
+	if err := json.Unmarshal([]byte(messagesJSON), &messages); err != nil {
+		return messagesJSON
+	}
+	var sb strings.Builder
+	for _, m := range messages {
+		switch m.Role {
+		case "system", "user", "tool":
+			var s string
+			if err := json.Unmarshal(m.Content, &s); err == nil {
+				sb.WriteString(s)
+				sb.WriteByte(' ')
+				continue
+			}
+			var parts []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			}
+			if err := json.Unmarshal(m.Content, &parts); err == nil {
+				for _, p := range parts {
+					if p.Type == "text" {
+						sb.WriteString(p.Text)
+						sb.WriteByte(' ')
+					}
+				}
+			}
+		case "assistant":
+			for _, tc := range m.ToolCalls {
+				if tc.Function.Arguments != "" {
+					sb.WriteString(tc.Function.Arguments)
+					sb.WriteByte(' ')
+				}
+			}
+		}
+	}
+	return sb.String()
+}
+
+// extractText concatenates user/system message text for category classification.
+// Intentionally excludes tool results to preserve classification quality.
 func extractText(messagesJSON string) string {
 	if messagesJSON == "" {
 		return ""
@@ -118,14 +173,15 @@ func extractText(messagesJSON string) string {
 	if err := json.Unmarshal([]byte(messagesJSON), &messages); err != nil {
 		return messagesJSON
 	}
-	var out string
+	var sb strings.Builder
 	for _, m := range messages {
 		if m.Role != "system" && m.Role != "user" {
 			continue
 		}
 		var s string
 		if err := json.Unmarshal(m.Content, &s); err == nil {
-			out += s + " "
+			sb.WriteString(s)
+			sb.WriteByte(' ')
 			continue
 		}
 		var parts []struct {
@@ -135,12 +191,13 @@ func extractText(messagesJSON string) string {
 		if err := json.Unmarshal(m.Content, &parts); err == nil {
 			for _, p := range parts {
 				if p.Type == "text" {
-					out += p.Text + " "
+					sb.WriteString(p.Text)
+					sb.WriteByte(' ')
 				}
 			}
 		}
 	}
-	return out
+	return sb.String()
 }
 
 // topCategory returns the best NaiveBayes category for the request text.
