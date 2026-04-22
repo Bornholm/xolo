@@ -38,22 +38,29 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		return nil, errors.Wrap(err, "could not configure authn oidc token handler from config")
 	}
 
+	authenticators := []authn.Authenticator{tokenAuthn, oidcAuthn}
+	if oidcTokenAuthn != nil {
+		authenticators = append([]authn.Authenticator{oidcTokenAuthn}, authenticators...)
+	}
+
+	apiAuthenticators := []authn.Authenticator{tokenAuthn}
+	if oidcTokenAuthn != nil {
+		apiAuthenticators = append([]authn.Authenticator{oidcTokenAuthn}, apiAuthenticators...)
+	}
+	apiAuthenticators = append(apiAuthenticators, oidcAuthn)
+
 	authnMiddleware := authn.Middleware(
 		func(w gohttp.ResponseWriter, r *gohttp.Request) {
 			gohttp.Redirect(w, r, "/auth/oidc/login", gohttp.StatusSeeOther)
 		},
-		tokenAuthn,
-		oidcTokenAuthn,
-		oidcAuthn,
+		authenticators...,
 	)
 
 	apiAuthnMiddleware := authn.Middleware(
 		func(w gohttp.ResponseWriter, r *gohttp.Request) {
 			gohttp.Error(w, gohttp.StatusText(gohttp.StatusUnauthorized), gohttp.StatusUnauthorized)
 		},
-		tokenAuthn,
-		oidcTokenAuthn,
-		oidcAuthn,
+		apiAuthenticators...,
 	)
 
 	bridgeMiddleware, err := getBridgeMiddlewareFromConfig(ctx, conf)
