@@ -3,8 +3,9 @@ package setup
 import (
 	"context"
 	"crypto/rand"
-
+	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/bornholm/xolo/internal/config"
 	"github.com/bornholm/xolo/internal/http/middleware/authn/oidc"
@@ -17,6 +18,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+type OIDCDiscovery struct {
+	Issuer         string `json:"issuer"`
+	JWKSURI       string `json:"jwks_uri"`
+	AuthURL       string `json:"authorization_endpoint"`
+	TokenURL     string `json:"token_endpoint"`
+}
+
 func getOIDCAuthnHandlerFromConfig(ctx context.Context, conf *config.Config) (*oidc.Handler, error) {
 	sessionStore, err := getSessionStoreFromConfig(ctx, conf)
 	if err != nil {
@@ -27,6 +35,7 @@ func getOIDCAuthnHandlerFromConfig(ctx context.Context, conf *config.Config) (*o
 
 	gothProviders := make([]goth.Provider, 0)
 	providers := make([]oidc.Provider, 0)
+	providersWithJWKS := make([]oidc.ProviderWithJWKS, 0)
 
 	if conf.HTTP.Authn.Providers.Google.Key != "" && conf.HTTP.Authn.Providers.Google.Secret != "" {
 		googleProvider := google.New(
@@ -42,6 +51,14 @@ func getOIDCAuthnHandlerFromConfig(ctx context.Context, conf *config.Config) (*o
 			ID:    googleProvider.Name(),
 			Label: "Google",
 			Icon:  "fa-google",
+		})
+
+		providersWithJWKS = append(providersWithJWKS, oidc.ProviderWithJWKS{
+			ID:      googleProvider.Name(),
+			Label:   "Google",
+			Icon:    "fa-google",
+			Issuer:  "https://accounts.google.com",
+			JWKSURL: "https://www.googleapis.com/oauth2/v3/certs",
 		})
 	}
 
@@ -59,6 +76,18 @@ func getOIDCAuthnHandlerFromConfig(ctx context.Context, conf *config.Config) (*o
 			ID:    githubProvider.Name(),
 			Label: "Github",
 			Icon:  "fa-github",
+		})
+
+		issuer := "https://github.com"
+		if conf.HTTP.BaseURL != "" && conf.HTTP.BaseURL != "/" {
+			issuer = conf.HTTP.BaseURL
+		}
+		providersWithJWKS = append(providersWithJWKS, oidc.ProviderWithJWKS{
+			ID:      githubProvider.Name(),
+			Label:   "Github",
+			Icon:    "fa-github",
+			Issuer:  issuer,
+			JWKSURL: "https://token.actions.githubusercontent.com/.well-known/jwks",
 		})
 	}
 
@@ -80,14 +109,26 @@ func getOIDCAuthnHandlerFromConfig(ctx context.Context, conf *config.Config) (*o
 			Label: string(conf.HTTP.Authn.Providers.Gitea.Label),
 			Icon:  "fa-git-alt",
 		})
+
+		jwksURL, issuer, err := fetchOIDCDiscovery(ctx, conf.HTTP.Authn.Providers.Gitea.AuthURL)
+		if err == nil && jwksURL != "" {
+			providersWithJWKS = append(providersWithJWKS, oidc.ProviderWithJWKS{
+				ID:      giteaProvider.Name(),
+				Label:   string(conf.HTTP.Authn.Providers.Gitea.Label),
+				Icon:    "fa-git-alt",
+				Issuer:  issuer,
+				JWKSURL: jwksURL,
+			})
+		}
 	}
 
 	if conf.HTTP.Authn.Providers.OIDC.Key != "" && conf.HTTP.Authn.Providers.OIDC.Secret != "" {
+		discoveryURL := string(conf.HTTP.Authn.Providers.OIDC.DiscoveryURL)
 		oidcProvider, err := openidConnect.New(
 			string(conf.HTTP.Authn.Providers.OIDC.Key),
 			string(conf.HTTP.Authn.Providers.OIDC.Secret),
 			fmt.Sprintf("%s/auth/oidc/providers/openid-connect/callback", conf.HTTP.BaseURL),
-			string(conf.HTTP.Authn.Providers.OIDC.DiscoveryURL),
+			discoveryURL,
 			conf.HTTP.Authn.Providers.OIDC.Scopes...,
 		)
 		if err != nil {
@@ -101,6 +142,18 @@ func getOIDCAuthnHandlerFromConfig(ctx context.Context, conf *config.Config) (*o
 			Label: string(conf.HTTP.Authn.Providers.OIDC.Label),
 			Icon:  string(conf.HTTP.Authn.Providers.OIDC.Icon),
 		})
+
+		jwksURL, issuer, err := fetchOIDCDiscovery(ctx, discoveryURL)
+		if err == nil && jwksURL != "" {
+			providersWithJWKS = append(providersWithJWKS, oidc.ProviderWithJWKS{
+				ID:          oidcProvider.Name(),
+				Label:       string(conf.HTTP.Authn.Providers.OIDC.Label),
+				Icon:        string(conf.HTTP.Authn.Providers.OIDC.Icon),
+				DiscoveryURL: discoveryURL,
+				Issuer:      issuer,
+				JWKSURL:     jwksURL,
+			})
+		}
 	}
 
 	goth.UseProviders(gothProviders...)
@@ -108,6 +161,7 @@ func getOIDCAuthnHandlerFromConfig(ctx context.Context, conf *config.Config) (*o
 
 	opts := []oidc.OptionFunc{
 		oidc.WithProviders(providers...),
+		oidc.WithProvidersWithJWKS(providersWithJWKS),
 	}
 
 	handler := oidc.NewHandler(
@@ -131,4 +185,32 @@ func getRandomBytes(n int) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+func fetchOIDCDiscovery(ctx context.Context, discoveryURL string) (jwksURL, issuer string, err error) {
+	if discoveryURL == "" {
+		return "", "", nil
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, discoveryURL, nil)
+	if err != nil {
+		return "", "", errors.WithStack(err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", "", errors.WithStack(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", "", errors.Errorf("discovery fetch failed with status %d", resp.StatusCode)
+	}
+
+	var discovery OIDCDiscovery
+	if err := json.NewDecoder(resp.Body).Decode(&discovery); err != nil {
+		return "", "", errors.WithStack(err)
+	}
+
+	return discovery.JWKSURI, discovery.Issuer, nil
 }

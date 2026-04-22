@@ -33,12 +33,18 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		return nil, errors.Wrap(err, "could not configure authn token handler from config")
 	}
 
+	oidcTokenAuthn, err := getOIDCTokenAuthnHandlerFromConfig(ctx, oidcAuthn)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not configure authn oidc token handler from config")
+	}
+
 	authnMiddleware := authn.Middleware(
 		func(w gohttp.ResponseWriter, r *gohttp.Request) {
 			// By default, redirect to OIDC login page if no user has been found
 			gohttp.Redirect(w, r, "/auth/oidc/login", gohttp.StatusSeeOther)
 		},
 		tokenAuthn,
+		oidcTokenAuthn,
 		oidcAuthn,
 	)
 

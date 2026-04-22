@@ -5,8 +5,9 @@ import "github.com/bornholm/xolo/internal/http/middleware/authn/oidc/component"
 type Provider = component.Provider
 
 type Options struct {
-	Providers   []component.Provider
-	SessionName string
+	Providers        []component.Provider
+	ProvidersWithJWKS []ProviderWithJWKS
+	SessionName     string
 }
 
 type OptionFunc func(opts *Options)
@@ -33,5 +34,11 @@ func WithProviders(providers ...Provider) OptionFunc {
 func WithSessionName(sessionName string) OptionFunc {
 	return func(opts *Options) {
 		opts.SessionName = sessionName
+	}
+}
+
+func WithProvidersWithJWKS(providers []ProviderWithJWKS) OptionFunc {
+	return func(opts *Options) {
+	(opts).ProvidersWithJWKS = providers
 	}
 }

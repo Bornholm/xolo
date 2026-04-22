@@ -9,6 +9,7 @@ require (
 	github.com/bornholm/go-x v0.0.0-20260127104343-c6737ea35324
 	github.com/caarlos0/env/v11 v11.3.1
 	github.com/gabriel-vasile/mimetype v1.4.8
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/gorilla/sessions v1.2.0
 	github.com/hashicorp/go-plugin v1.7.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
