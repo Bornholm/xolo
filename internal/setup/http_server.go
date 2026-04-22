@@ -40,8 +40,16 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 
 	authnMiddleware := authn.Middleware(
 		func(w gohttp.ResponseWriter, r *gohttp.Request) {
-			// By default, redirect to OIDC login page if no user has been found
 			gohttp.Redirect(w, r, "/auth/oidc/login", gohttp.StatusSeeOther)
+		},
+		tokenAuthn,
+		oidcTokenAuthn,
+		oidcAuthn,
+	)
+
+	apiAuthnMiddleware := authn.Middleware(
+		func(w gohttp.ResponseWriter, r *gohttp.Request) {
+			gohttp.Error(w, gohttp.StatusText(gohttp.StatusUnauthorized), gohttp.StatusUnauthorized)
 		},
 		tokenAuthn,
 		oidcTokenAuthn,
@@ -179,6 +187,10 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		proxy.WithHook(proxyAdapter.NewXoloUsageTracker(usageStore, providerStore, orgStore, exchangeRateService)),
 	)
 
+	apiAuthChain := func(h gohttp.Handler) gohttp.Handler {
+		return apiAuthnMiddleware(bridgeMiddleware(h))
+	}
+
 	options := []http.OptionFunc{
 		http.WithAddress(conf.HTTP.Address),
 		http.WithBaseURL(conf.HTTP.BaseURL),
@@ -187,9 +199,9 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		http.WithMount("/auth/token/", rateLimiter(tokenAuthn)),
 		http.WithMount("/metrics/", rateLimiter(authChain(metrics.NewHandler()))),
 		http.WithMount("/api/v1/", rateLimiter(proxyServer)),
-		http.WithRoute("GET /api/v1/models", rateLimiter(authChain(apiHandler))),
-		http.WithRoute("GET /api/models-dev/lookup", rateLimiter(authChain(apiHandler))),
-		http.WithRoute("GET /api/exchange-rate", rateLimiter(authChain(apiHandler))),
+		http.WithRoute("GET /api/v1/models", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("GET /api/models-dev/lookup", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("GET /api/exchange-rate", rateLimiter(apiAuthChain(apiHandler))),
 		http.WithMount("/", authChain(withMemberships(webuiHandler))),
 	}
 

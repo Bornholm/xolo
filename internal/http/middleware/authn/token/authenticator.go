@@ -18,8 +18,7 @@ func (h *Handler) Authenticate(w http.ResponseWriter, r *http.Request) (*authn.U
 		user, err := h.getUserFromToken(r.Context(), token)
 		if err != nil {
 			if errors.Is(err, port.ErrNotFound) {
-				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-				return nil, authn.ErrSkipRequest
+				return nil, nil
 			}
 			return nil, errors.WithStack(err)
 		}
