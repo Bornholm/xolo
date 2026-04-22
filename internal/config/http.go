@@ -49,10 +49,11 @@ type OIDCProvider struct {
 
 type GiteaProvider struct {
 	OAuth2Provider
-	TokenURL   string `env:"TOKEN_URL"`
-	AuthURL    string `env:"AUTH_URL"`
-	ProfileURL string `env:"PROFILE_URL"`
-	Label      string `env:"LABEL"`
+	DiscoveryURL string `env:"DISCOVERY_URL"`
+	TokenURL     string `env:"TOKEN_URL"`
+	AuthURL      string `env:"AUTH_URL"`
+	ProfileURL   string `env:"PROFILE_URL"`
+	Label        string `env:"LABEL"`
 }
 
 type HTTPRateLimit struct {

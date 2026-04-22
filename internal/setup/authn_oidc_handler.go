@@ -19,10 +19,10 @@ import (
 )
 
 type OIDCDiscovery struct {
-	Issuer         string `json:"issuer"`
-	JWKSURI       string `json:"jwks_uri"`
-	AuthURL       string `json:"authorization_endpoint"`
-	TokenURL     string `json:"token_endpoint"`
+	Issuer   string `json:"issuer"`
+	JWKSURI  string `json:"jwks_uri"`
+	AuthURL  string `json:"authorization_endpoint"`
+	TokenURL string `json:"token_endpoint"`
 }
 
 func getOIDCAuthnHandlerFromConfig(ctx context.Context, conf *config.Config) (*oidc.Handler, error) {
@@ -110,7 +110,9 @@ func getOIDCAuthnHandlerFromConfig(ctx context.Context, conf *config.Config) (*o
 			Icon:  "fa-git-alt",
 		})
 
-		jwksURL, issuer, err := fetchOIDCDiscovery(ctx, conf.HTTP.Authn.Providers.Gitea.AuthURL)
+		discoveryURL := string(conf.HTTP.Authn.Providers.Gitea.DiscoveryURL)
+
+		jwksURL, issuer, err := fetchOIDCDiscovery(ctx, discoveryURL)
 		if err == nil && jwksURL != "" {
 			providersWithJWKS = append(providersWithJWKS, oidc.ProviderWithJWKS{
 				ID:      giteaProvider.Name(),
@@ -146,12 +148,12 @@ func getOIDCAuthnHandlerFromConfig(ctx context.Context, conf *config.Config) (*o
 		jwksURL, issuer, err := fetchOIDCDiscovery(ctx, discoveryURL)
 		if err == nil && jwksURL != "" {
 			providersWithJWKS = append(providersWithJWKS, oidc.ProviderWithJWKS{
-				ID:          oidcProvider.Name(),
-				Label:       string(conf.HTTP.Authn.Providers.OIDC.Label),
-				Icon:        string(conf.HTTP.Authn.Providers.OIDC.Icon),
+				ID:           oidcProvider.Name(),
+				Label:        string(conf.HTTP.Authn.Providers.OIDC.Label),
+				Icon:         string(conf.HTTP.Authn.Providers.OIDC.Icon),
 				DiscoveryURL: discoveryURL,
-				Issuer:      issuer,
-				JWKSURL:     jwksURL,
+				Issuer:       issuer,
+				JWKSURL:      jwksURL,
 			})
 		}
 	}
