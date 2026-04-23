@@ -41,12 +41,14 @@ func Middleware(userStore port.UserStore, activeByDefault bool, defaultAdmins ..
 			missingRole := len(user.Roles()) == 0
 			shouldBeAdmin := slices.Contains(defaultAdmins, authnUser.Email) && !slices.Contains(user.Roles(), authz.RoleAdmin)
 
-			changed := user.DisplayName() != authnUser.DisplayName ||
+			changed := (authnUser.DisplayName != "" && user.DisplayName() != authnUser.DisplayName) ||
 				user.Email() != authnUser.Email
 
 			if changed || shouldBeAdmin || missingRole {
 				updatable := model.CopyUser(user)
-				updatable.SetDisplayName(authnUser.DisplayName)
+				if authnUser.DisplayName != "" {
+					updatable.SetDisplayName(authnUser.DisplayName)
+				}
 				updatable.SetEmail(authnUser.Email)
 
 				if missingRole {
