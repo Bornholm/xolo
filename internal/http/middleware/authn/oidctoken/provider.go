@@ -7,6 +7,7 @@ type Provider struct {
 	DiscoveryURL string
 	Issuer      string
 	JWKSURL     string
+	CookieNames []string
 }
 
 type JWKS struct {

@@ -23,7 +23,7 @@ type PluginHookAdapter struct {
 	descriptors       map[string]*proto.PluginDescriptor
 	activationStore   port.PluginActivationStore
 	configStore       port.PluginConfigStore
-	userStore         tokenFinder
+	userStore         userGetter
 	providerStore     port.ProviderStore
 	virtualModelStore port.VirtualModelStore
 	quotaResolver     quotaResolver
@@ -36,7 +36,7 @@ func NewPluginHookAdapter(
 	descriptors map[string]*proto.PluginDescriptor,
 	activationStore port.PluginActivationStore,
 	configStore port.PluginConfigStore,
-	userStore tokenFinder,
+	userStore userGetter,
 	providerStore port.ProviderStore,
 	virtualModelStore port.VirtualModelStore,
 	quotaResolver quotaResolver,
@@ -103,10 +103,8 @@ func (a *PluginHookAdapter) buildRequestContext(ctx context.Context, orgID model
 			reqCtx.UserConfigJson = userCfg.ConfigJSON
 		}
 
-		if ug, ok := a.userStore.(userGetter); ok {
-			if u, err := ug.GetUserByID(ctx, model.UserID(userID)); err == nil {
-				reqCtx.DisplayName = u.DisplayName()
-			}
+		if u, err := a.userStore.GetUserByID(ctx, model.UserID(userID)); err == nil {
+			reqCtx.DisplayName = u.DisplayName()
 		}
 	}
 
@@ -115,7 +113,7 @@ func (a *PluginHookAdapter) buildRequestContext(ctx context.Context, orgID model
 
 // PreRequest implements proxy.PreRequestHook.
 func (a *PluginHookAdapter) PreRequest(ctx context.Context, req *genaiProxy.ProxyRequest) (*genaiProxy.HookResult, error) {
-	populateMetaFromHeader(ctx, a.userStore, req)
+	populateMetaFromContext(ctx, req)
 
 	orgID := OrgIDFromMeta(req.Metadata)
 	if orgID == "" {

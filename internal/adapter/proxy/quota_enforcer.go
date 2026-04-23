@@ -23,16 +23,14 @@ type XoloQuotaEnforcer struct {
 	quotaResolver quotaResolver   // for per-user effective quota
 	quotaStore    port.QuotaStore // for org-level GetQuota + SumCost checks
 	usageStore    port.UsageStore
-	userStore     port.UserStore
 	providerStore port.ProviderStore
 }
 
-func NewXoloQuotaEnforcer(quotaResolver quotaResolver, quotaStore port.QuotaStore, usageStore port.UsageStore, userStore port.UserStore, providerStore port.ProviderStore) *XoloQuotaEnforcer {
+func NewXoloQuotaEnforcer(quotaResolver quotaResolver, quotaStore port.QuotaStore, usageStore port.UsageStore, providerStore port.ProviderStore) *XoloQuotaEnforcer {
 	return &XoloQuotaEnforcer{
 		quotaResolver: quotaResolver,
 		quotaStore:    quotaStore,
 		usageStore:    usageStore,
-		userStore:     userStore,
 		providerStore: providerStore,
 	}
 }
@@ -42,9 +40,7 @@ func (e *XoloQuotaEnforcer) Priority() int { return 5 }
 
 // PreRequest implements proxy.PreRequestHook.
 func (e *XoloQuotaEnforcer) PreRequest(ctx context.Context, req *genaiProxy.ProxyRequest) (*genaiProxy.HookResult, error) {
-	// The proxy captures ctx before running the AuthExtractor, so ctx is stale and
-	// does not carry orgID. Read it directly from the Authorization header instead.
-	populateMetaFromHeader(ctx, e.userStore, req)
+	populateMetaFromContext(ctx, req)
 
 	userID := model.UserID(req.UserID)
 	orgID := OrgIDFromMeta(req.Metadata)

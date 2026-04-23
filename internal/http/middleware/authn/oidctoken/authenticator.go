@@ -4,12 +4,14 @@ import (
 	"context"
 	"crypto/rsa"
 	"encoding/base64"
+	"log/slog"
 	"math/big"
 	"net/http"
 	"strings"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/bornholm/xolo/internal/http/middleware/authn"
+	"github.com/davecgh/go-spew/spew"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/pkg/errors"
 )
 
@@ -17,44 +19,84 @@ var errInvalidToken = errors.New("invalid token")
 
 type claims struct {
 	jwt.RegisteredClaims
-	Email       string `json:"email"`
+	Email             string `json:"email"`
 	PreferredUsername string `json:"preferred_username"`
-	Name        string `json:"name"`
+	Name              string `json:"name"`
+}
+
+type Options struct {
+	CookieNames []string
+}
+
+type OptionFunc func(*Options)
+
+func WithCookieNames(names ...string) OptionFunc {
+	return func(o *Options) {
+		o.CookieNames = names
+	}
 }
 
 type Handler struct {
 	providers []Provider
+	options   Options
 }
 
-func NewHandler(providers []Provider) *Handler {
+func NewHandler(providers []Provider, funcs ...OptionFunc) *Handler {
+	opts := Options{
+		CookieNames: []string{"oauth_id_token"},
+	}
+	for _, f := range funcs {
+		f(&opts)
+	}
+
 	return &Handler{
 		providers: providers,
+		options:   opts,
 	}
 }
 
 func (h *Handler) Authenticate(w http.ResponseWriter, r *http.Request) (*authn.User, error) {
-	authorization := r.Header.Get("Authorization")
-	token := strings.TrimPrefix(authorization, "Bearer ")
+	tokens := extractTokens(r, h.options.CookieNames)
+	slog.Debug("oidctoken.Authenticate: tokens extracted", "count", len(tokens))
 
-	if token == "" {
-		return nil, nil
+	for _, token := range tokens {
+		slog.Debug("oidctoken.Authenticate: trying token", "prefix", token[:50])
+		for _, provider := range h.providers {
+			slog.Debug("oidctoken.Authenticate: trying provider", "provider", provider.ID)
+			user, err := h.validateToken(r.Context(), token, provider)
+			if err == nil && user != nil {
+				slog.Debug("oidctoken.Authenticate: success", "user", user.Subject)
+				return user, nil
+			}
+
+			if errors.Is(err, errInvalidToken) {
+				slog.Debug("oidctoken.Authenticate: invalid token", "error", err)
+				continue
+			}
+
+			slog.Debug("oidctoken.Authenticate: error", "error", err)
+			return nil, errors.WithStack(err)
+		}
 	}
 
-	for _, provider := range h.providers {
-		user, err := h.validateToken(r.Context(), token, provider)
-		if err == nil {
-			return user, nil
-		}
+	return nil, nil
+}
 
-		if errors.Is(err, errInvalidToken) {
-			continue
-		}
+func extractTokens(r *http.Request, cookieNames []string) []string {
+	var tokens []string
 
-		return nil, errors.WithStack(err)
+	authHeader := r.Header.Get("Authorization")
+	if token := strings.TrimPrefix(authHeader, "Bearer "); token != "" {
+		tokens = append(tokens, token)
 	}
 
-	http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-	return nil, authn.ErrSkipRequest
+	for _, name := range cookieNames {
+		if cookie, err := r.Cookie(name); err == nil && cookie.Value != "" {
+			tokens = append(tokens, cookie.Value)
+		}
+	}
+
+	return tokens
 }
 
 func (h *Handler) validateToken(ctx context.Context, rawToken string, provider Provider) (*authn.User, error) {
@@ -68,6 +110,8 @@ func (h *Handler) validateToken(ctx context.Context, rawToken string, provider P
 	}
 
 	token, err := jwt.ParseWithClaims(rawToken, &claims{}, func(t *jwt.Token) (interface{}, error) {
+		spew.Dump(t.Claims)
+
 		kid, ok := t.Header["kid"].(string)
 		if !ok {
 			return nil, errors.New("token missing kid")
@@ -104,7 +148,7 @@ func (h *Handler) validateToken(ctx context.Context, rawToken string, provider P
 	user := &authn.User{
 		Email:    cl.Email,
 		Provider: provider.ID,
-		Subject: cl.Subject,
+		Subject:  cl.Subject,
 	}
 
 	if cl.PreferredUsername != "" {

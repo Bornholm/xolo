@@ -33,7 +33,7 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		return nil, errors.Wrap(err, "could not configure authn token handler from config")
 	}
 
-	oidcTokenAuthn, err := getOIDCTokenAuthnHandlerFromConfig(ctx, oidcAuthn)
+	oidcTokenAuthn, err := getOIDCTokenAuthnHandlerFromConfig(ctx, conf, oidcAuthn)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not configure authn oidc token handler from config")
 	}
@@ -186,16 +186,16 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 	apiHandler := api.NewHandler(providerStore, orgStore, virtualModelStore, exchangeRateService)
 
 	proxyServer := proxy.NewServer(
-		proxy.WithAuthExtractor(proxyAdapter.XoloAuthExtractor(userStore)),
+		proxy.WithAuthExtractor(proxyAdapter.XoloAuthExtractor()),
 		proxy.WithHook(proxyAdapter.NewXoloMetricsHook()),
 		proxy.WithHook(pluginHookAdapter),
 		proxy.WithHook(proxyAdapter.NewOrgModelRouter(providerStore, orgStore, conf.SecretKey)),
-		proxy.WithHook(proxyAdapter.NewXoloQuotaEnforcer(quotaService, quotaStore, usageStore, userStore, providerStore)),
+		proxy.WithHook(proxyAdapter.NewXoloQuotaEnforcer(quotaService, quotaStore, usageStore, providerStore)),
 		proxy.WithHook(proxyAdapter.NewXoloUsageTracker(usageStore, providerStore, orgStore, exchangeRateService)),
 	)
 
 	apiAuthChain := func(h gohttp.Handler) gohttp.Handler {
-		return apiAuthnMiddleware(bridgeMiddleware(h))
+		return apiAuthnMiddleware(bridgeMiddleware(withMemberships(h)))
 	}
 
 	options := []http.OptionFunc{
@@ -205,7 +205,7 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		http.WithMount("/auth/oidc/", rateLimiter(oidcAuthn)),
 		http.WithMount("/auth/token/", rateLimiter(tokenAuthn)),
 		http.WithMount("/metrics/", rateLimiter(authChain(metrics.NewHandler()))),
-		http.WithMount("/api/v1/", rateLimiter(proxyServer)),
+		http.WithMount("/api/v1/", rateLimiter(apiAuthChain(proxyServer))),
 		http.WithRoute("GET /api/v1/models", rateLimiter(apiAuthChain(apiHandler))),
 		http.WithRoute("GET /api/models-dev/lookup", rateLimiter(apiAuthChain(apiHandler))),
 		http.WithRoute("GET /api/exchange-rate", rateLimiter(apiAuthChain(apiHandler))),

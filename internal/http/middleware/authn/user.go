@@ -5,4 +5,6 @@ type User struct {
 	Provider    string
 	Subject     string
 	DisplayName string
+	OrgID       string
+	TokenID     string
 }

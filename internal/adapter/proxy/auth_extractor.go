@@ -2,13 +2,13 @@ package proxy
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
-	"strings"
 
 	genaiProxy "github.com/bornholm/genai/proxy"
 	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/core/port"
-	"github.com/pkg/errors"
+	httpx "github.com/bornholm/xolo/internal/http/context"
+	authn "github.com/bornholm/xolo/internal/http/middleware/authn"
 )
 
 type contextKey string
@@ -19,51 +19,42 @@ const (
 	contextKeyApplicationID contextKey = "applicationID"
 )
 
-// XoloAuthExtractor extracts the user identity from a Bearer token,
-// enforces expiry, and stashes the token ID and org ID in request context
-// for downstream hooks.
-func XoloAuthExtractor(userStore port.UserStore) func(r *http.Request) (string, error) {
+const contextKeyAlreadyExtracted contextKey = "alreadyExtracted"
+
+// XoloAuthExtractor reads user identity and org/token metadata exclusively from the
+// HTTP context populated by the authn + bridge + memberships middleware chain.
+// It never reads the Authorization header directly.
+func XoloAuthExtractor() func(r *http.Request) (string, error) {
 	return func(r *http.Request) (string, error) {
-		auth := r.Header.Get("Authorization")
-		if auth == "" {
-			return "", nil
-		}
-		parts := strings.SplitN(auth, " ", 2)
-		if len(parts) != 2 || !strings.EqualFold(parts[0], "bearer") {
-			return "", nil
-		}
-		raw := strings.TrimSpace(parts[1])
-		if raw == "" {
-			return "", nil
-		}
-
 		ctx := r.Context()
-		token, err := userStore.FindAuthToken(ctx, raw)
-		if err != nil {
-			if errors.Is(err, port.ErrNotFound) {
-				return "", nil
-			}
-			return "", errors.WithStack(err)
-		}
 
-		// Stash into context for usage tracker and quota enforcer
-		newCtx := context.WithValue(ctx, contextKeyAuthTokenID, string(token.ID()))
-		newCtx = context.WithValue(newCtx, contextKeyOrgID, string(token.OrgID()))
-		if app := token.Application(); app != nil {
-			newCtx = context.WithValue(newCtx, contextKeyApplicationID, string(app.ID()))
-		}
-		// Replace the request context — the proxy server reads UserID from AuthExtractor
-		// but we need to carry extra data; we attach it to the request in-place.
-		*r = *r.WithContext(newCtx)
-
-		// Return Application ID if token has Application, otherwise return User ID
-		if app := token.Application(); app != nil {
-			return string(app.ID()), nil
-		}
-		if token.Owner() == nil {
+		if ctx.Value(contextKeyAlreadyExtracted) != nil {
+			slog.Debug("XoloAuthExtractor: already extracted, skipping")
 			return "", nil
 		}
-		return string(token.Owner().ID()), nil
+
+		slog.Debug("XoloAuthExtractor: checking", "hasHttpUser", httpx.User(ctx) != nil, "hasAuthnUser", authn.ContextUser(ctx) != nil, "path", r.URL.Path)
+
+		if user := httpx.User(ctx); user != nil {
+			orgID := ""
+			authTokenID := ""
+			if authnUser := authn.ContextUser(ctx); authnUser != nil && authnUser.OrgID != "" {
+				orgID = authnUser.OrgID
+				authTokenID = authnUser.TokenID
+				slog.Debug("XoloAuthExtractor: org from authn token", "orgID", orgID, "tokenID", authTokenID)
+			} else if memberships := httpx.Memberships(ctx); len(memberships) > 0 {
+				orgID = string(memberships[0].OrgID())
+				slog.Debug("XoloAuthExtractor: org from membership", "orgID", orgID)
+			}
+			slog.Debug("XoloAuthExtractor: using httpx.User", "userID", user.ID(), "orgID", orgID)
+			newCtx := context.WithValue(ctx, contextKeyAuthTokenID, authTokenID)
+			newCtx = context.WithValue(newCtx, contextKeyOrgID, orgID)
+			newCtx = context.WithValue(newCtx, contextKeyAlreadyExtracted, true)
+			*r = *r.WithContext(newCtx)
+			return string(user.ID()), nil
+		}
+
+		return "", nil
 	}
 }
 
@@ -148,39 +139,17 @@ func ApplicationIDFromMeta(meta map[string]any) model.ApplicationID {
 	return model.ApplicationID(v)
 }
 
-// tokenFinder is a minimal interface satisfied by port.UserStore.
-// Using a minimal interface avoids forcing test stubs to implement all UserStore methods.
-type tokenFinder interface {
-	FindAuthToken(ctx context.Context, token string) (model.AuthToken, error)
+// populateMetaFromContext reads orgID and authTokenID from the request context
+// (set by XoloAuthExtractor) and copies them into req.Metadata.
+func populateMetaFromContext(ctx context.Context, req *genaiProxy.ProxyRequest) {
+	if OrgIDFromMeta(req.Metadata) != "" {
+		return
+	}
+	if orgID := OrgIDFromContext(ctx); orgID != "" {
+		req.Metadata[MetaOrgID] = orgID
+		if authTokenID := AuthTokenIDFromContext(ctx); authTokenID != "" {
+			req.Metadata[MetaAuthTokenID] = authTokenID
+		}
+	}
 }
 
-// populateMetaFromHeader reads the Bearer token from the request Authorization header,
-// looks up the corresponding auth token, and stores orgID and authTokenID in req.Metadata.
-// This is needed because the request context is captured before XoloAuthExtractor runs,
-// so hooks that need org/user identity must re-derive it from the header directly.
-func populateMetaFromHeader(ctx context.Context, store tokenFinder, req *genaiProxy.ProxyRequest) {
-	if OrgIDFromMeta(req.Metadata) != "" {
-		return // already populated
-	}
-	auth := req.Headers.Get("Authorization")
-	if auth == "" {
-		return
-	}
-	parts := strings.SplitN(auth, " ", 2)
-	if len(parts) != 2 || !strings.EqualFold(parts[0], "bearer") {
-		return
-	}
-	raw := strings.TrimSpace(parts[1])
-	if raw == "" {
-		return
-	}
-	token, err := store.FindAuthToken(ctx, raw)
-	if err != nil {
-		return
-	}
-	req.Metadata[MetaOrgID] = string(token.OrgID())
-	req.Metadata[MetaAuthTokenID] = string(token.ID())
-	if app := token.Application(); app != nil {
-		req.Metadata[MetaApplicationID] = string(app.ID())
-	}
-}

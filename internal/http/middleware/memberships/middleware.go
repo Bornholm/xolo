@@ -18,8 +18,11 @@ func Middleware(orgStore port.OrgStore) func(http.Handler) http.Handler {
 			ctx := r.Context()
 			user := httpCtx.User(ctx)
 
+			slog.Debug("memberships middleware: start", "hasUser", user != nil)
+
 			if user != nil {
 				memberships, err := orgStore.GetUserMemberships(ctx, user.ID())
+				slog.Debug("memberships middleware: fetched", "userID", user.ID(), "count", len(memberships), "error", err)
 				if err != nil {
 					slog.ErrorContext(ctx, "memberships middleware: could not fetch memberships", slogx.Error(err))
 				} else {

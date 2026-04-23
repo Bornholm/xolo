@@ -5,7 +5,6 @@ import (
 	"net"
 	"net/http"
 	"testing"
-	"time"
 
 	genaiProxy "github.com/bornholm/genai/proxy"
 	proxyAdapter "github.com/bornholm/xolo/internal/adapter/proxy"
@@ -19,29 +18,10 @@ import (
 
 // ── stubs ──────────────────────────────────────────────────────────────────
 
-type stubAuthToken struct {
-	id          model.AuthTokenID
-	owner       model.User
-	application model.Application
-	orgID       model.OrgID
-}
+type stubUserStore struct{}
 
-func (t *stubAuthToken) ID() model.AuthTokenID          { return t.id }
-func (t *stubAuthToken) Owner() model.User              { return t.owner }
-func (t *stubAuthToken) Application() model.Application { return t.application }
-func (t *stubAuthToken) Label() string                  { return "test-token" }
-func (t *stubAuthToken) Value() string                  { return "raw-token" }
-func (t *stubAuthToken) OrgID() model.OrgID             { return t.orgID }
-func (t *stubAuthToken) ExpiresAt() *time.Time          { return nil }
-
-var _ model.AuthToken = &stubAuthToken{}
-
-type stubUserStore struct {
-	token model.AuthToken
-}
-
-func (s *stubUserStore) FindAuthToken(_ context.Context, _ string) (model.AuthToken, error) {
-	return s.token, nil
+func (s *stubUserStore) GetUserByID(_ context.Context, _ model.UserID) (model.User, error) {
+	return nil, port.ErrNotFound
 }
 
 type stubActivationStore struct {
@@ -189,15 +169,16 @@ func startBufconnServer(t *testing.T, srv proto.XoloPluginServer) proto.XoloPlug
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
-func makeRequest(t *testing.T) *genaiProxy.ProxyRequest {
+func makeRequest(t *testing.T, orgID model.OrgID) *genaiProxy.ProxyRequest {
 	t.Helper()
 	headers := http.Header{}
-	headers.Set("Authorization", "Bearer raw-token")
 	return &genaiProxy.ProxyRequest{
-		Model:    "acme/gpt-4",
-		UserID:   "user-1",
-		Headers:  headers,
-		Metadata: map[string]any{},
+		Model:   "acme/gpt-4",
+		UserID:  "user-1",
+		Headers: headers,
+		Metadata: map[string]any{
+			proxyAdapter.MetaOrgID: string(orgID),
+		},
 	}
 }
 
@@ -209,11 +190,6 @@ func TestPluginHookAdapter_PreRequest_Allowed(t *testing.T) {
 	client := startBufconnServer(t, &allowPlugin{})
 
 	orgID := model.OrgID("org-1")
-	token := &stubAuthToken{
-		id:    model.AuthTokenID("tok-1"),
-		orgID: orgID,
-	}
-	userStore := &stubUserStore{token: token}
 	activationStore := &stubActivationStore{
 		activations: []*model.PluginActivation{
 			{OrgID: orgID, PluginName: "test-allow", Enabled: true, Required: false},
@@ -230,9 +206,9 @@ func TestPluginHookAdapter_PreRequest_Allowed(t *testing.T) {
 		},
 	}
 
-	adapter := proxyAdapter.NewPluginHookAdapter(clients, descriptors, activationStore, configStore, userStore, &stubProviderStore{}, &stubVirtualModelStore{}, nil, nil)
+	adapter := proxyAdapter.NewPluginHookAdapter(clients, descriptors, activationStore, configStore, &stubUserStore{}, &stubProviderStore{}, &stubVirtualModelStore{}, nil, nil)
 
-	req := makeRequest(t)
+	req := makeRequest(t, orgID)
 	result, err := adapter.PreRequest(ctx, req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -248,11 +224,6 @@ func TestPluginHookAdapter_PreRequest_Blocked(t *testing.T) {
 	client := startBufconnServer(t, &blockPlugin{})
 
 	orgID := model.OrgID("org-1")
-	token := &stubAuthToken{
-		id:    model.AuthTokenID("tok-1"),
-		orgID: orgID,
-	}
-	userStore := &stubUserStore{token: token}
 	activationStore := &stubActivationStore{
 		activations: []*model.PluginActivation{
 			{OrgID: orgID, PluginName: "test-block", Enabled: true, Required: false},
@@ -269,9 +240,9 @@ func TestPluginHookAdapter_PreRequest_Blocked(t *testing.T) {
 		},
 	}
 
-	adapter := proxyAdapter.NewPluginHookAdapter(clients, descriptors, activationStore, configStore, userStore, &stubProviderStore{}, &stubVirtualModelStore{}, nil, nil)
+	adapter := proxyAdapter.NewPluginHookAdapter(clients, descriptors, activationStore, configStore, &stubUserStore{}, &stubProviderStore{}, &stubVirtualModelStore{}, nil, nil)
 
-	req := makeRequest(t)
+	req := makeRequest(t, orgID)
 	result, err := adapter.PreRequest(ctx, req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

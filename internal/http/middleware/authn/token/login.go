@@ -85,6 +85,8 @@ func (h *Handler) getUserFromToken(ctx context.Context, token string) (*authn.Us
 		Provider:    user.Provider(),
 		Subject:     user.Subject(),
 		DisplayName: user.DisplayName(),
+		OrgID:       string(authToken.OrgID()),
+		TokenID:     string(authToken.ID()),
 	}
 
 	return authnUser, nil

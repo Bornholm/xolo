@@ -10,9 +10,10 @@ type HTTP struct {
 	RateLimit HTTPRateLimit `envPrefix:"RATE_LIMIT_"`
 }
 type Authn struct {
-	Providers       AuthProviders `envPrefix:"PROVIDERS_"`
+	Providers        AuthProviders `envPrefix:"PROVIDERS_"`
 	DefaultAdmins   []string      `env:"DEFAULT_ADMINS" envSeparator:","`
 	ActiveByDefault bool          `env:"ACTIVE_BY_DEFAULT" envDefault:"false"`
+	CookiesToCheck []string      `env:"COOKIES_TO_CHECK" envSeparator:"," envDefault:"oauth_id_token"`
 }
 
 type Session struct {

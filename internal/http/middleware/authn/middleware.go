@@ -1,6 +1,7 @@
 package authn
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -20,7 +21,8 @@ type Authenticator interface {
 func Middleware(onUnauthorized func(w http.ResponseWriter, r *http.Request), authenticators ...Authenticator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		var fn http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {
-			for _, authenticator := range authenticators {
+			for i, authenticator := range authenticators {
+				slog.Debug("authn middleware: trying", "index", i, "authenticator", fmt.Sprintf("%T", authenticator))
 				user, err := authenticator.Authenticate(w, r)
 				if err != nil {
 					if errors.Is(err, ErrSkipRequest) {
