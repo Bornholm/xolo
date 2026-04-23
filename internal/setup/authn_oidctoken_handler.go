@@ -19,6 +19,9 @@ func getOIDCTokenAuthnHandlerFromConfig(ctx context.Context, conf *config.Config
 	if len(conf.HTTP.Authn.CookiesToCheck) > 0 {
 		opts = append(opts, oidctoken.WithCookieNames(conf.HTTP.Authn.CookiesToCheck...))
 	}
+	if conf.HTTP.Authn.OIDCTokenIgnoreExpiry {
+		opts = append(opts, oidctoken.WithIgnoreTokenExpiry())
+	}
 
 	handler := oidctoken.NewHandler(providers, opts...)
 

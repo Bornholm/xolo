@@ -24,7 +24,8 @@ type claims struct {
 }
 
 type Options struct {
-	CookieNames []string
+	CookieNames       []string
+	IgnoreTokenExpiry bool
 }
 
 type OptionFunc func(*Options)
@@ -32,6 +33,12 @@ type OptionFunc func(*Options)
 func WithCookieNames(names ...string) OptionFunc {
 	return func(o *Options) {
 		o.CookieNames = names
+	}
+}
+
+func WithIgnoreTokenExpiry() OptionFunc {
+	return func(o *Options) {
+		o.IgnoreTokenExpiry = true
 	}
 }
 
@@ -108,6 +115,13 @@ func (h *Handler) validateToken(ctx context.Context, rawToken string, provider P
 		return nil, errors.WithStack(err)
 	}
 
+	parseOpts := []jwt.ParserOption{}
+	if h.options.IgnoreTokenExpiry {
+		parseOpts = append(parseOpts, jwt.WithoutClaimsValidation())
+	} else {
+		parseOpts = append(parseOpts, jwt.WithIssuer(provider.Issuer))
+	}
+
 	token, err := jwt.ParseWithClaims(rawToken, &claims{}, func(t *jwt.Token) (interface{}, error) {
 		kid, ok := t.Header["kid"].(string)
 		if !ok {
@@ -127,7 +141,7 @@ func (h *Handler) validateToken(ctx context.Context, rawToken string, provider P
 		}
 
 		return nil, errors.New("key not found")
-	}, jwt.WithIssuer(provider.Issuer))
+	}, parseOpts...)
 
 	if err != nil {
 		return nil, errInvalidToken
@@ -135,6 +149,10 @@ func (h *Handler) validateToken(ctx context.Context, rawToken string, provider P
 
 	cl, ok := token.Claims.(*claims)
 	if !ok {
+		return nil, errInvalidToken
+	}
+
+	if h.options.IgnoreTokenExpiry && cl.Issuer != provider.Issuer {
 		return nil, errInvalidToken
 	}
 
