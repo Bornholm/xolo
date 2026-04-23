@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/bornholm/xolo/internal/http/middleware/authn"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pkg/errors"
 )
@@ -110,8 +109,6 @@ func (h *Handler) validateToken(ctx context.Context, rawToken string, provider P
 	}
 
 	token, err := jwt.ParseWithClaims(rawToken, &claims{}, func(t *jwt.Token) (interface{}, error) {
-		spew.Dump(t.Claims)
-
 		kid, ok := t.Header["kid"].(string)
 		if !ok {
 			return nil, errors.New("token missing kid")
