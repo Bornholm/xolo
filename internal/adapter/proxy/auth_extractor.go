@@ -140,7 +140,14 @@ func ApplicationIDFromMeta(meta map[string]any) model.ApplicationID {
 }
 
 // populateMetaFromContext reads orgID and authTokenID from the request context
-// (set by XoloAuthExtractor) and copies them into req.Metadata.
+// and copies them into req.Metadata.
+//
+// It tries two sources in order:
+//  1. The explicit context keys set by XoloAuthExtractor (available in ResolveModel hooks,
+//     where the proxy passes r.Context() which includes the auth extractor's output).
+//  2. authn.ContextUser (set by the authn middleware before the proxy server), which carries
+//     OrgID/TokenID for API key tokens — useful in PreRequest hooks where the proxy passes
+//     a context captured before XoloAuthExtractor runs.
 func populateMetaFromContext(ctx context.Context, req *genaiProxy.ProxyRequest) {
 	if OrgIDFromMeta(req.Metadata) != "" {
 		return
@@ -149,6 +156,13 @@ func populateMetaFromContext(ctx context.Context, req *genaiProxy.ProxyRequest) 
 		req.Metadata[MetaOrgID] = orgID
 		if authTokenID := AuthTokenIDFromContext(ctx); authTokenID != "" {
 			req.Metadata[MetaAuthTokenID] = authTokenID
+		}
+		return
+	}
+	if authnUser := authn.ContextUser(ctx); authnUser != nil && authnUser.OrgID != "" {
+		req.Metadata[MetaOrgID] = authnUser.OrgID
+		if authnUser.TokenID != "" {
+			req.Metadata[MetaAuthTokenID] = authnUser.TokenID
 		}
 	}
 }

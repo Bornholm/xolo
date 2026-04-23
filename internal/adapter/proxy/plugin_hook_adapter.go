@@ -283,6 +283,7 @@ func (a *PluginHookAdapter) PostResponse(ctx context.Context, req *genaiProxy.Pr
 
 // ResolveModel implements proxy.ModelResolverHook.
 func (a *PluginHookAdapter) ResolveModel(ctx context.Context, req *genaiProxy.ProxyRequest) (llm.Client, string, error) {
+	PopulateMetaFromContext(ctx, req.Metadata)
 	orgID := OrgIDFromMeta(req.Metadata)
 	if orgID == "" {
 		return nil, "", genaiProxy.ErrModelNotFound
