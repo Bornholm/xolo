@@ -71,7 +71,20 @@ func (h *Handler) getUserFromToken(ctx context.Context, token string) (*authn.Us
 		return nil, errors.WithStack(err)
 	}
 
-	if authToken.Application() != nil || authToken.Owner() == nil {
+	if app := authToken.Application(); app != nil {
+		if !app.Active() {
+			return nil, errors.WithStack(port.ErrNotFound)
+		}
+		return &authn.User{
+			Provider:    "application",
+			Subject:     string(app.ID()),
+			DisplayName: app.Name(),
+			OrgID:       string(authToken.OrgID()),
+			TokenID:     string(authToken.ID()),
+		}, nil
+	}
+
+	if authToken.Owner() == nil {
 		return nil, errors.WithStack(port.ErrNotFound)
 	}
 
@@ -80,14 +93,12 @@ func (h *Handler) getUserFromToken(ctx context.Context, token string) (*authn.Us
 		return nil, errors.WithStack(err)
 	}
 
-	authnUser := &authn.User{
+	return &authn.User{
 		Email:       user.Email(),
 		Provider:    user.Provider(),
 		Subject:     user.Subject(),
 		DisplayName: user.DisplayName(),
 		OrgID:       string(authToken.OrgID()),
 		TokenID:     string(authToken.ID()),
-	}
-
-	return authnUser, nil
+	}, nil
 }
