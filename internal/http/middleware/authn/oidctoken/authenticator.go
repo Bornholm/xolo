@@ -66,7 +66,11 @@ func (h *Handler) Authenticate(w http.ResponseWriter, r *http.Request) (*authn.U
 	slog.Debug("oidctoken.Authenticate: tokens extracted", "count", len(tokens))
 
 	for _, token := range tokens {
-		slog.Debug("oidctoken.Authenticate: trying token", "prefix", token[:50])
+		prefix := token
+		if len(prefix) > 50 {
+			prefix = prefix[:50]
+		}
+		slog.Debug("oidctoken.Authenticate: trying token", "prefix", prefix)
 		for _, provider := range h.providers {
 			slog.Debug("oidctoken.Authenticate: trying provider", "provider", provider.ID)
 			user, err := h.validateToken(r.Context(), token, provider)
