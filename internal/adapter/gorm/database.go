@@ -16,6 +16,7 @@ func createGetDatabase(db *gorm.DB, models ...any) func(ctx context.Context) (*g
 
 	return func(ctx context.Context) (*gorm.DB, error) {
 		migrateOnce.Do(func() {
+			db.Exec("DROP INDEX IF EXISTS `idx_users_email`")
 			if err := db.AutoMigrate(models...); err != nil {
 				migrateErr = errors.WithStack(err)
 				return

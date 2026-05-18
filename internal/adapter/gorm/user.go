@@ -17,7 +17,7 @@ type User struct {
 	Provider string `gorm:"index"`
 
 	DisplayName string
-	Email       string `gorm:"unique"`
+	Email       string `gorm:"uniqueIndex:idx_users_email_nonempty,where:email != ''"`
 
 	AuthTokens []*AuthToken `gorm:"foreignKey:OwnerID;constraint:OnDelete:CASCADE;"`
 
