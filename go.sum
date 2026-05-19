@@ -10,6 +10,8 @@ github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/bornholm/genai v0.17.1 h1:n7xjk5aoyrq36vUK1gnEuoj5HS5t4rMSV5z2FlUMq+I=
 github.com/bornholm/genai v0.17.1/go.mod h1:OmbuElbTAc78us9NFtktRIA7pb9QZnVk41zYtoHepqI=
+github.com/bornholm/genai v0.24.0 h1:7W5QLIMKgVoxBWupvgaBtt9O6Rg8DfB+7yxUS40logI=
+github.com/bornholm/genai v0.24.0/go.mod h1:Vk1AgzLaSNnJ3EZHlIaM8JJR38WdY2qLlyiTZy1Kh/o=
 github.com/bornholm/go-fuzzy v0.0.0-20250815131223-76b121e8632d h1:IUrWuFur+t1DKOMt49Np0vzF/9WcX1A1H9kWpiyMhPA=
 github.com/bornholm/go-fuzzy v0.0.0-20250815131223-76b121e8632d/go.mod h1:0qK9yh4PmCaXwWNvIYDJ9GGIZv/72b90QaSBti6ZZUs=
 github.com/bornholm/go-x v0.0.0-20260127104343-c6737ea35324 h1:urrNBFQGXI3uvAivANnjEBdZVMDfmWn/okKIwDDqJ/w=
@@ -109,6 +111,7 @@ github.com/prometheus/procfs v0.15.1 h1:YagwOFzUgYfKKHX6Dr+sHT7km/hxC76UB0leargg
 github.com/prometheus/procfs v0.15.1/go.mod h1:fB45yRUv8NstnjriLhBQLuOUt+WW4BsoGhij/e3PBqk=
 github.com/revrost/go-openrouter v1.1.5 h1:YkTxdRrkfTf5Y78Daa4a3k+WgX6KIKkLgDri2ZSndJ4=
 github.com/revrost/go-openrouter v1.1.5/go.mod h1:jZFcumFqvS25o8oEQc1/+4yeK7lHDSnwPMIJ/pKPdNc=
+github.com/revrost/go-openrouter v1.2.0/go.mod h1:xByLw2kG+6qcregvtIY8MB7xvmVHns8McC9B0lQJluY=
 github.com/rs/cors v1.11.1 h1:eU3gRzXLRK57F5rKMGMZURNdIG4EoAmX8k94r9wXWHA=
 github.com/rs/cors v1.11.1/go.mod h1:XyqrcTp5zjWr1wsJ8PIRZssZ8b/WMcMf71DJnit4EMU=
 github.com/rs/xid v1.6.0 h1:fV591PaemRlL6JfRxGDEPl69wICngIQ3shQtzfy2gxU=
