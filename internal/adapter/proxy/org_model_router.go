@@ -126,7 +126,7 @@ func (r *OrgModelRouter) ResolveModel(ctx context.Context, req *genaiProxy.Proxy
 
 	// Rate limit wraps token limit: token-bucket (minInterval between requests, burst = MaxBurst).
 	if cfg := p.RateLimitConfig(); cfg != nil && cfg.Enabled {
-		client = llmratelimit.NewClient(client, cfg.Interval, cfg.MaxBurst)
+		client = llmratelimit.NewClient(client, llmratelimit.WithChatLimit(cfg.Interval, cfg.MaxBurst))
 	}
 
 	// Retry wraps everything (outermost): each retry attempt goes through

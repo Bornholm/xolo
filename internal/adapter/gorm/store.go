@@ -68,27 +68,7 @@ func (s *Store) withRetry(ctx context.Context, withTx bool, fn func(ctx context.
 
 func NewStore(db *gorm.DB) *Store {
 	return &Store{
-		getDatabase: createGetDatabase(db,
-			// User store
-			&User{}, &AuthToken{}, &UserRole{}, &UserPreferences{},
-			// Org store
-			&Organization{}, &Membership{}, &Application{},
-			// Provider store
-			&Provider{}, &LLMModel{},
-			// Virtual model store
-			&VirtualModel{},
-			// Quota store
-			&Quota{},
-			// Usage store
-			&UsageRecord{},
-			// Invite store
-			&InviteToken{},
-			// Exchange rate cache
-			&ExchangeRate{},
-			// Plugin store
-			&PluginActivationRecord{},
-			&PluginConfigRecord{},
-		),
+		getDatabase: createGetDatabase(db),
 	}
 }
 
