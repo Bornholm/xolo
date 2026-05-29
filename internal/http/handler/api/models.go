@@ -12,6 +12,7 @@ import (
 	"github.com/bornholm/xolo/internal/core/port"
 	"github.com/bornholm/xolo/internal/core/service"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
+	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
 	"github.com/bornholm/go-x/slogx"
 )
 
@@ -48,25 +49,44 @@ type perRequestLimits struct {
 	CompletionTokens int `json:"completion_tokens"`
 }
 
+type pluginManagerIface interface {
+	List() []*proto.PluginDescriptor
+	HTTPPort(pluginName string) uint32
+}
+
 type Handler struct {
 	providerStore       port.ProviderStore
 	orgStore            port.OrgStore
 	virtualModelStore   port.VirtualModelStore
 	exchangeRateService *service.ExchangeRateService
+	pluginManager       pluginManagerIface
 	mux                 *http.ServeMux
 }
 
-func NewHandler(providerStore port.ProviderStore, orgStore port.OrgStore, virtualModelStore port.VirtualModelStore, exchangeRateService *service.ExchangeRateService) *Handler {
+func NewHandler(providerStore port.ProviderStore, orgStore port.OrgStore, virtualModelStore port.VirtualModelStore, exchangeRateService *service.ExchangeRateService, pluginManager pluginManagerIface) *Handler {
 	h := &Handler{
 		providerStore:       providerStore,
 		orgStore:            orgStore,
 		virtualModelStore:   virtualModelStore,
 		exchangeRateService: exchangeRateService,
+		pluginManager:       pluginManager,
 		mux:                 http.NewServeMux(),
 	}
 	h.mux.HandleFunc("GET /api/v1/models", h.handleModels)
 	h.mux.HandleFunc("GET /api/models-dev/lookup", h.handleModelsDevLookup)
 	h.mux.HandleFunc("GET /api/exchange-rate", h.handleExchangeRate)
+	// Plugin UI config sync (seed before iframe open, read back after close)
+	h.mux.HandleFunc("PUT /api/orgs/{orgSlug}/plugin-ui-config", h.handleSeedPluginUIConfig)
+	h.mux.HandleFunc("GET /api/orgs/{orgSlug}/plugin-ui-config", h.handleReadPluginUIConfig)
+	// Virtual model pipeline CRUD
+	h.mux.HandleFunc("GET /api/orgs/{orgSlug}/virtual-models", h.handleListVirtualModels)
+	h.mux.HandleFunc("POST /api/orgs/{orgSlug}/virtual-models", h.handleCreateVirtualModel)
+	h.mux.HandleFunc("POST /api/orgs/{orgSlug}/virtual-models/import", h.handleImportVirtualModel)
+	h.mux.HandleFunc("GET /api/orgs/{orgSlug}/virtual-models/{vmID}", h.handleGetVirtualModel)
+	h.mux.HandleFunc("GET /api/orgs/{orgSlug}/virtual-models/{vmID}/export", h.handleExportVirtualModel)
+	h.mux.HandleFunc("PUT /api/orgs/{orgSlug}/virtual-models/{vmID}", h.handleUpdateVirtualModel)
+	h.mux.HandleFunc("DELETE /api/orgs/{orgSlug}/virtual-models/{vmID}", h.handleDeleteVirtualModel)
+	h.mux.HandleFunc("GET /api/orgs/{orgSlug}/pipeline-node-types", h.handlePipelineNodeTypes)
 	return h
 }
 

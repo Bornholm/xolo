@@ -6,7 +6,6 @@ import (
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
 )
 
 type OrgDashboardVModel struct {
@@ -140,23 +139,6 @@ type OrgUsagePageVModel struct {
 	// Energy estimation
 	TotalEnergyWh    float64 // sum of midpoint estimates (0 if all unknown)
 	TotalCO2GramsMid float64 // sum of CO₂ midpoints (world average, grams)
-}
-
-type PluginsPageVModel struct {
-	common.AppLayoutVModel
-	Org         model.Organization
-	Descriptors []*proto.PluginDescriptor
-	Active      map[string]bool
-}
-
-type PluginConfigPageVModel struct {
-	common.AppLayoutVModel
-	Org         model.Organization
-	Descriptor  *proto.PluginDescriptor
-	Properties  map[string]map[string]any
-	Values      map[string]string
-	FieldErrors map[string]string
-	HasHTTPUI   bool // true → render iframe instead of JSONSchemaForm
 }
 
 type VirtualModelsPageVModel struct {

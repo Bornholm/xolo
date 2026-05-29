@@ -21,6 +21,12 @@ func (p *Plugin) Describe(_ context.Context, _ *proto.DescribeRequest) (*proto.P
 		Capabilities:    []proto.PluginDescriptor_Capability{proto.PluginDescriptor_PRE_REQUEST},
 		ConfigSchema:    configSchemaJSON,
 		DefaultRequired: true,
+		InputPorts: []*proto.PortDescriptor{
+			{Name: "request", PortType: "request", Required: true},
+		},
+		OutputPorts: []*proto.PortDescriptor{
+			{Name: "request", PortType: "request", Required: true},
+		},
 	}, nil
 }
 

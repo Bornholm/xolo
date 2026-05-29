@@ -1,0 +1,203 @@
+package main
+
+import (
+	"fmt"
+	"slices"
+	"strconv"
+
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/label"
+)
+
+var weekDays = []struct{ ID, Label string }{
+	{"monday", "Lun"},
+	{"tuesday", "Mar"},
+	{"wednesday", "Mer"},
+	{"thursday", "Jeu"},
+	{"friday", "Ven"},
+	{"saturday", "Sam"},
+	{"sunday", "Dim"},
+}
+
+// page renders the time-restriction plugin configuration UI.
+templ page(pd uiPageData) {
+	<!DOCTYPE html>
+	<html class="dark">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<base href={ pd.BasePath }/>
+			<link rel="stylesheet" href="/assets/templui.css"/>
+			<style>
+				/* Visually-hidden checkbox (kept in layout flow so :checked + selector works) */
+				.day-toggle {
+					position: absolute;
+					opacity: 0;
+					width: 0;
+					height: 0;
+					pointer-events: none;
+				}
+				.day-label {
+					display: inline-flex; align-items: center; justify-content: center;
+					min-width: 2.75rem; padding: 0.3rem 0.6rem; border-radius: 0.375rem;
+					border: 1px solid #475569; background: transparent;
+					color: #94a3b8; font-size: 0.75rem; font-weight: 600;
+					cursor: pointer; user-select: none;
+					transition: background 0.12s, border-color 0.12s, color 0.12s;
+				}
+				.day-toggle:checked + .day-label {
+					background: #3b82f6;
+					border-color: #3b82f6;
+					color: #ffffff;
+				}
+				.day-label:hover { background: #334155; color: #e2e8f0; }
+				.day-toggle:checked + .day-label:hover { background: #2563eb; border-color: #2563eb; }
+			</style>
+		</head>
+		<body class="bg-background text-foreground min-h-screen p-4 space-y-4">
+			<h1 class="text-lg font-semibold">Restriction horaire</h1>
+			<p class="text-sm text-muted-foreground">
+				Définissez les créneaux horaires pendant lesquels les requêtes sont autorisées.
+				Toute requête hors créneau sera refusée.
+			</p>
+
+			if pd.Success {
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					@alert.Description() {
+						Configuration sauvegardée avec succès.
+					}
+				}
+			}
+
+			<form id="main-form" method="POST" action="api/config" class="space-y-6">
+				<!-- Timezone -->
+				@card.Card() {
+					@card.Header() {
+						@card.Title() { Fuseau horaire }
+					}
+					@card.Content() {
+						<div class="space-y-1">
+							@label.Label(label.Props{For: "timezone"}) { Identifiant IANA }
+							@input.Input(input.Props{
+								ID:          "timezone",
+								Name:        "timezone",
+								Value:       pd.Config.Timezone,
+								Placeholder: "ex: Europe/Paris, UTC, America/New_York",
+							})
+							<p class="text-xs text-muted-foreground">
+								Exemples : Europe/Paris · UTC · America/New_York · Asia/Tokyo
+							</p>
+						</div>
+					}
+				}
+
+				<!-- Slots -->
+				@card.Card() {
+					@card.Header() {
+						<div class="flex items-center justify-between">
+							@card.Title() { Créneaux autorisés }
+							@button.Button(button.Props{
+								Type:       button.TypeSubmit,
+								Variant:    button.VariantOutline,
+								Size:       button.SizeSm,
+								Attributes: templ.Attributes{"formaction": "api/slots/add"},
+							}) {
+								+ Ajouter un créneau
+							}
+						</div>
+					}
+					@card.Content() {
+						if len(pd.Config.Slots) == 0 {
+							<p class="text-sm text-muted-foreground italic text-center py-4">
+								Aucun créneau configuré — toutes les requêtes seront refusées.
+							</p>
+						} else {
+							<div class="space-y-4">
+								for i, slot := range pd.Config.Slots {
+									@slotRow(i, slot)
+								}
+							</div>
+						}
+					}
+				}
+
+				<!-- Save -->
+				<div class="flex justify-end">
+					@button.Button(button.Props{Type: button.TypeSubmit}) {
+						Sauvegarder
+					}
+				</div>
+			</form>
+		</body>
+	</html>
+}
+
+templ slotRow(idx int, slot Slot) {
+	<div class="rounded-lg border p-4 space-y-3">
+		<!-- Days -->
+		<div class="space-y-1">
+			<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">Jours de la semaine</p>
+			<div class="flex flex-wrap gap-1">
+				for _, d := range weekDays {
+					<input
+						type="checkbox"
+						id={ fmt.Sprintf("slot_%d_%s", idx, d.ID) }
+						name={ fmt.Sprintf("slot_%d_days", idx) }
+						value={ d.ID }
+						class="day-toggle"
+						if slices.Contains(slot.Days, d.ID) { checked }
+					/>
+					<label for={ fmt.Sprintf("slot_%d_%s", idx, d.ID) } class="day-label">
+						{ d.Label }
+					</label>
+				}
+			</div>
+		</div>
+
+		<!-- Time range -->
+		<div class="flex items-end gap-3">
+			<div class="flex-1 space-y-1">
+				@label.Label(label.Props{For: fmt.Sprintf("slot_%d_start", idx)}) { Heure de début }
+				<input
+					type="time"
+					id={ fmt.Sprintf("slot_%d_start", idx) }
+					name={ fmt.Sprintf("slot_%d_start", idx) }
+					value={ slot.Start }
+					class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+				/>
+			</div>
+			<span class="text-muted-foreground pb-2">→</span>
+			<div class="flex-1 space-y-1">
+				@label.Label(label.Props{For: fmt.Sprintf("slot_%d_end", idx)}) { Heure de fin (exclusif) }
+				<input
+					type="time"
+					id={ fmt.Sprintf("slot_%d_end", idx) }
+					name={ fmt.Sprintf("slot_%d_end", idx) }
+					value={ slot.End }
+					class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+				/>
+			</div>
+			<!-- Delete -->
+			<div>
+				@button.Button(button.Props{
+					Type:    button.TypeSubmit,
+					Variant: button.VariantDestructive,
+					Size:    button.SizeIcon,
+					Attributes: templ.Attributes{
+						"formaction": "api/slots/delete",
+						"title":      "Supprimer ce créneau",
+					},
+				}) {
+					<input type="hidden" name="index" value={ strconv.Itoa(idx) }/>
+					✕
+				}
+			</div>
+		</div>
+		<p class="text-xs text-muted-foreground">
+			Les créneaux couvrant minuit (ex: 22:00 → 02:00) ne sont pas supportés.
+		</p>
+	</div>
+}

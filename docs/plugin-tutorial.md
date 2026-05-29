@@ -4,9 +4,9 @@
 
 Xolo plugins are **external gRPC plugins** that extend the gateway's functionality. They run as separate processes and communicate with Xolo via [hashicorp/go-plugin](https://github.com/hashicorp/go-plugin), enabling:
 
+- **Pre-request processing** — filter, transform, or analyse requests before they reach the LLM proxy
+- **Post-response processing** — modify or log responses after the LLM call
 - **Model resolution** — intercept and redirect requests to different models
-- **Request filtering** — allow/deny requests before they reach the LLM proxy
-- **Response processing** — modify or log responses after the LLM call
 - **Dynamic model listing** — add or filter models in the organization's pool
 
 Plugins are configured per-organization through the admin UI and persist their configuration in Xolo's database.
@@ -32,24 +32,84 @@ flowchart TB
 
 | Component            | Location                          | Description                                                  |
 | -------------------- | --------------------------------- | ------------------------------------------------------------ |
-| `PluginDescriptor`   | `proto.PluginDescriptor`          | Plugin metadata (name, version, capabilities, config schema) |
+| `PluginDescriptor`   | `proto.PluginDescriptor`          | Plugin metadata (name, version, capabilities, ports, schemas) |
 | `XoloPlugin` service | `proto.XoloPluginServer`          | gRPC service implemented by plugins                          |
 | `XoloHostService`    | `internal/plugin/host_service.go` | Host-side service for plugins to call back                   |
 | Plugin Manager       | `internal/plugin/manager.go`      | Scans, loads, and manages plugin lifecycles                  |
 | Plugin SDK           | `pkg/pluginsdk/`                  | Helper libraries for plugin authors                          |
 
-## Plugin Capabilities
+## Plugin Descriptor
 
-Plugins declare which capabilities they support in their `PluginDescriptor`. Xolo invokes the corresponding gRPC method at the appropriate pipeline stage.
+Every plugin must implement `Describe`, which declares its identity, capabilities, and pipeline ports:
+
+```go
+func (p *Plugin) Describe(_ context.Context, _ *proto.DescribeRequest) (*proto.PluginDescriptor, error) {
+    return &proto.PluginDescriptor{
+        Name:        "my-plugin",
+        Version:     "0.1.0",
+        Description: "A brief description of what this plugin does.",
+        Capabilities: []proto.PluginDescriptor_Capability{
+            proto.PluginDescriptor_PRE_REQUEST,
+        },
+        InputPorts: []*proto.PortDescriptor{
+            {Name: "request", PortType: "request", Required: true},
+        },
+        OutputPorts: []*proto.PortDescriptor{
+            {Name: "score", PortType: "number"},
+        },
+        ConfigSchema:     configSchemaJSON,     // org-level config (JSON Schema)
+        UserConfigSchema: userConfigSchemaJSON, // per-user config (optional)
+        DefaultRequired:  false,                // if true, org must configure before activation
+    }, nil
+}
+```
+
+### PluginDescriptor fields
+
+| Field              | Type                   | Description                                              |
+| ------------------ | ---------------------- | -------------------------------------------------------- |
+| `Name`             | `string`               | Unique plugin identifier (kebab-case)                    |
+| `Version`          | `string`               | Semver string                                            |
+| `Description`      | `string`               | Short human-readable description                         |
+| `Capabilities`     | `[]Capability`         | Which lifecycle hooks the plugin implements              |
+| `InputPorts`       | `[]*PortDescriptor`    | Typed data inputs from upstream pipeline nodes           |
+| `OutputPorts`      | `[]*PortDescriptor`    | Typed data outputs to downstream pipeline nodes          |
+| `ConfigSchema`     | `string`               | JSON Schema for org-level configuration                  |
+| `UserConfigSchema` | `string`               | JSON Schema for per-user configuration (optional)        |
+| `DefaultRequired`  | `bool`                 | If true, plugin requires explicit org config to activate |
+
+### Port types
+
+Ports have a `port_type` field that controls both the handle shape in the UI and the Go type of the transmitted value:
+
+| Port type  | Go type            | Description                          |
+| ---------- | ------------------ | ------------------------------------ |
+| `request`  | `string` (JSON)    | Full LLM request body (passthrough)  |
+| `response` | `string`           | LLM response content (passthrough)   |
+| `number`   | `float64`          | Numeric value                        |
+| `string`   | `string`           | Text value                           |
+| `boolean`  | `bool`             | Boolean flag                         |
+
+Ports with an empty `OutputPorts` / `InputPorts` list are **dynamic**: the actual ports come from the node's `config_json` at runtime (see `script-processor` for an example).
+
+## Pipeline Integration
+
+Plugins integrate into the **pipeline engine** via their ports. Each plugin node in a pipeline graph:
+
+1. Receives upstream port values in `PreRequestInput.InputsJson` (JSON object `{portName: value}`)
+2. Produces downstream port values in `PreRequestOutput.OutputsJson` (JSON object `{portName: value}`)
+
+The pipeline engine topologically sorts nodes and passes outputs from upstream nodes as inputs to downstream nodes. This enables composing plugins into dataflow graphs without code changes — only wiring in the UI.
+
+### node_state: correlating Pre and Post passes
+
+If a plugin needs to correlate its `PreRequest` call with its `PostResponse` call (e.g. storing an anonymisation map), it can return an opaque blob in `PreRequestOutput.NodeState`. The pipeline engine stores this blob and passes it back in `PostResponseInput.NodeState` for the matching execution.
+
+## Plugin Capabilities
 
 ### 1. PRE_REQUEST
 
-Invoked **before** the request reaches the LLM proxy. Use cases:
-
-- Rate limiting
-- Request validation
-- Access control / time-based restrictions
-- Request logging or transformation
+Invoked **before** the request reaches the LLM proxy. Typical uses: analysis, filtering, routing, message transformation.
 
 **Signature:**
 
@@ -59,32 +119,33 @@ func (p *Plugin) PreRequest(ctx context.Context, in *proto.PreRequestInput) (*pr
 
 **Input (`PreRequestInput`):**
 
-| Field          | Type              | Description                       |
-| -------------- | ----------------- | --------------------------------- |
-| `Ctx`          | `*RequestContext` | Organization, user, token, config |
-| `Model`        | `string`          | Requested model name              |
-| `MessagesJson` | `string`          | JSON-encoded messages array       |
+| Field          | Type              | Description                                                                  |
+| -------------- | ----------------- | ---------------------------------------------------------------------------- |
+| `Ctx`          | `*RequestContext` | Organisation, user, token, config                                            |
+| `Model`        | `string`          | Full LLM request body JSON (same as `ec.RequestJSON` in the pipeline engine) |
+| `MessagesJson` | `string`          | JSON-encoded messages array extracted from the request body                  |
+| `InputsJson`   | `string`          | JSON object `{portName: value}` for connected input ports                    |
+
+> **Note:** `Model` does **not** contain just the model name — it contains the entire raw request body as JSON. Use `MessagesJson` for messages, or parse `Model` as JSON to access other fields such as `model`, `temperature`, `max_tokens`, etc.
 
 **Output (`PreRequestOutput`):**
 
-| Field                  | Type     | Description                                               |
-| ---------------------- | -------- | --------------------------------------------------------- |
-| `Allowed`              | `bool`   | Whether to proceed                                        |
-| `RejectionReason`      | `string` | Reason shown to user if denied                            |
-| `ResponseJson`         | `string` | Optional early response (short-circuits)                  |
-| `ModifiedMessagesJson` | `string` | If non-empty, replaces request messages before proxy call |
+| Field                  | Type     | Description                                                         |
+| ---------------------- | -------- | ------------------------------------------------------------------- |
+| `Allowed`              | `bool`   | Whether to proceed (`true`) or reject the request (`false`)         |
+| `RejectionReason`      | `string` | Reason shown to the user if denied                                  |
+| `ResponseJson`         | `string` | Optional early response body (short-circuits without calling LLM)   |
+| `ModifiedMessagesJson` | `string` | If non-empty, replaces the request messages before the proxy call   |
+| `OutputsJson`          | `string` | JSON object `{portName: value}` of produced output port values      |
+| `NodeState`            | `[]byte` | Opaque blob passed back to `PostResponse` for the same execution    |
 
-**Example:** The `time-restriction` plugin denies requests outside configured time windows.
+**Example — access control (time-restriction):**
 
 ```go
-// plugins/time-restriction/plugin.go
 func (p *Plugin) PreRequest(_ context.Context, in *proto.PreRequestInput) (*proto.PreRequestOutput, error) {
     cfg, err := parseConfig(in.GetCtx().GetConfigJson())
     if err != nil {
-        return &proto.PreRequestOutput{
-            Allowed:         false,
-            RejectionReason: "Accès refusé : hors des plages horaires autorisées.",
-        }, nil
+        return &proto.PreRequestOutput{Allowed: false, RejectionReason: "config error"}, nil
     }
     allowed, _ := isAllowed(time.Now(), cfg)
     if !allowed {
@@ -97,38 +158,57 @@ func (p *Plugin) PreRequest(_ context.Context, in *proto.PreRequestInput) (*prot
 }
 ```
 
-**Example:** Modifying request messages (e.g., adding a system prompt):
+**Example — producing output port values (request-evaluator):**
+
+```go
+func (p *Plugin) PreRequest(_ context.Context, in *proto.PreRequestInput) (*proto.PreRequestOutput, error) {
+    vars := scoreRequest(in.MessagesJson, in.Model, in.GetCtx().GetConfigJson())
+    outputs := map[string]interface{}{
+        "complexity":    vars.Complexity,
+        "has_vision":    vars.HasVision,
+        "energy_cost":   vars.EnergyCost,
+    }
+    b, _ := json.Marshal(outputs)
+    return &proto.PreRequestOutput{
+        Allowed:     true,
+        OutputsJson: string(b),
+    }, nil
+}
+```
+
+**Example — modifying messages (prepending a system prompt):**
 
 ```go
 func (p *Plugin) PreRequest(ctx context.Context, in *proto.PreRequestInput) (*proto.PreRequestOutput, error) {
-    // Parse existing messages
     var messages []map[string]any
     if err := json.Unmarshal([]byte(in.GetMessagesJson()), &messages); err != nil {
         return &proto.PreRequestOutput{Allowed: true}, nil
     }
-
-    // Prepend a system message
-    newMessages := []map[string]any{
-        {"role": "system", "content": "You are a helpful assistant."},
-    }
-    newMessages = append(newMessages, messages...)
-
-    // Serialize and return
+    newMessages := append([]map[string]any{
+        {"role": "system", "content": "Réponds toujours en français."},
+    }, messages...)
     modified, _ := json.Marshal(newMessages)
     return &proto.PreRequestOutput{
-        Allowed:             true,
+        Allowed:              true,
         ModifiedMessagesJson: string(modified),
+    }, nil
+}
+```
+
+**Example — passthrough port forwarding (forward all inputs to outputs):**
+
+```go
+func (p *Plugin) PreRequest(_ context.Context, in *proto.PreRequestInput) (*proto.PreRequestOutput, error) {
+    return &proto.PreRequestOutput{
+        Allowed:     true,
+        OutputsJson: in.InputsJson, // forward all inputs as outputs
     }, nil
 }
 ```
 
 ### 2. POST_RESPONSE
 
-Invoked **after** the LLM proxy responds (or errors). Use cases:
-
-- Response logging or auditing
-- Token counting and quota updates
-- Metrics recording
+Invoked **after** the LLM proxy responds (or errors). Typical uses: logging, quota tracking, response transformation (e.g. de-pseudonymisation).
 
 **Signature:**
 
@@ -138,23 +218,49 @@ func (p *Plugin) PostResponse(ctx context.Context, in *proto.PostResponseInput) 
 
 **Input (`PostResponseInput`):**
 
-| Field              | Type              | Description                       |
-| ------------------ | ----------------- | --------------------------------- |
-| `Ctx`              | `*RequestContext` | Organization, user, token, config |
-| `Model`            | `string`          | Model that was called             |
-| `PromptTokens`     | `int64`           | Tokens in the prompt              |
-| `CompletionTokens` | `int64`           | Tokens generated                  |
-| `HadError`         | `bool`            | Whether the request failed        |
+| Field               | Type              | Description                                                        |
+| ------------------- | ----------------- | ------------------------------------------------------------------ |
+| `Ctx`               | `*RequestContext` | Organisation, user, token, config                                  |
+| `Model`             | `string`          | Model that was called                                              |
+| `PromptTokens`      | `int64`           | Tokens in the prompt                                               |
+| `CompletionTokens`  | `int64`           | Tokens generated                                                   |
+| `HadError`          | `bool`            | Whether the LLM call failed                                        |
+| `ResponseContent`   | `string`          | Full LLM response text                                             |
+| `NodeState`         | `[]byte`          | Opaque blob returned by `PreRequest` for the same pipeline execution |
 
-**Output:** Empty struct (currently unused for extensibility).
+**Output (`PostResponseOutput`):**
+
+| Field                     | Type     | Description                                                                     |
+| ------------------------- | -------- | ------------------------------------------------------------------------------- |
+| `ModifiedResponseContent` | `string` | If non-empty, replaces the response sent to the client (e.g. de-anonymisation)  |
+
+**Example — response transformation using node_state:**
+
+```go
+func (p *Plugin) PreRequest(_ context.Context, in *proto.PreRequestInput) (*proto.PreRequestOutput, error) {
+    mapping := buildPseudonymMap(in.GetMessagesJson())
+    state, _ := json.Marshal(mapping)
+    return &proto.PreRequestOutput{
+        Allowed:   true,
+        NodeState: state,
+    }, nil
+}
+
+func (p *Plugin) PostResponse(_ context.Context, in *proto.PostResponseInput) (*proto.PostResponseOutput, error) {
+    var mapping map[string]string
+    if err := json.Unmarshal(in.NodeState, &mapping); err != nil {
+        return &proto.PostResponseOutput{}, nil
+    }
+    restored := applyReverseMapping(in.ResponseContent, mapping)
+    return &proto.PostResponseOutput{ModifiedResponseContent: restored}, nil
+}
+```
 
 ### 3. RESOLVE_MODEL
 
-Invoked to **resolve a virtual model name** to a real proxy. Use cases:
+Invoked to **resolve a virtual model name** to a real proxy name. Typical uses: mock/fallback responses, A/B testing.
 
-- Dynamic model routing (selecting the best model for a request)
-- Mock/fallback responses for testing
-- A/B testing
+> **Note:** Model routing is now best implemented with a `script-processor` node in a pipeline graph rather than `RESOLVE_MODEL`. `RESOLVE_MODEL` is kept for legacy compatibility and edge cases such as fully synthetic responses.
 
 **Signature:**
 
@@ -166,8 +272,8 @@ func (p *Plugin) ResolveModel(ctx context.Context, in *proto.ResolveModelInput) 
 
 | Field             | Type                  | Description                                |
 | ----------------- | --------------------- | ------------------------------------------ |
-| `Ctx`             | `*RequestContext`     | Organization, user, token, config          |
-| `RequestedModel`  | `string`              | Virtual model name (e.g., `"my-org/auto"`) |
+| `Ctx`             | `*RequestContext`     | Organisation, user, token, config          |
+| `RequestedModel`  | `string`              | Virtual model name (e.g. `"my-org/auto"`)  |
 | `AvailableModels` | `[]*ModelInfo`        | All real models in the org's pool          |
 | `MessagesJson`    | `string`              | JSON-encoded messages                      |
 | `VirtualModels`   | `[]*VirtualModelInfo` | Configured virtual models                  |
@@ -176,43 +282,31 @@ func (p *Plugin) ResolveModel(ctx context.Context, in *proto.ResolveModelInput) 
 
 **Output (`ResolveModelOutput`):**
 
-| Field               | Type     | Description                                                  |
-| ------------------- | -------- | ------------------------------------------------------------ |
-| `ResolvedProxyName` | `string` | Real proxy name to call                                      |
-| `ResponseContent`   | `string` | If non-empty, short-circuit with this response (no LLM call) |
+| Field               | Type     | Description                                                                  |
+| ------------------- | -------- | ---------------------------------------------------------------------------- |
+| `ResolvedProxyName` | `string` | Real proxy name to call                                                      |
+| `ResponseContent`   | `string` | If non-empty, short-circuit the request and return this text (no LLM call)   |
 
-**Example:** The `dummy-model` plugin intercepts specific virtual models and returns forged test responses.
+**Example — dummy model returning a synthetic response:**
 
 ```go
-// plugins/dummy-model/plugin.go
 func (p *Plugin) ResolveModel(ctx context.Context, in *proto.ResolveModelInput) (*proto.ResolveModelOutput, error) {
     cfg, err := ParseConfig(in.GetCtx().GetConfigJson())
     if err != nil {
         return &proto.ResolveModelOutput{}, nil
     }
-
-    // Only handle known virtual models
-    if !isVirtualModel(in.GetRequestedModel(), in.GetVirtualModels()) {
-        return &proto.ResolveModelOutput{}, nil
-    }
-
     localModel := localModelName(in.GetRequestedModel())
     if !cfg.isTriggerModel(localModel) {
-        return &proto.ResolveModelOutput{}, nil
+        return &proto.ResolveModelOutput{}, nil // pass through
     }
-
-    // Return forged response (bypasses LLM)
-    content := fmt.Sprintf("**[dummy-model — réponse de test]**\n\n- **Modèle invoqué** : %s\n", in.GetRequestedModel())
+    content := fmt.Sprintf("**[dummy-model]**\n\n- Modèle invoqué : %s\n", in.GetRequestedModel())
     return &proto.ResolveModelOutput{ResponseContent: content}, nil
 }
 ```
 
 ### 4. LIST_MODELS
 
-Invoked to **modify the list of available models** for an organization. Use cases:
-
-- Dynamic model activation based on quota or time
-- Feature gating (hide models behind feature flags)
+Invoked to **modify the list of available models** for an organization.
 
 **Signature:**
 
@@ -224,7 +318,7 @@ func (p *Plugin) ListModels(ctx context.Context, in *proto.ListModelsInput) (*pr
 
 | Field             | Type              | Description                       |
 | ----------------- | ----------------- | --------------------------------- |
-| `Ctx`             | `*RequestContext` | Organization, user, token, config |
+| `Ctx`             | `*RequestContext` | Organisation, user, token, config |
 | `AvailableModels` | `[]*ModelInfo`    | All configured models             |
 
 **Output (`ListModelsOutput`):**
@@ -233,60 +327,54 @@ func (p *Plugin) ListModels(ctx context.Context, in *proto.ListModelsInput) (*pr
 | ---------------------- | ---------- | ---------------------------- |
 | `AdditionalProxyNames` | `[]string` | Additional proxies to expose |
 
-## Plugin Descriptor & Configuration
+## RequestContext
 
-Every plugin must implement the `Describe` method, which returns a `PluginDescriptor`:
+The `RequestContext` struct is passed to every capability method:
+
+| Field            | Type     | Description                              |
+| ---------------- | -------- | ---------------------------------------- |
+| `OrgId`          | `string` | Organisation ID                          |
+| `UserId`         | `string` | User ID                                  |
+| `TokenId`        | `string` | API token ID used for the request        |
+| `DisplayName`    | `string` | User display name                        |
+| `ConfigJson`     | `string` | Org-level plugin configuration (JSON)    |
+| `UserConfigJson` | `string` | Per-user plugin configuration (optional) |
+
+## ModelInfo
+
+Available models are described by `ModelInfo`:
+
+| Field                       | Type     | Description                     |
+| --------------------------- | -------- | ------------------------------- |
+| `ProxyName`                 | `string` | Name used in API requests       |
+| `RealModel`                 | `string` | Underlying provider model name  |
+| `ProviderId`                | `string` | Provider identifier             |
+| `ContextLength`             | `int64`  | Maximum context window (tokens) |
+| `SupportsVision`            | `bool`   | Accepts image inputs            |
+| `SupportsReasoning`         | `bool`   | Extended reasoning capability   |
+| `SupportsEmbeddings`        | `bool`   | Produces embedding vectors      |
+| `ActiveParamsBillions`      | `float32`| Active parameters in billions   |
+
+## Configuration Schemas
+
+Each plugin can declare two JSON Schema (draft-07) schemas:
+
+- **`ConfigSchema`** — org-level config, persisted per organisation. Passed in `ctx.config_json`.
+- **`UserConfigSchema`** — per-user config (optional). Passed in `ctx.user_config_json`.
+
+Both schemas drive form generation in the admin UI.
+
+**Example:**
 
 ```go
-func (p *Plugin) Describe(_ context.Context, _ *proto.DescribeRequest) (*proto.PluginDescriptor, error) {
-    return &proto.PluginDescriptor{
-        Name:            "my-plugin",
-        Version:         "0.1.0",
-        Description:    "A brief description of what this plugin does.",
-        Capabilities:   []proto.PluginDescriptor_Capability{
-            proto.PluginDescriptor_PRE_REQUEST,
-            // Add others as needed
-        },
-        ConfigSchema:    configSchemaJSON, // JSON Schema for org-level config
-    }, nil
-}
-```
-
-### ConfigSchema
-
-A JSON Schema (draft-07) that drives the admin UI form. The configuration is persisted **per organization** and passed to the plugin in `RequestContext.ConfigJson`.
-
-**Example:** The `time-restriction` plugin defines its configuration schema:
-
-```go
-// plugins/time-restriction/config.go
 const configSchemaJSON = `{
   "type": "object",
-  "required": ["timezone", "slots"],
+  "required": ["timezone"],
   "properties": {
     "timezone": {
       "type": "string",
       "title": "Fuseau horaire",
       "description": "Identifiant IANA, ex: Europe/Paris, UTC"
-    },
-    "slots": {
-      "type": "array",
-      "title": "Créneaux autorisés",
-      "items": {
-        "type": "object",
-        "required": ["days", "start", "end"],
-        "properties": {
-          "days": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]
-            }
-          },
-          "start": { "type": "string", "title": "Heure de début" },
-          "end":   { "type": "string", "title": "Heure de fin" }
-        }
-      }
     }
   }
 }`
@@ -294,11 +382,7 @@ const configSchemaJSON = `{
 
 ## The Plugin SDK
 
-The plugin SDK (`pkg/pluginsdk/`) provides helpers for serving your plugin and accessing host services.
-
 ### Serving Your Plugin
-
-In your plugin's `main.go`:
 
 ```go
 // Without HTTP UI
@@ -306,26 +390,24 @@ func main() {
     pluginsdk.Serve(&Plugin{})
 }
 
-// With HTTP UI (optional)
+// With HTTP UI (config editor, analytics…)
 func main() {
-    httpHandler := http.HandlerFunc(myUIHandler)
-    pluginsdk.ServeWithUI(&Plugin{}, "my-plugin", httpHandler)
+    pluginsdk.ServeWithUI(&Plugin{}, "my-plugin", newUIHandler())
 }
 ```
 
 ### Accessing Host Services
 
-If your plugin implements `Initialize`, it receives a broker ID to dial the host service:
+Implement `Initialize` to receive the host service broker:
 
 ```go
 func (p *Plugin) Initialize(ctx context.Context, req *proto.InitializeRequest) (*proto.InitializeResponse, error) {
-    broker := p.broker // set by the SDK wrapper
-    conn, err := broker.Dial(req.HostServiceBrokerId)
+    conn, err := p.broker.Dial(req.HostServiceBrokerId)
     if err != nil {
         return nil, err
     }
-    hostClient := proto.NewXoloHostServiceClient(conn)
-    // Now you can call GetConfig, SaveConfig, ListModels...
+    p.host = proto.NewXoloHostServiceClient(conn)
+    return &proto.InitializeResponse{}, nil
 }
 ```
 
@@ -335,99 +417,118 @@ Available host methods:
 | ------------ | ----------------------------------------------- |
 | `GetConfig`  | Retrieve the org's saved config for this plugin |
 | `SaveConfig` | Persist configuration changes                   |
-| `ListModels` | Query available models in the organization      |
+| `ListModels` | Query available models in the organisation      |
 
-## Plugin Lifecycle
+## Built-in Plugins
 
-### 1. Discovery
+| Plugin              | Capabilities              | Description                                                       |
+| ------------------- | ------------------------- | ----------------------------------------------------------------- |
+| `time-restriction`  | PRE_REQUEST               | Denies requests outside configured time windows                   |
+| `request-evaluator` | PRE_REQUEST               | Scores a request (complexity, vision, reasoning, energy) for routing |
+| `fuzzy-evaluator`   | PRE_REQUEST               | Fuzzy logic inference on numeric port values                      |
+| `script-processor`  | PRE_REQUEST               | Executes a Tengo script with arbitrary input/output ports          |
+| `dummy-model`       | RESOLVE_MODEL             | Returns synthetic responses for designated virtual models         |
 
-Xolo scans the **plugin directory** (`--plugins-dir` flag) for executable files. Each file is a separate plugin binary.
+### script-processor
 
-### 2. Loading
+The `script-processor` plugin executes a [Tengo](https://github.com/d5/tengo) script. Its input and output ports are fully configurable — no code changes required, only config.
 
-For each executable:
+**Script contract:** the script must export a function `func(ctx)` that returns a map:
 
-1. `Manager.loadPlugin()` spawns a subprocess via `go-plugin`
-2. Calls `Describe()` to get the plugin descriptor
-3. Calls `Initialize()` if implemented (supplies broker ID for host services)
-4. Stores the gRPC client and HTTP UI port (if any)
+```tengo
+export func(ctx) {
+    // ctx.request — full LLM request body (parsed JSON map)
+    // ctx.inputs  — connected input port values by name
 
-### 3. Execution
-
-At request time, Xolo iterates over loaded plugins and invokes the appropriate capability method. Plugins are called **in order** — the first plugin that returns a non-empty response wins.
-
-### 4. Shutdown
-
-On Xolo shutdown, `Manager.Shutdown()` terminates all plugin subprocesses gracefully.
-
-## Best Practices
-
-### 1. Always return early when not relevant
-
-If your plugin shouldn't handle a request, return the default empty output:
-
-```go
-func (p *Plugin) ResolveModel(ctx context.Context, in *proto.ResolveModelInput) (*proto.ResolveModelOutput, error) {
-    // Check if this request is relevant
-    if !shouldHandle(in.RequestedModel) {
-        return &proto.ResolveModelOutput{}, nil  // Pass through
+    model := ctx.inputs["model_leger"]
+    if ctx.inputs["power_level"] > 0.75 {
+        model = ctx.inputs["model_puissant"]
     }
-    // ... handle the request
+
+    return {
+        outputs: { model_name: model },   // values for output ports
+        messages: ctx.request["messages"] // optional: replace messages
+    }
 }
 ```
 
-### 2. Log decisions
+**Config JSON:**
 
-Use `slog` for structured logging:
-
-```go
-slog.InfoContext(ctx, "plugin-name: selected model",
-    slog.String("selected", selected),
-    slog.Float64("desired_power_level", desiredPowerLevel),
-)
+```json
+{
+  "script": "export func(ctx) { ... }",
+  "inputs": [
+    {"name": "power_level", "portType": "number"},
+    {"name": "model_leger",  "portType": "string"}
+  ],
+  "outputs": [
+    {"name": "model_name", "portType": "string"}
+  ]
+}
 ```
 
-### 3. Parse config defensively
+`messages` in the return map is **reserved** — it replaces the LLM messages. It cannot be used as an output port name.
 
-Always handle malformed config gracefully:
+Available Tengo stdlib modules: `json`, `math`, `text`, `rand`, `times`. Max allocations: 1 MiB.
+
+## Plugin Lifecycle
+
+1. **Discovery** — Xolo scans the plugin directory (`--plugins-dir`) for executables.
+2. **Loading** — each binary is spawned via `go-plugin`; `Describe()` and `Initialize()` are called.
+3. **Execution** — at request time, the pipeline engine calls the appropriate capability method.
+4. **Shutdown** — `Manager.Shutdown()` terminates all plugin subprocesses.
+
+## Plugin File Structure
+
+```
+my-plugin/
+├── main.go          # pluginsdk.Serve(&Plugin{}) or ServeWithUI
+├── plugin.go        # Describe + capability methods
+├── config.go        # Config struct, JSON schema, parser
+└── ui_handler.go    # HTTP UI handlers (if using ServeWithUI)
+```
+
+## Best Practices
+
+**Return early when not relevant:**
+
+```go
+func (p *Plugin) ResolveModel(ctx context.Context, in *proto.ResolveModelInput) (*proto.ResolveModelOutput, error) {
+    if !shouldHandle(in.RequestedModel) {
+        return &proto.ResolveModelOutput{}, nil
+    }
+    // ...
+}
+```
+
+**Parse config defensively:**
 
 ```go
 cfg, err := ParseConfig(in.GetCtx().GetConfigJson())
 if err != nil {
-    slog.WarnContext(ctx, "my-plugin: failed to parse config, skipping")
-    return &proto.PreRequestOutput{Allowed: true}, nil  // Fail open by default
+    slog.WarnContext(ctx, "my-plugin: bad config, skipping")
+    return &proto.PreRequestOutput{Allowed: true}, nil // fail open
 }
 ```
 
-### 4. Keep config schema minimal
+**Use structured logging:**
 
-Only expose what's needed in the UI. Complex internal state can be derived or loaded from external sources.
-
-## Example Plugin Structure
-
-```
-my-plugin/
-├── main.go          # Entry point: pluginsdk.Serve(&Plugin{})
-├── plugin.go        # Plugin implementation (Describe, capability methods)
-├── config.go        # Config struct + JSON schema + parser
-├── scorer.go       # Business logic (optional)
-└── ui_handler.go   # HTTP UI handlers (if ServeWithUI)
+```go
+slog.InfoContext(ctx, "my-plugin: selected model",
+    slog.String("model", selected),
+    slog.Float64("power_level", powerLevel),
+)
 ```
 
-## Summary
+**Never block the request on non-critical errors** — always return `Allowed: true` and log the problem rather than denying access due to a monitoring failure.
 
-| Capability      | When Called  | Use Case                      |
-| --------------- | ------------ | ----------------------------- |
-| `PRE_REQUEST`   | Before proxy | Access control, rate limiting |
-| `POST_RESPONSE` | After proxy  | Logging, quotas               |
-| `RESOLVE_MODEL` | Model lookup | Routing, mocking              |
-| `LIST_MODELS`   | Model list   | Dynamic model activation      |
+## Capability Summary
 
-Plugins are:
+| Capability      | When Called  | Primary Use Cases                         |
+| --------------- | ------------ | ----------------------------------------- |
+| `PRE_REQUEST`   | Before proxy | Filtering, analysis, routing, message mod |
+| `POST_RESPONSE` | After proxy  | Logging, quotas, response transformation  |
+| `RESOLVE_MODEL` | Model lookup | Synthetic responses, legacy routing       |
+| `LIST_MODELS`   | Model list   | Dynamic model activation                  |
 
-- **Stateless** — configuration comes from Xolo via `ConfigJson`
-- **Isolated** — each runs in its own process
-- **Composable** — multiple plugins can stack in the pipeline
-- **Optional** — Xolo works without any plugins
-
-To build a plugin, implement `proto.XoloPluginServer`, define your `ConfigSchema`, and call `pluginsdk.Serve()` from `main()`.
+Plugins are **stateless** (configuration comes via `ConfigJson`), **isolated** (each runs in its own process), **composable** (multiple plugins stack in the pipeline graph), and **optional** (Xolo works without any).

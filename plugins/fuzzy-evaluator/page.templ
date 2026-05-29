@@ -1,0 +1,182 @@
+package main
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/label"
+)
+
+templ page(pd uiPageData) {
+	<!DOCTYPE html>
+	<html class="dark">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<base href={ pd.BasePath }/>
+			<link rel="stylesheet" href="/assets/templui.css"/>
+		</head>
+		<body class="bg-background text-foreground min-h-screen p-4 space-y-4">
+			<h1 class="text-lg font-semibold">Fuzzy Evaluator</h1>
+			<p class="text-sm text-muted-foreground">
+				Définissez les variables d'entrée, de sortie et les règles d'inférence floue.
+				Les variables doivent être déclarées dans le DSL avec <code class="font-mono text-xs">DEFINE</code>.
+			</p>
+
+			if pd.Success {
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					@alert.Description() { Configuration sauvegardée avec succès. }
+				}
+			}
+
+			<form id="main-form" method="POST" action="api/config" class="space-y-6">
+				<!-- Inputs -->
+				@card.Card() {
+					@card.Header() {
+						<div class="flex items-center justify-between">
+							@card.Title() { Entrées (number) }
+							@button.Button(button.Props{
+								Type:       button.TypeSubmit,
+								Variant:    button.VariantOutline,
+								Size:       button.SizeSm,
+								Attributes: templ.Attributes{"formaction": "api/inputs/add"},
+							}) {
+								+ Ajouter une entrée
+							}
+						</div>
+					}
+					@card.Content() {
+						if len(pd.Config.Inputs) == 0 {
+							<p class="text-sm text-muted-foreground italic text-center py-2">Aucune entrée.</p>
+						} else {
+							<div class="space-y-2">
+								for i, inp := range pd.Config.Inputs {
+									@portRow("input", i, inp.Name)
+								}
+							</div>
+						}
+					}
+				}
+
+				<!-- Outputs -->
+				@card.Card() {
+					@card.Header() {
+						<div class="flex items-center justify-between">
+							@card.Title() { Sorties (number) }
+							@button.Button(button.Props{
+								Type:       button.TypeSubmit,
+								Variant:    button.VariantOutline,
+								Size:       button.SizeSm,
+								Attributes: templ.Attributes{"formaction": "api/outputs/add"},
+							}) {
+								+ Ajouter une sortie
+							}
+						</div>
+					}
+					@card.Content() {
+						if len(pd.Config.Outputs) == 0 {
+							<p class="text-sm text-muted-foreground italic text-center py-2">Aucune sortie.</p>
+						} else {
+							<div class="space-y-2">
+								for i, out := range pd.Config.Outputs {
+									@portRow("output", i, out.Name)
+								}
+							</div>
+						}
+					}
+				}
+
+				<!-- Rules DSL -->
+				@card.Card() {
+					@card.Header() {
+						@card.Title() { Règles floues (DSL) }
+					}
+					@card.Content() {
+						<div class="space-y-2">
+							@label.Label(label.Props{For: "rules_dsl"}) {
+								Règles d'inférence (syntaxe go-fuzzy)
+							}
+							<textarea
+								id="rules_dsl"
+								name="rules_dsl"
+								rows="16"
+								class="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm font-mono shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+								placeholder="DEFINE complexity (...); ..."
+							>{ pd.Config.RulesDSL }</textarea>
+							<div class="flex items-center gap-3">
+								<button
+									type="button"
+									onclick="validateDSL()"
+									class="inline-flex items-center px-3 py-1.5 text-sm border border-input rounded-md bg-background hover:bg-accent"
+								>
+									Valider le DSL
+								</button>
+								<span id="validate-result" class="text-sm"></span>
+							</div>
+						</div>
+					}
+				}
+
+				<div class="flex justify-end">
+					@button.Button(button.Props{Type: button.TypeSubmit}) {
+						Sauvegarder
+					}
+				</div>
+			</form>
+
+			<script>
+				async function validateDSL() {
+					const dsl = document.getElementById('rules_dsl').value;
+					const el = document.getElementById('validate-result');
+					el.textContent = '…';
+					el.className = 'text-sm text-muted-foreground';
+					try {
+						const res = await fetch('api/validate', {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+							body: 'rules_dsl=' + encodeURIComponent(dsl),
+						});
+						const data = await res.json();
+						if (data.valid) {
+							el.textContent = '✓ DSL valide';
+							el.className = 'text-sm text-green-500';
+						} else {
+							el.textContent = '✗ ' + data.error;
+							el.className = 'text-sm text-red-500 break-all';
+						}
+					} catch (e) {
+						el.textContent = '✗ Erreur réseau';
+						el.className = 'text-sm text-red-500';
+					}
+				}
+			</script>
+		</body>
+	</html>
+}
+
+templ portRow(prefix string, idx int, name string) {
+	<div class="flex items-center gap-2">
+		<input
+			type="text"
+			name={ fmt.Sprintf("%s_%d_name", prefix, idx) }
+			value={ name }
+			placeholder="nom"
+			class="flex-1 h-8 rounded-md border border-input bg-transparent px-2 text-sm font-mono focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+		/>
+		<span class="text-xs text-muted-foreground px-2 py-1 border border-input rounded-md">number</span>
+		@button.Button(button.Props{
+			Type:    button.TypeSubmit,
+			Variant: button.VariantDestructive,
+			Size:    button.SizeIcon,
+			Attributes: templ.Attributes{
+				"formaction": fmt.Sprintf("api/%ss/%s/delete", prefix, strconv.Itoa(idx)),
+				"title":      "Supprimer",
+			},
+		}) {
+			✕
+		}
+	</div>
+}

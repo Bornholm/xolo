@@ -1,0 +1,491 @@
+/* ─── Pipeline Editor shell ─────────────────────────────────────────────── */
+
+.pipeline-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-family: system-ui, sans-serif;
+}
+
+.pipeline-editor__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: #1e293b;
+  color: #f1f5f9;
+  border-bottom: 1px solid #334155;
+  flex-shrink: 0;
+}
+
+.pipeline-editor__vm-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.pipeline-editor__error {
+  color: #f87171;
+  font-size: 0.85rem;
+  flex: 1;
+}
+
+.pipeline-editor__save-btn {
+  margin-left: auto;
+  padding: 6px 18px;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.pipeline-editor__save-btn:hover:not(:disabled) { background: #2563eb; }
+.pipeline-editor__save-btn:disabled { opacity: 0.5; cursor: default; }
+
+.pipeline-editor__export-btn {
+  padding: 6px 14px;
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.pipeline-editor__export-btn:hover:not(:disabled) { color: #f1f5f9; border-color: #94a3b8; }
+.pipeline-editor__export-btn:disabled { opacity: 0.4; cursor: default; }
+
+.pipeline-editor__import-btn {
+  padding: 6px 14px;
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.pipeline-editor__import-btn:hover { color: #f1f5f9; border-color: #94a3b8; }
+
+.pipeline-editor__body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.pipeline-editor__canvas {
+  flex: 1;
+}
+
+/* ─── Node Palette ───────────────────────────────────────────────────────── */
+
+.pipeline-palette {
+  width: 200px;
+  flex-shrink: 0;
+  background: #f8fafc;
+  border-right: 1px solid #e2e8f0;
+  overflow-y: auto;
+  padding: 12px 8px;
+}
+
+.pipeline-palette__title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 8px 4px;
+}
+
+.pipeline-palette__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pipeline-palette__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #1e293b;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  transition: background 0.1s;
+}
+.pipeline-palette__item:hover { background: #e0f2fe; border-color: #93c5fd; }
+
+/* ─── React Flow canvas overrides (force light theme) ───────────────────── */
+
+.react-flow {
+  background-color: #f8fafc !important;
+}
+
+.react-flow__background {
+  background-color: #f8fafc !important;
+}
+
+/* Reset colour vars that the parent dark theme may inject */
+.react-flow__node,
+.react-flow__edge {
+  color: #1e293b;
+}
+
+/* Larger handles for easier connection drag */
+.react-flow__handle {
+  width: 14px;
+  height: 14px;
+}
+
+/* ─── Pipeline Nodes ─────────────────────────────────────────────────────── */
+
+.pipeline-node {
+  position: relative;
+  min-width: 160px;
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  padding: 8px 0;
+  font-size: 0.82rem;
+  overflow: visible;
+}
+
+.pipeline-node--generator { border-color: #f59e0b; }
+.pipeline-node--sink      { border-color: #ef4444; }
+.pipeline-node--model     { border-color: #8b5cf6; }
+.pipeline-node--plugin    { border-color: #3b82f6; }
+.pipeline-node--value     { border-width: 2px; }
+.pipeline-node--expr-router { border-color: #f59e0b; }
+
+.value-node__type-select {
+  margin-left: auto;
+  font-size: 0.65rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 3px;
+  padding: 1px 4px;
+  background: #fff;
+  color: #475569;
+  outline: none;
+  cursor: pointer;
+}
+.value-node__type-select:focus { border-color: #94a3b8; }
+
+.pipeline-node__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  padding: 0 12px;
+  margin-bottom: 4px;
+}
+
+.pipeline-node__icon { font-size: 0.9rem; }
+
+/* Delete button — hidden by default, shown on hover */
+.pipeline-node__delete {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  font-size: 10px;
+  line-height: 18px;
+  text-align: center;
+  cursor: pointer;
+  padding: 0;
+  display: none;
+  z-index: 10;
+}
+.pipeline-node:hover .pipeline-node__delete,
+.react-flow__node.selected .pipeline-node__delete {
+  display: block;
+}
+.pipeline-node__delete:hover { background: #dc2626; }
+
+.pipeline-node__body {
+  font-size: 0.78rem;
+  color: #475569;
+  padding: 0 12px;
+}
+
+.pipeline-node__subheader {
+  font-size: 0.78rem;
+  color: #475569;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pipeline-node__value {
+  display: block;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  word-break: break-all;
+}
+.pipeline-node__value:hover { background: #f1f5f9; }
+
+.pipeline-node__value--code {
+  font-family: monospace;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+}
+
+.pipeline-node__input {
+  width: 100%;
+  font-size: 0.78rem;
+  padding: 3px 6px;
+  border: 1px solid #94a3b8;
+  border-radius: 4px;
+  outline: none;
+  font-family: inherit;
+  resize: vertical;
+}
+
+/* ─── Port rows ──────────────────────────────────────────────────────────────
+   Each port is a row that extends edge-to-edge (negative margin cancels the
+   node's left/right padding). The Handle sits inside with position: absolute
+   at left: 0 (or right: 0), so it lands exactly on the node border.
+──────────────────────────────────────────────────────────────────────────── */
+
+.pipeline-node__ports {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-top: 6px;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 2px;
+}
+
+.pipeline-node__ports-col {
+  display: flex;
+  flex-direction: column;
+}
+
+/* A single port row — position: relative so the Handle inside is positioned
+   relative to this row, not the entire node. */
+.pipeline-node__port-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 22px;
+  font-size: 0.65rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+/* Input (left) port rows: label indented to clear the handle */
+.pipeline-node__port-row--input {
+  padding-left: 20px;
+  padding-right: 8px;
+}
+
+/* Output (right) port rows: label aligned right, handle on right edge */
+.pipeline-node__port-row--output {
+  padding-right: 20px;
+  padding-left: 8px;
+  justify-content: flex-end;
+}
+
+/* ─── ExprRouter input configurator ─────────────────────────────────────── */
+
+.expr-router__inputs {
+  margin-top: 6px;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.expr-router__inputs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.expr-router__inputs-title {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.expr-router__add-btn {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #10b981;
+  color: #fff;
+  border: none;
+  font-size: 12px;
+  line-height: 16px;
+  text-align: center;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.expr-router__add-btn:hover { background: #059669; }
+
+/* Each input config row also serves as the Handle anchor */
+.expr-router__input-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  margin-left: -12px;
+  padding-left: 20px;
+  padding-right: 0;
+}
+
+.expr-router__name-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.7rem;
+  padding: 1px 4px;
+  border: 1px solid #e2e8f0;
+  border-radius: 3px;
+  outline: none;
+  font-family: monospace;
+}
+.expr-router__name-input:focus { border-color: #94a3b8; }
+
+.expr-router__type-select {
+  font-size: 0.65rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 3px;
+  padding: 1px 2px;
+  outline: none;
+  color: #475569;
+  background: #fff;
+}
+
+.expr-router__remove-btn {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: transparent;
+  color: #94a3b8;
+  border: none;
+  font-size: 9px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 14px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.expr-router__remove-btn:hover { color: #ef4444; }
+
+
+/* ─── Plugin config button ───────────────────────────────────────────────── */
+
+.plugin-node__config-btn {
+  font-size: 0.65rem;
+  padding: 2px 5px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.plugin-node__config-btn:hover { background: #f1f5f9; border-color: #94a3b8; }
+
+/* ─── Plugin UI modal ────────────────────────────────────────────────────── */
+
+.plugin-modal-overlay {
+  /* Fills #pipeline-editor-root (position: relative) exactly */
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 16px;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  z-index: 9999;
+}
+
+.plugin-modal {
+  flex: 1;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+}
+
+.plugin-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  flex-shrink: 0;
+}
+
+.plugin-modal__title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1e293b;
+}
+
+.plugin-modal__close {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+.plugin-modal__close:hover { background: #f1f5f9; color: #1e293b; }
+
+.plugin-modal__body {
+  flex: 1;
+  overflow: hidden;
+}
+
+.plugin-modal__iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.plugin-modal__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #64748b;
+}
+
+/* ─── Loading ────────────────────────────────────────────────────────────── */
+
+.pipeline-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #64748b;
+}

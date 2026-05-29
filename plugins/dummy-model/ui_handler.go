@@ -7,7 +7,6 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/bornholm/xolo/pkg/pluginsdk"
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
 )
 
 func newUIHandler() http.Handler {
@@ -17,18 +16,15 @@ func newUIHandler() http.Handler {
 	return mux
 }
 
-// ── Shared page data ──────────────────────────────────────────────────────────
-
 type uiPageData struct {
-	BasePath      string
-	OrgID         string
-	Config        Config
-	VirtualModels []*proto.ModelInfo
+	BasePath string
+	OrgID    string
+	Config   Config
+	Success  bool
 }
 
-func loadPageData(r *http.Request) (uiPageData, error) {
+func loadPageData(r *http.Request) uiPageData {
 	ctx := r.Context()
-
 	orgID := r.Header.Get("X-Xolo-Org-Id")
 	basePath := r.Header.Get("X-Xolo-Plugin-Base-Path")
 	if basePath == "" {
@@ -47,38 +43,13 @@ func loadPageData(r *http.Request) (uiPageData, error) {
 		}
 	}
 
-	cfg, err := ParseConfig(raw)
-	if err != nil {
-		return uiPageData{}, err
-	}
-
-	var virtualModels []*proto.ModelInfo
-	if host != nil && orgID != "" {
-		if all, err := host.ListModels(ctx, orgID); err == nil {
-			for _, m := range all {
-				if m.IsVirtual {
-					virtualModels = append(virtualModels, m)
-				}
-			}
-		}
-	}
-
-	return uiPageData{
-		BasePath:      basePath,
-		OrgID:         orgID,
-		Config:        cfg,
-		VirtualModels: virtualModels,
-	}, nil
+	cfg, _ := ParseConfig(raw)
+	return uiPageData{BasePath: basePath, OrgID: orgID, Config: cfg}
 }
 
-// ── Handlers ──────────────────────────────────────────────────────────────────
-
 func handleIndex(w http.ResponseWriter, r *http.Request) {
-	pd, err := loadPageData(r)
-	if err != nil {
-		httpErr(w, err)
-		return
-	}
+	pd := loadPageData(r)
+	pd.Success = r.URL.Query().Get("saved") == "1"
 	renderTempl(w, r, page(pd))
 }
 
@@ -92,43 +63,26 @@ func handleSaveConfig(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "missing host or org context", http.StatusBadRequest)
 		return
 	}
-
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	raw, _ := host.GetConfig(ctx, orgID, pluginName)
-	cfg, err := ParseConfig(raw)
-	if err != nil {
-		cfg = Config{}
+	cfg := Config{
+		ResponseTemplate: r.FormValue("response_template"),
 	}
 
-	cfg.TriggerModels = r.Form["trigger_models"]
-
-	cfgJSON, err := json.Marshal(cfg)
-	if err != nil {
+	b, _ := json.Marshal(cfg)
+	if err := host.SaveConfig(ctx, orgID, pluginName, string(b)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	if err := host.SaveConfig(ctx, orgID, pluginName, string(cfgJSON)); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	http.Redirect(w, r, "/", http.StatusFound)
+	http.Redirect(w, r, "/?saved=1", http.StatusFound)
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-func httpErr(w http.ResponseWriter, err error) {
-	http.Error(w, err.Error(), http.StatusInternalServerError)
-}
-
-func renderTempl(w http.ResponseWriter, r *http.Request, component templ.Component) {
+func renderTempl(w http.ResponseWriter, r *http.Request, c templ.Component) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := component.Render(r.Context(), w); err != nil {
-		slog.Error("dummy-model/ui: template render error", slog.Any("error", err))
+	if err := c.Render(r.Context(), w); err != nil {
+		slog.Error("dummy-model/ui: render error", slog.Any("error", err))
 	}
 }

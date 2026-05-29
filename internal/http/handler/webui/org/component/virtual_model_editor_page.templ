@@ -1,0 +1,27 @@
+package component
+
+import (
+	"github.com/bornholm/xolo/internal/core/model"
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+)
+
+type VirtualModelEditorVModel struct {
+	common.AppLayoutVModel
+	Org     model.Organization
+	VM      model.VirtualModel
+	APIBase string
+}
+
+templ VirtualModelEditorPage(vmodel VirtualModelEditorVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Pipeline — "+vmodel.VM.Name())) {
+		<div
+			id="pipeline-editor-root"
+			data-org-slug={ vmodel.Org.Slug() }
+			data-vm-id={ string(vmodel.VM.ID()) }
+			data-api-base-url={ vmodel.APIBase }
+			style="flex: 1; min-height: 0; width: 100%; position: relative;"
+		></div>
+		<link rel="stylesheet" href={ common.BaseURLString(ctx, common.WithPath("/assets/pipeline/pipeline-editor.css")) }/>
+		<script src={ common.BaseURLString(ctx, common.WithPath("/assets/pipeline/pipeline-editor.js")) } defer></script>
+	}
+}

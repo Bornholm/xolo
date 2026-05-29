@@ -8,7 +8,9 @@ require (
 	github.com/bornholm/go-fuzzy v0.0.0-20250815131223-76b121e8632d
 	github.com/bornholm/go-x v0.0.0-20260127104343-c6737ea35324
 	github.com/caarlos0/env/v11 v11.3.1
+	github.com/d5/tengo/v2 v2.17.0
 	github.com/gabriel-vasile/mimetype v1.4.8
+	github.com/go-gormigrate/gormigrate/v2 v2.1.5
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/gorilla/sessions v1.2.0
 	github.com/hashicorp/go-plugin v1.7.0
@@ -20,7 +22,6 @@ require (
 	github.com/prometheus/client_golang v1.22.0
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.5.1
-	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
 	github.com/yuin/goldmark v1.7.8
 	golang.org/x/time v0.15.0
 	google.golang.org/grpc v1.79.2
@@ -33,7 +34,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/go-chi/chi/v5 v5.2.2 // indirect
-	github.com/go-gormigrate/gormigrate/v2 v2.1.5 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.6.2 // indirect

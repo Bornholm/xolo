@@ -18,13 +18,20 @@ func createGetDatabase(db *gorm.DB) func(ctx context.Context) (*gorm.DB, error) 
 	return func(ctx context.Context) (*gorm.DB, error) {
 		migrateOnce.Do(func() {
 			m := gormigrate.New(db, gormigrate.DefaultOptions, []*gormigrate.Migration{
-				// Les futures migrations versionnées sont ajoutées ici.
-				// Exemple :
-				// {
-				//   ID: "202501010001",
-				//   Migrate: func(tx *gorm.DB) error { ... },
-				//   Rollback: func(tx *gorm.DB) error { ... },
-				// },
+				{
+					// Add GraphJSON column to virtual_models and drop plugin tables.
+					ID: "202602010001",
+					Migrate: func(tx *gorm.DB) error {
+						if err := tx.Migrator().DropTable("plugin_activations", "plugin_configs"); err != nil {
+							// Ignore if tables don't exist (fresh install).
+							_ = err
+						}
+						return tx.AutoMigrate(&VirtualModel{})
+					},
+					Rollback: func(tx *gorm.DB) error {
+						return tx.Migrator().DropColumn(&VirtualModel{}, "graph_json")
+					},
+				},
 			})
 
 			m.InitSchema(func(tx *gorm.DB) error {
@@ -55,9 +62,6 @@ func createGetDatabase(db *gorm.DB) func(ctx context.Context) (*gorm.DB, error) 
 					&InviteToken{},
 					// Exchange rate cache
 					&ExchangeRate{},
-					// Plugin store
-					&PluginActivationRecord{},
-					&PluginConfigRecord{},
 				)
 				if err != nil {
 					return errors.WithStack(err)

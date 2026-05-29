@@ -47,6 +47,13 @@ message SaveConfigResponse {}
 
 message DescribeRequest {}
 
+// PortDescriptor describes a typed input or output port of a plugin node.
+message PortDescriptor {
+  string name      = 1;
+  string port_type = 2; // "request" | "response" | "number" | "string" | "boolean"
+  bool   required  = 3;
+}
+
 message PluginDescriptor {
   string name = 1;
   string version = 2;
@@ -62,6 +69,8 @@ message PluginDescriptor {
   string config_schema = 5;
   string user_config_schema = 6;
   bool default_required = 7;
+  repeated PortDescriptor input_ports  = 8; // typed input ports for pipeline graph
+  repeated PortDescriptor output_ports = 9; // typed output ports for pipeline graph
 }
 
 message RequestContext {
@@ -109,15 +118,24 @@ message PreRequestInput {
   RequestContext ctx = 1;
   string model = 2;
   string messages_json = 3;
+  // inputs_json contains the values of connected input ports as a JSON object
+  // {portName: value}. Populated by the pipeline engine from upstream node outputs.
+  string inputs_json = 4;
 }
 
 message PreRequestOutput {
   bool allowed = 1;
   string rejection_reason = 2;
   string response_json = 3;
-  // modified_messages_json, when non-empty, replaces the request messages
-  // before the request is sent to the LLM proxy.
+  // modified_messages_json, when non-empty, replaces the request messages.
   string modified_messages_json = 4;
+  // node_state is an opaque byte blob the plugin can use to correlate
+  // PreRequest with its corresponding PostResponse call in the same pipeline
+  // execution (e.g. store a pseudonymisation mapping).
+  bytes node_state = 5;
+  // outputs_json contains the values produced on output ports as a JSON object
+  // {portName: value}. The pipeline engine stores these for downstream nodes.
+  string outputs_json = 6;
 }
 
 message PostResponseInput {
@@ -126,9 +144,18 @@ message PostResponseInput {
   int64 prompt_tokens = 3;
   int64 completion_tokens = 4;
   bool had_error = 5;
+  // response_content is the full LLM response text passed for post-processing.
+  string response_content = 6;
+  // node_state is the opaque blob returned by the plugin's PreRequest call
+  // for the same pipeline execution.
+  bytes node_state = 7;
 }
 
-message PostResponseOutput {}
+message PostResponseOutput {
+  // modified_response_content, when non-empty, replaces the LLM response
+  // sent back to the client (enables response transformation e.g. de-pseudonymisation).
+  string modified_response_content = 1;
+}
 
 message ResolveModelInput {
   RequestContext ctx = 1;
@@ -144,7 +171,6 @@ message ResolveModelOutput {
   string resolved_proxy_name = 1;
   // response_content, when non-empty, instructs the proxy to short-circuit the
   // request and return the provided text directly without calling any real LLM.
-  // The proxy handles both streaming (SSE) and non-streaming transparently.
   string response_content = 2;
 }
 

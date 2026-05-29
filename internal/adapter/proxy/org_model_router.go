@@ -166,6 +166,61 @@ func (r *OrgModelRouter) ListModels(ctx context.Context) ([]genaiProxy.ModelInfo
 	return infos, nil
 }
 
+// ResolveRealModel implements pipeline.ModelResolver.
+// proxyName is the local model name (without org prefix) or the qualified form.
+func (r *OrgModelRouter) ResolveRealModel(ctx context.Context, orgID model.OrgID, proxyName string) (llm.Client, string, model.LLMModelID, error) {
+	// Strip org prefix if present.
+	if idx := strings.IndexByte(proxyName, '/'); idx > 0 {
+		proxyName = proxyName[idx+1:]
+	}
+
+	llmModel, err := r.providerStore.GetLLMModelByProxyName(ctx, orgID, proxyName)
+	if err != nil {
+		if errors.Is(err, port.ErrNotFound) {
+			return nil, "", "", errors.Errorf("model '%s' not available in organization", proxyName)
+		}
+		return nil, "", "", errors.WithStack(err)
+	}
+
+	p, err := r.providerStore.GetProviderByID(ctx, llmModel.ProviderID())
+	if err != nil {
+		return nil, "", "", errors.WithStack(err)
+	}
+	if !p.Active() {
+		return nil, "", "", errors.Errorf("provider '%s' is not active", p.Name())
+	}
+
+	decryptedKey, err := crypto.Decrypt(r.secretKey, p.APIKey())
+	if err != nil {
+		slog.ErrorContext(ctx, "could not decrypt provider API key", slog.Any("error", err))
+		return nil, "", "", errors.New("provider configuration error")
+	}
+
+	providerOpts := []provider.OptionFunc{
+		withDynamicChatCompletion(provider.Name(p.Type()), p.BaseURL(), decryptedKey, llmModel.RealModel()),
+	}
+	if llmModel.Capabilities().Embeddings {
+		providerOpts = append(providerOpts, withDynamicEmbeddings(provider.Name(p.Type()), p.BaseURL(), decryptedKey, llmModel.RealModel()))
+	}
+
+	client, err := provider.Create(ctx, providerOpts...)
+	if err != nil {
+		return nil, "", "", errors.Wrapf(err, "could not create LLM client for provider '%s'", p.Name())
+	}
+
+	if cfg := llmModel.TokenLimitConfig(); cfg != nil && cfg.Enabled {
+		client = tokenlimit.NewClient(client, tokenlimit.WithChatCompletionLimit(cfg.MaxTokens, cfg.Interval))
+	}
+	if cfg := p.RateLimitConfig(); cfg != nil && cfg.Enabled {
+		client = llmratelimit.NewClient(client, llmratelimit.WithChatLimit(cfg.Interval, cfg.MaxBurst))
+	}
+	if cfg := p.RetryConfig(); cfg != nil && cfg.Enabled {
+		client = llmretry.NewClient(client, cfg.Delay, cfg.MaxAttempts)
+	}
+
+	return client, llmModel.RealModel(), llmModel.ID(), nil
+}
+
 // parseQualifiedModelName splits "org-slug/model-name" into its two parts.
 func parseQualifiedModelName(name string) (orgSlug, proxyName string, err error) {
 	idx := strings.IndexByte(name, '/')

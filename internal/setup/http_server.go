@@ -2,8 +2,6 @@ package setup
 
 import (
 	"context"
-	"log/slog"
-
 	"github.com/bornholm/genai/proxy"
 	proxyAdapter "github.com/bornholm/xolo/internal/adapter/proxy"
 	"github.com/bornholm/xolo/internal/config"
@@ -13,6 +11,7 @@ import (
 	"github.com/bornholm/xolo/internal/http/handler/metrics"
 	"github.com/bornholm/xolo/internal/http/handler/webui"
 	"github.com/bornholm/xolo/internal/http/handler/webui/common"
+	pipelineAssets "github.com/bornholm/xolo/internal/http/handler/webui/pipeline"
 	"github.com/bornholm/xolo/internal/http/middleware/authn"
 	membershipsMiddleware "github.com/bornholm/xolo/internal/http/middleware/memberships"
 	"github.com/bornholm/xolo/internal/http/middleware/ratelimit"
@@ -133,16 +132,6 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		return nil, errors.Wrap(err, "could not create plugin manager from config")
 	}
 
-	pluginActivationStore, err := getPluginActivationStoreFromConfig(ctx, conf)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not create plugin activation store from config")
-	}
-
-	pluginConfigStore, err := getPluginConfigStoreFromConfig(ctx, conf)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not create plugin config store from config")
-	}
-
 	pluginClients := make(map[string]proto.XoloPluginClient)
 	pluginDescriptors := make(map[string]*proto.PluginDescriptor)
 	for _, desc := range pluginManager.List() {
@@ -157,21 +146,15 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		return nil, errors.WithStack(err)
 	}
 
-	// Migrate existing virtual_model configs from plugins to VirtualModel table.
-	if err := migrateVirtualModelConfigs(ctx, conf); err != nil {
-		slog.WarnContext(ctx, "could not run virtual model migration", slog.Any("error", err))
-	}
+	orgModelRouter := proxyAdapter.NewOrgModelRouter(providerStore, orgStore, conf.SecretKey)
 
-	pluginHookAdapter := proxyAdapter.NewPluginHookAdapter(
+	pipelineHookAdapter := proxyAdapter.NewPipelineHookAdapter(
 		pluginClients,
 		pluginDescriptors,
-		pluginActivationStore,
-		pluginConfigStore,
-		userStore,
-		providerStore,
 		virtualModelStore,
-		quotaService,
-		usageStore,
+		providerStore,
+		orgStore,
+		orgModelRouter,
 	)
 
 	withMemberships := membershipsMiddleware.Middleware(orgStore)
@@ -181,15 +164,15 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		return nil, errors.Wrap(err, "could not create application store from config")
 	}
 
-	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, providerStore, virtualModelStore, usageStore, inviteStore, applicationStore, quotaStore, quotaService, exchangeRateService, conf.SecretKey, pluginManager, pluginActivationStore, pluginConfigStore)
+	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, providerStore, virtualModelStore, usageStore, inviteStore, applicationStore, quotaStore, quotaService, exchangeRateService, conf.SecretKey, pluginManager)
 
-	apiHandler := api.NewHandler(providerStore, orgStore, virtualModelStore, exchangeRateService)
+	apiHandler := api.NewHandler(providerStore, orgStore, virtualModelStore, exchangeRateService, pluginManager)
 
 	proxyServer := proxy.NewServer(
 		proxy.WithAuthExtractor(proxyAdapter.XoloAuthExtractor()),
 		proxy.WithHook(proxyAdapter.NewXoloMetricsHook()),
-		proxy.WithHook(pluginHookAdapter),
-		proxy.WithHook(proxyAdapter.NewOrgModelRouter(providerStore, orgStore, conf.SecretKey)),
+		proxy.WithHook(pipelineHookAdapter),
+		proxy.WithHook(orgModelRouter),
 		proxy.WithHook(proxyAdapter.NewXoloQuotaEnforcer(quotaService, quotaStore, usageStore, providerStore)),
 		proxy.WithHook(proxyAdapter.NewXoloUsageTracker(usageStore, providerStore, orgStore, exchangeRateService)),
 	)
@@ -202,6 +185,7 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		http.WithAddress(conf.HTTP.Address),
 		http.WithBaseURL(conf.HTTP.BaseURL),
 		http.WithMount("/assets/", assets),
+		http.WithMount("/assets/pipeline/", pipelineAssets.NewAssetsHandler()),
 		http.WithMount("/auth/oidc/", rateLimiter(oidcAuthn)),
 		http.WithMount("/auth/token/", rateLimiter(tokenAuthn)),
 		http.WithMount("/metrics/", rateLimiter(authChain(metrics.NewHandler()))),
@@ -209,6 +193,18 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		http.WithRoute("GET /api/v1/models", rateLimiter(apiAuthChain(apiHandler))),
 		http.WithRoute("GET /api/models-dev/lookup", rateLimiter(apiAuthChain(apiHandler))),
 		http.WithRoute("GET /api/exchange-rate", rateLimiter(apiAuthChain(apiHandler))),
+		// Plugin UI config sync
+		http.WithRoute("PUT /api/orgs/{orgSlug}/plugin-ui-config", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("GET /api/orgs/{orgSlug}/plugin-ui-config", rateLimiter(apiAuthChain(apiHandler))),
+		// Virtual model pipeline API
+		http.WithRoute("GET /api/orgs/{orgSlug}/virtual-models", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("POST /api/orgs/{orgSlug}/virtual-models", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("POST /api/orgs/{orgSlug}/virtual-models/import", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("GET /api/orgs/{orgSlug}/virtual-models/{vmID}", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("GET /api/orgs/{orgSlug}/virtual-models/{vmID}/export", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("PUT /api/orgs/{orgSlug}/virtual-models/{vmID}", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("DELETE /api/orgs/{orgSlug}/virtual-models/{vmID}", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("GET /api/orgs/{orgSlug}/pipeline-node-types", rateLimiter(apiAuthChain(apiHandler))),
 		http.WithMount("/", authChain(withMemberships(webuiHandler))),
 	}
 

@@ -2,44 +2,77 @@ package plugin
 
 import (
 	"context"
+	"log/slog"
+	"sync"
 
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
 	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 // XoloHostService implements proto.XoloHostServiceServer.
-// It gives plugin HTTP servers access to Xolo's plugin config store and model list.
+// Config persistence uses an in-memory store keyed by (orgID, pluginName).
+// This config is used by the plugin HTTP UI for display/edit; the authoritative
+// per-node config lives in the pipeline graph (PluginNodeData.Config).
 type XoloHostService struct {
 	proto.UnimplementedXoloHostServiceServer
-	configStore        port.PluginConfigStore
-	providerStore      port.ProviderStore
-	virtualModelStore  port.VirtualModelStore
+	providerStore     port.ProviderStore
+	virtualModelStore port.VirtualModelStore
+	mu                sync.RWMutex
+	configs           map[string]string // key: orgID+":"+pluginName → JSON
 }
 
-// NewXoloHostService creates an XoloHostService backed by the given stores.
-func NewXoloHostService(configStore port.PluginConfigStore, providerStore port.ProviderStore, virtualModelStore port.VirtualModelStore) *XoloHostService {
-	return &XoloHostService{configStore: configStore, providerStore: providerStore, virtualModelStore: virtualModelStore}
+// NewXoloHostService creates an XoloHostService.
+func NewXoloHostService(providerStore port.ProviderStore, virtualModelStore port.VirtualModelStore) *XoloHostService {
+	return &XoloHostService{
+		providerStore:     providerStore,
+		virtualModelStore: virtualModelStore,
+		configs:           make(map[string]string),
+	}
 }
 
-func (s *XoloHostService) GetConfig(ctx context.Context, req *proto.GetConfigRequest) (*proto.GetConfigResponse, error) {
-	orgID := model.OrgID(req.OrgId)
-	cfg, err := s.configStore.GetConfig(ctx, orgID, req.PluginName,
-		model.PluginConfigScopeOrg, req.OrgId)
-	if err != nil {
-		if errors.Is(err, port.ErrNotFound) {
-			return &proto.GetConfigResponse{ConfigJson: "{}"}, nil
-		}
-		return nil, status.Errorf(codes.Internal, "get config: %v", err)
+func (s *XoloHostService) configKey(orgID, pluginName string) string {
+	return orgID + ":" + pluginName
+}
+
+// GetConfig returns the in-memory config for the plugin (defaults to "{}").
+func (s *XoloHostService) GetConfig(_ context.Context, req *proto.GetConfigRequest) (*proto.GetConfigResponse, error) {
+	s.mu.RLock()
+	cfg, ok := s.configs[s.configKey(req.OrgId, req.PluginName)]
+	s.mu.RUnlock()
+	if !ok || cfg == "" {
+		cfg = "{}"
 	}
-	json := cfg.ConfigJSON
-	if json == "" {
-		json = "{}"
+	return &proto.GetConfigResponse{ConfigJson: cfg}, nil
+}
+
+// SaveConfig persists the plugin config in memory so the UI can read it back.
+func (s *XoloHostService) SaveConfig(_ context.Context, req *proto.SaveConfigRequest) (*proto.SaveConfigResponse, error) {
+	s.mu.Lock()
+	s.configs[s.configKey(req.OrgId, req.PluginName)] = req.ConfigJson
+	s.mu.Unlock()
+	slog.Debug("host service: config saved", slog.String("plugin", req.PluginName))
+	return &proto.SaveConfigResponse{}, nil
+}
+
+// SeedConfig pre-populates the in-memory config (called before opening the plugin UI).
+func (s *XoloHostService) SeedConfig(orgID, pluginName, configJSON string) {
+	s.mu.Lock()
+	s.configs[s.configKey(orgID, pluginName)] = configJSON
+	s.mu.Unlock()
+}
+
+// ReadConfig retrieves the in-memory config (called after the plugin UI saves).
+func (s *XoloHostService) ReadConfig(orgID, pluginName string) string {
+	s.mu.RLock()
+	cfg := s.configs[s.configKey(orgID, pluginName)]
+	s.mu.RUnlock()
+	if cfg == "" {
+		return "{}"
 	}
-	return &proto.GetConfigResponse{ConfigJson: json}, nil
+	return cfg
 }
 
 func (s *XoloHostService) ListModels(ctx context.Context, req *proto.ListModelsForOrgRequest) (*proto.ListModelsForOrgResponse, error) {
@@ -69,7 +102,6 @@ func (s *XoloHostService) ListModels(ctx context.Context, req *proto.ListModelsF
 			ActiveParamsBillions:       float32(m.ActiveParams()) / 1e9,
 		})
 	}
-	// Append virtual models from the virtual model store.
 	if s.virtualModelStore != nil {
 		virtualModels, err := s.virtualModelStore.ListVirtualModels(ctx, orgID)
 		if err != nil {
@@ -82,21 +114,5 @@ func (s *XoloHostService) ListModels(ctx context.Context, req *proto.ListModelsF
 			})
 		}
 	}
-
 	return &proto.ListModelsForOrgResponse{Models: protoModels}, nil
-}
-
-func (s *XoloHostService) SaveConfig(ctx context.Context, req *proto.SaveConfigRequest) (*proto.SaveConfigResponse, error) {
-	orgID := model.OrgID(req.OrgId)
-	cfg := &model.PluginConfig{
-		OrgID:      orgID,
-		PluginName: req.PluginName,
-		Scope:      model.PluginConfigScopeOrg,
-		ScopeID:    req.OrgId,
-		ConfigJSON: req.ConfigJson,
-	}
-	if err := s.configStore.SaveConfig(ctx, cfg); err != nil {
-		return nil, status.Errorf(codes.Internal, "save config: %v", err)
-	}
-	return &proto.SaveConfigResponse{}, nil
 }

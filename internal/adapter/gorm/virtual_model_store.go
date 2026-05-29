@@ -13,7 +13,13 @@ import (
 
 func (s *Store) CreateVirtualModel(ctx context.Context, vm model.VirtualModel) error {
 	return s.withRetry(ctx, true, func(ctx context.Context, db *gorm.DB) error {
-		return errors.WithStack(db.Create(fromVirtualModel(vm)).Error)
+		if err := db.Create(fromVirtualModel(vm)).Error; err != nil {
+			if errors.Is(err, gorm.ErrDuplicatedKey) {
+				return errors.WithStack(port.ErrAlreadyExists)
+			}
+			return errors.WithStack(err)
+		}
+		return nil
 	}, sqlite3.BUSY, sqlite3.LOCKED)
 }
 

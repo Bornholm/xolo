@@ -13,11 +13,43 @@ templ VirtualModelsPage(vmodel VirtualModelsPageVModel) {
 		<div class="space-y-6">
 			<div class="flex items-center justify-between">
 				<h1 class="text-2xl font-semibold">Modèles virtuels</h1>
-				@button.Button(button.Props{
-					Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/new")),
-				}) {
-					Nouveau modèle virtuel
-				}
+				<div class="flex items-center gap-2">
+					<input
+						id="vm-import-input"
+						type="file"
+						accept=".json,application/json"
+						style="display:none"
+						data-api-base={ vmodel.BaseURL }
+						data-org-slug={ vmodel.Org.Slug() }
+						data-redirect-base={ common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/")) }
+						onchange="(async function(el){
+							var file=el.files[0]; if(!file) return;
+							try {
+								var txt=await file.text();
+								var bundle=JSON.parse(txt);
+								var res=await fetch(el.dataset.apiBase+'/api/orgs/'+el.dataset.orgSlug+'/virtual-models/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(bundle)});
+								if(!res.ok){var e=await res.text();alert('Erreur import : '+e);return;}
+								var vm=await res.json();
+								window.location.href=el.dataset.redirectBase+vm.id+'/pipeline';
+							} catch(e) { alert('Fichier invalide : '+e); }
+							finally { el.value=''; }
+						})(this)"
+					/>
+					@button.Button(button.Props{
+						Variant: button.VariantOutline,
+						Attributes: templ.Attributes{
+							"onclick": "document.getElementById('vm-import-input').click()",
+							"type":    "button",
+						},
+					}) {
+						Importer depuis un fichier
+					}
+					@button.Button(button.Props{
+						Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/new")),
+					}) {
+						Nouveau modèle virtuel
+					}
+				</div>
 			</div>
 			if vmodel.Success == "created" {
 				<div class="bg-green-50 border border-green-200 text-green-800 px-4 py-2 rounded-md">
@@ -74,6 +106,25 @@ templ VirtualModelsPage(vmodel VirtualModelsPageVModel) {
 										}
 										@table.Cell() {
 											<div class="flex justify-end gap-2">
+												@button.Button(button.Props{
+													Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()), "/pipeline")),
+													Variant: button.VariantOutline,
+													Size:    button.SizeSm,
+												}) {
+													Configurer pipeline
+												}
+												@button.Button(button.Props{
+													Variant: button.VariantOutline,
+													Size:    button.SizeSm,
+													Attributes: templ.Attributes{
+														"type":             "button",
+														"data-export-url":  vmodel.BaseURL + "/api/orgs/" + vmodel.Org.Slug() + "/virtual-models/" + string(vm.ID()) + "/export",
+														"data-vm-name":     vm.Name(),
+														"onclick":          `(async function(btn){try{var r=await fetch(btn.dataset.exportUrl);if(!r.ok){alert('Erreur export : '+await r.text());return;}var b=await r.blob();var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='pipeline-'+btn.dataset.vmName.replace(/[\/\\:*?"<>|]/g,'-')+'.json';a.click();URL.revokeObjectURL(a.href);}catch(e){alert('Erreur : '+e);}})(this)`,
+													},
+												}) {
+													Exporter
+												}
 												@button.Button(button.Props{
 													Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()), "/edit")),
 													Variant: button.VariantOutline,

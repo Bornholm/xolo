@@ -4,568 +4,327 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"net/http"
 	"strings"
-	"time"
 
 	"github.com/bornholm/genai/llm"
 	genaiProxy "github.com/bornholm/genai/proxy"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
+	httpCtx "github.com/bornholm/xolo/internal/http/context"
+	"github.com/bornholm/xolo/internal/pipeline"
 	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
 	"github.com/pkg/errors"
 )
 
-// PluginHookAdapter bridges the plugin system into the genai proxy hook chain.
-// It implements PreRequestHook, PostResponseHook, and ModelListerHook (which
-// embeds ModelResolverHook).
-type PluginHookAdapter struct {
+const metaPipelineExecution = "pipeline.execution"
+
+// PipelineHookAdapter bridges the pipeline engine into the genai proxy hook chain.
+// It implements PreRequestHook (runs the pipeline forward pass, handles rejection)
+// and ModelListerHook (returns the pre-resolved client to the proxy chain).
+type PipelineHookAdapter struct {
+	engine            *pipeline.Engine
+	virtualModelStore port.VirtualModelStore
+	orgStore          port.OrgStore
+	providerStore     port.ProviderStore
 	clients           map[string]proto.XoloPluginClient
 	descriptors       map[string]*proto.PluginDescriptor
-	activationStore   port.PluginActivationStore
-	configStore       port.PluginConfigStore
-	userStore         userGetter
-	providerStore     port.ProviderStore
-	virtualModelStore port.VirtualModelStore
-	quotaResolver     quotaResolver
-	usageStore        port.UsageStore
 }
 
-// NewPluginHookAdapter creates a PluginHookAdapter wired to the given plugin clients and stores.
-func NewPluginHookAdapter(
+// NewPipelineHookAdapter creates a PipelineHookAdapter and wires the pipeline engine.
+func NewPipelineHookAdapter(
 	clients map[string]proto.XoloPluginClient,
 	descriptors map[string]*proto.PluginDescriptor,
-	activationStore port.PluginActivationStore,
-	configStore port.PluginConfigStore,
-	userStore userGetter,
-	providerStore port.ProviderStore,
 	virtualModelStore port.VirtualModelStore,
-	quotaResolver quotaResolver,
-	usageStore port.UsageStore,
-) *PluginHookAdapter {
-	return &PluginHookAdapter{
+	providerStore port.ProviderStore,
+	orgStore port.OrgStore,
+	orgModelRouter *OrgModelRouter,
+) *PipelineHookAdapter {
+	reg := pipeline.NewRegistry()
+	eng := pipeline.NewEngine(reg)
+
+	reg.Register(model.NodeTypeGenerator, pipeline.NewGeneratorExecutor())
+	reg.Register(model.NodeTypeSink, pipeline.NewSinkExecutor())
+	reg.Register(model.NodeTypeValue, pipeline.NewValueExecutor())
+	reg.Register(model.NodeTypePlugin, pipeline.NewPluginExecutor(clients, descriptors))
+	// ModelExecutor needs the engine for recursive VirtualModel resolution.
+	reg.Register(model.NodeTypeModel, pipeline.NewModelExecutor(orgModelRouter, virtualModelStore, eng))
+
+	return &PipelineHookAdapter{
+		engine:            eng,
+		virtualModelStore: virtualModelStore,
+		orgStore:          orgStore,
+		providerStore:     providerStore,
 		clients:           clients,
 		descriptors:       descriptors,
-		activationStore:   activationStore,
-		configStore:       configStore,
-		userStore:         userStore,
-		providerStore:     providerStore,
-		virtualModelStore: virtualModelStore,
-		quotaResolver:     quotaResolver,
-		usageStore:        usageStore,
 	}
 }
 
-// hasCapability reports whether the named plugin declared the given capability in its descriptor.
-func (a *PluginHookAdapter) hasCapability(pluginName string, cap proto.PluginDescriptor_Capability) bool {
-	desc, ok := a.descriptors[pluginName]
-	if !ok {
-		return false
-	}
-	for _, c := range desc.Capabilities {
-		if c == cap {
-			return true
-		}
-	}
-	return false
-}
+func (a *PipelineHookAdapter) Name() string  { return "pipeline" }
+func (a *PipelineHookAdapter) Priority() int { return 3 }
 
-func (a *PluginHookAdapter) Name() string  { return "xolo.plugin-hook-adapter" }
-func (a *PluginHookAdapter) Priority() int { return 3 }
-
-// userGetter is an optional extension of tokenFinder that allows fetching a user by ID.
-// port.UserStore satisfies this interface.
-type userGetter interface {
-	GetUserByID(ctx context.Context, userID model.UserID) (model.User, error)
-}
-
-// buildRequestContext loads org and user config for a plugin and assembles a RequestContext.
-func (a *PluginHookAdapter) buildRequestContext(ctx context.Context, orgID model.OrgID, userID string, tokenID string, pluginName string) (*proto.RequestContext, error) {
-	reqCtx := &proto.RequestContext{
-		OrgId:   string(orgID),
-		UserId:  userID,
-		TokenId: tokenID,
-	}
-
-	orgCfg, err := a.configStore.GetConfig(ctx, orgID, pluginName, model.PluginConfigScopeOrg, string(orgID))
-	if err != nil && !errors.Is(err, port.ErrNotFound) {
-		return nil, errors.WithStack(err)
-	}
-	if orgCfg != nil {
-		reqCtx.ConfigJson = orgCfg.ConfigJSON
-	}
-
-	if userID != "" {
-		userCfg, err := a.configStore.GetConfig(ctx, orgID, pluginName, model.PluginConfigScopeUser, userID)
-		if err != nil && !errors.Is(err, port.ErrNotFound) {
-			return nil, errors.WithStack(err)
-		}
-		if userCfg != nil {
-			reqCtx.UserConfigJson = userCfg.ConfigJSON
-		}
-
-		if u, err := a.userStore.GetUserByID(ctx, model.UserID(userID)); err == nil {
-			reqCtx.DisplayName = u.DisplayName()
-		}
-	}
-
-	return reqCtx, nil
-}
-
-// PreRequest implements proxy.PreRequestHook.
-func (a *PluginHookAdapter) PreRequest(ctx context.Context, req *genaiProxy.ProxyRequest) (*genaiProxy.HookResult, error) {
-	populateMetaFromContext(ctx, req)
-
-	orgID := OrgIDFromMeta(req.Metadata)
-	if orgID == "" {
-		return nil, nil
-	}
-
-	activations, err := a.activationStore.ListActivations(ctx, orgID)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	for _, act := range activations {
-		if !act.Enabled {
-			continue
-		}
-		if !a.hasCapability(act.PluginName, proto.PluginDescriptor_PRE_REQUEST) {
-			continue
-		}
-		client, ok := a.clients[act.PluginName]
-		if !ok {
-			continue
-		}
-
-		tokenID := AuthTokenIDFromMeta(req.Metadata)
-		reqCtx, err := a.buildRequestContext(ctx, orgID, req.UserID, tokenID, act.PluginName)
-		if err != nil {
-			slog.WarnContext(ctx, "plugin_hook_adapter: failed to build request context",
-				slog.String("plugin", act.PluginName),
-				slog.Any("error", err),
-			)
-			if act.Required {
-				return &genaiProxy.HookResult{Response: serviceUnavailableResponse(act.PluginName)}, nil
-			}
-			continue
-		}
-
-		var messagesJSON string
-		if len(req.Body) > 0 {
-			var bodyMessages struct {
-				Messages json.RawMessage `json:"messages"`
-			}
-			if err := json.Unmarshal(req.Body, &bodyMessages); err == nil && len(bodyMessages.Messages) > 0 {
-				messagesJSON = string(bodyMessages.Messages)
-			}
-		}
-
-		out, err := client.PreRequest(ctx, &proto.PreRequestInput{
-			Ctx:          reqCtx,
-			Model:        req.Model,
-			MessagesJson: messagesJSON,
-		})
-		if err != nil {
-			slog.WarnContext(ctx, "plugin_hook_adapter: PreRequest gRPC error",
-				slog.String("plugin", act.PluginName),
-				slog.Any("error", err),
-			)
-			if act.Required {
-				return &genaiProxy.HookResult{Response: serviceUnavailableResponse(act.PluginName)}, nil
-			}
-			continue
-		}
-
-		if out.ResponseJson != "" {
-			var body map[string]any
-			if err := json.Unmarshal([]byte(out.ResponseJson), &body); err == nil {
-				return &genaiProxy.HookResult{
-					Response: &genaiProxy.ProxyResponse{
-						StatusCode: 200,
-						Body:       body,
-					},
-				}, nil
-			}
-			slog.WarnContext(ctx, "plugin_hook_adapter: failed to parse response_json from plugin",
-				slog.String("plugin", act.PluginName),
-			)
-		}
-
-		if !out.Allowed {
-			return &genaiProxy.HookResult{Response: forbiddenResponse(out.RejectionReason)}, nil
-		}
-
-		if out.ModifiedMessagesJson != "" {
-			if err := applyModifiedMessages(req, out.ModifiedMessagesJson); err != nil {
-				slog.WarnContext(ctx, "plugin_hook_adapter: failed to apply modified messages",
-					slog.String("plugin", act.PluginName),
-					slog.Any("error", err),
-				)
-				if act.Required {
-					return &genaiProxy.HookResult{Response: serviceUnavailableResponse(act.PluginName)}, nil
-				}
-				continue
-			}
-			slog.DebugContext(ctx, "plugin_hook_adapter: applied modified messages",
-				slog.String("plugin", act.PluginName),
-			)
-		}
-	}
-
-	return nil, nil
-}
-
-// PostResponse implements proxy.PostResponseHook.
-func (a *PluginHookAdapter) PostResponse(ctx context.Context, req *genaiProxy.ProxyRequest, res *genaiProxy.ProxyResponse) (*genaiProxy.HookResult, error) {
-	orgID := OrgIDFromMeta(req.Metadata)
-	if orgID == "" {
-		orgID = model.OrgID(OrgIDFromContext(ctx))
-	}
-	if orgID == "" {
-		return nil, nil
-	}
-
-	activations, err := a.activationStore.ListActivations(ctx, orgID)
-	if err != nil {
-		slog.WarnContext(ctx, "plugin_hook_adapter: failed to list activations in PostResponse",
-			slog.Any("error", err),
-		)
-		// PostResponse is best-effort; a store failure must not block the already-completed response.
-		return nil, nil
-	}
-
-	var promptTokens, completionTokens int64
-	hadError := res.StatusCode >= 400
-	if res.TokensUsed != nil {
-		promptTokens = int64(res.TokensUsed.PromptTokens)
-		completionTokens = int64(res.TokensUsed.CompletionTokens)
-	}
-
-	for _, act := range activations {
-		if !act.Enabled {
-			continue
-		}
-		if !a.hasCapability(act.PluginName, proto.PluginDescriptor_POST_RESPONSE) {
-			continue
-		}
-		client, ok := a.clients[act.PluginName]
-		if !ok {
-			continue
-		}
-
-		tokenID := AuthTokenIDFromMeta(req.Metadata)
-		reqCtx, err := a.buildRequestContext(ctx, orgID, req.UserID, tokenID, act.PluginName)
-		if err != nil {
-			slog.WarnContext(ctx, "plugin_hook_adapter: failed to build request context for PostResponse",
-				slog.String("plugin", act.PluginName),
-				slog.Any("error", err),
-			)
-			continue
-		}
-
-		_, err = client.PostResponse(ctx, &proto.PostResponseInput{
-			Ctx:              reqCtx,
-			Model:            req.Model,
-			PromptTokens:     promptTokens,
-			CompletionTokens: completionTokens,
-			HadError:         hadError,
-		})
-		if err != nil {
-			slog.WarnContext(ctx, "plugin_hook_adapter: PostResponse gRPC error",
-				slog.String("plugin", act.PluginName),
-				slog.Any("error", err),
-			)
-		}
-	}
-
-	return nil, nil
-}
-
-// ResolveModel implements proxy.ModelResolverHook.
-func (a *PluginHookAdapter) ResolveModel(ctx context.Context, req *genaiProxy.ProxyRequest) (llm.Client, string, error) {
+// PreRequest runs the full pipeline forward pass for virtual models.
+// Rejection results in a 403 response. A successful execution stores the
+// ForwardExecution in req.Metadata for ResolveModel to pick up.
+func (a *PipelineHookAdapter) PreRequest(ctx context.Context, req *genaiProxy.ProxyRequest) (*genaiProxy.HookResult, error) {
 	PopulateMetaFromContext(ctx, req.Metadata)
-	orgID := OrgIDFromMeta(req.Metadata)
-	if orgID == "" {
+
+	org, vm, lookupErr := a.lookupVirtualModel(ctx, req.Model)
+	if lookupErr != nil || vm == nil {
+		// Not a virtual model — pass through to OrgModelRouter.
+		slog.DebugContext(ctx, "pipeline: not a virtual model, delegating to OrgModelRouter",
+			slog.String("model", req.Model))
+		return nil, nil
+	}
+
+	slog.DebugContext(ctx, "pipeline: virtual model found",
+		slog.String("model", req.Model),
+		slog.String("vmID", string(vm.ID())))
+
+	if vm.Graph() == nil {
+		slog.WarnContext(ctx, "pipeline: virtual model has no pipeline configured — returning error",
+			slog.String("model", req.Model))
+		return &genaiProxy.HookResult{
+			Response: &genaiProxy.ProxyResponse{
+				StatusCode: http.StatusUnprocessableEntity,
+				Body: map[string]any{"error": map[string]any{
+					"type":    "invalid_request_error",
+					"message": "Virtual model \"" + req.Model + "\" has no pipeline configured.",
+					"code":    "pipeline_not_configured",
+				}},
+			},
+		}, nil
+	}
+
+	ec := a.buildEC(ctx, req, org, vm)
+	forwardExec, err := a.engine.RunForward(ctx, vm.Graph(), ec)
+	if err != nil {
+		var rejErr *pipeline.RejectionError
+		if errors.As(err, &rejErr) {
+			slog.InfoContext(ctx, "pipeline: request rejected by node",
+				slog.String("model", req.Model),
+				slog.String("reason", rejErr.Reason))
+			return &genaiProxy.HookResult{
+				Response: &genaiProxy.ProxyResponse{
+					StatusCode: http.StatusForbidden,
+					Body:       map[string]any{"error": rejErr.Error()},
+				},
+			}, nil
+		}
+		// All pipeline errors are surfaced as API responses — never as Go errors,
+		// because the genai proxy's RunOnError swallows errors and continues silently.
+		slog.ErrorContext(ctx, "pipeline: forward pass failed",
+			slog.String("model", req.Model),
+			slog.Any("error", err))
+		return &genaiProxy.HookResult{
+			Response: &genaiProxy.ProxyResponse{
+				StatusCode: http.StatusInternalServerError,
+				Body: map[string]any{"error": map[string]any{
+					"type":    "server_error",
+					"message": "Pipeline execution failed for \"" + req.Model + "\": " + err.Error(),
+					"code":    "pipeline_error",
+				}},
+			},
+		}, nil
+	}
+
+	if forwardExec.ResolvedClient == nil {
+		slog.ErrorContext(ctx, "pipeline: forward pass completed but no LLM client resolved — pipeline has no terminal node",
+			slog.String("model", req.Model))
+		return &genaiProxy.HookResult{
+			Response: &genaiProxy.ProxyResponse{
+				StatusCode: http.StatusUnprocessableEntity,
+				Body: map[string]any{"error": map[string]any{
+					"type":    "invalid_request_error",
+					"message": "Pipeline for model \"" + req.Model + "\" has no terminal node (LLM model or dummy-model).",
+					"code":    "pipeline_no_terminal",
+				}},
+			},
+		}, nil
+	}
+
+	slog.DebugContext(ctx, "pipeline: forward pass succeeded",
+		slog.String("model", req.Model),
+		slog.String("resolvedModel", forwardExec.ResolvedModel))
+
+	// Store the execution result for ResolveModel.
+	req.Metadata[metaPipelineExecution] = forwardExec
+	return nil, nil
+}
+
+// ResolveModel returns the pre-resolved llm.Client from the pipeline execution.
+// If no pipeline execution was stored (non-virtual model), it returns ErrModelNotFound
+// so the OrgModelRouter can handle it.
+func (a *PipelineHookAdapter) ResolveModel(ctx context.Context, req *genaiProxy.ProxyRequest) (llm.Client, string, error) {
+	execAny, ok := req.Metadata[metaPipelineExecution]
+	if !ok {
 		return nil, "", genaiProxy.ErrModelNotFound
 	}
 
-	activations, err := a.activationStore.ListActivations(ctx, orgID)
-	if err != nil {
-		return nil, "", errors.WithStack(err)
+	forwardExec, ok := execAny.(*pipeline.ForwardExecution)
+	if !ok || forwardExec == nil || forwardExec.ResolvedClient == nil {
+		return nil, "", genaiProxy.ErrModelNotFound
 	}
 
-	// Build available models list once for all plugins.
-	models, err := a.providerStore.ListEnabledLLMModels(ctx, orgID)
-	if err != nil {
-		slog.WarnContext(ctx, "plugin_hook_adapter: failed to list models for ResolveModel",
-			slog.Any("error", err),
-		)
-		models = nil
+	// Retrieve ec from metadata if possible (stored by PreRequest via closue capture).
+	ec, _ := req.Metadata[metaPipelineExecution+".ec"].(pipeline.ExecutionContext)
+
+	// Populate metadata for UsageTracker and QuotaEnforcer.
+	if forwardExec.ResolvedModelID != "" {
+		req.Metadata[MetaModelID] = string(forwardExec.ResolvedModelID)
 	}
-	protoModels := make([]*proto.ModelInfo, 0, len(models))
-	for _, m := range models {
-		caps := m.Capabilities()
-		protoModels = append(protoModels, &proto.ModelInfo{
-			ProxyName:                  m.ProxyName(),
-			RealModel:                  m.RealModel(),
-			ProviderId:                 string(m.ProviderID()),
-			PromptCostPer_1KTokens:     float64(m.PromptCostPer1KTokens()),
-			CompletionCostPer_1KTokens: float64(m.CompletionCostPer1KTokens()),
-			TokenLimit:                 m.ContextWindow(),
-			IsVirtual:                  m.IsVirtual(),
-			ContextLength:              m.ContextWindow(),
-			SupportsVision:             caps.Vision,
-			SupportsReasoning:          caps.Reasoning,
-			ActiveParamsBillions:       float32(m.ActiveParams()) / 1e9,
+	req.Metadata[MetaOriginalModel] = req.Model
+	req.Metadata[MetaResolvedModel] = forwardExec.ResolvedModel
+
+	client := NewPipelineWrappedClient(forwardExec.ResolvedClient, a.engine, forwardExec, ec)
+	return client, forwardExec.ResolvedModel, nil
+}
+
+// ListModels lists available virtual models for the org.
+func (a *PipelineHookAdapter) ListModels(ctx context.Context) ([]genaiProxy.ModelInfo, error) {
+	orgID := OrgIDFromContext(ctx)
+	if orgID == "" {
+		return nil, nil
+	}
+
+	org, err := a.orgStore.GetOrgByID(ctx, model.OrgID(orgID))
+	if err != nil {
+		return nil, nil
+	}
+
+	vms, err := a.virtualModelStore.ListVirtualModels(ctx, model.OrgID(orgID))
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	infos := make([]genaiProxy.ModelInfo, 0, len(vms))
+	for _, vm := range vms {
+		infos = append(infos, genaiProxy.ModelInfo{
+			ID:      org.Slug() + "/" + vm.Name(),
+			OwnedBy: "xolo",
 		})
 	}
+	return infos, nil
+}
 
-	// Get virtual models for this org.
-	var virtualModels []model.VirtualModel
-	if a.virtualModelStore != nil {
-		virtualModels, _ = a.virtualModelStore.ListVirtualModels(ctx, orgID)
+// lookupVirtualModel resolves the org and virtual model from a qualified model name.
+func (a *PipelineHookAdapter) lookupVirtualModel(ctx context.Context, modelName string) (model.Organization, model.VirtualModel, error) {
+	orgSlug, localName, ok := splitQualifiedName(modelName)
+	if !ok {
+		return nil, nil, nil
 	}
-	protoVirtualModels := make([]*proto.VirtualModelInfo, 0, len(virtualModels))
-	for _, vm := range virtualModels {
-		protoVirtualModels = append(protoVirtualModels, &proto.VirtualModelInfo{
+
+	org, err := a.orgStore.GetOrgBySlug(ctx, orgSlug)
+	if err != nil {
+		return nil, nil, nil //nolint:nilerr
+	}
+
+	vm, err := a.virtualModelStore.GetVirtualModelByName(ctx, org.ID(), localName)
+	if err != nil {
+		return nil, nil, nil //nolint:nilerr
+	}
+
+	return org, vm, nil
+}
+
+// buildEC constructs the ExecutionContext for a pipeline run.
+func (a *PipelineHookAdapter) buildEC(ctx context.Context, req *genaiProxy.ProxyRequest, org model.Organization, vm model.VirtualModel) pipeline.ExecutionContext {
+	// Extract the user ID from the HTTP context set by the bridge middleware.
+	userID := ""
+	displayName := ""
+	if u := httpCtx.User(ctx); u != nil {
+		userID = string(u.ID())
+		displayName = u.DisplayName()
+	}
+
+	return pipeline.ExecutionContext{
+		OrgID:        string(org.ID()),
+		UserID:       userID,
+		DisplayName:  displayName,
+		TokenID:      AuthTokenIDFromMeta(req.Metadata),
+		MessagesJSON: extractMessagesJSON(req.Body),
+		BodyJSON:     string(req.Body),
+		ProtoModels:  buildProtoModels(ctx, a.providerStore, org.ID()),
+		ProtoVMs:     buildProtoVMs(ctx, a.virtualModelStore, org.ID()),
+		ProtoQuota:   nil,
+		VisitedVMs:   map[model.VirtualModelID]struct{}{vm.ID(): {}},
+	}
+}
+
+// extractMessagesJSON extracts the "messages" JSON array from a chat completions request body.
+// Returns "[]" on failure so plugins receive a valid (empty) messages JSON.
+func extractMessagesJSON(body []byte) string {
+	if len(body) == 0 {
+		return "[]"
+	}
+	var envelope struct {
+		Messages json.RawMessage `json:"messages"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil || envelope.Messages == nil {
+		return "[]"
+	}
+	return string(envelope.Messages)
+}
+
+// splitQualifiedName splits "org-slug/model-name" → (orgSlug, modelName, true).
+func splitQualifiedName(name string) (string, string, bool) {
+	idx := strings.IndexByte(name, '/')
+	if idx <= 0 || idx == len(name)-1 {
+		return "", "", false
+	}
+	return name[:idx], name[idx+1:], true
+}
+
+// buildProtoModels builds the list of available LLM models for the execution context.
+func buildProtoModels(ctx context.Context, ps port.ProviderStore, orgID model.OrgID) []*proto.ModelInfo {
+	if ps == nil {
+		return nil
+	}
+	models, err := ps.ListEnabledLLMModels(ctx, orgID)
+	if err != nil {
+		slog.WarnContext(ctx, "could not list models for pipeline context", slog.Any("error", err))
+		return nil
+	}
+	out := make([]*proto.ModelInfo, 0, len(models))
+	for _, m := range models {
+		caps := m.Capabilities()
+		out = append(out, &proto.ModelInfo{
+			ProxyName:            m.ProxyName(),
+			RealModel:            m.RealModel(),
+			ProviderId:           string(m.ProviderID()),
+			IsVirtual:            false,
+			ContextLength:        m.ContextWindow(),
+			SupportsVision:       caps.Vision,
+			SupportsReasoning:    caps.Reasoning,
+			SupportsEmbeddings:   caps.Embeddings,
+			ActiveParamsBillions: float32(m.ActiveParams()) / 1e9,
+		})
+	}
+	return out
+}
+
+// buildProtoVMs builds the list of virtual models for the execution context.
+func buildProtoVMs(ctx context.Context, vs port.VirtualModelStore, orgID model.OrgID) []*proto.VirtualModelInfo {
+	if vs == nil {
+		return nil
+	}
+	vms, err := vs.ListVirtualModels(ctx, orgID)
+	if err != nil {
+		return nil
+	}
+	out := make([]*proto.VirtualModelInfo, 0, len(vms))
+	for _, vm := range vms {
+		out = append(out, &proto.VirtualModelInfo{
 			Id:          string(vm.ID()),
 			Name:        vm.Name(),
 			OrgId:       string(vm.OrgID()),
 			Description: vm.Description(),
 		})
 	}
-
-	// Compute quota info for the requesting user/org.
-	protoQuota := a.buildQuotaInfo(ctx, model.UserID(req.UserID), orgID)
-
-	// Extract messages JSON from raw request body (chat completions only).
-	var messagesJSON string
-	if len(req.Body) > 0 {
-		var bodyMessages struct {
-			Messages json.RawMessage `json:"messages"`
-		}
-		if err := json.Unmarshal(req.Body, &bodyMessages); err == nil && len(bodyMessages.Messages) > 0 {
-			messagesJSON = string(bodyMessages.Messages)
-		}
-	}
-
-	for _, act := range activations {
-		if !act.Enabled {
-			continue
-		}
-		if !a.hasCapability(act.PluginName, proto.PluginDescriptor_RESOLVE_MODEL) {
-			continue
-		}
-		client, ok := a.clients[act.PluginName]
-		if !ok {
-			continue
-		}
-
-		tokenID := AuthTokenIDFromMeta(req.Metadata)
-		reqCtx, err := a.buildRequestContext(ctx, orgID, req.UserID, tokenID, act.PluginName)
-		if err != nil {
-			slog.WarnContext(ctx, "plugin_hook_adapter: failed to build request context for ResolveModel",
-				slog.String("plugin", act.PluginName),
-				slog.Any("error", err),
-			)
-			continue
-		}
-
-		out, err := client.ResolveModel(ctx, &proto.ResolveModelInput{
-			Ctx:             reqCtx,
-			RequestedModel:  req.Model,
-			AvailableModels: protoModels,
-			MessagesJson:    messagesJSON,
-			VirtualModels:   protoVirtualModels,
-			Quota:           protoQuota,
-			BodyJson:        string(req.Body),
-		})
-		if err != nil {
-			slog.WarnContext(ctx, "plugin_hook_adapter: ResolveModel gRPC error",
-				slog.String("plugin", act.PluginName),
-				slog.Any("error", err),
-			)
-			continue
-		}
-
-		if out.ResponseContent != "" {
-			req.Metadata[MetaOriginalModel] = req.Model
-			req.Metadata[MetaResolvedModel] = req.Model
-			return NewDummyLLMClient(out.ResponseContent, req.Model), req.Model, nil
-		}
-
-		if out.ResolvedProxyName != "" {
-			originalModel := req.Model
-			// Qualify the resolved name with the org slug if the original request
-			// used the qualified format ("org-slug/model-name") and the resolved
-			// name is local (no "/"). OrgModelRouter requires the qualified format.
-			resolved := out.ResolvedProxyName
-			if idx := strings.IndexByte(req.Model, '/'); idx > 0 && !strings.Contains(resolved, "/") {
-				resolved = req.Model[:idx] + "/" + resolved
-			}
-			req.Model = resolved
-			req.Metadata[MetaOriginalModel] = originalModel
-			req.Metadata[MetaResolvedModel] = resolved
-			return nil, "", genaiProxy.ErrModelNotFound
-		}
-	}
-
-	// No plugin resolved the model - store original as both
-	req.Metadata[MetaOriginalModel] = req.Model
-	req.Metadata[MetaResolvedModel] = req.Model
-
-	return nil, "", genaiProxy.ErrModelNotFound
+	return out
 }
 
-// ListModels implements proxy.ModelListerHook.
-func (a *PluginHookAdapter) ListModels(ctx context.Context) ([]genaiProxy.ModelInfo, error) {
-	orgIDStr := OrgIDFromContext(ctx)
-	if orgIDStr == "" {
-		return nil, nil
-	}
-	orgID := model.OrgID(orgIDStr)
-
-	activations, err := a.activationStore.ListActivations(ctx, orgID)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	var result []genaiProxy.ModelInfo
-
-	for _, act := range activations {
-		if !act.Enabled {
-			continue
-		}
-		if !a.hasCapability(act.PluginName, proto.PluginDescriptor_LIST_MODELS) {
-			continue
-		}
-		client, ok := a.clients[act.PluginName]
-		if !ok {
-			continue
-		}
-
-		reqCtx := &proto.RequestContext{
-			OrgId: string(orgID),
-		}
-
-		out, err := client.ListModels(ctx, &proto.ListModelsInput{
-			Ctx: reqCtx,
-		})
-		if err != nil {
-			slog.WarnContext(ctx, "plugin_hook_adapter: ListModels gRPC error",
-				slog.String("plugin", act.PluginName),
-				slog.Any("error", err),
-			)
-			continue
-		}
-
-		for _, name := range out.AdditionalProxyNames {
-			result = append(result, genaiProxy.ModelInfo{ID: name})
-		}
-	}
-
-	return result, nil
-}
-
-// buildQuotaInfo computes remaining budget for the user/org and returns a QuotaInfo proto.
-// Returns nil if quota stores are not configured.
-func (a *PluginHookAdapter) buildQuotaInfo(ctx context.Context, userID model.UserID, orgID model.OrgID) *proto.QuotaInfo {
-	if a.quotaResolver == nil || a.usageStore == nil {
-		return nil
-	}
-	effectiveQuota, err := a.quotaResolver.ResolveEffectiveQuota(ctx, userID, orgID)
-	if err != nil {
-		slog.WarnContext(ctx, "plugin_hook_adapter: failed to resolve effective quota for QuotaInfo",
-			slog.Any("error", err),
-		)
-		return nil
-	}
-
-	now := time.Now()
-	info := &proto.QuotaInfo{}
-
-	if effectiveQuota.DailyBudget != nil {
-		total := float64(*effectiveQuota.DailyBudget)
-		spent, err := a.usageStore.SumCostSince(ctx, userID, orgID, startOfDay(now))
-		if err == nil {
-			info.DailyTotal = total
-			info.DailyRemaining = max(0, total-float64(spent))
-		}
-	}
-	if effectiveQuota.MonthlyBudget != nil {
-		total := float64(*effectiveQuota.MonthlyBudget)
-		spent, err := a.usageStore.SumCostSince(ctx, userID, orgID, startOfMonth(now))
-		if err == nil {
-			info.MonthlyTotal = total
-			info.MonthlyRemaining = max(0, total-float64(spent))
-		}
-	}
-	if effectiveQuota.YearlyBudget != nil {
-		total := float64(*effectiveQuota.YearlyBudget)
-		spent, err := a.usageStore.SumCostSince(ctx, userID, orgID, startOfYear(now))
-		if err == nil {
-			info.YearlyTotal = total
-			info.YearlyRemaining = max(0, total-float64(spent))
-		}
-	}
-
-	return info
-}
-
-func forbiddenResponse(reason string) *genaiProxy.ProxyResponse {
-	msg := "Request blocked by plugin"
-	if reason != "" {
-		msg = reason
-	}
-	return &genaiProxy.ProxyResponse{
-		StatusCode: 403,
-		Body: map[string]any{
-			"error": map[string]any{
-				"message": msg,
-				"type":    "permission_error",
-				"code":    "plugin_blocked",
-			},
-		},
-	}
-}
-
-func serviceUnavailableResponse(pluginName string) *genaiProxy.ProxyResponse {
-	return &genaiProxy.ProxyResponse{
-		StatusCode: 503,
-		Body: map[string]any{
-			"error": map[string]any{
-				"message": "Plugin " + pluginName + " is temporarily unavailable",
-				"type":    "service_unavailable",
-				"code":    "plugin_unavailable",
-			},
-		},
-	}
-}
-
-// applyModifiedMessages replaces the messages in the request body with the
-// modified messages provided by the plugin. It updates req.Body in place.
-func applyModifiedMessages(req *genaiProxy.ProxyRequest, modifiedMessagesJSON string) error {
-	if len(req.Body) == 0 {
-		return nil
-	}
-
-	var body map[string]any
-	if err := json.Unmarshal(req.Body, &body); err != nil {
-		return errors.Wrap(err, "unmarshal request body")
-	}
-
-	body["messages"] = json.RawMessage(modifiedMessagesJSON)
-
-	updatedBody, err := json.Marshal(body)
-	if err != nil {
-		return errors.Wrap(err, "marshal updated body")
-	}
-
-	req.Body = updatedBody
-	return nil
-}
-
-// Compile-time interface assertions.
-var _ genaiProxy.PreRequestHook = &PluginHookAdapter{}
-var _ genaiProxy.PostResponseHook = &PluginHookAdapter{}
-var _ genaiProxy.ModelListerHook = &PluginHookAdapter{}
+var (
+	_ genaiProxy.PreRequestHook = (*PipelineHookAdapter)(nil)
+	_ genaiProxy.ModelListerHook = (*PipelineHookAdapter)(nil)
+)

@@ -242,3 +242,51 @@ func (h *Handler) deleteVirtualModel(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, "/orgs/"+orgSlug+"/admin/virtual-models?success=deleted", http.StatusSeeOther)
 }
+
+func (h *Handler) getPipelineEditorPage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user := httpCtx.User(ctx)
+	orgSlug := r.PathValue("orgSlug")
+	modelID := r.PathValue("modelID")
+	nav, footer := orgAdminNav(orgSlug)
+
+	org, err := h.orgFromSlug(ctx, orgSlug)
+	if err != nil {
+		http.Error(w, "Organization not found", http.StatusNotFound)
+		return
+	}
+
+	vm, err := h.virtualModelStore.GetVirtualModelByID(ctx, model.VirtualModelID(modelID))
+	if err != nil {
+		if errors.Is(err, port.ErrNotFound) {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	baseURL := httpCtx.BaseURL(ctx)
+
+	vmodel := component.VirtualModelEditorVModel{
+		Org:     org,
+		VM:      vm,
+		APIBase: baseURL.String(),
+		AppLayoutVModel: common.AppLayoutVModel{
+			User:          user,
+			SelectedItem:  "org-" + orgSlug + "-virtual-models",
+			HomeLink:      "/orgs/" + orgSlug,
+			AdminSubtitle: "Admin. " + org.Name(),
+			FullBleed:     true,
+			Breadcrumbs: []common.BreadcrumbItem{
+				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
+				{Label: "Modèles virtuels", Href: "/orgs/" + orgSlug + "/admin/virtual-models"},
+				{Label: vm.Name(), Href: ""},
+			},
+			NavigationItems: nav,
+			FooterItems:     footer,
+		},
+	}
+
+	templ.Handler(component.VirtualModelEditorPage(vmodel)).ServeHTTP(w, r)
+}

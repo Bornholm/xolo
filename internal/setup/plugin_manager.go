@@ -16,11 +16,6 @@ var (
 
 func getPluginManagerFromConfig(ctx context.Context, conf *config.Config) (*plugin.Manager, error) {
 	pluginManagerOnce.Do(func() {
-		configStore, err := getPluginConfigStoreFromConfig(ctx, conf)
-		if err != nil {
-			pluginManagerErr = err
-			return
-		}
 		providerStore, err := getProviderStoreFromConfig(ctx, conf)
 		if err != nil {
 			pluginManagerErr = err
@@ -31,7 +26,7 @@ func getPluginManagerFromConfig(ctx context.Context, conf *config.Config) (*plug
 			pluginManagerErr = err
 			return
 		}
-		mgr := plugin.NewManager(conf.Plugins.Dir, configStore, providerStore, virtualModelStore)
+		mgr := plugin.NewManager(conf.Plugins.Dir, providerStore, virtualModelStore)
 		if err := mgr.Start(ctx); err != nil {
 			pluginManagerErr = err
 			return

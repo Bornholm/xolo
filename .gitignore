@@ -8,3 +8,4 @@ index.bleve
 /node_modules
 *.jsonl
 opencode.json
+node_modules

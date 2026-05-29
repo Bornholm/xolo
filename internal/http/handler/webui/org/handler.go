@@ -16,20 +16,18 @@ type pluginManagerIface interface {
 
 // Handler serves the org-admin section: /orgs/{orgSlug}/admin/
 type Handler struct {
-	mux                   *http.ServeMux
-	orgStore              port.OrgStore
-	providerStore         port.ProviderStore
-	virtualModelStore     port.VirtualModelStore
-	usageStore            port.UsageStore
-	inviteStore           port.InviteStore
-	userStore             port.UserStore
-	applicationStore      port.ApplicationStore
-	quotaStore            port.QuotaStore
-	secretKey             string
-	exchangeRateService   *service.ExchangeRateService
-	pluginManager         pluginManagerIface
-	pluginActivationStore port.PluginActivationStore
-	pluginConfigStore     port.PluginConfigStore
+	mux                 *http.ServeMux
+	orgStore            port.OrgStore
+	providerStore       port.ProviderStore
+	virtualModelStore   port.VirtualModelStore
+	usageStore          port.UsageStore
+	inviteStore         port.InviteStore
+	userStore           port.UserStore
+	applicationStore    port.ApplicationStore
+	quotaStore          port.QuotaStore
+	secretKey           string
+	exchangeRateService *service.ExchangeRateService
+	pluginManager       pluginManagerIface
 }
 
 // ServeHTTP implements http.Handler.
@@ -49,24 +47,20 @@ func NewHandler(
 	quotaStore port.QuotaStore,
 	secretKey string,
 	pluginManager pluginManagerIface,
-	pluginActivationStore port.PluginActivationStore,
-	pluginConfigStore port.PluginConfigStore,
 ) *Handler {
 	h := &Handler{
-		mux:                   http.NewServeMux(),
-		orgStore:              orgStore,
-		providerStore:         providerStore,
-		virtualModelStore:     virtualModelStore,
-		usageStore:            usageStore,
-		inviteStore:           inviteStore,
-		userStore:             userStore,
-		applicationStore:      applicationStore,
-		quotaStore:            quotaStore,
-		secretKey:             secretKey,
-		exchangeRateService:   exchangeRateService,
-		pluginManager:         pluginManager,
-		pluginActivationStore: pluginActivationStore,
-		pluginConfigStore:     pluginConfigStore,
+		mux:                 http.NewServeMux(),
+		orgStore:            orgStore,
+		providerStore:       providerStore,
+		virtualModelStore:   virtualModelStore,
+		usageStore:          usageStore,
+		inviteStore:         inviteStore,
+		userStore:           userStore,
+		applicationStore:    applicationStore,
+		quotaStore:          quotaStore,
+		secretKey:           secretKey,
+		exchangeRateService: exchangeRateService,
+		pluginManager:       pluginManager,
 	}
 
 	assertOrgAdmin := func(next http.Handler) http.Handler {
@@ -144,6 +138,7 @@ func NewHandler(
 	h.mux.Handle("GET /{orgSlug}/admin/virtual-models/{modelID}/edit", assertOrgAdmin(http.HandlerFunc(h.getEditVirtualModelPage)))
 	h.mux.Handle("POST /{orgSlug}/admin/virtual-models/{modelID}/edit", assertOrgAdmin(http.HandlerFunc(h.updateVirtualModel)))
 	h.mux.Handle("DELETE /{orgSlug}/admin/virtual-models/{modelID}", assertOrgAdmin(http.HandlerFunc(h.deleteVirtualModel)))
+	h.mux.Handle("GET /{orgSlug}/admin/virtual-models/{modelID}/pipeline", assertOrgAdmin(http.HandlerFunc(h.getPipelineEditorPage)))
 
 	h.mux.Handle("GET /{orgSlug}/admin/applications", assertOrgAdmin(http.HandlerFunc(h.getApplicationsPage)))
 	h.mux.Handle("GET /{orgSlug}/admin/applications/new", assertOrgAdmin(http.HandlerFunc(h.getNewApplicationPage)))
@@ -154,11 +149,7 @@ func NewHandler(
 	h.mux.Handle("POST /{orgSlug}/admin/applications/{appID}/tokens", assertOrgAdmin(http.HandlerFunc(h.createApplicationToken)))
 	h.mux.Handle("POST /{orgSlug}/admin/applications/{appID}/tokens/{tokenID}/delete", assertOrgAdmin(http.HandlerFunc(h.deleteApplicationToken)))
 
-	h.mux.Handle("GET /{orgSlug}/admin/plugins", assertOrgAdmin(http.HandlerFunc(h.getPluginsPage)))
-	h.mux.Handle("POST /{orgSlug}/admin/plugins/{pluginName}/activate", assertOrgAdmin(http.HandlerFunc(h.postActivatePlugin)))
-	h.mux.Handle("POST /{orgSlug}/admin/plugins/{pluginName}/deactivate", assertOrgAdmin(http.HandlerFunc(h.postDeactivatePlugin)))
-	h.mux.Handle("GET /{orgSlug}/admin/plugins/{pluginName}/config", assertOrgAdmin(http.HandlerFunc(h.getPluginConfigPage)))
-	h.mux.Handle("POST /{orgSlug}/admin/plugins/{pluginName}/config", assertOrgAdmin(http.HandlerFunc(h.postPluginConfig)))
+	// Plugin HTTP UI proxy
 	h.mux.Handle("/{orgSlug}/plugins/{pluginName}/ui/{uiPath...}", assertOrgAdmin(http.HandlerFunc(h.servePluginUI)))
 
 	// Org member routes

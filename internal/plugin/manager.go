@@ -30,21 +30,26 @@ type PluginEntry struct {
 // Manager discovers and manages plugin subprocess lifecycles.
 type Manager struct {
 	dir               string
-	configStore       port.PluginConfigStore // may be nil (no UI support)
 	providerStore     port.ProviderStore     // may be nil
 	virtualModelStore port.VirtualModelStore // may be nil
+	hostService       *XoloHostService
 	mu                sync.RWMutex
 	plugins           []*PluginEntry
 }
 
 // NewManager creates a Manager that will scan dir for plugin binaries.
-// configStore is used by XoloHostService to serve GetConfig/SaveConfig to plugins.
-// providerStore is used by XoloHostService to serve ListModels to plugins.
-// virtualModelStore is used by XoloHostService to expose virtual models to plugins.
-// Pass nil for any store if not needed (e.g. in tests).
-func NewManager(dir string, configStore port.PluginConfigStore, providerStore port.ProviderStore, virtualModelStore port.VirtualModelStore) *Manager {
-	return &Manager{dir: dir, configStore: configStore, providerStore: providerStore, virtualModelStore: virtualModelStore}
+func NewManager(dir string, providerStore port.ProviderStore, virtualModelStore port.VirtualModelStore) *Manager {
+	return &Manager{
+		dir:               dir,
+		providerStore:     providerStore,
+		virtualModelStore: virtualModelStore,
+		hostService:       NewXoloHostService(providerStore, virtualModelStore),
+	}
 }
+
+// HostService returns the XoloHostService used by this manager.
+// Callers can use SeedConfig/ReadConfig to sync configs with plugin UIs.
+func (m *Manager) HostService() *XoloHostService { return m.hostService }
 
 // Start scans the plugin directory and launches each plugin subprocess.
 // Missing or empty directory is not an error. Individual plugin failures
@@ -214,12 +219,8 @@ func (m *Manager) loadPlugin(ctx context.Context, binaryPath string) (*PluginEnt
 // initialize calls Initialize on the plugin via the broker mechanism.
 // Returns 0 if the plugin has no HTTP UI or if initialization fails.
 func (m *Manager) initialize(ctx context.Context, client proto.XoloPluginClient, broker *goplugin.GRPCBroker, pluginName string) uint32 {
-	if m.configStore == nil {
-		return 0
-	}
-
 	brokerID := broker.NextId()
-	hostSvc := NewXoloHostService(m.configStore, m.providerStore, m.virtualModelStore)
+	hostSvc := m.hostService
 
 	// AcceptAndServe blocks until the plugin connects, so it must run in a goroutine.
 	// We call it before client.Initialize so the listener is ready when the plugin

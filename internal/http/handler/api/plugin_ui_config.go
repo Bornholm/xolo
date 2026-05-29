@@ -1,0 +1,89 @@
+package api
+
+import (
+	"encoding/json"
+	"net/http"
+
+	"github.com/bornholm/xolo/internal/core/port"
+	"github.com/bornholm/xolo/internal/plugin"
+	"github.com/pkg/errors"
+)
+
+// pluginManagerWithHostService is the extended interface exposing HostService.
+type pluginManagerWithHostService interface {
+	pluginManagerIface
+	HostService() *plugin.XoloHostService
+}
+
+// handleSeedPluginUIConfig pre-populates the host service in-memory store with
+// the current node config before the plugin UI iframe is opened.
+// PUT /api/orgs/{orgSlug}/plugin-ui-config?plugin=<name>
+func (h *Handler) handleSeedPluginUIConfig(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	orgSlug := r.PathValue("orgSlug")
+	pluginName := r.URL.Query().Get("plugin")
+	if pluginName == "" {
+		http.Error(w, "missing plugin query param", http.StatusBadRequest)
+		return
+	}
+
+	org, err := h.orgStore.GetOrgBySlug(ctx, orgSlug)
+	if err != nil {
+		if errors.Is(err, port.ErrNotFound) {
+			http.Error(w, "org not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	hs, ok := h.pluginManager.(pluginManagerWithHostService)
+	if !ok {
+		http.Error(w, "plugin manager does not expose host service", http.StatusNotImplemented)
+		return
+	}
+
+	var body struct {
+		ConfigJSON string `json:"configJson"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		body.ConfigJSON = "{}"
+	}
+	if body.ConfigJSON == "" {
+		body.ConfigJSON = "{}"
+	}
+
+	hs.HostService().SeedConfig(string(org.ID()), pluginName, body.ConfigJSON)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleReadPluginUIConfig returns the config last saved by the plugin UI.
+// GET /api/orgs/{orgSlug}/plugin-ui-config?plugin=<name>
+func (h *Handler) handleReadPluginUIConfig(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	orgSlug := r.PathValue("orgSlug")
+	pluginName := r.URL.Query().Get("plugin")
+	if pluginName == "" {
+		http.Error(w, "missing plugin query param", http.StatusBadRequest)
+		return
+	}
+
+	org, err := h.orgStore.GetOrgBySlug(ctx, orgSlug)
+	if err != nil {
+		if errors.Is(err, port.ErrNotFound) {
+			http.Error(w, "org not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	hs, ok := h.pluginManager.(pluginManagerWithHostService)
+	if !ok {
+		writeJSON(w, http.StatusOK, map[string]string{"configJson": "{}"})
+		return
+	}
+
+	cfgJSON := hs.HostService().ReadConfig(string(org.ID()), pluginName)
+	writeJSON(w, http.StatusOK, map[string]string{"configJson": cfgJSON})
+}

@@ -2,14 +2,20 @@ package main
 
 import "encoding/json"
 
-// Config is the persisted configuration for the dummy-model plugin (per org).
+const defaultResponseTemplate = "**[dummy-model — réponse de test]**\n\n" +
+	"- **Utilisateur** : {{.User}}\n" +
+	"- **Dernier message** : {{.LastMessage}}\n\n" +
+	"_Cette réponse a été produite par le plugin dummy-model à des fins de test, sans appel à un LLM réel._"
+
+// Config is the per-node configuration for the dummy-model plugin.
 type Config struct {
-	// TriggerModels lists the virtual model names that activate this plugin.
-	// If empty, the plugin is inactive (no model intercepted).
-	TriggerModels []string `json:"trigger_models,omitempty"`
+	// ResponseTemplate is the Markdown text returned as the forged LLM response.
+	// Supports simple placeholders: {{.User}}, {{.LastMessage}}.
+	// Defaults to defaultResponseTemplate when empty.
+	ResponseTemplate string `json:"response_template,omitempty"`
 }
 
-// ParseConfig deserialises a JSON config string. Returns an empty Config on empty input.
+// ParseConfig deserialises a JSON config string.
 func ParseConfig(raw string) (Config, error) {
 	var cfg Config
 	if raw == "" || raw == "{}" {
@@ -21,13 +27,9 @@ func ParseConfig(raw string) (Config, error) {
 	return cfg, nil
 }
 
-// isTriggerModel returns true when name matches one of the configured trigger models.
-// Returns false when the list is empty (plugin inactive).
-func (c Config) isTriggerModel(name string) bool {
-	for _, t := range c.TriggerModels {
-		if t == name {
-			return true
-		}
+func (c Config) template() string {
+	if c.ResponseTemplate != "" {
+		return c.ResponseTemplate
 	}
-	return false
+	return defaultResponseTemplate
 }

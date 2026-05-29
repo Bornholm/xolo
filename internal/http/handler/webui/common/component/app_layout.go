@@ -17,6 +17,9 @@ type AppLayoutVModel struct {
 	FooterItems     func(AppLayoutVModel) templ.Component
 	AdminSubtitle   string
 	HomeLink        string
+	// FullBleed removes padding from the main content area and disables overflow-auto,
+	// useful for full-height canvas views like the pipeline editor.
+	FullBleed bool
 }
 
 // BreadcrumbItem represents a single item in the breadcrumb navigation.

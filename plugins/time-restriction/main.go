@@ -7,5 +7,5 @@ import (
 )
 
 func main() {
-	pluginsdk.Serve(&Plugin{})
+	pluginsdk.ServeWithUI(&Plugin{}, "time-restriction", newUIHandler())
 }

@@ -23,7 +23,7 @@ watch: .env tools/modd/bin/modd
 run-with-env: .env
 	( set -o allexport && source .env && set +o allexport && $(value CMD))
 
-build: build-server all-plugins
+build: build-server build-frontend all-plugins
 
 all-plugins: cleanup-plugins $(foreach plugin,$(shell find ./plugins/ -mindepth 1  -maxdepth 1 -type d -printf '%f\n'), plugin-$(plugin))
 
@@ -49,6 +49,9 @@ build-%: generate
 
 purge:
 	rm -rf *.sqlite* index.bleve
+
+build-frontend:
+	cd frontend && npm ci && npm run build
 
 generate: tools/templ/bin/templ
 	tools/templ/bin/templ generate
