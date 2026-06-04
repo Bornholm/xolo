@@ -25,21 +25,41 @@ builds:
     ldflags:
       - -w -s
 
-  - id: xolo-plugin-smart-model
-    targets: [go_first_class]
-    mod_timestamp: "{{ .CommitTimestamp }}"
-    dir: ./plugins/smart-model
-    binary: xolo-plugin-smart-model
-    flags:
-      - -trimpath
-    ldflags:
-      - -w -s
-
   - id: xolo-plugin-dummy-model
     targets: [go_first_class]
     mod_timestamp: "{{ .CommitTimestamp }}"
     dir: ./plugins/dummy-model
     binary: xolo-plugin-dummy-model
+    flags:
+      - -trimpath
+    ldflags:
+      - -w -s
+
+  - id: xolo-plugin-fuzzy-evaluator
+    targets: [go_first_class]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    dir: ./plugins/fuzzy-evaluator
+    binary: xolo-plugin-fuzzy-evaluator
+    flags:
+      - -trimpath
+    ldflags:
+      - -w -s
+
+  - id: xolo-plugin-request-evaluator
+    targets: [go_first_class]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    dir: ./plugins/request-evaluator
+    binary: xolo-plugin-request-evaluator
+    flags:
+      - -trimpath
+    ldflags:
+      - -w -s
+
+  - id: xolo-plugin-script-processor
+    targets: [go_first_class]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    dir: ./plugins/script-processor
+    binary: xolo-plugin-script-processor
     flags:
       - -trimpath
     ldflags:
@@ -64,8 +84,10 @@ dockers:
     ids:
       - xolo-server
       - xolo-plugin-time-restriction
-      - xolo-plugin-smart-model
       - xolo-plugin-dummy-model
+      - xolo-plugin-fuzzy-evaluator
+      - xolo-plugin-request-evaluator
+      - xolo-plugin-script-processor
     use: docker
     dockerfile: misc/docker/xolo-server.Dockerfile
     image_templates:
