@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/bornholm/genai/llm"
 	genaiProxy "github.com/bornholm/genai/proxy"
@@ -23,12 +24,13 @@ const metaPipelineExecution = "pipeline.execution"
 // It implements PreRequestHook (runs the pipeline forward pass, handles rejection)
 // and ModelListerHook (returns the pre-resolved client to the proxy chain).
 type PipelineHookAdapter struct {
-	engine            *pipeline.Engine
-	virtualModelStore port.VirtualModelStore
-	orgStore          port.OrgStore
-	providerStore     port.ProviderStore
-	clients           map[string]proto.XoloPluginClient
-	descriptors       map[string]*proto.PluginDescriptor
+	engine              *pipeline.Engine
+	virtualModelStore   port.VirtualModelStore
+	personalVMStore     port.PersonalVirtualModelStore
+	orgStore            port.OrgStore
+	providerStore       port.ProviderStore
+	clients             map[string]proto.XoloPluginClient
+	descriptors         map[string]*proto.PluginDescriptor
 }
 
 // NewPipelineHookAdapter creates a PipelineHookAdapter and wires the pipeline engine.
@@ -36,6 +38,7 @@ func NewPipelineHookAdapter(
 	clients map[string]proto.XoloPluginClient,
 	descriptors map[string]*proto.PluginDescriptor,
 	virtualModelStore port.VirtualModelStore,
+	personalVMStore port.PersonalVirtualModelStore,
 	providerStore port.ProviderStore,
 	orgStore port.OrgStore,
 	orgModelRouter *OrgModelRouter,
@@ -53,6 +56,7 @@ func NewPipelineHookAdapter(
 	return &PipelineHookAdapter{
 		engine:            eng,
 		virtualModelStore: virtualModelStore,
+		personalVMStore:   personalVMStore,
 		orgStore:          orgStore,
 		providerStore:     providerStore,
 		clients:           clients,
@@ -180,40 +184,73 @@ func (a *PipelineHookAdapter) ResolveModel(ctx context.Context, req *genaiProxy.
 	return client, forwardExec.ResolvedModel, nil
 }
 
-// ListModels lists available virtual models for the org.
+// ListModels lists available virtual models for the org and the current user's personal VMs.
 func (a *PipelineHookAdapter) ListModels(ctx context.Context) ([]genaiProxy.ModelInfo, error) {
+	var infos []genaiProxy.ModelInfo
+
+	// Org virtual models
 	orgID := OrgIDFromContext(ctx)
-	if orgID == "" {
-		return nil, nil
+	if orgID != "" {
+		org, err := a.orgStore.GetOrgByID(ctx, model.OrgID(orgID))
+		if err == nil {
+			vms, err := a.virtualModelStore.ListVirtualModels(ctx, model.OrgID(orgID))
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+			for _, vm := range vms {
+				infos = append(infos, genaiProxy.ModelInfo{
+					ID:      org.Slug() + "/" + vm.Name(),
+					OwnedBy: "xolo",
+				})
+			}
+		}
 	}
 
-	org, err := a.orgStore.GetOrgByID(ctx, model.OrgID(orgID))
-	if err != nil {
-		return nil, nil
+	// Personal virtual models
+	if a.personalVMStore != nil {
+		if u := httpCtx.User(ctx); u != nil {
+			pvms, err := a.personalVMStore.ListPersonalVirtualModels(ctx, u.ID())
+			if err != nil {
+				slog.WarnContext(ctx, "pipeline: could not list personal virtual models", slog.Any("error", err))
+			} else {
+				for _, pvm := range pvms {
+					infos = append(infos, genaiProxy.ModelInfo{
+						ID:      "~/" + pvm.Name(),
+						OwnedBy: "xolo",
+					})
+				}
+			}
+		}
 	}
 
-	vms, err := a.virtualModelStore.ListVirtualModels(ctx, model.OrgID(orgID))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	infos := make([]genaiProxy.ModelInfo, 0, len(vms))
-	for _, vm := range vms {
-		infos = append(infos, genaiProxy.ModelInfo{
-			ID:      org.Slug() + "/" + vm.Name(),
-			OwnedBy: "xolo",
-		})
-	}
 	return infos, nil
 }
 
 // lookupVirtualModel resolves the org and virtual model from a qualified model name.
+// For personal virtual models ("~/name"), org is nil and the VM is user-scoped.
 func (a *PipelineHookAdapter) lookupVirtualModel(ctx context.Context, modelName string) (model.Organization, model.VirtualModel, error) {
 	orgSlug, localName, ok := splitQualifiedName(modelName)
 	if !ok {
 		return nil, nil, nil
 	}
 
+	// Personal virtual model: "~/model-name"
+	if orgSlug == "~" {
+		if a.personalVMStore == nil {
+			return nil, nil, nil
+		}
+		u := httpCtx.User(ctx)
+		if u == nil {
+			return nil, nil, nil
+		}
+		pvm, err := a.personalVMStore.GetPersonalVirtualModelByName(ctx, u.ID(), localName)
+		if err != nil {
+			return nil, nil, nil //nolint:nilerr
+		}
+		return nil, &personalVMAdapter{pvm: pvm}, nil
+	}
+
+	// Org virtual model
 	org, err := a.orgStore.GetOrgBySlug(ctx, orgSlug)
 	if err != nil {
 		return nil, nil, nil //nolint:nilerr
@@ -227,9 +264,26 @@ func (a *PipelineHookAdapter) lookupVirtualModel(ctx context.Context, modelName 
 	return org, vm, nil
 }
 
+// personalVMAdapter wraps PersonalVirtualModel as VirtualModel so the pipeline engine
+// can handle it without knowing about the personal VM type.
+type personalVMAdapter struct {
+	pvm model.PersonalVirtualModel
+}
+
+func (a *personalVMAdapter) ID() model.VirtualModelID    { return model.VirtualModelID(a.pvm.ID()) }
+func (a *personalVMAdapter) OrgID() model.OrgID          { return "" }
+func (a *personalVMAdapter) Name() string                 { return a.pvm.Name() }
+func (a *personalVMAdapter) Description() string          { return a.pvm.Description() }
+func (a *personalVMAdapter) Graph() *model.PipelineGraph  { return a.pvm.Graph() }
+func (a *personalVMAdapter) CreatedAt() time.Time         { return a.pvm.CreatedAt() }
+func (a *personalVMAdapter) UpdatedAt() time.Time         { return a.pvm.UpdatedAt() }
+
+var _ model.VirtualModel = &personalVMAdapter{}
+
 // buildEC constructs the ExecutionContext for a pipeline run.
+// org may be nil for personal virtual models; in that case the org context
+// is derived from the token's OrgID.
 func (a *PipelineHookAdapter) buildEC(ctx context.Context, req *genaiProxy.ProxyRequest, org model.Organization, vm model.VirtualModel) pipeline.ExecutionContext {
-	// Extract the user ID from the HTTP context set by the bridge middleware.
 	userID := ""
 	displayName := ""
 	if u := httpCtx.User(ctx); u != nil {
@@ -237,17 +291,31 @@ func (a *PipelineHookAdapter) buildEC(ctx context.Context, req *genaiProxy.Proxy
 		displayName = u.DisplayName()
 	}
 
+	// For personal VMs, org is nil — fall back to the token's org for model resolution.
+	orgID := model.OrgID(OrgIDFromContext(ctx))
+	var protoModels []*proto.ModelInfo
+	var protoVMs []*proto.VirtualModelInfo
+	if org != nil {
+		orgID = org.ID()
+		protoModels = buildProtoModels(ctx, a.providerStore, orgID)
+		protoVMs = buildProtoVMs(ctx, a.virtualModelStore, orgID)
+	} else if orgID != "" {
+		protoModels = buildProtoModels(ctx, a.providerStore, orgID)
+		protoVMs = buildProtoVMs(ctx, a.virtualModelStore, orgID)
+	}
+
 	return pipeline.ExecutionContext{
-		OrgID:        string(org.ID()),
-		UserID:       userID,
-		DisplayName:  displayName,
-		TokenID:      AuthTokenIDFromMeta(req.Metadata),
-		MessagesJSON: extractMessagesJSON(req.Body),
-		BodyJSON:     string(req.Body),
-		ProtoModels:  buildProtoModels(ctx, a.providerStore, org.ID()),
-		ProtoVMs:     buildProtoVMs(ctx, a.virtualModelStore, org.ID()),
-		ProtoQuota:   nil,
-		VisitedVMs:   map[model.VirtualModelID]struct{}{vm.ID(): {}},
+		OrgID:           string(orgID),
+		UserID:          userID,
+		DisplayName:     displayName,
+		TokenID:         AuthTokenIDFromMeta(req.Metadata),
+		MessagesJSON:    extractMessagesJSON(req.Body),
+		BodyJSON:        string(req.Body),
+		ProtoModels:     protoModels,
+		ProtoVMs:        protoVMs,
+		ProtoQuota:      nil,
+		VisitedVMs:      map[model.VirtualModelID]struct{}{vm.ID(): {}},
+		PersonalVMStore: a.personalVMStore,
 	}
 }
 

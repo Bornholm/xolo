@@ -1,0 +1,19 @@
+package component
+
+import (
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+)
+
+templ PersonalModelEditorPage(vmodel PersonalModelEditorVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Pipeline — "+vmodel.VM.Name())) {
+		<div
+			id="pipeline-editor-root"
+			data-vm-id={ string(vmodel.VM.ID()) }
+			data-api-base-url={ vmodel.APIBase }
+			data-context-type="personal"
+			style="flex: 1; min-height: 0; width: 100%; position: relative;"
+		></div>
+		<link rel="stylesheet" href={ common.BaseURLString(ctx, common.WithPath("/assets/pipeline/pipeline-editor.css")) }/>
+		<script src={ common.BaseURLString(ctx, common.WithPath("/assets/pipeline/pipeline-editor.js")) } defer></script>
+	}
+}

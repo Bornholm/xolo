@@ -146,12 +146,18 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		return nil, errors.WithStack(err)
 	}
 
+	personalVMStore, err := getPersonalVirtualModelStoreFromConfig(ctx, conf)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create personal virtual model store from config")
+	}
+
 	orgModelRouter := proxyAdapter.NewOrgModelRouter(providerStore, orgStore, conf.SecretKey)
 
 	pipelineHookAdapter := proxyAdapter.NewPipelineHookAdapter(
 		pluginClients,
 		pluginDescriptors,
 		virtualModelStore,
+		personalVMStore,
 		providerStore,
 		orgStore,
 		orgModelRouter,
@@ -164,9 +170,9 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		return nil, errors.Wrap(err, "could not create application store from config")
 	}
 
-	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, providerStore, virtualModelStore, usageStore, inviteStore, applicationStore, quotaStore, quotaService, exchangeRateService, conf.SecretKey, pluginManager)
+	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, providerStore, virtualModelStore, personalVMStore, usageStore, inviteStore, applicationStore, quotaStore, quotaService, exchangeRateService, conf.SecretKey, pluginManager)
 
-	apiHandler := api.NewHandler(providerStore, orgStore, virtualModelStore, exchangeRateService, pluginManager)
+	apiHandler := api.NewHandler(providerStore, orgStore, virtualModelStore, personalVMStore, exchangeRateService, pluginManager)
 
 	proxyServer := proxy.NewServer(
 		proxy.WithAuthExtractor(proxyAdapter.XoloAuthExtractor()),
@@ -196,6 +202,8 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		// Plugin UI config sync
 		http.WithRoute("PUT /api/orgs/{orgSlug}/plugin-ui-config", rateLimiter(apiAuthChain(apiHandler))),
 		http.WithRoute("GET /api/orgs/{orgSlug}/plugin-ui-config", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("PUT /api/personal-plugin-ui-config", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("GET /api/personal-plugin-ui-config", rateLimiter(apiAuthChain(apiHandler))),
 		// Virtual model pipeline API
 		http.WithRoute("GET /api/orgs/{orgSlug}/virtual-models", rateLimiter(apiAuthChain(apiHandler))),
 		http.WithRoute("POST /api/orgs/{orgSlug}/virtual-models", rateLimiter(apiAuthChain(apiHandler))),
@@ -205,6 +213,15 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		http.WithRoute("PUT /api/orgs/{orgSlug}/virtual-models/{vmID}", rateLimiter(apiAuthChain(apiHandler))),
 		http.WithRoute("DELETE /api/orgs/{orgSlug}/virtual-models/{vmID}", rateLimiter(apiAuthChain(apiHandler))),
 		http.WithRoute("GET /api/orgs/{orgSlug}/pipeline-node-types", rateLimiter(apiAuthChain(apiHandler))),
+		// Personal virtual model pipeline API
+		http.WithRoute("GET /api/personal-models", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("POST /api/personal-models", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("POST /api/personal-models/import", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("GET /api/personal-models/{vmID}", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("GET /api/personal-models/{vmID}/export", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("PUT /api/personal-models/{vmID}", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("DELETE /api/personal-models/{vmID}", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("GET /api/personal-models/pipeline-node-types", rateLimiter(apiAuthChain(apiHandler))),
 		http.WithMount("/", authChain(withMemberships(webuiHandler))),
 	}
 

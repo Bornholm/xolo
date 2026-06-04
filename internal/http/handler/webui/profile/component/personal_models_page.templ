@@ -8,26 +8,25 @@ import (
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
 )
 
-templ VirtualModelsPage(vmodel VirtualModelsPageVModel) {
-	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Modèles virtuels — "+vmodel.Org.Name())) {
+templ PersonalModelsPage(vmodel PersonalModelsPageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Mes modèles")) {
 		<div class="space-y-6">
 			<div class="flex items-center justify-between">
-				<h1 class="text-2xl font-semibold">Modèles virtuels</h1>
+				<h1 class="text-2xl font-semibold">Mes modèles</h1>
 				<div class="flex items-center gap-2">
 					<input
-						id="vm-import-input"
+						id="pvm-import-input"
 						type="file"
 						accept=".json,application/json"
 						style="display:none"
 						data-api-base={ vmodel.BaseURL }
-						data-org-slug={ vmodel.Org.Slug() }
-						data-redirect-base={ common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/")) }
+						data-redirect-base={ common.BaseURLString(ctx, common.WithPath("/profile/personal-models/")) }
 						onchange="(async function(el){
 							var file=el.files[0]; if(!file) return;
 							try {
 								var txt=await file.text();
 								var bundle=JSON.parse(txt);
-								var res=await fetch(el.dataset.apiBase+'/api/orgs/'+el.dataset.orgSlug+'/virtual-models/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(bundle)});
+								var res=await fetch(el.dataset.apiBase+'/api/personal-models/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(bundle)});
 								if(!res.ok){var e=await res.text();alert('Erreur import : '+e);return;}
 								var vm=await res.json();
 								window.location.href=el.dataset.redirectBase+vm.id+'/pipeline';
@@ -38,14 +37,14 @@ templ VirtualModelsPage(vmodel VirtualModelsPageVModel) {
 					@button.Button(button.Props{
 						Variant: button.VariantOutline,
 						Attributes: templ.Attributes{
-							"onclick": "document.getElementById('vm-import-input').click()",
+							"onclick": "document.getElementById('pvm-import-input').click()",
 							"type":    "button",
 						},
 					}) {
 						Importer depuis un fichier
 					}
 					@button.Button(button.Props{
-						Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/new")),
+						Href: common.BaseURLString(ctx, common.WithPath("/profile/personal-models/new")),
 					}) {
 						Nouveau modèle virtuel
 					}
@@ -76,9 +75,12 @@ templ VirtualModelsPage(vmodel VirtualModelsPageVModel) {
 					Erreur lors de la création du modèle virtuel.
 				</div>
 			}
+			<div class="rounded-lg border p-4 bg-muted/40 text-sm text-muted-foreground">
+				Les modèles virtuels personnels sont accessibles via l'API avec le préfixe <code class="bg-muted px-1 rounded">~/</code> (ex&nbsp;: <code class="bg-muted px-1 rounded">~/mon-modele</code>).
+			</div>
 			if len(vmodel.VirtualModels) == 0 {
 				<div class="rounded-lg border p-6 text-center text-muted-foreground">
-					Aucun modèle virtuel configuré.
+					Aucun modèle virtuel personnel configuré.
 				</div>
 			} else {
 				@card.Card() {
@@ -99,7 +101,7 @@ templ VirtualModelsPage(vmodel VirtualModelsPageVModel) {
 								for _, vm := range vmodel.VirtualModels {
 									@table.Row() {
 										@table.Cell() {
-											<code class="text-sm bg-muted px-2 py-1 rounded">{ vmodel.Org.Slug() }/{ vm.Name() }</code>
+											<code class="text-sm bg-muted px-2 py-1 rounded">~/{ vm.Name() }</code>
 										}
 										@table.Cell() {
 											<span class="text-muted-foreground">{ vm.Description() }</span>
@@ -107,26 +109,21 @@ templ VirtualModelsPage(vmodel VirtualModelsPageVModel) {
 										@table.Cell() {
 											<div class="flex justify-end gap-2">
 												@button.Button(button.Props{
-													Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()), "/pipeline")),
+													Href:    common.BaseURLString(ctx, common.WithPath("/profile/personal-models/", string(vm.ID()), "/pipeline")),
 													Variant: button.VariantOutline,
 													Size:    button.SizeSm,
 												}) {
 													Configurer
 												}
 												@button.Button(button.Props{
+													Href:    common.BaseURLString(ctx, common.WithPath("/api/personal-models/", string(vm.ID()), "/export")),
 													Variant: button.VariantOutline,
 													Size:    button.SizeSm,
-													Attributes: templ.Attributes{
-														"type":             "button",
-														"data-export-url":  vmodel.BaseURL + "/api/orgs/" + vmodel.Org.Slug() + "/virtual-models/" + string(vm.ID()) + "/export",
-														"data-vm-name":     vm.Name(),
-														"onclick":          `(async function(btn){try{var r=await fetch(btn.dataset.exportUrl);if(!r.ok){alert('Erreur export : '+await r.text());return;}var b=await r.blob();var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='model-'+btn.dataset.vmName.replace(/[\/\\:*?"<>|]/g,'-')+'.json';a.click();URL.revokeObjectURL(a.href);}catch(e){alert('Erreur : '+e);}})(this)`,
-													},
 												}) {
 													Exporter
 												}
 												@button.Button(button.Props{
-													Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()), "/edit")),
+													Href:    common.BaseURLString(ctx, common.WithPath("/profile/personal-models/", string(vm.ID()), "/edit")),
 													Variant: button.VariantOutline,
 													Size:    button.SizeSm,
 												}) {
@@ -134,7 +131,7 @@ templ VirtualModelsPage(vmodel VirtualModelsPageVModel) {
 												}
 												@button.Button(button.Props{
 													Attributes: map[string]any{
-														"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()))),
+														"data-url": common.BaseURLString(ctx, common.WithPath("/profile/personal-models/", string(vm.ID()))),
 														"onclick":  "if(confirm('Supprimer ce modèle virtuel ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
 													},
 													Variant: button.VariantDestructive,
@@ -155,12 +152,12 @@ templ VirtualModelsPage(vmodel VirtualModelsPageVModel) {
 	}
 }
 
-templ VirtualModelFormPage(vmodel VirtualModelFormVModel) {
-	{{ title := "Nouveau modèle virtuel" }}
-	{{ action := common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models")) }}
+templ PersonalModelFormPage(vmodel PersonalModelFormVModel) {
+	{{ title := "Nouveau modèle virtuel personnel" }}
+	{{ action := common.BaseURLString(ctx, common.WithPath("/profile/personal-models")) }}
 	if !vmodel.IsNew {
-		{{ title = "Modifier le modèle virtuel" }}
-		{{ action = common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", vmodel.Name, "/edit")) }}
+		{{ title = "Modifier le modèle virtuel personnel" }}
+		{{ action = common.BaseURLString(ctx, common.WithPath("/profile/personal-models/", string(vmodel.VirtualModel.ID()), "/edit")) }}
 	}
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(title)) {
 		<div class="space-y-6">
@@ -176,10 +173,10 @@ templ VirtualModelFormPage(vmodel VirtualModelFormVModel) {
 					if vmodel.IsNew {
 						@input.Input(input.Props{
 							Name:        "name",
-							Placeholder: "ex: auto, fast, smart",
+							Placeholder: "ex: assistant, rapide, expert",
 							Attributes:  templ.Attributes{"required": true},
 						})
-						<p class="text-sm text-muted-foreground">Le nom sera utilisé comme suffixe du nom qualifié (ex: acme/auto)</p>
+						<p class="text-sm text-muted-foreground">Le nom sera utilisé comme suffixe (ex&nbsp;: ~/assistant)</p>
 					} else {
 						@input.Input(input.Props{
 							Name:     "name",
@@ -197,7 +194,7 @@ templ VirtualModelFormPage(vmodel VirtualModelFormVModel) {
 						Enregistrer
 					}
 					@button.Button(button.Props{
-						Href:   common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models")),
+						Href:    common.BaseURLString(ctx, common.WithPath("/profile/personal-models")),
 						Variant: button.VariantOutline,
 					}) {
 						Annuler

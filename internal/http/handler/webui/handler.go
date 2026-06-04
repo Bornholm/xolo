@@ -44,6 +44,7 @@ func NewHandler(
 	orgStore port.OrgStore,
 	providerStore port.ProviderStore,
 	virtualModelStore port.VirtualModelStore,
+	personalVMStore port.PersonalVirtualModelStore,
 	usageStore port.UsageStore,
 	inviteStore port.InviteStore,
 	applicationStore port.ApplicationStore,
@@ -74,7 +75,7 @@ func NewHandler(
 	h.mux.Handle("POST /no-org/invitations/{tokenID}/decline", isActive(http.HandlerFunc(h.declineInvitation)))
 	mount(h.mux, "/usage", isActive(http.HandlerFunc(h.getDashboardPage)))
 	mount(h.mux, "/models", isActive(http.HandlerFunc(h.getModelsPage)))
-	mount(h.mux, "/profile/", isActive(profile.NewHandler(userStore, orgStore, inviteStore)))
+	mount(h.mux, "/profile/", isActive(profile.NewHandler(userStore, orgStore, inviteStore, personalVMStore, pluginManager)))
 	mount(h.mux, "/admin/", isActive(admin.NewHandler(userStore, orgStore, taskRunner, exchangeRateService, pluginManager)))
 	mount(h.mux, "/orgs/", isActive(org.NewHandler(orgStore, providerStore, virtualModelStore, usageStore, inviteStore, userStore, applicationStore, exchangeRateService, quotaStore, secretKey, pluginManager)))
 

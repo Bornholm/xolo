@@ -4,10 +4,16 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
+	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	"github.com/bornholm/xolo/internal/plugin"
 	"github.com/pkg/errors"
 )
+
+func httpCtxUser(r *http.Request) model.User {
+	return httpCtx.User(r.Context())
+}
 
 // pluginManagerWithHostService is the extended interface exposing HostService.
 type pluginManagerWithHostService interface {
@@ -55,6 +61,67 @@ func (h *Handler) handleSeedPluginUIConfig(w http.ResponseWriter, r *http.Reques
 
 	hs.HostService().SeedConfig(string(org.ID()), pluginName, body.ConfigJSON)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleSeedPersonalPluginUIConfig is the personal-context variant of handleSeedPluginUIConfig.
+// It uses the authenticated user's ID as the scope key instead of an org ID.
+// PUT /api/personal-plugin-ui-config?plugin=<name>
+func (h *Handler) handleSeedPersonalPluginUIConfig(w http.ResponseWriter, r *http.Request) {
+	pluginName := r.URL.Query().Get("plugin")
+	if pluginName == "" {
+		http.Error(w, "missing plugin query param", http.StatusBadRequest)
+		return
+	}
+
+	user := httpCtxUser(r)
+	if user == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	hs, ok := h.pluginManager.(pluginManagerWithHostService)
+	if !ok {
+		http.Error(w, "plugin manager does not expose host service", http.StatusNotImplemented)
+		return
+	}
+
+	var body struct {
+		ConfigJSON string `json:"configJson"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		body.ConfigJSON = "{}"
+	}
+	if body.ConfigJSON == "" {
+		body.ConfigJSON = "{}"
+	}
+
+	hs.HostService().SeedConfig("~:"+string(user.ID()), pluginName, body.ConfigJSON)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleReadPersonalPluginUIConfig is the personal-context variant of handleReadPluginUIConfig.
+// GET /api/personal-plugin-ui-config?plugin=<name>
+func (h *Handler) handleReadPersonalPluginUIConfig(w http.ResponseWriter, r *http.Request) {
+	pluginName := r.URL.Query().Get("plugin")
+	if pluginName == "" {
+		http.Error(w, "missing plugin query param", http.StatusBadRequest)
+		return
+	}
+
+	user := httpCtxUser(r)
+	if user == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	hs, ok := h.pluginManager.(pluginManagerWithHostService)
+	if !ok {
+		writeJSON(w, http.StatusOK, map[string]string{"configJson": "{}"})
+		return
+	}
+
+	cfgJSON := hs.HostService().ReadConfig("~:"+string(user.ID()), pluginName)
+	writeJSON(w, http.StatusOK, map[string]string{"configJson": cfgJSON})
 }
 
 // handleReadPluginUIConfig returns the config last saved by the plugin UI.

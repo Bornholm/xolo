@@ -32,6 +32,16 @@ func createGetDatabase(db *gorm.DB) func(ctx context.Context) (*gorm.DB, error) 
 						return tx.Migrator().DropColumn(&VirtualModel{}, "graph_json")
 					},
 				},
+				{
+					// Add user_virtual_models table for personal virtual models.
+					ID: "202506040001",
+					Migrate: func(tx *gorm.DB) error {
+						return tx.AutoMigrate(&PersonalVirtualModel{})
+					},
+					Rollback: func(tx *gorm.DB) error {
+						return tx.Migrator().DropTable("personal_virtual_models")
+					},
+				},
 			})
 
 			m.InitSchema(func(tx *gorm.DB) error {
@@ -54,6 +64,8 @@ func createGetDatabase(db *gorm.DB) func(ctx context.Context) (*gorm.DB, error) 
 					&Provider{}, &LLMModel{},
 					// Virtual model store
 					&VirtualModel{},
+					// Personal virtual model store
+					&PersonalVirtualModel{},
 					// Quota store
 					&Quota{},
 					// Usage store

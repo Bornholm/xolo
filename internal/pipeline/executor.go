@@ -5,6 +5,7 @@ import (
 
 	"github.com/bornholm/genai/llm"
 	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/bornholm/xolo/internal/core/port"
 	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
 )
 
@@ -28,6 +29,8 @@ type ExecutionContext struct {
 	ProtoQuota *proto.QuotaInfo
 	// VisitedVMs tracks VirtualModelIDs already resolved to detect cycles.
 	VisitedVMs map[model.VirtualModelID]struct{}
+	// PersonalVMStore is used by ModelExecutor to resolve personal virtual models (~/name).
+	PersonalVMStore port.PersonalVirtualModelStore
 }
 
 // ForwardResult is the output of a node's Forward execution.

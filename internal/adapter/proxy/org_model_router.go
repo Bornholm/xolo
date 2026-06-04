@@ -15,6 +15,7 @@ import (
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
 	"github.com/bornholm/xolo/internal/crypto"
+	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	"github.com/pkg/errors"
 
 	_ "github.com/bornholm/genai/llm/provider/mistral"
@@ -167,11 +168,23 @@ func (r *OrgModelRouter) ListModels(ctx context.Context) ([]genaiProxy.ModelInfo
 }
 
 // ResolveRealModel implements pipeline.ModelResolver.
-// proxyName is the local model name (without org prefix) or the qualified form.
+// proxyName may be local ("mistral-small") or qualified ("cadoles/mistral-small").
+// When qualified, the org slug in the name takes precedence over the orgID parameter,
+// allowing personal virtual models to reference models from any org by full name.
 func (r *OrgModelRouter) ResolveRealModel(ctx context.Context, orgID model.OrgID, proxyName string) (llm.Client, string, model.LLMModelID, error) {
-	// Strip org prefix if present.
 	if idx := strings.IndexByte(proxyName, '/'); idx > 0 {
+		orgSlug := proxyName[:idx]
 		proxyName = proxyName[idx+1:]
+		if org, err := r.orgStore.GetOrgBySlug(ctx, orgSlug); err == nil {
+			// When the referenced org differs from the token's org, verify that the
+			// requesting user is actually a member of that org.
+			if org.ID() != orgID {
+				if err := r.assertOrgMembership(ctx, org.ID()); err != nil {
+					return nil, "", "", errors.Errorf("model '%s/%s' not available in your organizations", orgSlug, proxyName)
+				}
+			}
+			orgID = org.ID()
+		}
 	}
 
 	llmModel, err := r.providerStore.GetLLMModelByProxyName(ctx, orgID, proxyName)
@@ -219,6 +232,25 @@ func (r *OrgModelRouter) ResolveRealModel(ctx context.Context, orgID model.OrgID
 	}
 
 	return client, llmModel.RealModel(), llmModel.ID(), nil
+}
+
+// assertOrgMembership returns nil if the requesting user (from HTTP context) is
+// a member of the given org, or an error otherwise.
+func (r *OrgModelRouter) assertOrgMembership(ctx context.Context, orgID model.OrgID) error {
+	u := httpCtx.User(ctx)
+	if u == nil {
+		return errors.New("no authenticated user in context")
+	}
+	memberships, err := r.orgStore.GetUserMemberships(ctx, u.ID())
+	if err != nil {
+		return errors.Wrap(err, "could not fetch memberships")
+	}
+	for _, m := range memberships {
+		if m.OrgID() == orgID {
+			return nil
+		}
+	}
+	return errors.New("not a member of this organization")
 }
 
 // parseQualifiedModelName splits "org-slug/model-name" into its two parts.

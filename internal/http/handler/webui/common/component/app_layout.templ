@@ -12,7 +12,8 @@ import (
 
 templ AppNavigationItems(vmodel AppLayoutVModel) {
 	@NavItem(icon.ChartColumn, "Usage", string(BaseURL(ctx, WithPath("/usage"))), vmodel.SelectedItem == "usage")
-	@NavItem(icon.BrainCircuit, "Modèles", string(BaseURL(ctx, WithPath("/models"))), vmodel.SelectedItem == "models")
+	@NavItem(icon.BrainCircuit, "Modèles d'org.", string(BaseURL(ctx, WithPath("/models"))), vmodel.SelectedItem == "models")
+	@NavItem(icon.Network, "Mes modèles", string(BaseURL(ctx, WithPath("/profile/personal-models"))), vmodel.SelectedItem == "personal-models")
 	@NavItem(icon.KeyRound, "Clés API", string(BaseURL(ctx, WithPath("/profile/tokens"))), vmodel.SelectedItem == "tokens")
 }
 

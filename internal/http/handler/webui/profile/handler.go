@@ -17,11 +17,17 @@ import (
 	"github.com/bornholm/xolo/internal/http/middleware/authz"
 )
 
+type pluginManagerIface interface {
+	HTTPPort(pluginName string) uint32
+}
+
 type Handler struct {
-	mux         *http.ServeMux
-	userStore   port.UserStore
-	orgStore    port.OrgStore
-	inviteStore port.InviteStore
+	mux             *http.ServeMux
+	userStore       port.UserStore
+	orgStore        port.OrgStore
+	inviteStore     port.InviteStore
+	personalVMStore port.PersonalVirtualModelStore
+	pluginManager   pluginManagerIface
 }
 
 // ServeHTTP implements http.Handler.
@@ -29,12 +35,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.mux.ServeHTTP(w, r)
 }
 
-func NewHandler(userStore port.UserStore, orgStore port.OrgStore, inviteStore port.InviteStore) *Handler {
+func NewHandler(userStore port.UserStore, orgStore port.OrgStore, inviteStore port.InviteStore, personalVMStore port.PersonalVirtualModelStore, pluginManager pluginManagerIface) *Handler {
 	h := &Handler{
-		mux:         http.NewServeMux(),
-		userStore:   userStore,
-		orgStore:    orgStore,
-		inviteStore: inviteStore,
+		mux:             http.NewServeMux(),
+		userStore:       userStore,
+		orgStore:        orgStore,
+		inviteStore:     inviteStore,
+		personalVMStore: personalVMStore,
+		pluginManager:   pluginManager,
 	}
 
 	// Require authentication for all profile routes
@@ -46,6 +54,16 @@ func NewHandler(userStore port.UserStore, orgStore port.OrgStore, inviteStore po
 	h.mux.Handle("DELETE /tokens/{tokenID}", assertUser(http.HandlerFunc(h.deleteToken)))
 	h.mux.Handle("POST /preferences", assertUser(http.HandlerFunc(h.updatePreferences)))
 	h.mux.Handle("GET /invitations", assertUser(http.HandlerFunc(h.getInvitationsPage)))
+	// Plugin UI proxy (personal context — no org required)
+	h.mux.Handle("GET /plugins/{pluginName}/ui/{uiPath...}", assertUser(http.HandlerFunc(h.servePersonalPluginUI)))
+	// Personal virtual models
+	h.mux.Handle("GET /personal-models", assertUser(http.HandlerFunc(h.getPersonalModelsPage)))
+	h.mux.Handle("GET /personal-models/new", assertUser(http.HandlerFunc(h.getNewPersonalModelPage)))
+	h.mux.Handle("POST /personal-models", assertUser(http.HandlerFunc(h.createPersonalModel)))
+	h.mux.Handle("GET /personal-models/{vmID}/edit", assertUser(http.HandlerFunc(h.getEditPersonalModelPage)))
+	h.mux.Handle("POST /personal-models/{vmID}/edit", assertUser(http.HandlerFunc(h.updatePersonalModel)))
+	h.mux.Handle("DELETE /personal-models/{vmID}", assertUser(http.HandlerFunc(h.deletePersonalModel)))
+	h.mux.Handle("GET /personal-models/{vmID}/pipeline", assertUser(http.HandlerFunc(h.getPersonalPipelineEditorPage)))
 
 	return h
 }

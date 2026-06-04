@@ -3,6 +3,7 @@ package pipeline
 import (
 	"context"
 	"encoding/json"
+	"strings"
 
 	"github.com/bornholm/genai/llm"
 	"github.com/bornholm/xolo/internal/core/model"
@@ -21,8 +22,8 @@ type ModelResolver interface {
 // (connected at runtime) or from the static ProxyName in its config, then
 // resolves it via the ModelResolver.
 //
-// If the resolved name corresponds to a VirtualModel, it recurses into that
-// model's pipeline (with cycle detection).
+// If the resolved name corresponds to a VirtualModel or personal virtual model,
+// it recurses into that model's pipeline (with cycle detection).
 type ModelExecutor struct {
 	resolver          ModelResolver
 	virtualModelStore port.VirtualModelStore
@@ -46,7 +47,36 @@ func (e *ModelExecutor) Forward(ctx context.Context, node model.PipelineNode, in
 
 	orgID := model.OrgID(ec.OrgID)
 
-	// Check if proxyName is a VirtualModel → recurse.
+	// Personal virtual model (~/name) → recurse using the user's personal store.
+	if strings.HasPrefix(proxyName, "~/") && ec.PersonalVMStore != nil && ec.UserID != "" {
+		localName := proxyName[2:]
+		pvm, pvmErr := ec.PersonalVMStore.GetPersonalVirtualModelByName(ctx, model.UserID(ec.UserID), localName)
+		if pvmErr == nil && pvm != nil {
+			// Use a namespaced key to avoid collision with org VM IDs.
+			pvmKey := model.VirtualModelID("~:" + string(pvm.ID()))
+			if _, alreadyVisited := ec.VisitedVMs[pvmKey]; alreadyVisited {
+				return nil, errors.Errorf("personal virtual model cycle detected: %s", proxyName)
+			}
+			if pvm.Graph() == nil {
+				return nil, errors.Errorf("personal virtual model %q has no pipeline configured", proxyName)
+			}
+			childEC := ec
+			childEC.VisitedVMs = copyVisitedVMs(ec.VisitedVMs)
+			childEC.VisitedVMs[pvmKey] = struct{}{}
+
+			sub, err := e.engine.RunForward(ctx, pvm.Graph(), childEC)
+			if err != nil {
+				return nil, errors.Wrapf(err, "personal virtual model %q pipeline failed", proxyName)
+			}
+			return &ForwardResult{
+				ResolvedClient: sub.ResolvedClient,
+				ResolvedModel:  sub.ResolvedModel,
+				OutputValues:   map[string]interface{}{"response": ""},
+			}, nil
+		}
+	}
+
+	// Org virtual model → recurse.
 	if e.virtualModelStore != nil {
 		vm, vmErr := e.virtualModelStore.GetVirtualModelByName(ctx, orgID, localModelName(proxyName))
 		if vmErr == nil && vm != nil {

@@ -58,16 +58,18 @@ type Handler struct {
 	providerStore       port.ProviderStore
 	orgStore            port.OrgStore
 	virtualModelStore   port.VirtualModelStore
+	personalVMStore     port.PersonalVirtualModelStore
 	exchangeRateService *service.ExchangeRateService
 	pluginManager       pluginManagerIface
 	mux                 *http.ServeMux
 }
 
-func NewHandler(providerStore port.ProviderStore, orgStore port.OrgStore, virtualModelStore port.VirtualModelStore, exchangeRateService *service.ExchangeRateService, pluginManager pluginManagerIface) *Handler {
+func NewHandler(providerStore port.ProviderStore, orgStore port.OrgStore, virtualModelStore port.VirtualModelStore, personalVMStore port.PersonalVirtualModelStore, exchangeRateService *service.ExchangeRateService, pluginManager pluginManagerIface) *Handler {
 	h := &Handler{
 		providerStore:       providerStore,
 		orgStore:            orgStore,
 		virtualModelStore:   virtualModelStore,
+		personalVMStore:     personalVMStore,
 		exchangeRateService: exchangeRateService,
 		pluginManager:       pluginManager,
 		mux:                 http.NewServeMux(),
@@ -78,7 +80,10 @@ func NewHandler(providerStore port.ProviderStore, orgStore port.OrgStore, virtua
 	// Plugin UI config sync (seed before iframe open, read back after close)
 	h.mux.HandleFunc("PUT /api/orgs/{orgSlug}/plugin-ui-config", h.handleSeedPluginUIConfig)
 	h.mux.HandleFunc("GET /api/orgs/{orgSlug}/plugin-ui-config", h.handleReadPluginUIConfig)
-	// Virtual model pipeline CRUD
+	// Personal context plugin UI config (no org required)
+	h.mux.HandleFunc("PUT /api/personal-plugin-ui-config", h.handleSeedPersonalPluginUIConfig)
+	h.mux.HandleFunc("GET /api/personal-plugin-ui-config", h.handleReadPersonalPluginUIConfig)
+	// Org virtual model pipeline CRUD
 	h.mux.HandleFunc("GET /api/orgs/{orgSlug}/virtual-models", h.handleListVirtualModels)
 	h.mux.HandleFunc("POST /api/orgs/{orgSlug}/virtual-models", h.handleCreateVirtualModel)
 	h.mux.HandleFunc("POST /api/orgs/{orgSlug}/virtual-models/import", h.handleImportVirtualModel)
@@ -87,6 +92,15 @@ func NewHandler(providerStore port.ProviderStore, orgStore port.OrgStore, virtua
 	h.mux.HandleFunc("PUT /api/orgs/{orgSlug}/virtual-models/{vmID}", h.handleUpdateVirtualModel)
 	h.mux.HandleFunc("DELETE /api/orgs/{orgSlug}/virtual-models/{vmID}", h.handleDeleteVirtualModel)
 	h.mux.HandleFunc("GET /api/orgs/{orgSlug}/pipeline-node-types", h.handlePipelineNodeTypes)
+	// Personal virtual model pipeline CRUD
+	h.mux.HandleFunc("GET /api/personal-models", h.handleListPersonalVMs)
+	h.mux.HandleFunc("POST /api/personal-models", h.handleCreatePersonalVM)
+	h.mux.HandleFunc("POST /api/personal-models/import", h.handleImportPersonalVM)
+	h.mux.HandleFunc("GET /api/personal-models/{vmID}", h.handleGetPersonalVM)
+	h.mux.HandleFunc("GET /api/personal-models/{vmID}/export", h.handleExportPersonalVM)
+	h.mux.HandleFunc("PUT /api/personal-models/{vmID}", h.handleUpdatePersonalVM)
+	h.mux.HandleFunc("DELETE /api/personal-models/{vmID}", h.handleDeletePersonalVM)
+	h.mux.HandleFunc("GET /api/personal-models/pipeline-node-types", h.handlePersonalPipelineNodeTypes)
 	return h
 }
 
@@ -184,10 +198,47 @@ func (h *Handler) handleModels(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Personal virtual models
+	if h.personalVMStore != nil {
+		user := httpCtx.User(ctx)
+		if user != nil {
+			pvms, err := h.personalVMStore.ListPersonalVirtualModels(ctx, user.ID())
+			if err != nil {
+				slog.WarnContext(ctx, "could not list personal virtual models", slogx.Error(err))
+			} else {
+				for _, pvm := range pvms {
+					m := h.personalVMToOpenRouterModel(pvm)
+					if filterModel(m, filterParams, filterModalities) {
+						data = append(data, m)
+					}
+				}
+			}
+		}
+	}
+
 	writeJSON(w, http.StatusOK, modelsResponse{
 		Object: "list",
 		Data:   data,
 	})
+}
+
+func (h *Handler) personalVMToOpenRouterModel(pvm model.PersonalVirtualModel) openRouterModel {
+	return openRouterModel{
+		ID:          "~/" + pvm.Name(),
+		Object:      "model",
+		Created:     int(pvm.CreatedAt().Unix()),
+		OwnedBy:     "xolo",
+		Name:        pvm.Name(),
+		Description: pvm.Description(),
+		Architecture: modelArchitecture{
+			InputModalities:  []string{"text"},
+			OutputModalities: []string{"text"},
+			Modality:         "text",
+		},
+		DefaultParameters: nil,
+		Pricing:           modelPricing{Prompt: 0, Completion: 0},
+		SupportedParams:   []string{"max_tokens", "temperature", "top_p"},
+	}
 }
 
 func (h *Handler) llmModelToOpenRouterModel(orgSlug string, m model.LLMModel) openRouterModel {

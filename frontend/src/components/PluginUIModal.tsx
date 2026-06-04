@@ -10,8 +10,16 @@ interface PluginUIModalProps {
   onClose: (newConfig: Record<string, unknown> | null) => void
 }
 
+function isPersonalContext(): boolean {
+  const root = document.getElementById('pipeline-editor-root')
+  return root?.dataset.contextType === 'personal'
+}
+
 async function seedConfig(orgSlugVal: string, pluginName: string, config: Record<string, unknown>, base: string) {
-  await fetch(`${base}/api/orgs/${orgSlugVal}/plugin-ui-config?plugin=${encodeURIComponent(pluginName)}`, {
+  const url = isPersonalContext()
+    ? `${base}/api/personal-plugin-ui-config?plugin=${encodeURIComponent(pluginName)}`
+    : `${base}/api/orgs/${orgSlugVal}/plugin-ui-config?plugin=${encodeURIComponent(pluginName)}`
+  await fetch(url, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ configJson: JSON.stringify(config) }),
@@ -19,7 +27,10 @@ async function seedConfig(orgSlugVal: string, pluginName: string, config: Record
 }
 
 async function readConfig(orgSlugVal: string, pluginName: string, base: string): Promise<Record<string, unknown>> {
-  const res = await fetch(`${base}/api/orgs/${orgSlugVal}/plugin-ui-config?plugin=${encodeURIComponent(pluginName)}`)
+  const url = isPersonalContext()
+    ? `${base}/api/personal-plugin-ui-config?plugin=${encodeURIComponent(pluginName)}`
+    : `${base}/api/orgs/${orgSlugVal}/plugin-ui-config?plugin=${encodeURIComponent(pluginName)}`
+  const res = await fetch(url)
   if (!res.ok) return {}
   const data = await res.json() as { configJson: string }
   try { return JSON.parse(data.configJson) } catch { return {} }
@@ -30,7 +41,9 @@ export function PluginUIModal({ pluginName, nodeId: _nodeId, currentConfig, base
   const [closing, setClosing] = useState(false)
   const slug = orgSlug()
 
-  const uiURL = `${baseUrl}/orgs/${slug}/plugins/${encodeURIComponent(pluginName)}/ui/`
+  const uiURL = isPersonalContext()
+    ? `${baseUrl}/profile/plugins/${encodeURIComponent(pluginName)}/ui/`
+    : `${baseUrl}/orgs/${slug}/plugins/${encodeURIComponent(pluginName)}/ui/`
 
   useEffect(() => {
     seedConfig(slug, pluginName, currentConfig, baseUrl)
