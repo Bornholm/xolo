@@ -33,8 +33,12 @@ COPY --from=build /src/dist/xolo-plugin-dummy-model_linux_amd64_v1/xolo-plugin-d
 COPY --from=build /src/dist/xolo-plugin-fuzzy-evaluator_linux_amd64_v1/xolo-plugin-fuzzy-evaluator /plugins/fuzzy-evaluator
 COPY --from=build /src/dist/xolo-plugin-request-evaluator_linux_amd64_v1/xolo-plugin-request-evaluator /plugins/request-evaluator
 COPY --from=build /src/dist/xolo-plugin-script-processor_linux_amd64_v1/xolo-plugin-script-processor /plugins/script-processor
+COPY --from=build /src/dist/xolo-plugin-pseudonymizer_linux_amd64_v1/xolo-plugin-pseudonymizer /plugins/pseudonymizer
 
 ENV XOLO_STORAGE_DATABASE_DSN=/data/data.sqlite
 ENV XOLO_PLUGINS_DIR=/plugins
+
+VOLUME /data
+VOLUME /root/.cache/go-anon
 
 CMD ["/usr/local/bin/xolo-server"]

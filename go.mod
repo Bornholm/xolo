@@ -5,6 +5,7 @@ go 1.25.5
 require (
 	github.com/Oudwins/tailwind-merge-go v0.2.1
 	github.com/bornholm/genai v0.25.1
+	github.com/bornholm/go-anon v0.0.3
 	github.com/bornholm/go-fuzzy v0.0.0-20250815131223-76b121e8632d
 	github.com/bornholm/go-x v0.0.0-20260127104343-c6737ea35324
 	github.com/caarlos0/env/v11 v11.3.1
@@ -13,6 +14,7 @@ require (
 	github.com/go-gormigrate/gormigrate/v2 v2.1.5
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/gorilla/sessions v1.2.0
+	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-plugin v1.7.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/markbates/goth v1.82.0
@@ -38,7 +40,6 @@ require (
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.6.2 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
-	github.com/hashicorp/go-hclog v1.6.3 // indirect
 	github.com/hashicorp/yamux v0.1.2 // indirect
 	github.com/klauspost/compress v1.18.4 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -74,10 +75,12 @@ require (
 	go.opentelemetry.io/otel v1.42.0 // indirect
 	go.opentelemetry.io/otel/trace v1.42.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/text v0.35.0 // indirect
+	golang.org/x/text v0.36.0 // indirect
 	google.golang.org/protobuf v1.36.11
 )
 
 // replace github.com/bornholm/genai => ../genai
 
 // replace github.com/bornholm/go-fuzzy => ../go-fuzzy
+
+// replace github.com/bornholm/go-anon => ../go-anon

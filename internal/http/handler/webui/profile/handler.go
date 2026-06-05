@@ -55,7 +55,11 @@ func NewHandler(userStore port.UserStore, orgStore port.OrgStore, inviteStore po
 	h.mux.Handle("POST /preferences", assertUser(http.HandlerFunc(h.updatePreferences)))
 	h.mux.Handle("GET /invitations", assertUser(http.HandlerFunc(h.getInvitationsPage)))
 	// Plugin UI proxy (personal context — no org required)
-	h.mux.Handle("GET /plugins/{pluginName}/ui/{uiPath...}", assertUser(http.HandlerFunc(h.servePersonalPluginUI)))
+	// Both GET and POST are registered explicitly to avoid a ServeMux conflict
+	// with the "GET /" catch-all pattern.
+	pluginUIHandler := assertUser(http.HandlerFunc(h.servePersonalPluginUI))
+	h.mux.Handle("GET /plugins/{pluginName}/ui/{uiPath...}", pluginUIHandler)
+	h.mux.Handle("POST /plugins/{pluginName}/ui/{uiPath...}", pluginUIHandler)
 	// Personal virtual models
 	h.mux.Handle("GET /personal-models", assertUser(http.HandlerFunc(h.getPersonalModelsPage)))
 	h.mux.Handle("GET /personal-models/new", assertUser(http.HandlerFunc(h.getNewPersonalModelPage)))
