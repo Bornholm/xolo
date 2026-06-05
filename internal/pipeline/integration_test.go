@@ -118,6 +118,20 @@ func (c *FakeXoloPluginClient) ListModels(_ context.Context, _ *proto.ListModels
 
 var _ proto.XoloPluginClient = (*FakeXoloPluginClient)(nil)
 
+// staticPluginProvider implements pipeline.PluginProvider using static maps (for tests).
+type staticPluginProvider struct {
+	clients map[string]proto.XoloPluginClient
+	descs   map[string]*proto.PluginDescriptor
+}
+
+func (p *staticPluginProvider) GetOrRestart(_ context.Context, name string) (proto.XoloPluginClient, *proto.PluginDescriptor, bool) {
+	c, ok := p.clients[name]
+	if !ok {
+		return nil, nil, false
+	}
+	return c, p.descs[name], true
+}
+
 // buildEngine creates a pipeline engine with the standard executors.
 func buildEngine(
 	resolver pipeline.ModelResolver,
@@ -129,7 +143,7 @@ func buildEngine(
 	eng := pipeline.NewEngine(reg)
 	reg.Register(model.NodeTypeGenerator, pipeline.NewGeneratorExecutor())
 	reg.Register(model.NodeTypeSink, pipeline.NewSinkExecutor())
-	reg.Register(model.NodeTypePlugin, pipeline.NewPluginExecutor(clients, descs))
+	reg.Register(model.NodeTypePlugin, pipeline.NewPluginExecutor(&staticPluginProvider{clients: clients, descs: descs}))
 	reg.Register(model.NodeTypeModel, pipeline.NewModelExecutor(resolver, vmStore, eng))
 	return eng
 }

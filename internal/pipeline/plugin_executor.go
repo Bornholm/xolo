@@ -10,18 +10,19 @@ import (
 	"github.com/pkg/errors"
 )
 
-// PluginExecutor handles NodeTypePlugin nodes by delegating to the gRPC plugin.
-type PluginExecutor struct {
-	clients     map[string]proto.XoloPluginClient
-	descriptors map[string]*proto.PluginDescriptor
+// PluginProvider resolves plugin gRPC clients dynamically, restarting dead processes as needed.
+type PluginProvider interface {
+	GetOrRestart(ctx context.Context, name string) (proto.XoloPluginClient, *proto.PluginDescriptor, bool)
 }
 
-// NewPluginExecutor creates a PluginExecutor backed by the loaded plugin clients.
-func NewPluginExecutor(
-	clients map[string]proto.XoloPluginClient,
-	descriptors map[string]*proto.PluginDescriptor,
-) *PluginExecutor {
-	return &PluginExecutor{clients: clients, descriptors: descriptors}
+// PluginExecutor handles NodeTypePlugin nodes by delegating to the gRPC plugin.
+type PluginExecutor struct {
+	provider PluginProvider
+}
+
+// NewPluginExecutor creates a PluginExecutor backed by a dynamic plugin provider.
+func NewPluginExecutor(provider PluginProvider) *PluginExecutor {
+	return &PluginExecutor{provider: provider}
 }
 
 func (e *PluginExecutor) Forward(ctx context.Context, node model.PipelineNode, inputs map[string]interface{}, ec ExecutionContext) (*ForwardResult, error) {
@@ -30,11 +31,10 @@ func (e *PluginExecutor) Forward(ctx context.Context, node model.PipelineNode, i
 		return nil, errors.Wrap(err, "invalid plugin node data")
 	}
 
-	client, ok := e.clients[data.PluginName]
+	client, desc, ok := e.provider.GetOrRestart(ctx, data.PluginName)
 	if !ok {
 		return nil, errors.Errorf("plugin %q is not loaded", data.PluginName)
 	}
-	desc := e.descriptors[data.PluginName]
 
 	configJSON := "{}"
 	if data.Config != nil {
@@ -158,11 +158,10 @@ func (e *PluginExecutor) Backward(ctx context.Context, node model.PipelineNode, 
 		return &BackwardResult{}, nil
 	}
 
-	client, ok := e.clients[data.PluginName]
+	client, desc, ok := e.provider.GetOrRestart(ctx, data.PluginName)
 	if !ok {
 		return &BackwardResult{}, nil
 	}
-	desc := e.descriptors[data.PluginName]
 
 	if !hasCapability(desc, proto.PluginDescriptor_POST_RESPONSE) {
 		return &BackwardResult{}, nil

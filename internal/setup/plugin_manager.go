@@ -26,7 +26,7 @@ func getPluginManagerFromConfig(ctx context.Context, conf *config.Config) (*plug
 			pluginManagerErr = err
 			return
 		}
-		mgr := plugin.NewManager(conf.Plugins.Dir, providerStore, virtualModelStore)
+		mgr := plugin.NewManager(conf.Plugins.Dir, conf.Plugins.MemLimit, providerStore, virtualModelStore)
 		if err := mgr.Start(ctx); err != nil {
 			pluginManagerErr = err
 			return

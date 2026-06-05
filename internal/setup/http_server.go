@@ -15,7 +15,6 @@ import (
 	"github.com/bornholm/xolo/internal/http/middleware/authn"
 	membershipsMiddleware "github.com/bornholm/xolo/internal/http/middleware/memberships"
 	"github.com/bornholm/xolo/internal/http/middleware/ratelimit"
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
 	"github.com/pkg/errors"
 
 	gohttp "net/http"
@@ -132,15 +131,6 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		return nil, errors.Wrap(err, "could not create plugin manager from config")
 	}
 
-	pluginClients := make(map[string]proto.XoloPluginClient)
-	pluginDescriptors := make(map[string]*proto.PluginDescriptor)
-	for _, desc := range pluginManager.List() {
-		if c, ok := pluginManager.Get(desc.Name); ok {
-			pluginClients[desc.Name] = c
-			pluginDescriptors[desc.Name] = desc
-		}
-	}
-
 	virtualModelStore, err := getVirtualModelStoreFromConfig(ctx, conf)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -154,8 +144,7 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 	orgModelRouter := proxyAdapter.NewOrgModelRouter(providerStore, orgStore, conf.SecretKey)
 
 	pipelineHookAdapter := proxyAdapter.NewPipelineHookAdapter(
-		pluginClients,
-		pluginDescriptors,
+		pluginManager,
 		virtualModelStore,
 		personalVMStore,
 		providerStore,

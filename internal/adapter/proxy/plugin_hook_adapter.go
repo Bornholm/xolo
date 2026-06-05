@@ -24,19 +24,16 @@ const metaPipelineExecution = "pipeline.execution"
 // It implements PreRequestHook (runs the pipeline forward pass, handles rejection)
 // and ModelListerHook (returns the pre-resolved client to the proxy chain).
 type PipelineHookAdapter struct {
-	engine              *pipeline.Engine
-	virtualModelStore   port.VirtualModelStore
-	personalVMStore     port.PersonalVirtualModelStore
-	orgStore            port.OrgStore
-	providerStore       port.ProviderStore
-	clients             map[string]proto.XoloPluginClient
-	descriptors         map[string]*proto.PluginDescriptor
+	engine            *pipeline.Engine
+	virtualModelStore port.VirtualModelStore
+	personalVMStore   port.PersonalVirtualModelStore
+	orgStore          port.OrgStore
+	providerStore     port.ProviderStore
 }
 
 // NewPipelineHookAdapter creates a PipelineHookAdapter and wires the pipeline engine.
 func NewPipelineHookAdapter(
-	clients map[string]proto.XoloPluginClient,
-	descriptors map[string]*proto.PluginDescriptor,
+	pluginProvider pipeline.PluginProvider,
 	virtualModelStore port.VirtualModelStore,
 	personalVMStore port.PersonalVirtualModelStore,
 	providerStore port.ProviderStore,
@@ -49,7 +46,7 @@ func NewPipelineHookAdapter(
 	reg.Register(model.NodeTypeGenerator, pipeline.NewGeneratorExecutor())
 	reg.Register(model.NodeTypeSink, pipeline.NewSinkExecutor())
 	reg.Register(model.NodeTypeValue, pipeline.NewValueExecutor())
-	reg.Register(model.NodeTypePlugin, pipeline.NewPluginExecutor(clients, descriptors))
+	reg.Register(model.NodeTypePlugin, pipeline.NewPluginExecutor(pluginProvider))
 	// ModelExecutor needs the engine for recursive VirtualModel resolution.
 	reg.Register(model.NodeTypeModel, pipeline.NewModelExecutor(orgModelRouter, virtualModelStore, eng))
 
@@ -59,8 +56,6 @@ func NewPipelineHookAdapter(
 		personalVMStore:   personalVMStore,
 		orgStore:          orgStore,
 		providerStore:     providerStore,
-		clients:           clients,
-		descriptors:       descriptors,
 	}
 }
 

@@ -26,12 +26,14 @@ type PluginEntry struct {
 	Client     proto.XoloPluginClient
 	gopClient  *goplugin.Client
 	HTTPPort   uint32
+	binaryPath string
 }
 
 // Manager discovers and manages plugin subprocess lifecycles.
 type Manager struct {
 	dir               string
-	providerStore     port.ProviderStore     // may be nil
+	memLimit          string             // GOMEMLIMIT value passed to plugin subprocesses, empty = no limit
+	providerStore     port.ProviderStore // may be nil
 	virtualModelStore port.VirtualModelStore // may be nil
 	hostService       *XoloHostService
 	mu                sync.RWMutex
@@ -39,9 +41,11 @@ type Manager struct {
 }
 
 // NewManager creates a Manager that will scan dir for plugin binaries.
-func NewManager(dir string, providerStore port.ProviderStore, virtualModelStore port.VirtualModelStore) *Manager {
+// memLimit is passed as GOMEMLIMIT to each plugin subprocess; empty string disables it.
+func NewManager(dir string, memLimit string, providerStore port.ProviderStore, virtualModelStore port.VirtualModelStore) *Manager {
 	return &Manager{
 		dir:               dir,
+		memLimit:          memLimit,
 		providerStore:     providerStore,
 		virtualModelStore: virtualModelStore,
 		hostService:       NewXoloHostService(providerStore, virtualModelStore),
@@ -108,6 +112,73 @@ func (m *Manager) Get(name string) (proto.XoloPluginClient, bool) {
 		}
 	}
 	return nil, false
+}
+
+// GetOrRestart returns the gRPC client and descriptor for a named plugin.
+// If the plugin process has exited, it is automatically restarted before returning.
+// Returns (nil, nil, false) if the plugin is not found or cannot be restarted.
+func (m *Manager) GetOrRestart(ctx context.Context, name string) (proto.XoloPluginClient, *proto.PluginDescriptor, bool) {
+	m.mu.RLock()
+	idx, entry := m.findEntry(name)
+	if idx < 0 {
+		m.mu.RUnlock()
+		return nil, nil, false
+	}
+	if !entry.gopClient.Exited() {
+		client, desc := entry.Client, entry.Descriptor
+		m.mu.RUnlock()
+		return client, desc, true
+	}
+	m.mu.RUnlock()
+
+	// Plugin process has exited — acquire write lock and restart.
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Double-check: another goroutine may have already restarted it.
+	idx, entry = m.findEntry(name)
+	if idx < 0 {
+		return nil, nil, false
+	}
+	if !entry.gopClient.Exited() {
+		return entry.Client, entry.Descriptor, true
+	}
+
+	slog.WarnContext(ctx, "plugin process has exited, restarting",
+		slog.String("plugin", name),
+		slog.String("path", entry.binaryPath),
+	)
+
+	entry.gopClient.Kill() // ensure cleanup of any zombie resources
+	binaryPath := entry.binaryPath
+
+	newEntry, err := m.loadPlugin(ctx, binaryPath)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to restart plugin",
+			slog.String("plugin", name),
+			slog.Any("error", err),
+		)
+		return nil, nil, false
+	}
+
+	m.plugins[idx] = newEntry
+
+	slog.InfoContext(ctx, "plugin restarted successfully",
+		slog.String("plugin", name),
+	)
+
+	return newEntry.Client, newEntry.Descriptor, true
+}
+
+// findEntry returns the index and entry for the named plugin, or (-1, nil) if not found.
+// Must be called with m.mu held (read or write).
+func (m *Manager) findEntry(name string) (int, *PluginEntry) {
+	for i, e := range m.plugins {
+		if e.Descriptor.Name == name {
+			return i, e
+		}
+	}
+	return -1, nil
 }
 
 // HTTPPort returns the HTTP UI port for a named plugin, or 0 if the plugin
@@ -212,6 +283,9 @@ func (m *Manager) loadPlugin(ctx context.Context, binaryPath string) (*PluginEnt
 	pluginCmd.Env = append(os.Environ(),
 		fmt.Sprintf("XOLO_LOGGER_LEVEL=%d", currentSlogLevelInt(ctx)),
 	)
+	if m.memLimit != "" {
+		pluginCmd.Env = append(pluginCmd.Env, fmt.Sprintf("GOMEMLIMIT=%s", m.memLimit))
+	}
 
 	client := goplugin.NewClient(&goplugin.ClientConfig{
 		HandshakeConfig:  pluginsdk.HandshakeConfig,
@@ -258,6 +332,7 @@ func (m *Manager) loadPlugin(ctx context.Context, binaryPath string) (*PluginEnt
 		Client:     grpcClient,
 		gopClient:  client,
 		HTTPPort:   httpPort,
+		binaryPath: binaryPath,
 	}, nil
 }
 
