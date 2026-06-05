@@ -22,19 +22,21 @@ import (
 
 // PluginEntry holds a loaded plugin's descriptor, gRPC client, and HTTP UI port.
 type PluginEntry struct {
-	Descriptor *proto.PluginDescriptor
-	Client     proto.XoloPluginClient
-	gopClient  *goplugin.Client
-	HTTPPort   uint32
-	binaryPath string
+	Descriptor    *proto.PluginDescriptor
+	Client        proto.XoloPluginClient
+	gopClient     *goplugin.Client
+	HTTPPort      uint32
+	binaryPath    string
+	lastRestartAt time.Time // zero if never restarted
 }
 
 // Manager discovers and manages plugin subprocess lifecycles.
 type Manager struct {
 	dir               string
-	memLimit          string             // GOMEMLIMIT value passed to plugin subprocesses, empty = no limit
-	providerStore     port.ProviderStore // may be nil
-	virtualModelStore port.VirtualModelStore // may be nil
+	memLimit          string        // GOMEMLIMIT value passed to plugin subprocesses, empty = no limit
+	restartCooldown   time.Duration // minimum delay between two consecutive restarts of the same plugin
+	providerStore     port.ProviderStore
+	virtualModelStore port.VirtualModelStore
 	hostService       *XoloHostService
 	mu                sync.RWMutex
 	plugins           []*PluginEntry
@@ -42,10 +44,12 @@ type Manager struct {
 
 // NewManager creates a Manager that will scan dir for plugin binaries.
 // memLimit is passed as GOMEMLIMIT to each plugin subprocess; empty string disables it.
-func NewManager(dir string, memLimit string, providerStore port.ProviderStore, virtualModelStore port.VirtualModelStore) *Manager {
+// restartCooldown is the minimum interval between consecutive restarts of a given plugin.
+func NewManager(dir string, memLimit string, restartCooldown time.Duration, providerStore port.ProviderStore, virtualModelStore port.VirtualModelStore) *Manager {
 	return &Manager{
 		dir:               dir,
 		memLimit:          memLimit,
+		restartCooldown:   restartCooldown,
 		providerStore:     providerStore,
 		virtualModelStore: virtualModelStore,
 		hostService:       NewXoloHostService(providerStore, virtualModelStore),
@@ -144,6 +148,16 @@ func (m *Manager) GetOrRestart(ctx context.Context, name string) (proto.XoloPlug
 		return entry.Client, entry.Descriptor, true
 	}
 
+	if m.restartCooldown > 0 && !entry.lastRestartAt.IsZero() {
+		if elapsed := time.Since(entry.lastRestartAt); elapsed < m.restartCooldown {
+			slog.WarnContext(ctx, "plugin restart cooldown active, skipping restart",
+				slog.String("plugin", name),
+				slog.Duration("remaining", m.restartCooldown-elapsed),
+			)
+			return nil, nil, false
+		}
+	}
+
 	slog.WarnContext(ctx, "plugin process has exited, restarting",
 		slog.String("plugin", name),
 		slog.String("path", entry.binaryPath),
@@ -161,6 +175,7 @@ func (m *Manager) GetOrRestart(ctx context.Context, name string) (proto.XoloPlug
 		return nil, nil, false
 	}
 
+	newEntry.lastRestartAt = time.Now()
 	m.plugins[idx] = newEntry
 
 	slog.InfoContext(ctx, "plugin restarted successfully",

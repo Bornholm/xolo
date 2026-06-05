@@ -1,5 +1,7 @@
 package config
 
+import "time"
+
 // PluginsConfig controls where Xolo looks for plugin binaries.
 type PluginsConfig struct {
 	// Dir is the directory scanned at startup for executable plugin binaries.
@@ -11,4 +13,10 @@ type PluginsConfig struct {
 	// Set via XOLO_PLUGINS_MEM_LIMIT. Accepts Go-style suffixes: "512MiB", "1GiB",
 	// or raw bytes. Empty string disables the limit (default).
 	MemLimit string `env:"MEM_LIMIT" envDefault:""`
+
+	// RestartCooldown is the minimum delay between two consecutive restarts of the
+	// same plugin subprocess. Prevents OOM restart storms when the plugin crashes
+	// repeatedly. Set via XOLO_PLUGINS_RESTART_COOLDOWN (e.g. "30s", "1m").
+	// Set to "0s" to disable. Default: 30s.
+	RestartCooldown time.Duration `env:"RESTART_COOLDOWN" envDefault:"30s"`
 }
