@@ -12,6 +12,10 @@ github.com/bornholm/genai v0.25.1 h1:iJgpR81NBoqvHx+0MLzAmDUcDnEpYK6ONYK2RL2kHnU
 github.com/bornholm/genai v0.25.1/go.mod h1:Vk1AgzLaSNnJ3EZHlIaM8JJR38WdY2qLlyiTZy1Kh/o=
 github.com/bornholm/go-anon v0.0.3 h1:hD0unDroQUl6Nl7lenP4ZTDUru6bbcDS9OD7hQSlv6Y=
 github.com/bornholm/go-anon v0.0.3/go.mod h1:1/O3PELa9xtd3RRFHQuSD6XRQBf3GSviuJukkq01MFw=
+github.com/bornholm/go-anon v0.0.4 h1:7AT3z6SjvnFjUifOs6PfkNVtoj4liCyIzTVLq9V6ZGY=
+github.com/bornholm/go-anon v0.0.4/go.mod h1:1/O3PELa9xtd3RRFHQuSD6XRQBf3GSviuJukkq01MFw=
+github.com/bornholm/go-anon v0.2.0 h1:xVonb1lTh+m478JCgSbTVLpD+lGDJ8BTHORNT4Wduvo=
+github.com/bornholm/go-anon v0.2.0/go.mod h1:1/O3PELa9xtd3RRFHQuSD6XRQBf3GSviuJukkq01MFw=
 github.com/bornholm/go-fuzzy v0.0.0-20250815131223-76b121e8632d h1:IUrWuFur+t1DKOMt49Np0vzF/9WcX1A1H9kWpiyMhPA=
 github.com/bornholm/go-fuzzy v0.0.0-20250815131223-76b121e8632d/go.mod h1:0qK9yh4PmCaXwWNvIYDJ9GGIZv/72b90QaSBti6ZZUs=
 github.com/bornholm/go-x v0.0.0-20260127104343-c6737ea35324 h1:urrNBFQGXI3uvAivANnjEBdZVMDfmWn/okKIwDDqJ/w=
