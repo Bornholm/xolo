@@ -33,6 +33,7 @@ type LLMModel interface {
 	Enabled() bool
 	// Costs in microcents per 1K tokens (1 microcent = $0.000001)
 	PromptCostPer1KTokens() int64
+	CachedPromptCostPer1KTokens() int64 // cost for tokens served from provider cache; defaults to PromptCostPer1KTokens
 	CompletionCostPer1KTokens() int64
 	// Context limits (0 = unknown / not set)
 	ContextWindow() int64 // max input tokens
@@ -53,15 +54,16 @@ type LLMModel interface {
 }
 
 type BaseLLMModel struct {
-	id                        LLMModelID
-	providerID                ProviderID
-	orgID                     OrgID
-	proxyName                 string
-	realModel                 string
-	description               string
-	enabled                   bool
-	promptCostPer1KTokens     int64
-	completionCostPer1KTokens int64
+	id                           LLMModelID
+	providerID                   ProviderID
+	orgID                        OrgID
+	proxyName                    string
+	realModel                    string
+	description                  string
+	enabled                      bool
+	promptCostPer1KTokens        int64
+	cachedPromptCostPer1KTokens  int64
+	completionCostPer1KTokens    int64
 	contextWindow             int64
 	outputWindow              int64
 	activeParams              int64
@@ -80,8 +82,14 @@ func (m *BaseLLMModel) ProxyName() string                   { return m.proxyName
 func (m *BaseLLMModel) RealModel() string                   { return m.realModel }
 func (m *BaseLLMModel) Description() string                 { return m.description }
 func (m *BaseLLMModel) Enabled() bool                       { return m.enabled }
-func (m *BaseLLMModel) PromptCostPer1KTokens() int64        { return m.promptCostPer1KTokens }
-func (m *BaseLLMModel) CompletionCostPer1KTokens() int64    { return m.completionCostPer1KTokens }
+func (m *BaseLLMModel) PromptCostPer1KTokens() int64 { return m.promptCostPer1KTokens }
+func (m *BaseLLMModel) CachedPromptCostPer1KTokens() int64 {
+	if m.cachedPromptCostPer1KTokens == 0 {
+		return m.promptCostPer1KTokens
+	}
+	return m.cachedPromptCostPer1KTokens
+}
+func (m *BaseLLMModel) CompletionCostPer1KTokens() int64 { return m.completionCostPer1KTokens }
 func (m *BaseLLMModel) ContextWindow() int64                { return m.contextWindow }
 func (m *BaseLLMModel) OutputWindow() int64                 { return m.outputWindow }
 func (m *BaseLLMModel) Capabilities() ModelCapabilities     { return m.capabilities }
@@ -94,6 +102,7 @@ func (m *BaseLLMModel) TokensPerSecLow() float64  { return m.tokensPerSecLow }
 func (m *BaseLLMModel) TokensPerSecHigh() float64 { return m.tokensPerSecHigh }
 func (m *BaseLLMModel) IsVirtual() bool           { return m.providerID == "" }
 
+func (m *BaseLLMModel) SetCachedPromptCostPer1KTokens(v int64)  { m.cachedPromptCostPer1KTokens = v }
 func (m *BaseLLMModel) SetContextWindow(v int64)                { m.contextWindow = v }
 func (m *BaseLLMModel) SetOutputWindow(v int64)                 { m.outputWindow = v }
 func (m *BaseLLMModel) SetCapabilities(c ModelCapabilities)     { m.capabilities = c }

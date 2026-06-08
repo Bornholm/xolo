@@ -16,8 +16,9 @@ type LLMModel struct {
 	RealModel                 string `gorm:"not null"`
 	Description               string
 	Enabled                   int                                `gorm:"default:1"`
-	PromptCostPer1KTokens     int64                              `gorm:"default:0"`
-	CompletionCostPer1KTokens int64                              `gorm:"default:0"`
+	PromptCostPer1KTokens        int64 `gorm:"default:0"`
+	CachedPromptCostPer1KTokens  int64 `gorm:"default:0"`
+	CompletionCostPer1KTokens    int64 `gorm:"default:0"`
 	ContextWindow             int64                              `gorm:"default:0"`
 	OutputWindow              int64                              `gorm:"default:0"`
 	ActiveParams              int64                              `gorm:"default:0"`
@@ -42,7 +43,13 @@ func (w *wrappedLLMModel) ProxyName() string                { return w.m.ProxyNa
 func (w *wrappedLLMModel) RealModel() string                { return w.m.RealModel }
 func (w *wrappedLLMModel) Description() string              { return w.m.Description }
 func (w *wrappedLLMModel) Enabled() bool                    { return w.m.Enabled != 0 }
-func (w *wrappedLLMModel) PromptCostPer1KTokens() int64     { return w.m.PromptCostPer1KTokens }
+func (w *wrappedLLMModel) PromptCostPer1KTokens() int64 { return w.m.PromptCostPer1KTokens }
+func (w *wrappedLLMModel) CachedPromptCostPer1KTokens() int64 {
+	if w.m.CachedPromptCostPer1KTokens == 0 {
+		return w.m.PromptCostPer1KTokens
+	}
+	return w.m.CachedPromptCostPer1KTokens
+}
 func (w *wrappedLLMModel) CompletionCostPer1KTokens() int64 { return w.m.CompletionCostPer1KTokens }
 func (w *wrappedLLMModel) ContextWindow() int64             { return w.m.ContextWindow }
 func (w *wrappedLLMModel) OutputWindow() int64              { return w.m.OutputWindow }
@@ -75,8 +82,9 @@ func fromLLMModel(m model.LLMModel) *LLMModel {
 		RealModel:                 m.RealModel(),
 		Description:               m.Description(),
 		Enabled:                   boolToInt(m.Enabled()),
-		PromptCostPer1KTokens:     m.PromptCostPer1KTokens(),
-		CompletionCostPer1KTokens: m.CompletionCostPer1KTokens(),
+		PromptCostPer1KTokens:       m.PromptCostPer1KTokens(),
+		CachedPromptCostPer1KTokens: m.CachedPromptCostPer1KTokens(),
+		CompletionCostPer1KTokens:   m.CompletionCostPer1KTokens(),
 		ContextWindow:             m.ContextWindow(),
 		OutputWindow:              m.OutputWindow(),
 		ActiveParams:              m.ActiveParams(),

@@ -509,6 +509,9 @@ templ ModelsPage(vmodel ModelsPageVModel) {
 									Coût prompt/1M
 								}
 								@table.Head() {
+									Coût prompt cache/1M
+								}
+								@table.Head() {
 									Coût compl./1M
 								}
 								@table.Head() {
@@ -529,6 +532,9 @@ templ ModelsPage(vmodel ModelsPageVModel) {
 										}
 										@table.Cell() {
 											{ formatCostRate(m.PromptCostPer1KTokens(), vmodel.Provider.Currency()) }
+										}
+										@table.Cell() {
+											{ formatCostRate(m.CachedPromptCostPer1KTokens(), vmodel.Provider.Currency()) }
 										}
 										@table.Cell() {
 											{ formatCostRate(m.CompletionCostPer1KTokens(), vmodel.Provider.Currency()) }
@@ -728,13 +734,22 @@ templ ModelForm(vmodel ModelFormVModel) {
 					</div>
 				</div>
 				<p class="text-xs text-muted-foreground -mt-2">Débit estimé en tokens/s (min et max). Laisser à 0 pour auto-estimation selon la taille du modèle.</p>
-				<div class="grid grid-cols-2 gap-3">
+				<div class="grid grid-cols-3 gap-3">
 					<div class="space-y-2">
 						<label class="text-sm font-medium">Coût prompt par million de tokens ({ vmodel.Provider.Currency() })</label>
 						if !vmodel.IsNew && vmodel.Model != nil {
 							@input.Input(input.Props{Name: "prompt_cost", Type: "number", Value: formatCostField(vmodel.Model.PromptCostPer1KTokens()), Placeholder: "2.50", Attributes: templ.Attributes{"step": "any"}})
 						} else {
 							@input.Input(input.Props{Name: "prompt_cost", Type: "number", Placeholder: "2.50", Attributes: templ.Attributes{"step": "any"}})
+						}
+					</div>
+					<div class="space-y-2">
+						<label class="text-sm font-medium">Coût prompt en cache par million de tokens ({ vmodel.Provider.Currency() })</label>
+						<p class="text-xs text-muted-foreground">Tarif appliqué aux tokens servis depuis le cache du fournisseur (prompt caching). Laisser vide pour utiliser le coût prompt normal.</p>
+						if !vmodel.IsNew && vmodel.Model != nil {
+							@input.Input(input.Props{Name: "cached_prompt_cost", Type: "number", Value: formatCostField(vmodel.Model.CachedPromptCostPer1KTokens()), Placeholder: "0.25", Attributes: templ.Attributes{"step": "any"}})
+						} else {
+							@input.Input(input.Props{Name: "cached_prompt_cost", Type: "number", Placeholder: "0.25", Attributes: templ.Attributes{"step": "any"}})
 						}
 					</div>
 					<div class="space-y-2">

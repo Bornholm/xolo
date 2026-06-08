@@ -4,7 +4,7 @@ go 1.25.5
 
 require (
 	github.com/Oudwins/tailwind-merge-go v0.2.1
-	github.com/bornholm/genai v0.25.1
+	github.com/bornholm/genai v0.27.0
 	github.com/bornholm/go-anon v0.0.4
 	github.com/bornholm/go-fuzzy v0.0.0-20250815131223-76b121e8632d
 	github.com/bornholm/go-x v0.0.0-20260127104343-c6737ea35324
@@ -50,7 +50,7 @@ require (
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.62.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
-	github.com/revrost/go-openrouter v1.2.0 // indirect
+	github.com/revrost/go-openrouter v1.6.0 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect

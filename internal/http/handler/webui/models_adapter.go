@@ -20,8 +20,9 @@ func (v *virtualModelAsLLMModel) ProxyName() string                { return v.vm
 func (v *virtualModelAsLLMModel) RealModel() string                { return "" }
 func (v *virtualModelAsLLMModel) Description() string              { return v.vm.Description() }
 func (v *virtualModelAsLLMModel) Enabled() bool                    { return true }
-func (v *virtualModelAsLLMModel) PromptCostPer1KTokens() int64     { return 0 }
-func (v *virtualModelAsLLMModel) CompletionCostPer1KTokens() int64 { return 0 }
+func (v *virtualModelAsLLMModel) PromptCostPer1KTokens() int64       { return 0 }
+func (v *virtualModelAsLLMModel) CachedPromptCostPer1KTokens() int64 { return 0 }
+func (v *virtualModelAsLLMModel) CompletionCostPer1KTokens() int64   { return 0 }
 func (v *virtualModelAsLLMModel) ContextWindow() int64             { return 0 }
 func (v *virtualModelAsLLMModel) OutputWindow() int64              { return 0 }
 func (v *virtualModelAsLLMModel) ActiveParams() int64              { return 0 }

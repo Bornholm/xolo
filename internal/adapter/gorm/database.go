@@ -42,6 +42,19 @@ func createGetDatabase(db *gorm.DB) func(ctx context.Context) (*gorm.DB, error) 
 						return tx.Migrator().DropTable("personal_virtual_models")
 					},
 				},
+				{
+					// Add cached token columns for prompt caching support.
+					ID: "202606080001",
+					Migrate: func(tx *gorm.DB) error {
+						return tx.AutoMigrate(&LLMModel{}, &UsageRecord{})
+					},
+					Rollback: func(tx *gorm.DB) error {
+						if err := tx.Migrator().DropColumn(&LLMModel{}, "cached_prompt_cost_per1_k_tokens"); err != nil {
+							return err
+						}
+						return tx.Migrator().DropColumn(&UsageRecord{}, "cached_tokens")
+					},
+				},
 			})
 
 			m.InitSchema(func(tx *gorm.DB) error {

@@ -18,6 +18,7 @@ type UsageRecord struct {
 	ResolvedModelName string `gorm:""`      // actual model used when virtual model was resolved
 	AuthTokenID       string `gorm:"index"` // empty = web session
 	PromptTokens      int
+	CachedTokens      int
 	CompletionTokens  int
 	TotalTokens       int
 	Cost              int64  // microcents, frozen at recording time
@@ -39,6 +40,7 @@ func (w *wrappedUsageRecord) ModelID() model.LLMModelID    { return model.LLMMod
 func (w *wrappedUsageRecord) ProxyModelName() string       { return w.r.ProxyModelName }
 func (w *wrappedUsageRecord) AuthTokenID() string          { return w.r.AuthTokenID }
 func (w *wrappedUsageRecord) PromptTokens() int            { return w.r.PromptTokens }
+func (w *wrappedUsageRecord) CachedTokens() int            { return w.r.CachedTokens }
 func (w *wrappedUsageRecord) CompletionTokens() int        { return w.r.CompletionTokens }
 func (w *wrappedUsageRecord) TotalTokens() int             { return w.r.TotalTokens }
 func (w *wrappedUsageRecord) Cost() int64                  { return w.r.Cost }
@@ -60,6 +62,7 @@ func fromUsageRecord(r model.UsageRecord) *UsageRecord {
 		ResolvedModelName: r.ResolvedModelName(),
 		AuthTokenID:       r.AuthTokenID(),
 		PromptTokens:      r.PromptTokens(),
+		CachedTokens:      r.CachedTokens(),
 		CompletionTokens:  r.CompletionTokens(),
 		TotalTokens:       r.TotalTokens(),
 		Cost:              r.Cost(),

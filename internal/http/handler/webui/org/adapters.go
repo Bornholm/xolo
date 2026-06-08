@@ -48,8 +48,9 @@ type updatedLLMModelAdapter struct {
 	realModel                 string
 	description               string
 	enabled                   bool
-	promptCostPer1KTokens     int64
-	completionCostPer1KTokens int64
+	promptCostPer1KTokens       int64
+	cachedPromptCostPer1KTokens int64
+	completionCostPer1KTokens   int64
 	contextWindow             int64
 	outputWindow              int64
 	activeParams              int64
@@ -69,6 +70,12 @@ func (m *updatedLLMModelAdapter) RealModel() string            { return m.realMo
 func (m *updatedLLMModelAdapter) Description() string          { return m.description }
 func (m *updatedLLMModelAdapter) Enabled() bool                { return m.enabled }
 func (m *updatedLLMModelAdapter) PromptCostPer1KTokens() int64 { return m.promptCostPer1KTokens }
+func (m *updatedLLMModelAdapter) CachedPromptCostPer1KTokens() int64 {
+	if m.cachedPromptCostPer1KTokens == 0 {
+		return m.promptCostPer1KTokens
+	}
+	return m.cachedPromptCostPer1KTokens
+}
 func (m *updatedLLMModelAdapter) CompletionCostPer1KTokens() int64 {
 	return m.completionCostPer1KTokens
 }

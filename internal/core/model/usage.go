@@ -24,6 +24,7 @@ type UsageRecord interface {
 	ProxyModelName() string
 	AuthTokenID() string // empty = web session call
 	PromptTokens() int
+	CachedTokens() int
 	CompletionTokens() int
 	TotalTokens() int
 	Cost() int64      // microcents, frozen at recording time
@@ -45,6 +46,7 @@ type BaseUsageRecord struct {
 	resolvedModelName string
 	authTokenID       string
 	promptTokens      int
+	cachedTokens      int
 	completionTokens  int
 	totalTokens       int
 	cost              int64
@@ -61,6 +63,7 @@ func (r *BaseUsageRecord) ModelID() LLMModelID          { return r.modelID }
 func (r *BaseUsageRecord) ProxyModelName() string       { return r.proxyModelName }
 func (r *BaseUsageRecord) AuthTokenID() string          { return r.authTokenID }
 func (r *BaseUsageRecord) PromptTokens() int            { return r.promptTokens }
+func (r *BaseUsageRecord) CachedTokens() int            { return r.cachedTokens }
 func (r *BaseUsageRecord) CompletionTokens() int        { return r.completionTokens }
 func (r *BaseUsageRecord) TotalTokens() int             { return r.totalTokens }
 func (r *BaseUsageRecord) Cost() int64                  { return r.cost }
@@ -75,7 +78,7 @@ var _ UsageRecord = &BaseUsageRecord{}
 func NewUsageRecord(
 	userID UserID, applicationID ApplicationID, orgID OrgID, providerID ProviderID, modelID LLMModelID,
 	proxyModelName, authTokenID string,
-	promptTokens, completionTokens int,
+	promptTokens, cachedTokens, completionTokens int,
 	cost int64,
 	currency string,
 	resolvedModelName string,
@@ -92,6 +95,7 @@ func NewUsageRecord(
 		resolvedModelName: resolvedModelName,
 		authTokenID:       authTokenID,
 		promptTokens:      promptTokens,
+		cachedTokens:      cachedTokens,
 		completionTokens:  completionTokens,
 		totalTokens:       total,
 		cost:              cost,

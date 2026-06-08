@@ -567,6 +567,7 @@ func (h *Handler) createModel(w http.ResponseWriter, r *http.Request) {
 		parseCostField(r.FormValue("prompt_cost")),
 		parseCostField(r.FormValue("completion_cost")),
 	)
+	m.SetCachedPromptCostPer1KTokens(parseCostField(r.FormValue("cached_prompt_cost")))
 	m.SetContextWindow(parseIntField(r.FormValue("context_window")))
 	m.SetOutputWindow(parseIntField(r.FormValue("output_window")))
 	m.SetActiveParams(parseActiveParamsField(r.FormValue("active_params")))
@@ -716,8 +717,9 @@ func (h *Handler) updateModel(w http.ResponseWriter, r *http.Request) {
 		realModel:                 r.FormValue("real_model"),
 		description:               r.FormValue("description"),
 		enabled:                   r.FormValue("enabled") == "on",
-		promptCostPer1KTokens:     parseCostField(r.FormValue("prompt_cost")),
-		completionCostPer1KTokens: parseCostField(r.FormValue("completion_cost")),
+		promptCostPer1KTokens:       parseCostField(r.FormValue("prompt_cost")),
+		cachedPromptCostPer1KTokens: parseCostField(r.FormValue("cached_prompt_cost")),
+		completionCostPer1KTokens:   parseCostField(r.FormValue("completion_cost")),
 		contextWindow:             parseIntField(r.FormValue("context_window")),
 		outputWindow:              parseIntField(r.FormValue("output_window")),
 		activeParams:              parseActiveParamsField(r.FormValue("active_params")),

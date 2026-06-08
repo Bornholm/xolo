@@ -84,6 +84,7 @@ func (t *XoloUsageTracker) PostResponse(ctx context.Context, req *genaiProxy.Pro
 	}
 
 	promptTokens := res.TokensUsed.PromptTokens
+	cachedTokens := res.TokensUsed.CachedTokens
 	completionTokens := res.TokensUsed.CompletionTokens
 
 	metrics.ChatCompletionRequests.With(prometheus.Labels{
@@ -98,7 +99,9 @@ func (t *XoloUsageTracker) PostResponse(ctx context.Context, req *genaiProxy.Pro
 		metrics.LabelOrg: string(orgID),
 	}).Add(float64(promptTokens))
 
-	providerCost := (int64(promptTokens) * llmModel.PromptCostPer1KTokens() / 1000) +
+	nonCachedPrompt := promptTokens - cachedTokens
+	providerCost := (int64(nonCachedPrompt) * llmModel.PromptCostPer1KTokens() / 1000) +
+		(int64(cachedTokens) * llmModel.CachedPromptCostPer1KTokens() / 1000) +
 		(int64(completionTokens) * llmModel.CompletionCostPer1KTokens() / 1000)
 
 	providerCurrency := p.Currency()
@@ -132,6 +135,7 @@ func (t *XoloUsageTracker) PostResponse(ctx context.Context, req *genaiProxy.Pro
 		originalModel,
 		authTokenID,
 		promptTokens,
+		cachedTokens,
 		completionTokens,
 		recordCost,
 		recordCurrency,

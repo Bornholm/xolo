@@ -166,6 +166,7 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 	proxyServer := proxy.NewServer(
 		proxy.WithAuthExtractor(proxyAdapter.XoloAuthExtractor()),
 		proxy.WithHook(proxyAdapter.NewXoloMetricsHook()),
+		proxy.WithHook(&proxyAdapter.SessionIDHook{}),
 		proxy.WithHook(pipelineHookAdapter),
 		proxy.WithHook(orgModelRouter),
 		proxy.WithHook(proxyAdapter.NewXoloQuotaEnforcer(quotaService, quotaStore, usageStore, providerStore)),
