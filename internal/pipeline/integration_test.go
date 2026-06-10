@@ -417,6 +417,58 @@ func TestPipeline_ChainedVirtualModels(t *testing.T) {
 	}
 }
 
+// ─────────────────────────────────────────
+// Test: FinalMessagesJSON propagation from a plugin's modified_messages_json
+// ─────────────────────────────────────────
+
+func TestPipeline_FinalMessagesJSON(t *testing.T) {
+	const modifiedMessages = `[{"role":"system","content":"injected"},{"role":"user","content":"hi"}]`
+
+	rewriterDesc := &proto.PluginDescriptor{
+		Name:         "message-rewriter",
+		Capabilities: []proto.PluginDescriptor_Capability{proto.PluginDescriptor_PRE_REQUEST},
+	}
+	rewriterClient := &FakeXoloPluginClient{
+		preRequestFn: func(_ context.Context, _ *proto.PreRequestInput) (*proto.PreRequestOutput, error) {
+			return &proto.PreRequestOutput{Allowed: true, ModifiedMessagesJson: modifiedMessages}, nil
+		},
+	}
+
+	clients := map[string]proto.XoloPluginClient{"message-rewriter": rewriterClient}
+	descs := map[string]*proto.PluginDescriptor{"message-rewriter": rewriterDesc}
+
+	resolver := &FakeModelResolver{clients: map[string]*FakeLLMClient{
+		"org/claude": {response: "ok"},
+	}}
+
+	eng := buildEngine(resolver, &FakeVirtualModelStore{}, clients, descs)
+
+	graph := &model.PipelineGraph{
+		Nodes: []model.PipelineNode{
+			{ID: "gen", Type: model.NodeTypeGenerator},
+			{ID: "rewriter", Type: model.NodeTypePlugin, Data: mustJSON(model.PluginNodeData{PluginName: "message-rewriter"})},
+			{ID: "mdl", Type: model.NodeTypeModel, Data: mustJSON(model.ModelNodeData{ProxyName: "org/claude"})},
+			{ID: "sink", Type: model.NodeTypeSink},
+		},
+		Edges: []model.PipelineEdge{
+			{ID: "e1", Source: "gen", SourcePort: "request", Target: "rewriter", TargetPort: "request"},
+			{ID: "e2", Source: "gen", SourcePort: "request", Target: "mdl", TargetPort: "request"},
+			{ID: "e3", Source: "mdl", SourcePort: "response", Target: "sink", TargetPort: "response"},
+		},
+	}
+
+	ec := buildEC()
+	ec.MessagesJSON = `[{"role":"user","content":"<system-reminder>foo</system-reminder>hi"}]`
+
+	exec, err := eng.RunForward(context.Background(), graph, ec)
+	if err != nil {
+		t.Fatalf("RunForward failed: %v", err)
+	}
+	if exec.FinalMessagesJSON != modifiedMessages {
+		t.Errorf("FinalMessagesJSON = %q, want %q", exec.FinalMessagesJSON, modifiedMessages)
+	}
+}
+
 func TestPipeline_CycleDetected(t *testing.T) {
 	vmA := model.NewVirtualModel("test-org", "a", "vm A")
 	vmAID := vmA.ID()

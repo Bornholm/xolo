@@ -29,6 +29,11 @@ type ForwardExecution struct {
 	ResolvedModelID model.LLMModelID
 	// ExecutedNodes is the ordered list of nodes that ran (for backward pass).
 	ExecutedNodes []ExecutedNode
+	// FinalMessagesJSON is the messages array as it stood after all executed
+	// nodes ran, taking into account any "messages_json" output value
+	// produced by plugin nodes (e.g. modified_messages_json). It defaults to
+	// ec.MessagesJSON when no node modified the messages.
+	FinalMessagesJSON string
 }
 
 // ExecutedNode pairs a node with the opaque state returned by its Forward call.
@@ -51,6 +56,7 @@ func (e *Engine) RunForward(ctx context.Context, graph *model.PipelineGraph, ec 
 
 	vc := newValueContext()
 	var executed []ExecutedNode
+	currentMessagesJSON := ec.MessagesJSON
 
 	// Seed the generator node's output.
 	for _, node := range graph.Nodes {
@@ -87,13 +93,18 @@ func (e *Engine) RunForward(ctx context.Context, graph *model.PipelineGraph, ec 
 			vc.Set(node.ID, port, val)
 		}
 
+		if msgs, ok := result.OutputValues["messages_json"].(string); ok && msgs != "" {
+			currentMessagesJSON = msgs
+		}
+
 		// Terminal: model node resolved the LLM client.
 		if result.ResolvedClient != nil {
 			return &ForwardExecution{
-				ResolvedClient:  result.ResolvedClient,
-				ResolvedModel:   result.ResolvedModel,
-				ResolvedModelID: result.ResolvedModelID,
-				ExecutedNodes:   executed,
+				ResolvedClient:    result.ResolvedClient,
+				ResolvedModel:     result.ResolvedModel,
+				ResolvedModelID:   result.ResolvedModelID,
+				ExecutedNodes:     executed,
+				FinalMessagesJSON: currentMessagesJSON,
 			}, nil
 		}
 	}

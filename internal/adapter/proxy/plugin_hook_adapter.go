@@ -146,6 +146,12 @@ func (a *PipelineHookAdapter) PreRequest(ctx context.Context, req *genaiProxy.Pr
 		slog.String("model", req.Model),
 		slog.String("resolvedModel", forwardExec.ResolvedModel))
 
+	// If a pipeline node (e.g. a PRE_REQUEST plugin) returned a modified
+	// messages array, apply it to the actual LLM request by overriding
+	// req.ChatOptions. ChatOptions is normally fixed before hooks run, but
+	// genai/proxy re-reads it after RunPreRequest, so this is the last word.
+	applyModifiedMessages(ctx, req, ec, forwardExec)
+
 	// Store the execution result for ResolveModel.
 	req.Metadata[metaPipelineExecution] = forwardExec
 	return nil, nil
@@ -312,6 +318,34 @@ func (a *PipelineHookAdapter) buildEC(ctx context.Context, req *genaiProxy.Proxy
 		VisitedVMs:      map[model.VirtualModelID]struct{}{vm.ID(): {}},
 		PersonalVMStore: a.personalVMStore,
 	}
+}
+
+// applyModifiedMessages overrides req.ChatOptions with the messages produced
+// by the pipeline's forward pass, if a node modified them. It converts the
+// final messages JSON back into []llm.Message according to the wire format
+// of the incoming request (Anthropic Messages vs. OpenAI chat completions),
+// and appends llm.WithMessages to req.ChatOptions, which fully replaces
+// opts.Messages and is applied last by genai/proxy.
+func applyModifiedMessages(ctx context.Context, req *genaiProxy.ProxyRequest, ec pipeline.ExecutionContext, forwardExec *pipeline.ForwardExecution) {
+	if forwardExec.FinalMessagesJSON == "" || forwardExec.FinalMessagesJSON == ec.MessagesJSON {
+		return
+	}
+
+	var convertedMsgs []llm.Message
+	var convErr error
+	if req.Type == genaiProxy.RequestTypeMessage {
+		convertedMsgs, convErr = genaiProxy.ConvertAnthropicMessagesJSON(json.RawMessage(forwardExec.FinalMessagesJSON))
+	} else {
+		convertedMsgs, convErr = genaiProxy.ConvertOpenAIMessagesJSON(json.RawMessage(forwardExec.FinalMessagesJSON))
+	}
+	if convErr != nil {
+		slog.WarnContext(ctx, "pipeline: failed to apply modified messages, ignoring",
+			slog.String("model", req.Model),
+			slog.Any("error", convErr))
+		return
+	}
+
+	req.ChatOptions = append(req.ChatOptions, llm.WithMessages(convertedMsgs...))
 }
 
 // extractMessagesJSON extracts the "messages" JSON array from a chat completions request body.
