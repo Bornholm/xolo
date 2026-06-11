@@ -189,6 +189,13 @@ templ ModelsPage(vmodel ModelsPageVModel) {
 								</summary>
 								<pre class="overflow-x-auto border-t bg-muted px-4 py-3 text-xs font-mono leading-relaxed">{ openCodeConfigExample(common.BaseURLString(ctx, common.WithPath("/api/v1")), vmodel.AllModelUsages) }</pre>
 							</details>
+							<details class="group rounded-md border">
+								<summary class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium select-none">
+									@icon.Terminal(icon.Props{Class: "h-4 w-4 shrink-0"})
+									Claude Code · variables d'environnement
+								</summary>
+								<pre class="overflow-x-auto border-t bg-muted px-4 py-3 text-xs font-mono leading-relaxed">{ claudeCodeExample(common.BaseURLString(ctx, common.WithPath("/api"))) }</pre>
+							</details>
 						</div>
 					</div>
 				}
@@ -220,6 +227,16 @@ response = client.chat.completions.create(
     messages=[{"role": "user", "content": "Bonjour !"}],
 )
 print(response.choices[0].message.content)`
+}
+
+func claudeCodeExample(baseURL string) string {
+	return `export ANTHROPIC_BASE_URL="` + baseURL + `"
+export ANTHROPIC_AUTH_TOKEN="<clé-api>"
+export ANTHROPIC_MODEL="<organisation>/<modèle>"
+export ANTHROPIC_SMALL_FAST_MODEL="<organisation>/<modèle>"
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+
+claude`
 }
 
 func openCodeConfigExample(baseURL string, modelUsages []ModelUsage) string {
