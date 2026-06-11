@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"maps"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 
@@ -183,6 +185,10 @@ func (p *Plugin) PreRequest(ctx context.Context, in *proto.PreRequestInput) (*pr
 		}
 	}
 
+	// Inject an instruction asking the LLM to keep placeholder tokens verbatim,
+	// so they can be deanonymized in the response.
+	filtered = injectPlaceholderInstruction(filtered, session.Mapping, cfg)
+
 	// Serialize anonymized+filtered messages.
 	modifiedMessagesJSON, err := json.Marshal(filtered)
 	if err != nil {
@@ -249,6 +255,74 @@ func (p *Plugin) PostResponse(_ context.Context, in *proto.PostResponseInput) (*
 	}
 
 	return &proto.PostResponseOutput{ModifiedResponseContent: restored}, nil
+}
+
+// injectPlaceholderInstruction prepends an instruction to the conversation's
+// system message (or inserts a new one) telling the LLM to keep the
+// pseudonymization placeholder tokens verbatim, so they can be restored in
+// PostResponse. Returns messages unchanged if there is nothing to instruct
+// about (no entities anonymized, or the strategy doesn't produce stable
+// reusable tokens).
+func injectPlaceholderInstruction(messages []map[string]any, mapping map[string]string, cfg Config) []map[string]any {
+	if !cfg.InjectInstruction || len(mapping) == 0 {
+		return messages
+	}
+	if cfg.Strategy == "redact" {
+		// Redacted blocks (████) carry no identifying token to preserve.
+		return messages
+	}
+
+	instruction := buildInstructionText(mapping, cfg.Language)
+
+	for i, msg := range messages {
+		role, _ := msg["role"].(string)
+		if role != "system" {
+			continue
+		}
+		content, ok := msg["content"].(string)
+		if !ok {
+			// Non-string system content (parts array): insert a new system message instead.
+			break
+		}
+		updated := make(map[string]any, len(msg))
+		maps.Copy(updated, msg)
+		updated["content"] = instruction + "\n\n" + content
+		messages[i] = updated
+		return messages
+	}
+
+	systemMsg := map[string]any{"role": "system", "content": instruction}
+	return append([]map[string]any{systemMsg}, messages...)
+}
+
+// buildInstructionText builds the system instruction listing the placeholder
+// tokens present in mapping, in the conversation's language.
+func buildInstructionText(mapping map[string]string, language string) string {
+	placeholders := make([]string, 0, len(mapping))
+	for placeholder := range mapping {
+		placeholders = append(placeholders, placeholder)
+	}
+	sort.Strings(placeholders)
+	examples := strings.Join(placeholders, ", ")
+
+	if language == "en" {
+		return fmt.Sprintf(
+			"IMPORTANT: some personal or sensitive information in this conversation has been replaced "+
+				"by placeholder tokens such as %s. These tokens will be automatically restored after your "+
+				"reply. You MUST reproduce these tokens exactly as written (same brackets, same case, same "+
+				"numbering), without translating, modifying, merging, splitting, or inventing new ones.",
+			examples,
+		)
+	}
+
+	return fmt.Sprintf(
+		"IMPORTANT : certaines informations personnelles ou sensibles de cette conversation ont été "+
+			"remplacées par des jetons de substitution tels que %s. Ces jetons seront automatiquement "+
+			"restitués après ta réponse. Tu DOIS recopier ces jetons strictement à l'identique (mêmes "+
+			"crochets, même casse, même numérotation), sans les traduire, les modifier, les fusionner, "+
+			"les scinder, ni en inventer de nouveaux.",
+		examples,
+	)
 }
 
 // pluginState is the opaque blob stored in node_state between PreRequest and PostResponse.

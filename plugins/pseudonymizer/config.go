@@ -102,6 +102,12 @@ const configSchemaJSON = `{
       "title": "Patterns secrets intégrés",
       "description": "Détecte automatiquement JWT, clés API (OpenAI, AWS, GitHub, Slack…) via regex.",
       "default": true
+    },
+    "inject_instruction": {
+      "type": "boolean",
+      "title": "Instruction de préservation des jetons",
+      "description": "Ajoute une instruction système demandant au LLM de recopier les jetons de substitution (ex: [PERSON_1]) sans les modifier. Ignoré pour la stratégie 'redact'.",
+      "default": true
     }
   }
 }`
@@ -125,6 +131,7 @@ type Config struct {
 	NameCompletion        bool                `json:"name_completion"`
 	BuiltinRegexPatterns  bool                `json:"builtin_regex_patterns"`
 	BuiltinSecretPatterns bool                `json:"builtin_secret_patterns"`
+	InjectInstruction     bool                `json:"inject_instruction"`
 }
 
 func parseConfig(configJSON string) (Config, error) {
@@ -151,6 +158,7 @@ func defaultConfig() Config {
 		MinConfidence:         0.30,
 		BuiltinRegexPatterns:  true,
 		BuiltinSecretPatterns: true,
+		InjectInstruction:     true,
 	}
 }
 

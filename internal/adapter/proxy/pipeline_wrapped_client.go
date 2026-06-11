@@ -84,13 +84,36 @@ func (c *PipelineWrappedClient) ChatCompletionStream(ctx context.Context, funcs 
 		}
 
 		content := buf.String()
-		_, backErr := c.engine.RunBackward(ctx, c.forwardExec, content, lastTokens, false)
+		modified, backErr := c.engine.RunBackward(ctx, c.forwardExec, content, lastTokens, false)
 		if backErr != nil {
 			slog.WarnContext(ctx, "pipeline backward pass (stream) failed", slog.Any("error", backErr))
+			modified = content
 		}
-		// Re-emit original chunks unchanged (stream modification is complex, deferred to v2).
+
+		if modified == content {
+			for _, ch := range chunks {
+				outCh <- ch
+			}
+			return
+		}
+
+		// Re-emit chunks with the modified content: the full modified text is
+		// placed on the first delta chunk carrying content, and subsequent
+		// content deltas are emptied. Other chunk types (usage, tool calls,
+		// reasoning, complete…) are passed through unchanged.
+		replaced := false
 		for _, ch := range chunks {
-			outCh <- ch
+			d := ch.Delta()
+			if d == nil || d.Content() == "" {
+				outCh <- ch
+				continue
+			}
+			if !replaced {
+				outCh <- &contentOverrideChunk{StreamChunk: ch, delta: &contentOverrideDelta{StreamDelta: d, content: modified}}
+				replaced = true
+				continue
+			}
+			outCh <- &contentOverrideChunk{StreamChunk: ch, delta: &contentOverrideDelta{StreamDelta: d, content: ""}}
 		}
 	}()
 
@@ -148,4 +171,37 @@ func (m *modifiedMessage) Attachments() []llm.Attachment {
 	return nil
 }
 
+// contentOverrideChunk replaces the Delta() of a StreamChunk while delegating
+// everything else (type, usage, error, completion flag).
+type contentOverrideChunk struct {
+	llm.StreamChunk
+	delta llm.StreamDelta
+}
+
+func (c *contentOverrideChunk) Delta() llm.StreamDelta { return c.delta }
+
+// contentOverrideDelta replaces the Content() of a StreamDelta while
+// delegating role, tool calls, reasoning and audio fields to the original.
+type contentOverrideDelta struct {
+	llm.StreamDelta
+	content string
+}
+
+func (d *contentOverrideDelta) Content() string { return d.content }
+
+func (d *contentOverrideDelta) Reasoning() string {
+	if r, ok := d.StreamDelta.(llm.ReasoningStreamDelta); ok {
+		return r.Reasoning()
+	}
+	return ""
+}
+
+func (d *contentOverrideDelta) ReasoningDetails() []llm.ReasoningDetail {
+	if r, ok := d.StreamDelta.(llm.ReasoningStreamDelta); ok {
+		return r.ReasoningDetails()
+	}
+	return nil
+}
+
 var _ llm.Client = (*PipelineWrappedClient)(nil)
+var _ llm.ReasoningStreamDelta = (*contentOverrideDelta)(nil)
