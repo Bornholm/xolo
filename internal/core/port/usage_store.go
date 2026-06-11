@@ -41,6 +41,7 @@ type UsageAggregate struct {
 	TotalCost        int64  // microcents, in org's currency
 	Currency         string // org's currency
 	PromptTokens     int64
+	CachedTokens     int64
 	CompletionTokens int64
 	TotalTokens      int64
 }

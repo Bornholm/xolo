@@ -53,13 +53,14 @@ func (s *Store) AggregateUsage(ctx context.Context, filter port.UsageFilter) (*p
 		TotalRequests    int64
 		TotalCost        int64
 		PromptTokens     int64
+		CachedTokens     int64
 		CompletionTokens int64
 		TotalTokens      int64
 	}
 
 	err := s.withRetry(ctx, false, func(ctx context.Context, db *gorm.DB) error {
 		query := db.Model(&UsageRecord{}).
-			Select("COUNT(*) as total_requests, COALESCE(SUM(cost),0) as total_cost, COALESCE(SUM(prompt_tokens),0) as prompt_tokens, COALESCE(SUM(completion_tokens),0) as completion_tokens, COALESCE(SUM(total_tokens),0) as total_tokens")
+			Select("COUNT(*) as total_requests, COALESCE(SUM(cost),0) as total_cost, COALESCE(SUM(prompt_tokens),0) as prompt_tokens, COALESCE(SUM(cached_tokens),0) as cached_tokens, COALESCE(SUM(completion_tokens),0) as completion_tokens, COALESCE(SUM(total_tokens),0) as total_tokens")
 		query = applyUsageFilter(query, filter)
 		return errors.WithStack(query.Scan(&counts).Error)
 	}, sqlite3.BUSY, sqlite3.LOCKED)
@@ -83,6 +84,7 @@ func (s *Store) AggregateUsage(ctx context.Context, filter port.UsageFilter) (*p
 		TotalCost:        counts.TotalCost,
 		Currency:         currency,
 		PromptTokens:     counts.PromptTokens,
+		CachedTokens:     counts.CachedTokens,
 		CompletionTokens: counts.CompletionTokens,
 		TotalTokens:      counts.TotalTokens,
 	}, nil

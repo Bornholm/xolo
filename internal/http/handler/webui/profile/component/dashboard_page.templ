@@ -319,6 +319,23 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 							<p class="text-3xl font-bold">{ fmt.Sprintf("%d", vmodel.Aggregate.TotalTokens) }</p>
 						}
 					}
+					if vmodel.Aggregate.CachedTokens > 0 {
+						@card.Card() {
+							@card.Header() {
+								@card.Title() {
+									Tokens en cache
+								}
+							}
+							@card.Content() {
+								<p class="text-3xl font-bold">{ fmt.Sprintf("%d", vmodel.Aggregate.CachedTokens) }</p>
+								if vmodel.Aggregate.PromptTokens > 0 {
+									<p class="text-sm text-muted-foreground mt-1">
+										{ fmt.Sprintf("%.0f%% des tokens prompt", float64(vmodel.Aggregate.CachedTokens)/float64(vmodel.Aggregate.PromptTokens)*100) }
+									</p>
+								}
+							}
+						}
+					}
 					if vmodel.TotalEnergyWh > 0 {
 						@card.Card() {
 							@card.Header() {
@@ -501,6 +518,11 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 										}
 										@table.Cell() {
 											{ fmt.Sprintf("%d", dr.Record.PromptTokens()) }
+											if dr.Record.CachedTokens() > 0 {
+												<span class="block text-xs text-muted-foreground">
+													{ fmt.Sprintf("dont %d en cache", dr.Record.CachedTokens()) }
+												</span>
+											}
 										}
 										@table.Cell() {
 											{ fmt.Sprintf("%d", dr.Record.CompletionTokens()) }

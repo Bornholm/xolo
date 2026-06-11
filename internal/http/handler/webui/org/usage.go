@@ -592,7 +592,7 @@ func (h *Handler) serveOrgUsageCSV(w http.ResponseWriter, r *http.Request, org m
 	writer := csv.NewWriter(w)
 	defer writer.Flush()
 
-	writer.Write([]string{"Utilisateur", "Type", "Modèle", "Tokens prompt", "Tokens completion", "Coût", "Devise", "Énergie (Wh)", "CO₂ (g)", "Date"})
+	writer.Write([]string{"Utilisateur", "Type", "Modèle", "Tokens prompt", "Tokens cache", "Tokens completion", "Coût", "Devise", "Énergie (Wh)", "CO₂ (g)", "Date"})
 
 	for _, rec := range records {
 		var ownerName string
@@ -642,6 +642,7 @@ func (h *Handler) serveOrgUsageCSV(w http.ResponseWriter, r *http.Request, org m
 			ownerType,
 			modelName,
 			strconv.Itoa(rec.PromptTokens()),
+			strconv.Itoa(rec.CachedTokens()),
 			strconv.Itoa(rec.CompletionTokens()),
 			fmt.Sprintf("%.6f", cost),
 			rec.Currency(),
