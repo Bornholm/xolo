@@ -1,24 +1,27 @@
 package component
 
 import (
+	"strconv"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
 )
 
 // ── Providers Page ────────────────────────────────────────────────────────────
 templ ProvidersPage(vmodel ProvidersPageVModel) {
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Fournisseurs — "+vmodel.Org.Name())) {
 		<div class="space-y-6">
-			<div class="flex items-center justify-between">
-				<h1 class="text-2xl font-semibold">Fournisseurs LLM</h1>
-				@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/new"))}) {
+			<div class="flex items-start justify-between gap-4">
+				<div>
+					<h1 class="text-2xl font-semibold">Fournisseurs</h1>
+					<p class="text-sm text-muted-foreground">Endpoints LLM actifs pour cette organisation.</p>
+				</div>
+				@button.Button(button.Props{Size: button.SizeSm, Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/new"))}) {
 					@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
-					Ajouter
+					Ajouter un fournisseur
 				}
 			</div>
 			if vmodel.Success != "" {
@@ -33,61 +36,65 @@ templ ProvidersPage(vmodel ProvidersPageVModel) {
 					Aucun fournisseur. Ajoutez un fournisseur LLM pour commencer.
 				</div>
 			} else {
-				@card.Card() {
-					@card.Content() {
-						@table.Table() {
-							@table.Header() {
-								@table.Head() {
-									Nom
-								}
-								@table.Head() {
-									Type
-								}
-								@table.Head() {
-									Statut
-								}
-								@table.Head() {
-									Actions
-								}
-							}
-							@table.Body() {
-								for _, p := range vmodel.Providers {
-									@table.Row() {
-										@table.Cell() {
-											{ p.Name() }
-										}
-										@table.Cell() {
-											@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
-												{ p.Type() }
+				<div class="flex flex-col gap-3">
+					for _, p := range vmodel.Providers {
+						@card.Card() {
+							@card.Content(card.ContentProps{Class: "flex items-center gap-4"}) {
+								<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent">
+									@icon.Server(icon.Props{Size: 20, Class: "text-primary"})
+								</div>
+								<div class="flex-1 min-w-0">
+									<div class="flex items-center gap-2">
+										<span class="font-semibold">{ p.Name() }</span>
+										if p.Active() {
+											@badge.Badge(badge.Props{Variant: badge.VariantDefault}) {
+												Actif
+											}
+										} else {
+											@badge.Badge(badge.Props{Variant: badge.VariantOutline}) {
+												Inactif
 											}
 										}
-										@table.Cell() {
-											if p.Active() {
-												@badge.Badge(badge.Props{Variant: badge.VariantDefault}) {
-													Actif
-												}
-											} else {
-												@badge.Badge(badge.Props{Variant: badge.VariantDestructive}) {
-													Inactif
-												}
-											}
+										@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
+											{ p.Type() }
 										}
-										@table.Cell() {
-											<div class="flex gap-2">
-												@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(p.ID()), "/models")), Variant: button.VariantOutline, Size: button.SizeSm}) {
-													Modèles
-												}
-												@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(p.ID()), "/edit")), Variant: button.VariantOutline, Size: button.SizeSm}) {
-													Modifier
-												}
-											</div>
-										}
+									</div>
+									<div class="text-xs text-muted-foreground font-mono mt-0.5 truncate">{ p.BaseURL() }</div>
+								</div>
+								{{ count := vmodel.ModelCounts[p.ID()] }}
+								<div class="text-sm text-muted-foreground shrink-0">
+									if count == 1 {
+										1 modèle
+									} else {
+										{ strconv.Itoa(count) } modèles
 									}
-								}
+								</div>
+								<div class="flex gap-1 shrink-0">
+									@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(p.ID()), "/models")), Variant: button.VariantOutline, Size: button.SizeSm}) {
+										Modèles
+									}
+									@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(p.ID()), "/edit")), Variant: button.VariantOutline, Size: button.SizeSm}) {
+										@icon.Pencil(icon.Props{Size: 14, Class: "mr-2"})
+										Configurer
+									}
+									@button.Button(button.Props{
+										Variant: button.VariantGhost,
+										Size:    button.SizeIcon,
+										Class:   "text-destructive hover:text-destructive",
+										Attributes: templ.Attributes{
+											"type":     "button",
+											"title":    "Supprimer",
+											"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(p.ID()))),
+											"onclick":  "if(confirm('Supprimer ce fournisseur ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
+										},
+									}) {
+										@icon.Trash2(icon.Props{Size: 15})
+									}
+								</div>
 							}
 						}
 					}
-				}
+				</div>
 			}
 		</div>
 	}

@@ -44,10 +44,22 @@ func (h *Handler) getProvidersPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	models, err := h.providerStore.ListLLMModels(ctx, org.ID())
+	if err != nil {
+		slog.ErrorContext(ctx, "could not list models", slogx.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	modelCounts := make(map[model.ProviderID]int, len(providers))
+	for _, m := range models {
+		modelCounts[m.ProviderID()]++
+	}
+
 	vmodel := component.ProvidersPageVModel{
-		Org:       org,
-		Providers: providers,
-		Success:   r.URL.Query().Get("success"),
+		Org:         org,
+		Providers:   providers,
+		ModelCounts: modelCounts,
+		Success:     r.URL.Query().Get("success"),
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:          user,
 			SelectedItem:  "org-" + orgSlug + "-providers",
@@ -710,21 +722,21 @@ func (h *Handler) updateModel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	updated := &updatedLLMModelAdapter{
-		id:                        existing.ID(),
-		providerID:                existing.ProviderID(),
-		orgID:                     existing.OrgID(),
-		proxyName:                 proxyName,
-		realModel:                 r.FormValue("real_model"),
-		description:               r.FormValue("description"),
-		enabled:                   r.FormValue("enabled") == "on",
+		id:                          existing.ID(),
+		providerID:                  existing.ProviderID(),
+		orgID:                       existing.OrgID(),
+		proxyName:                   proxyName,
+		realModel:                   r.FormValue("real_model"),
+		description:                 r.FormValue("description"),
+		enabled:                     r.FormValue("enabled") == "on",
 		promptCostPer1KTokens:       parseCostField(r.FormValue("prompt_cost")),
 		cachedPromptCostPer1KTokens: parseCostField(r.FormValue("cached_prompt_cost")),
 		completionCostPer1KTokens:   parseCostField(r.FormValue("completion_cost")),
-		contextWindow:             parseIntField(r.FormValue("context_window")),
-		outputWindow:              parseIntField(r.FormValue("output_window")),
-		activeParams:              parseActiveParamsField(r.FormValue("active_params")),
-		tokensPerSecLow:           parseFloat64Field(r.FormValue("tokens_per_sec_low")),
-		tokensPerSecHigh:          parseFloat64Field(r.FormValue("tokens_per_sec_high")),
+		contextWindow:               parseIntField(r.FormValue("context_window")),
+		outputWindow:                parseIntField(r.FormValue("output_window")),
+		activeParams:                parseActiveParamsField(r.FormValue("active_params")),
+		tokensPerSecLow:             parseFloat64Field(r.FormValue("tokens_per_sec_low")),
+		tokensPerSecHigh:            parseFloat64Field(r.FormValue("tokens_per_sec_high")),
 		capabilities: model.ModelCapabilities{
 			Tools:      r.FormValue("cap_tools") == "on",
 			Vision:     r.FormValue("cap_vision") == "on",

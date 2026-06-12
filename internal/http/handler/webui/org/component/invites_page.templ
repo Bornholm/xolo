@@ -15,11 +15,14 @@ import (
 templ InvitesPage(vmodel InvitesPageVModel) {
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Invitations — "+vmodel.Org.Name())) {
 		<div class="space-y-6">
-			<div class="flex items-center justify-between">
-				<h1 class="text-2xl font-semibold">Invitations</h1>
-				@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/new"))}) {
+			<div class="flex items-start justify-between gap-4">
+				<div>
+					<h1 class="text-2xl font-semibold">Invitations</h1>
+					<p class="text-sm text-muted-foreground">Liens d'invitation en attente.</p>
+				</div>
+				@button.Button(button.Props{Size: button.SizeSm, Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/new"))}) {
 					@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
-					Créer un lien
+					Nouvelle invitation
 				}
 			</div>
 			if vmodel.NewURL != "" {
@@ -45,21 +48,18 @@ templ InvitesPage(vmodel InvitesPageVModel) {
 						@table.Table() {
 							@table.Header() {
 								@table.Head() {
-									Email cible
+									Destinataire / type
 								}
 								@table.Head() {
 									Rôle
 								}
 								@table.Head() {
-									Utilisations
+									Expire le
 								}
 								@table.Head() {
-									Expire
+									Usages
 								}
-								@table.Head() {
-									Statut
-								}
-								@table.Head() {
+								@table.Head(table.HeadProps{Class: "text-right"}) {
 									Actions
 								}
 							}
@@ -68,53 +68,64 @@ templ InvitesPage(vmodel InvitesPageVModel) {
 									@table.Row() {
 										@table.Cell() {
 											if inv.InviteeEmail() != nil {
-												{ *inv.InviteeEmail() }
+												<div class="font-medium">{ *inv.InviteeEmail() }</div>
+												<div class="text-xs text-muted-foreground">Invitation ciblée</div>
 											} else {
-												<span class="text-muted-foreground">Lien ouvert</span>
+												<div class="font-medium">Invitation ouverte</div>
+												<div class="text-xs text-muted-foreground">lien partagé</div>
 											}
 										}
 										@table.Cell() {
-											{ inv.Role() }
-										}
-										@table.Cell() {
-											if inv.MaxUses() != nil {
-												{ fmt.Sprintf("%d / %d", inv.UsesCount(), *inv.MaxUses()) }
-											} else {
-												{ fmt.Sprintf("%d / ∞", inv.UsesCount()) }
+											@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
+												{ roleLabel(inv.Role()) }
 											}
 										}
-										@table.Cell() {
+										@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
 											if inv.ExpiresAt() != nil {
 												{ inv.ExpiresAt().Format("2006-01-02") }
 											} else {
 												Jamais
 											}
 										}
-										@table.Cell() {
-											if inv.RevokedAt() != nil {
-												@badge.Badge(badge.Props{Variant: badge.VariantDestructive}) {
-													Révoqué
-												}
+										@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
+											if inv.MaxUses() != nil {
+												{ fmt.Sprintf("%d / %d", inv.UsesCount(), *inv.MaxUses()) }
 											} else {
-												@badge.Badge(badge.Props{Variant: badge.VariantDefault}) {
-													Actif
-												}
+												{ fmt.Sprintf("%d / ∞", inv.UsesCount()) }
 											}
 										}
-										@table.Cell() {
-											<div class="flex gap-2">
-												<a href={ templ.SafeURL(vmodel.BaseURL + "/join/" + string(inv.ID())) } target="_blank" class="text-sm underline">Lien</a>
+										@table.Cell(table.CellProps{Class: "text-right"}) {
+											<div class="inline-flex items-center gap-1">
+												if inv.RevokedAt() != nil {
+													@badge.Badge(badge.Props{Variant: badge.VariantDestructive, Class: "mr-1"}) {
+														Révoqué
+													}
+												}
+												@button.Button(button.Props{
+													Variant: button.VariantGhost,
+													Size:    button.SizeSm,
+													Attributes: templ.Attributes{
+														"type":     "button",
+														"data-url": vmodel.BaseURL + "/join/" + string(inv.ID()),
+														"onclick":  "navigator.clipboard.writeText(this.dataset.url)",
+													},
+												}) {
+													@icon.Copy(icon.Props{Size: 14, Class: "mr-2"})
+													Copier le lien
+												}
 												if inv.RevokedAt() == nil {
 													@button.Button(button.Props{
-														Variant: button.VariantDestructive,
-														Size:    button.SizeSm,
+														Variant: button.VariantGhost,
+														Size:    button.SizeIcon,
+														Class:   "text-destructive hover:text-destructive",
 														Attributes: templ.Attributes{
 															"type":     "button",
+															"title":    "Révoquer",
 															"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/", string(inv.ID()))),
 															"onclick":  "if(confirm('Révoquer cette invitation ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
 														},
 													}) {
-														Révoquer
+														@icon.Trash2(icon.Props{Size: 15})
 													}
 												}
 											</div>

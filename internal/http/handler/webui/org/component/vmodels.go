@@ -1,6 +1,7 @@
 package component
 
 import (
+	"strings"
 	"time"
 
 	"github.com/bornholm/xolo/internal/core/model"
@@ -27,9 +28,10 @@ type MembersPageVModel struct {
 
 type ProvidersPageVModel struct {
 	common.AppLayoutVModel
-	Org       model.Organization
-	Providers []model.Provider
-	Success   string
+	Org         model.Organization
+	Providers   []model.Provider
+	ModelCounts map[model.ProviderID]int
+	Success     string
 }
 
 type ProviderFormVModel struct {
@@ -162,4 +164,40 @@ type VirtualModelFormVModel struct {
 	Name         string
 	Description  string
 	Error        string
+}
+
+// roleLabel returns the display label for an organization role.
+func roleLabel(role string) string {
+	switch role {
+	case model.RoleOrgOwner:
+		return "Propriétaire"
+	case model.RoleOrgAdmin:
+		return "Administrateur"
+	default:
+		return "Utilisateur"
+	}
+}
+
+// initials returns the 1-2 letter initials used as an avatar fallback.
+func initials(name string) string {
+	fields := strings.FieldsFunc(name, func(r rune) bool {
+		switch r {
+		case ' ', '@', '.', '_', '-':
+			return true
+		default:
+			return false
+		}
+	})
+	if len(fields) == 0 {
+		return "?"
+	}
+	if len(fields) == 1 {
+		if len(fields[0]) >= 2 {
+			return strings.ToUpper(fields[0][:2])
+		}
+		return strings.ToUpper(fields[0])
+	}
+	first := fields[0][:1]
+	last := fields[len(fields)-1][:1]
+	return strings.ToUpper(first + last)
 }

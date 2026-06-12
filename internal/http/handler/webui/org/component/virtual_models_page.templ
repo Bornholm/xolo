@@ -1,19 +1,23 @@
 package component
 
 import (
+	"strconv"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/textarea"
 )
 
 templ VirtualModelsPage(vmodel VirtualModelsPageVModel) {
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Modèles virtuels — "+vmodel.Org.Name())) {
 		<div class="space-y-6">
-			<div class="flex items-center justify-between">
-				<h1 class="text-2xl font-semibold">Modèles virtuels</h1>
+			<div class="flex items-start justify-between gap-4">
+				<div>
+					<h1 class="text-2xl font-semibold">Modèles virtuels</h1>
+					<p class="text-sm text-muted-foreground">Pipelines de routage et de load-balancing composant plusieurs modèles.</p>
+				</div>
 				<div class="flex items-center gap-2">
 					<div class="hidden">
 						@input.Input(input.Props{
@@ -41,6 +45,7 @@ templ VirtualModelsPage(vmodel VirtualModelsPageVModel) {
 					</div>
 					@button.Button(button.Props{
 						Variant: button.VariantOutline,
+						Size:    button.SizeSm,
 						Attributes: templ.Attributes{
 							"onclick": "document.getElementById('vm-import-input').click()",
 							"type":    "button",
@@ -49,8 +54,10 @@ templ VirtualModelsPage(vmodel VirtualModelsPageVModel) {
 						Importer depuis un fichier
 					}
 					@button.Button(button.Props{
+						Size: button.SizeSm,
 						Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/new")),
 					}) {
+						@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
 						Nouveau modèle virtuel
 					}
 				</div>
@@ -85,75 +92,78 @@ templ VirtualModelsPage(vmodel VirtualModelsPageVModel) {
 					Aucun modèle virtuel configuré.
 				</div>
 			} else {
-				@card.Card() {
-					@card.Content() {
-						@table.Table() {
-							@table.Header() {
-								@table.Head() {
-									Nom
-								}
-								@table.Head() {
-									Description
-								}
-								@table.Head() {
-									Actions
-								}
-							}
-							@table.Body() {
-								for _, vm := range vmodel.VirtualModels {
-									@table.Row() {
-										@table.Cell() {
-											<code class="text-sm bg-muted px-2 py-1 rounded">{ vmodel.Org.Slug() }/{ vm.Name() }</code>
-										}
-										@table.Cell() {
-											<span class="text-muted-foreground">{ vm.Description() }</span>
-										}
-										@table.Cell() {
-											<div class="flex justify-end gap-2">
-												@button.Button(button.Props{
-													Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()), "/pipeline")),
-													Variant: button.VariantOutline,
-													Size:    button.SizeSm,
-												}) {
-													Configurer
-												}
-												@button.Button(button.Props{
-													Variant: button.VariantOutline,
-													Size:    button.SizeSm,
-													Attributes: templ.Attributes{
-														"type":            "button",
-														"data-export-url": vmodel.BaseURL + "/api/orgs/" + vmodel.Org.Slug() + "/virtual-models/" + string(vm.ID()) + "/export",
-														"data-vm-name":    vm.Name(),
-														"onclick":         `(async function(btn){try{var r=await fetch(btn.dataset.exportUrl);if(!r.ok){alert('Erreur export : '+await r.text());return;}var b=await r.blob();var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='model-'+btn.dataset.vmName.replace(/[\/\\:*?"<>|]/g,'-')+'.json';a.click();URL.revokeObjectURL(a.href);}catch(e){alert('Erreur : '+e);}})(this)`,
-													},
-												}) {
-													Exporter
-												}
-												@button.Button(button.Props{
-													Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()), "/edit")),
-													Variant: button.VariantOutline,
-													Size:    button.SizeSm,
-												}) {
-													Modifier
-												}
-												@button.Button(button.Props{
-													Attributes: map[string]any{
-														"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()))),
-														"onclick":  "if(confirm('Supprimer ce modèle virtuel ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
-													},
-													Variant: button.VariantDestructive,
-													Size:    button.SizeSm,
-												}) {
-													Supprimer
-												}
-											</div>
-										}
+				<div class="flex flex-col gap-3">
+					for _, vm := range vmodel.VirtualModels {
+						{{ nodeCount := 0 }}
+						if vm.Graph() != nil {
+							{{ nodeCount = len(vm.Graph().Nodes) }}
+						}
+						@card.Card() {
+							@card.Content(card.ContentProps{Class: "flex items-center gap-4"}) {
+								<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent">
+									@icon.Network(icon.Props{Size: 20, Class: "text-primary"})
+								</div>
+								<div class="flex-1 min-w-0">
+									<div class="font-semibold font-mono truncate">{ vmodel.Org.Slug() }/{ vm.Name() }</div>
+									if vm.Description() != "" {
+										<div class="text-sm text-muted-foreground mt-0.5 truncate">{ vm.Description() }</div>
 									}
-								}
+								</div>
+								<div class="text-sm text-muted-foreground shrink-0">
+									if nodeCount == 1 {
+										1 nœud
+									} else {
+										{ strconv.Itoa(nodeCount) } nœuds
+									}
+								</div>
+								<div class="flex gap-1 shrink-0">
+									@button.Button(button.Props{
+										Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()), "/pipeline")),
+										Variant: button.VariantOutline,
+										Size:    button.SizeSm,
+									}) {
+										@icon.Workflow(icon.Props{Size: 14, Class: "mr-2"})
+										Configurer
+									}
+									@button.Button(button.Props{
+										Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()), "/edit")),
+										Variant: button.VariantGhost,
+										Size:    button.SizeIcon,
+										Attributes: templ.Attributes{"title": "Modifier"},
+									}) {
+										@icon.Pencil(icon.Props{Size: 15})
+									}
+									@button.Button(button.Props{
+										Variant: button.VariantGhost,
+										Size:    button.SizeIcon,
+										Attributes: templ.Attributes{
+											"type":             "button",
+											"title":            "Exporter",
+											"data-export-url": vmodel.BaseURL + "/api/orgs/" + vmodel.Org.Slug() + "/virtual-models/" + string(vm.ID()) + "/export",
+											"data-vm-name":    vm.Name(),
+											"onclick":         `(async function(btn){try{var r=await fetch(btn.dataset.exportUrl);if(!r.ok){alert('Erreur export : '+await r.text());return;}var b=await r.blob();var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='model-'+btn.dataset.vmName.replace(/[\/\\:*?"<>|]/g,'-')+'.json';a.click();URL.revokeObjectURL(a.href);}catch(e){alert('Erreur : '+e);}})(this)`,
+										},
+									}) {
+										@icon.Download(icon.Props{Size: 15})
+									}
+									@button.Button(button.Props{
+										Variant: button.VariantGhost,
+										Size:    button.SizeIcon,
+										Class:   "text-destructive hover:text-destructive",
+										Attributes: templ.Attributes{
+											"type":     "button",
+											"title":    "Supprimer",
+											"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()))),
+											"onclick":  "if(confirm('Supprimer ce modèle virtuel ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
+										},
+									}) {
+										@icon.Trash2(icon.Props{Size: 15})
+									}
+								</div>
 							}
 						}
 					}
-				}
+				</div>
 			}
 		</div>
 	}

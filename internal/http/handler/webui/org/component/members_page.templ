@@ -4,6 +4,7 @@ import (
 	"strconv"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/avatar"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
@@ -16,14 +17,14 @@ import (
 templ MembersPage(vmodel MembersPageVModel) {
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Membres — "+vmodel.Org.Name())) {
 		<div class="space-y-6">
-			<div class="flex items-center justify-between">
+			<div class="flex items-start justify-between gap-4">
 				<div>
 					<h1 class="text-2xl font-semibold">Membres</h1>
-					<p class="text-sm text-muted-foreground">{ vmodel.Org.Name() }</p>
+					<p class="text-sm text-muted-foreground">Gérez les rôles et accès des membres de l'organisation.</p>
 				</div>
-				@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/new"))}) {
+				@button.Button(button.Props{Size: button.SizeSm, Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/new"))}) {
 					@icon.UserPlus(icon.Props{Class: "h-4 w-4 mr-2"})
-					Inviter
+					Inviter un membre
 				}
 			</div>
 			if vmodel.Success != "" {
@@ -43,15 +44,15 @@ templ MembersPage(vmodel MembersPageVModel) {
 						@table.Table() {
 							@table.Header() {
 								@table.Head() {
-									Utilisateur
-								}
-								@table.Head() {
-									Email
+									Membre
 								}
 								@table.Head() {
 									Rôle
 								}
 								@table.Head() {
+									Statut
+								}
+								@table.Head(table.HeadProps{Class: "text-right"}) {
 									Actions
 								}
 							}
@@ -59,38 +60,70 @@ templ MembersPage(vmodel MembersPageVModel) {
 								for _, m := range vmodel.Members {
 									@table.Row() {
 										@table.Cell() {
-											if m.User() != nil {
-												{ m.User().DisplayName() }
-											}
-										}
-										@table.Cell() {
-											if m.User() != nil {
-												{ m.User().Email() }
-											}
+											<div class="flex items-center gap-3">
+												@avatar.Avatar(avatar.Props{Class: "h-7 w-7"}) {
+													@avatar.Fallback(avatar.FallbackProps{Class: "bg-accent text-accent-foreground text-xs font-semibold"}) {
+														if m.User() != nil {
+															{ initials(m.User().DisplayName()) }
+														}
+													}
+												}
+												<div>
+													if m.User() != nil {
+														<div class="font-medium">{ m.User().DisplayName() }</div>
+														<div class="text-xs text-muted-foreground font-mono">{ m.User().Email() }</div>
+													}
+												</div>
+											</div>
 										}
 										@table.Cell() {
 											@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
-												{ m.Role() }
+												{ roleLabel(m.Role()) }
 											}
 										}
 										@table.Cell() {
-											@button.Button(button.Props{
-												Variant: button.VariantDestructive,
-												Size:    button.SizeSm,
-												Attributes: templ.Attributes{
-													"type":     "button",
-													"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members/", string(m.ID()))),
-													"onclick":  "if(confirm('Retirer ce membre ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
-												},
-											}) {
-												Retirer
+											if m.User() != nil && m.User().Active() {
+												@badge.Badge(badge.Props{Variant: badge.VariantDefault}) {
+													Actif
+												}
+											} else {
+												@badge.Badge(badge.Props{Variant: badge.VariantOutline}) {
+													Inactif
+												}
 											}
-											@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members/", string(m.ID()), "/edit")), Variant: button.VariantOutline, Size: button.SizeSm}) {
-												Modifier
-											}
-											@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members/", string(m.ID()), "/quota")), Variant: button.VariantOutline, Size: button.SizeSm}) {
-												Quota
-											}
+										}
+										@table.Cell(table.CellProps{Class: "text-right"}) {
+											<div class="inline-flex gap-1">
+												@button.Button(button.Props{
+													Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members/", string(m.ID()), "/edit")),
+													Variant: button.VariantGhost,
+													Size:    button.SizeIcon,
+													Attributes: templ.Attributes{"title": "Modifier"},
+												}) {
+													@icon.Pencil(icon.Props{Size: 15})
+												}
+												@button.Button(button.Props{
+													Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members/", string(m.ID()), "/quota")),
+													Variant: button.VariantGhost,
+													Size:    button.SizeIcon,
+													Attributes: templ.Attributes{"title": "Quota"},
+												}) {
+													@icon.PiggyBank(icon.Props{Size: 15})
+												}
+												@button.Button(button.Props{
+													Variant: button.VariantGhost,
+													Size:    button.SizeIcon,
+													Class:   "text-destructive hover:text-destructive",
+													Attributes: templ.Attributes{
+														"type":     "button",
+														"title":    "Retirer",
+														"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members/", string(m.ID()))),
+														"onclick":  "if(confirm('Retirer ce membre ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
+													},
+												}) {
+													@icon.UserX(icon.Props{Size: 15})
+												}
+											</div>
 										}
 									}
 								}
