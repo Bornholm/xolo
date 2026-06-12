@@ -3,48 +3,68 @@ package component
 import (
 	"github.com/bornholm/xolo/internal/core/model"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
 )
 
 type JoinPageVModel struct {
-	common.AppLayoutVModel
-	Invite   model.InviteToken
-	LoginURL string
+	User       model.User
+	Invite     model.InviteToken
+	LoginURL   string
+	DeclineURL string
+}
+
+// roleLabel returns the display label for an organization role.
+func roleLabel(role string) string {
+	switch role {
+	case model.RoleOrgAdmin, model.RoleOrgOwner:
+		return "Administrateur"
+	default:
+		return "Utilisateur"
+	}
 }
 
 templ JoinPage(vmodel JoinPageVModel) {
-	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Rejoindre "+vmodel.Invite.Org().Name())) {
-		<div class="flex items-center justify-center min-h-[60vh]">
-			@card.Card() {
-				@card.Header() {
-					@card.Title() {
-						Invitation à rejoindre { vmodel.Invite.Org().Name() }
-					}
+	@common.StandaloneLayout(common.WithUserVariant(vmodel.User), common.WithTitle("Rejoindre "+vmodel.Invite.Org().Name())) {
+		@card.Card() {
+			@card.Header() {
+				@card.Title() {
+					Invitation à rejoindre { vmodel.Invite.Org().Name() }
 				}
-				@card.Content() {
-					<div class="space-y-4">
-						<p class="text-sm text-muted-foreground">
-							Vous avez été invité à rejoindre l'organisation <strong>{ vmodel.Invite.Org().Name() }</strong>.
-						</p>
-						<div class="text-sm">
-							<span class="font-medium">Rôle :</span> { vmodel.Invite.Role() }
-						</div>
-						if vmodel.User == nil {
-							<p class="text-sm text-muted-foreground">Vous devez vous connecter pour accepter cette invitation.</p>
-							@button.Button(button.Props{Href: vmodel.LoginURL}) {
-								Se connecter
-							}
-						} else {
-							<form method="POST">
-								@button.Button(button.Props{Type: "submit"}) {
+			}
+			@card.Content() {
+				<div class="space-y-4">
+					<p class="text-sm text-muted-foreground">
+						Vous avez été invité à rejoindre l'organisation <strong class="text-foreground">{ vmodel.Invite.Org().Name() }</strong>.
+					</p>
+					<div class="flex items-center gap-2.5 text-sm">
+						<span class="font-medium">Rôle :</span>
+						@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
+							{ roleLabel(vmodel.Invite.Role()) }
+						}
+					</div>
+					if vmodel.User == nil {
+						<p class="text-sm text-muted-foreground">Vous devez vous connecter pour accepter cette invitation.</p>
+						@button.Button(button.Props{Href: vmodel.LoginURL, Class: "w-full"}) {
+							Se connecter
+						}
+					} else {
+						<div class="flex gap-2.5">
+							<form method="POST" class="flex-1">
+								@button.Button(button.Props{Type: button.TypeSubmit, Class: "w-full"}) {
 									Rejoindre l'organisation
 								}
 							</form>
-						}
-					</div>
-				}
+							<form method="POST" action={ templ.SafeURL(vmodel.DeclineURL) } class="flex-1">
+								@button.Button(button.Props{Type: button.TypeSubmit, Variant: button.VariantOutline, Class: "w-full"}) {
+									Décliner
+								}
+							</form>
+						</div>
+					}
+				</div>
 			}
-		</div>
+		}
 	}
 }

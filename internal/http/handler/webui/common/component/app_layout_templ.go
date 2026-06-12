@@ -781,7 +781,7 @@ func sidebarContent(vmodel AppLayoutVModel) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = Logo("h-7 w-7 mr-2", "height:70%").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Logo("h-7 w-7 mr-2").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

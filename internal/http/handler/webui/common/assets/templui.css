@@ -30,6 +30,7 @@
     --spacing: 0.25rem;
     --container-xs: 20rem;
     --container-sm: 24rem;
+    --container-md: 28rem;
     --container-lg: 32rem;
     --container-3xl: 48rem;
     --text-xs: 0.75rem;
@@ -626,9 +627,6 @@
   .min-h-\[1\.5rem\] {
     min-height: 1.5rem;
   }
-  .min-h-\[60vh\] {
-    min-height: 60vh;
-  }
   .min-h-\[80px\] {
     min-height: 80px;
   }
@@ -736,6 +734,9 @@
   }
   .max-w-\[calc\(100\%-2rem\)\] {
     max-width: calc(100% - 2rem);
+  }
+  .max-w-md {
+    max-width: var(--container-md);
   }
   .max-w-sm {
     max-width: var(--container-sm);

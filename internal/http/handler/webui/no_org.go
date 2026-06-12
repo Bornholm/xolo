@@ -9,7 +9,6 @@ import (
 	"github.com/bornholm/go-x/slogx"
 	"github.com/bornholm/xolo/internal/core/model"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
-	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/profile/component"
 )
 
@@ -44,21 +43,7 @@ func (h *Handler) getNoOrgPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vmodel := component.NoOrgPageVModel{
-		AppLayoutVModel: common.AppLayoutVModel{
-			User:         user,
-			SelectedItem: "usage",
-			HomeLink:     "/usage",
-			Breadcrumbs: []common.BreadcrumbItem{
-				{Label: "Espace personnel", Href: "/usage"},
-				{Label: "Aucune organisation", Href: ""},
-			},
-			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppNavigationItems(vmodel)
-			},
-			FooterItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppFooterItems(vmodel)
-			},
-		},
+		User:        user,
 		Invites:     invites,
 		DeclinedIDs: declinedIDs,
 	}

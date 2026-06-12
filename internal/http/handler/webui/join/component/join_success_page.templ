@@ -1,42 +1,41 @@
 package component
 
 import (
+	"github.com/bornholm/xolo/internal/core/model"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
 )
 
 type JoinSuccessVModel struct {
-	common.AppLayoutVModel
+	User    model.User
 	OrgName string
 	OrgSlug string
 	Role    string
 }
 
 templ JoinSuccess(vmodel JoinSuccessVModel) {
-	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Bienvenue dans "+vmodel.OrgName)) {
-		<div class="flex items-center justify-center min-h-[60vh]">
-			@card.Card() {
-				@card.Header() {
-					@card.Title() {
-						Bienvenue !
-					}
-				}
-				@card.Content() {
-					<div class="space-y-4">
-						<p class="text-sm">Vous avez rejoint l'organisation <strong>{ vmodel.OrgName }</strong>.</p>
-						if vmodel.Role == "admin" {
-							@button.Button(button.Props{Href: "/orgs/" + vmodel.OrgSlug + "/usage"}) {
-								Accéder à l'organisation
-							}
-						} else {
-							@button.Button(button.Props{Href: "/usage"}) {
-								Accéder à mon espace
-							}
-						}
-					</div>
+	@common.StandaloneLayout(common.WithUserVariant(vmodel.User), common.WithTitle("Bienvenue dans "+vmodel.OrgName)) {
+		@card.Card() {
+			@card.Header() {
+				@card.Title() {
+					Bienvenue !
 				}
 			}
-		</div>
+			@card.Content() {
+				<div class="space-y-4">
+					<p class="text-sm text-muted-foreground">Vous avez rejoint l'organisation <strong class="text-foreground">{ vmodel.OrgName }</strong>.</p>
+					if vmodel.Role == model.RoleOrgAdmin || vmodel.Role == model.RoleOrgOwner {
+						@button.Button(button.Props{Href: "/orgs/" + vmodel.OrgSlug + "/usage", Class: "w-full"}) {
+							Accéder à l'organisation
+						}
+					} else {
+						@button.Button(button.Props{Href: "/usage", Class: "w-full"}) {
+							Accéder à mon espace
+						}
+					}
+				</div>
+			}
+		}
 	}
 }

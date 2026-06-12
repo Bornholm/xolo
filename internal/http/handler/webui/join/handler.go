@@ -9,7 +9,6 @@ import (
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
-	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/join/component"
 	"github.com/pkg/errors"
 )
@@ -59,22 +58,21 @@ func (h *Handler) getJoinPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Targeted invites can only be accepted by their addressee.
+	if user != nil && invite.InviteeEmail() != nil && *invite.InviteeEmail() != user.Email() {
+		h.renderError(w, r, user, "Cette invitation n'est pas destinée à votre adresse email.")
+		return
+	}
+
 	baseURL := httpCtx.BaseURL(ctx)
 	loginURL := baseURL.JoinPath("/auth/oidc/login").String()
+	declineURL := baseURL.JoinPath("/no-org/invitations/" + tokenID + "/decline").String()
 
 	vmodel := component.JoinPageVModel{
-		Invite:   invite,
-		LoginURL: loginURL,
-		AppLayoutVModel: common.AppLayoutVModel{
-			User:     user,
-			HomeLink: "/usage",
-			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppNavigationItems(vmodel)
-			},
-			FooterItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppFooterItems(vmodel)
-			},
-		},
+		User:       user,
+		Invite:     invite,
+		LoginURL:   loginURL,
+		DeclineURL: declineURL,
 	}
 
 	templ.Handler(component.JoinPage(vmodel)).ServeHTTP(w, r)
@@ -147,19 +145,10 @@ func (h *Handler) acceptInvite(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vmodel := component.JoinSuccessVModel{
+		User:    user,
 		OrgName: org.Name(),
 		OrgSlug: org.Slug(),
 		Role:    invite.Role(),
-		AppLayoutVModel: common.AppLayoutVModel{
-			User:     user,
-			HomeLink: "/usage",
-			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppNavigationItems(vmodel)
-			},
-			FooterItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppFooterItems(vmodel)
-			},
-		},
 	}
 
 	templ.Handler(component.JoinSuccess(vmodel)).ServeHTTP(w, r)
@@ -167,17 +156,8 @@ func (h *Handler) acceptInvite(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) renderError(w http.ResponseWriter, r *http.Request, user model.User, msg string) {
 	vmodel := component.JoinErrorVModel{
+		User:    user,
 		Message: msg,
-		AppLayoutVModel: common.AppLayoutVModel{
-			User:     user,
-			HomeLink: "/usage",
-			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppNavigationItems(vmodel)
-			},
-			FooterItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppFooterItems(vmodel)
-			},
-		},
 	}
 	w.WriteHeader(http.StatusBadRequest)
 	templ.Handler(component.JoinError(vmodel)).ServeHTTP(w, r)

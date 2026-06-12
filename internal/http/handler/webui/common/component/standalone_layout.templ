@@ -1,0 +1,20 @@
+package component
+
+// StandaloneLayout renders a centered, sidebar-less page shell used for
+// authentication-adjacent screens (invitations, "no organization" state, etc.).
+templ StandaloneLayout(funcs ...PageOptionFunc) {
+	@Page(funcs...) {
+		<div class="flex min-h-screen items-center justify-center bg-background p-4">
+			<div class="w-full max-w-md space-y-6">
+				<div class="flex flex-col items-center gap-3 text-center">
+					@Logo("h-12 w-12")
+					<h1 class="text-xl font-semibold">Xolo</h1>
+				</div>
+				{ children... }
+				<p class="text-center text-xs text-muted-foreground">
+					AGPL-3.0 · self-hosted · <a href="https://github.com/bornholm/xolo" class="underline" target="_blank" rel="noreferrer">En savoir plus</a>
+				</p>
+			</div>
+		</div>
+	}
+}
