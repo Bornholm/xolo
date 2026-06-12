@@ -59,12 +59,15 @@ type ModelFormVModel struct {
 
 type QuotaPageVModel struct {
 	common.AppLayoutVModel
-	Org        model.Organization
-	Membership model.Membership
-	ScopeType  string
-	ScopeID    string
-	Quota      model.Quota
-	Success    string
+	Org         model.Organization
+	Membership  model.Membership
+	ScopeType   string
+	ScopeID     string
+	Quota       model.Quota
+	Success     string
+	DailyCost   int64 // current period spend in org currency (microcents)
+	MonthlyCost int64
+	YearlyCost  int64
 }
 
 type InvitesPageVModel struct {

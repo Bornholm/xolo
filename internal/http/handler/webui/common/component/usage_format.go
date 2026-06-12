@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/bornholm/xolo/internal/estimator/energy"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
 )
 
 // ChartDataPoint represents a single labeled value for bar/pie charts.
@@ -92,6 +93,25 @@ func UsagePercent(used int64, budget *int64) int {
 		return 100
 	}
 	return pct
+}
+
+// QuotaBarColor returns the progress bar color for a budget usage percentage.
+func QuotaBarColor(pct int) string {
+	if pct > 90 {
+		return "var(--destructive)"
+	}
+	if pct > 70 {
+		return "var(--chart-3)"
+	}
+	return "var(--chart-2)"
+}
+
+// QuotaBadgeVariant returns the badge variant for a budget usage percentage.
+func QuotaBadgeVariant(pct int) badge.Variant {
+	if pct > 90 {
+		return badge.VariantDestructive
+	}
+	return badge.VariantSecondary
 }
 
 // FormatEnergyWh formats an energy value with auto-scaling (kWh, Wh, mWh, µWh).

@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/a-h/templ"
 	"github.com/bornholm/go-x/slogx"
@@ -35,12 +36,24 @@ func (h *Handler) getOrgQuotaPage(w http.ResponseWriter, r *http.Request) {
 
 	existing, _ := quotaStore.GetQuota(ctx, model.QuotaScopeOrg, string(org.ID()))
 
+	orgCurrency := org.Currency()
+	if orgCurrency == "" {
+		orgCurrency = model.DefaultCurrency
+	}
+	now := time.Now()
+	dailyCost := h.sumConvertedCost(ctx, nil, org.ID(), startOfPeriod("day", now), orgCurrency)
+	monthlyCost := h.sumConvertedCost(ctx, nil, org.ID(), startOfPeriod("month", now), orgCurrency)
+	yearlyCost := h.sumConvertedCost(ctx, nil, org.ID(), startOfPeriod("year", now), orgCurrency)
+
 	vmodel := component.QuotaPageVModel{
-		Org:       org,
-		ScopeType: "org",
-		ScopeID:   string(org.ID()),
-		Quota:     existing,
-		Success:   r.URL.Query().Get("success"),
+		Org:         org,
+		ScopeType:   "org",
+		ScopeID:     string(org.ID()),
+		Quota:       existing,
+		Success:     r.URL.Query().Get("success"),
+		DailyCost:   dailyCost,
+		MonthlyCost: monthlyCost,
+		YearlyCost:  yearlyCost,
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:          user,
 			SelectedItem:  "org-" + orgSlug + "-quota",
@@ -128,13 +141,26 @@ func (h *Handler) getMemberQuotaPage(w http.ResponseWriter, r *http.Request) {
 
 	existing, _ := quotaStore.GetQuota(ctx, model.QuotaScopeUser, string(membership.UserID()))
 
+	orgCurrency := org.Currency()
+	if orgCurrency == "" {
+		orgCurrency = model.DefaultCurrency
+	}
+	now := time.Now()
+	userIDs := []model.UserID{membership.UserID()}
+	dailyCost := h.sumConvertedCost(ctx, userIDs, org.ID(), startOfPeriod("day", now), orgCurrency)
+	monthlyCost := h.sumConvertedCost(ctx, userIDs, org.ID(), startOfPeriod("month", now), orgCurrency)
+	yearlyCost := h.sumConvertedCost(ctx, userIDs, org.ID(), startOfPeriod("year", now), orgCurrency)
+
 	vmodel := component.QuotaPageVModel{
-		Org:        org,
-		Membership: membership,
-		ScopeType:  "user",
-		ScopeID:    string(membership.UserID()),
-		Quota:      existing,
-		Success:    r.URL.Query().Get("success"),
+		Org:         org,
+		Membership:  membership,
+		ScopeType:   "user",
+		ScopeID:     string(membership.UserID()),
+		Quota:       existing,
+		Success:     r.URL.Query().Get("success"),
+		DailyCost:   dailyCost,
+		MonthlyCost: monthlyCost,
+		YearlyCost:  yearlyCost,
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:          user,
 			SelectedItem:  "org-" + orgSlug + "-members",

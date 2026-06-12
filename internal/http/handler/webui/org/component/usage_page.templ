@@ -144,14 +144,8 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 						periodLabel = "journalier"
 					}
 					pct := common.UsagePercent(spent, budget)
-					barColor := "var(--chart-2)"
-					badgeVariant := badge.VariantSecondary
-					if pct > 90 {
-						barColor = "var(--destructive)"
-						badgeVariant = badge.VariantDestructive
-					} else if pct > 70 {
-						barColor = "var(--chart-3)"
-					}
+					barColor := common.QuotaBarColor(pct)
+					badgeVariant := common.QuotaBadgeVariant(pct)
 				}}
 				@card.Card() {
 					@card.Content() {
@@ -166,15 +160,25 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 									}
 								</div>
 							</div>
-							if budget != nil {
-								@badge.Badge(badge.Props{Variant: badgeVariant}) {
-									{ fmt.Sprintf("%d%%", pct) }
+							<div class="flex items-center gap-2">
+								if budget != nil {
+									@badge.Badge(badge.Props{Variant: badgeVariant}) {
+										{ fmt.Sprintf("%d%%", pct) }
+									}
+								} else {
+									@badge.Badge(badge.Props{Variant: badge.VariantOutline}) {
+										Illimité
+									}
 								}
-							} else {
-								@badge.Badge(badge.Props{Variant: badge.VariantOutline}) {
-									Illimité
+								@button.Button(button.Props{
+									Variant: button.VariantOutline,
+									Size:    button.SizeSm,
+									Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/quota")),
+								}) {
+									@icon.Settings(icon.Props{Class: "h-4 w-4 mr-1"})
+									Gérer le quota
 								}
-							}
+							</div>
 						</div>
 						if budget != nil {
 							<div class="h-1.5 rounded-full bg-muted overflow-hidden">

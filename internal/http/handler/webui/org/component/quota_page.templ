@@ -1,9 +1,12 @@
 package component
 
 import (
+	"fmt"
+
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
 )
 
@@ -25,41 +28,93 @@ templ QuotaPage(vmodel QuotaPageVModel) {
 					}
 				}
 			}
-			@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-				@alert.Description() {
-					<div>Les budgets sont exprimés dans la devise de l'organisation (<strong>{ vmodel.Org.Currency() }</strong>).</div>
-					<div>Pour modifier la devise, rendez-vous dans les <a href={ templ.SafeURL(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/settings"))) } class="underline font-medium">Paramètres</a>.</div>
-				}
-			}
-			<form method="POST" action={ templ.SafeURL(action) } class="space-y-4">
-				<div class="space-y-2">
-					<label class="text-sm font-medium">Budget journalier (vide = illimité)</label>
-					if vmodel.Quota != nil && vmodel.Quota.DailyBudget() != nil {
-						@input.Input(input.Props{Name: "daily_budget", Type: "number", Placeholder: "10.00", Value: formatBudgetField(*vmodel.Quota.DailyBudget()), Attributes: templ.Attributes{"step": "any"}})
-					} else {
-						@input.Input(input.Props{Name: "daily_budget", Type: "number", Placeholder: "10.00", Attributes: templ.Attributes{"step": "any"}})
+			<form method="POST" action={ templ.SafeURL(action) }>
+				@card.Card() {
+					@card.Header() {
+						@card.Title() {
+							Budget
+						}
+						@card.Description() {
+							Bloque les nouvelles requêtes une fois le plafond atteint.
+						}
 					}
-				</div>
-				<div class="space-y-2">
-					<label class="text-sm font-medium">Budget mensuel (vide = illimité)</label>
-					if vmodel.Quota != nil && vmodel.Quota.MonthlyBudget() != nil {
-						@input.Input(input.Props{Name: "monthly_budget", Type: "number", Placeholder: "100.00", Value: formatBudgetField(*vmodel.Quota.MonthlyBudget()), Attributes: templ.Attributes{"step": "any"}})
-					} else {
-						@input.Input(input.Props{Name: "monthly_budget", Type: "number", Placeholder: "100.00", Attributes: templ.Attributes{"step": "any"}})
+					@card.Content() {
+						<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+							<div class="space-y-2">
+								<label class="text-sm font-medium">Budget journalier (vide = illimité)</label>
+								if vmodel.Quota != nil && vmodel.Quota.DailyBudget() != nil {
+									@input.Input(input.Props{Name: "daily_budget", Type: "number", Placeholder: "10.00", Value: formatBudgetField(*vmodel.Quota.DailyBudget()), Attributes: templ.Attributes{"step": "any"}})
+								} else {
+									@input.Input(input.Props{Name: "daily_budget", Type: "number", Placeholder: "10.00", Attributes: templ.Attributes{"step": "any"}})
+								}
+							</div>
+							<div class="space-y-2">
+								<label class="text-sm font-medium">Budget mensuel (vide = illimité)</label>
+								if vmodel.Quota != nil && vmodel.Quota.MonthlyBudget() != nil {
+									@input.Input(input.Props{Name: "monthly_budget", Type: "number", Placeholder: "100.00", Value: formatBudgetField(*vmodel.Quota.MonthlyBudget()), Attributes: templ.Attributes{"step": "any"}})
+								} else {
+									@input.Input(input.Props{Name: "monthly_budget", Type: "number", Placeholder: "100.00", Attributes: templ.Attributes{"step": "any"}})
+								}
+							</div>
+							<div class="space-y-2">
+								<label class="text-sm font-medium">Budget annuel (vide = illimité)</label>
+								if vmodel.Quota != nil && vmodel.Quota.YearlyBudget() != nil {
+									@input.Input(input.Props{Name: "yearly_budget", Type: "number", Placeholder: "1000.00", Value: formatBudgetField(*vmodel.Quota.YearlyBudget()), Attributes: templ.Attributes{"step": "any"}})
+								} else {
+									@input.Input(input.Props{Name: "yearly_budget", Type: "number", Placeholder: "1000.00", Attributes: templ.Attributes{"step": "any"}})
+								}
+							</div>
+						</div>
+						@alert.Alert(alert.Props{Variant: alert.VariantDefault, Class: "mt-4"}) {
+							@alert.Description() {
+								<div>Les budgets sont exprimés dans la devise de l'organisation (<strong>{ vmodel.Org.Currency() }</strong>).</div>
+								<div>Pour modifier la devise, rendez-vous dans les <a href={ templ.SafeURL(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/settings"))) } class="underline font-medium">Paramètres</a>.</div>
+							}
+						}
 					}
-				</div>
-				<div class="space-y-2">
-					<label class="text-sm font-medium">Budget annuel (vide = illimité)</label>
-					if vmodel.Quota != nil && vmodel.Quota.YearlyBudget() != nil {
-						@input.Input(input.Props{Name: "yearly_budget", Type: "number", Placeholder: "1000.00", Value: formatBudgetField(*vmodel.Quota.YearlyBudget()), Attributes: templ.Attributes{"step": "any"}})
-					} else {
-						@input.Input(input.Props{Name: "yearly_budget", Type: "number", Placeholder: "1000.00", Attributes: templ.Attributes{"step": "any"}})
+					@card.Footer() {
+						@button.Button(button.Props{Type: "submit"}) {
+							Enregistrer
+						}
 					}
-				</div>
-				@button.Button(button.Props{Type: "submit"}) {
-					Enregistrer
 				}
 			</form>
+			if vmodel.Quota != nil && (vmodel.Quota.DailyBudget() != nil || vmodel.Quota.MonthlyBudget() != nil || vmodel.Quota.YearlyBudget() != nil) {
+				@card.Card() {
+					@card.Header() {
+						@card.Title() {
+							Consommation actuelle
+						}
+					}
+					@card.Content() {
+						<div class="space-y-4">
+							if vmodel.Quota.DailyBudget() != nil {
+								@quotaUsageRow("Journalier", vmodel.DailyCost, *vmodel.Quota.DailyBudget(), vmodel.Org.Currency())
+							}
+							if vmodel.Quota.MonthlyBudget() != nil {
+								@quotaUsageRow("Mensuel", vmodel.MonthlyCost, *vmodel.Quota.MonthlyBudget(), vmodel.Org.Currency())
+							}
+							if vmodel.Quota.YearlyBudget() != nil {
+								@quotaUsageRow("Annuel", vmodel.YearlyCost, *vmodel.Quota.YearlyBudget(), vmodel.Org.Currency())
+							}
+						</div>
+					}
+				}
+			}
 		</div>
 	}
+}
+
+templ quotaUsageRow(label string, spent int64, budget int64, currency string) {
+	{{ pct := common.UsagePercent(spent, &budget) }}
+	{{ barColor := common.QuotaBarColor(pct) }}
+	<div class="space-y-1.5">
+		<div class="flex items-center justify-between text-sm">
+			<span class="font-medium">{ label }</span>
+			<span class="text-muted-foreground">{ common.FormatCost(spent, currency) } / { common.FormatCost(budget, currency) } · { fmt.Sprintf("%d%%", pct) }</span>
+		</div>
+		<div class="h-2 rounded-full bg-muted overflow-hidden">
+			<div class="h-full rounded-full" style={ fmt.Sprintf("width: %d%%; background: %s", pct, barColor) }></div>
+		</div>
+	</div>
 }

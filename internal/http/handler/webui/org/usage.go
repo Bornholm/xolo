@@ -317,9 +317,9 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 
 	// Compute daily/monthly/yearly spending for quota pie charts
 	now := time.Now()
-	dailyCost := h.sumConvertedCost(ctx, orgID, startOfPeriod("day", now), orgCurrency)
-	monthlyCost := h.sumConvertedCost(ctx, orgID, startOfPeriod("month", now), orgCurrency)
-	yearlyCost := h.sumConvertedCost(ctx, orgID, startOfPeriod("year", now), orgCurrency)
+	dailyCost := h.sumConvertedCost(ctx, nil, orgID, startOfPeriod("day", now), orgCurrency)
+	monthlyCost := h.sumConvertedCost(ctx, nil, orgID, startOfPeriod("month", now), orgCurrency)
+	yearlyCost := h.sumConvertedCost(ctx, nil, orgID, startOfPeriod("year", now), orgCurrency)
 
 	// Also load users referenced by chart records that may not be in the paged set
 	for _, rec := range chartRecords {
@@ -433,9 +433,10 @@ func rangeToSince(r string) time.Time {
 	}
 }
 
-// sumConvertedCost sums org costs from the given time, converting each currency to targetCurrency.
-func (h *Handler) sumConvertedCost(ctx context.Context, orgID model.OrgID, since time.Time, targetCurrency string) int64 {
-	byCurrency, err := h.usageStore.SumCostSinceByCurrency(ctx, nil, orgID, since)
+// sumConvertedCost sums costs from the given time, converting each currency to targetCurrency.
+// If userIDs is non-empty, only costs for those users are summed; otherwise the whole org is summed.
+func (h *Handler) sumConvertedCost(ctx context.Context, userIDs []model.UserID, orgID model.OrgID, since time.Time, targetCurrency string) int64 {
+	byCurrency, err := h.usageStore.SumCostSinceByCurrency(ctx, userIDs, orgID, since)
 	if err != nil {
 		return 0
 	}
