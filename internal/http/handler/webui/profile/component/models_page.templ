@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"github.com/bornholm/xolo/internal/core/model"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/popover"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
 )
 
 const DefaultMaxDisplayedModels int = 3
@@ -20,7 +23,18 @@ type ModelsPageVModel struct {
 }
 
 templ ModelsPage(vmodel ModelsPageVModel) {
-	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Modèles")) {
+	@common.AppLayout(vmodel.AppLayoutVModel,
+		common.WithTitle("Modèles"),
+		common.WithScripts(
+			common.Script{
+				Name:      "popover",
+				Component: popover.Script(),
+			},
+			common.Script{
+				Name:      "selectbox",
+				Component: selectbox.Script(),
+			}),
+	) {
 		<div class="space-y-6">
 			<!-- Header + period selector -->
 			<div class="flex items-center justify-between">
@@ -30,22 +44,33 @@ templ ModelsPage(vmodel ModelsPageVModel) {
 				</div>
 				<form method="GET" class="flex items-center gap-2">
 					<label class="text-sm text-muted-foreground">Période :</label>
-					<select name="range" onchange="this.form.submit()" class="h-9 rounded-md border border-input bg-background px-3 text-sm">
-						for _, opt := range []struct{ Value, Label string }{
-							{"1d", "Dernier jour"},
-							{"7d", "7 derniers jours"},
-							{"30d", "30 derniers jours"},
-							{"90d", "3 derniers mois"},
-							{"180d", "6 derniers mois"},
-							{"365d", "Dernière année"},
-						} {
-							if vmodel.Range == opt.Value || (vmodel.Range == "" && opt.Value == "7d") {
-								<option value={ opt.Value } selected>{ opt.Label }</option>
-							} else {
-								<option value={ opt.Value }>{ opt.Label }</option>
+					@selectbox.SelectBox(selectbox.Props{ID: "range", Class: "w-40"}) {
+						@selectbox.Trigger(selectbox.TriggerProps{
+							Name:       "range",
+							Attributes: templ.Attributes{"onchange": "this.form.submit()"},
+						}) {
+							@selectbox.Value(selectbox.ValueProps{Placeholder: "Période"})
+						}
+						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+							@selectbox.Group() {
+								for _, opt := range []struct{ Value, Label string }{
+									{"1d", "Dernier jour"},
+									{"7d", "7 derniers jours"},
+									{"30d", "30 derniers jours"},
+									{"90d", "3 derniers mois"},
+									{"180d", "6 derniers mois"},
+									{"365d", "Dernière année"},
+								} {
+									@selectbox.Item(selectbox.ItemProps{
+										Value:    opt.Value,
+										Selected: vmodel.Range == opt.Value || (vmodel.Range == "" && opt.Value == "7d"),
+									}) {
+										{ opt.Label }
+									}
+								}
 							}
 						}
-					</select>
+					}
 				</form>
 			</div>
 			<!-- Models grid -->
@@ -141,15 +166,19 @@ templ ModelsPage(vmodel ModelsPageVModel) {
 							<p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">URL de base</p>
 							<div class="flex items-center gap-2">
 								<code class="flex-1 block bg-muted rounded-md px-3 py-2 text-sm font-mono break-all">{ common.BaseURLString(ctx, common.WithPath("/api/v1")) }</code>
-								<button
-									type="button"
-									title="Copier"
-									data-url={ common.BaseURLString(ctx, common.WithPath("/api/v1")) }
-									onclick="navigator.clipboard.writeText(this.dataset.url)"
-									class="shrink-0 rounded-md p-2 hover:bg-muted transition-colors"
-								>
+								@button.Button(button.Props{
+									Variant: button.VariantGhost,
+									Size:    button.SizeIcon,
+									Class:   "shrink-0",
+									Attributes: templ.Attributes{
+										"type":     "button",
+										"title":    "Copier",
+										"data-url": common.BaseURLString(ctx, common.WithPath("/api/v1")),
+										"onclick":  "navigator.clipboard.writeText(this.dataset.url)",
+									},
+								}) {
 									@icon.Copy(icon.Props{Class: "h-4 w-4"})
-								</button>
+								}
 							</div>
 						</div>
 						<!-- Auth + model name -->

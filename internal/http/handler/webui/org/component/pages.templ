@@ -10,6 +10,7 @@ import (
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/chart"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/checkbox"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/pagination"
@@ -148,14 +149,17 @@ templ MembersPage(vmodel MembersPageVModel) {
 											}
 										}
 										@table.Cell() {
-											<button
-												type="button"
-												data-url={ common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members/", string(m.ID()))) }
-												onclick="if(confirm('Retirer ce membre ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)"
-												class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-destructive text-destructive-foreground hover:bg-destructive/90 h-8 px-3"
-											>
+											@button.Button(button.Props{
+												Variant: button.VariantDestructive,
+												Size:    button.SizeSm,
+												Attributes: templ.Attributes{
+													"type":     "button",
+													"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members/", string(m.ID()))),
+													"onclick":  "if(confirm('Retirer ce membre ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
+												},
+											}) {
 												Retirer
-											</button>
+											}
 											@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members/", string(m.ID()), "/edit")), Variant: button.VariantOutline, Size: button.SizeSm}) {
 												Modifier
 											}
@@ -318,15 +322,20 @@ templ ProviderForm(vmodel ProviderFormVModel) {
 				</div>
 				<div class="space-y-2">
 					<label class="text-sm font-medium">Type</label>
-					<select name="provider_type" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-						for _, t := range []string{"openai", "mistral", "openrouter", "yzma"} {
-							if !vmodel.IsNew && vmodel.Provider != nil && vmodel.Provider.Type() == t {
-								<option value={ t } selected>{ t }</option>
-							} else {
-								<option value={ t }>{ t }</option>
+					@selectbox.SelectBox(selectbox.Props{ID: "provider_type"}) {
+						@selectbox.Trigger(selectbox.TriggerProps{Name: "provider_type"}) {
+							@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner un type"})
+						}
+						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+							@selectbox.Group() {
+								for _, t := range []string{"openai", "mistral", "openrouter", "yzma"} {
+									@selectbox.Item(selectbox.ItemProps{Value: t, Selected: !vmodel.IsNew && vmodel.Provider != nil && vmodel.Provider.Type() == t}) {
+										{ t }
+									}
+								}
 							}
 						}
-					</select>
+					}
 				</div>
 				<div class="space-y-2">
 					<label class="text-sm font-medium">URL de base</label>
@@ -349,15 +358,20 @@ templ ProviderForm(vmodel ProviderFormVModel) {
 				</div>
 				<div class="space-y-2">
 					<label class="text-sm font-medium">Devise</label>
-					<select name="currency" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-						for _, c := range model.SupportedCurrencies {
-							if !vmodel.IsNew && vmodel.Provider != nil && vmodel.Provider.Currency() == c {
-								<option value={ c } selected>{ c }</option>
-							} else {
-								<option value={ c }>{ c }</option>
+					@selectbox.SelectBox(selectbox.Props{ID: "provider_currency"}) {
+						@selectbox.Trigger(selectbox.TriggerProps{Name: "currency"}) {
+							@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner une devise"})
+						}
+						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+							@selectbox.Group() {
+								for _, c := range model.SupportedCurrencies {
+									@selectbox.Item(selectbox.ItemProps{Value: c, Selected: !vmodel.IsNew && vmodel.Provider != nil && vmodel.Provider.Currency() == c}) {
+										{ c }
+									}
+								}
 							}
 						}
-					</select>
+					}
 				</div>
 				<div class="space-y-2">
 					<label class="text-sm font-medium">Niveau d'infrastructure (CloudTier)</label>
@@ -366,15 +380,28 @@ templ ProviderForm(vmodel ProviderFormVModel) {
 					if !vmodel.IsNew && vmodel.Provider != nil {
 						{{ currentTier = vmodel.Provider.CloudTier() }}
 					}
-					<select name="cloud_tier" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-						<option value="0" selected?={ currentTier == 0 }>Hyperscaler (Google, Microsoft, OpenAI, Anthropic)</option>
-						<option value="1" selected?={ currentTier == 1 }>Major Cloud (AWS, OVH, CoreWeave, Mistral)</option>
-						<option value="2" selected?={ currentTier == 2 }>Small Provider</option>
-					</select>
+					@selectbox.SelectBox(selectbox.Props{ID: "cloud_tier"}) {
+						@selectbox.Trigger(selectbox.TriggerProps{Name: "cloud_tier"}) {
+							@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner un niveau"})
+						}
+						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+							@selectbox.Group() {
+								@selectbox.Item(selectbox.ItemProps{Value: "0", Selected: currentTier == 0}) {
+									Hyperscaler (Google, Microsoft, OpenAI, Anthropic)
+								}
+								@selectbox.Item(selectbox.ItemProps{Value: "1", Selected: currentTier == 1}) {
+									Major Cloud (AWS, OVH, CoreWeave, Mistral)
+								}
+								@selectbox.Item(selectbox.ItemProps{Value: "2", Selected: currentTier == 2}) {
+									Small Provider
+								}
+							}
+						}
+					}
 				</div>
 				if !vmodel.IsNew && vmodel.Provider != nil {
 					<div class="flex items-center gap-2">
-						<input type="checkbox" name="active" id="active" value="on" checked?={ vmodel.Provider.Active() }/>
+						@checkbox.Checkbox(checkbox.Props{ID: "active", Name: "active", Checked: vmodel.Provider.Active()})
 						<label for="active" class="text-sm font-medium">Actif</label>
 					</div>
 					@button.Button(button.Props{
@@ -389,7 +416,7 @@ templ ProviderForm(vmodel ProviderFormVModel) {
 					<div class="rounded-md border p-4 space-y-3">
 						{{ retryEnabled := retryCfg != nil && retryCfg.Enabled }}
 						<div class="flex items-center gap-2">
-							<input type="checkbox" name="retry_enabled" id="retry_enabled" value="on" checked?={ retryEnabled }/>
+							@checkbox.Checkbox(checkbox.Props{ID: "retry_enabled", Name: "retry_enabled", Checked: retryEnabled})
 							<label for="retry_enabled" class="text-sm font-semibold">Retry (nouvelle tentative)</label>
 						</div>
 						<div class="grid grid-cols-2 gap-3">
@@ -409,11 +436,24 @@ templ ProviderForm(vmodel ProviderFormVModel) {
 									} else {
 										@input.Input(input.Props{Name: "retry_delay_value", Type: "number", Placeholder: "1", Attributes: templ.Attributes{"min": "1", "class": "flex-1"}})
 									}
-									<select name="retry_delay_unit" class="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm">
-										<option value="ms" selected?={ retryCfg != nil && durationUnit(retryCfg.Delay) == "ms" }>ms</option>
-										<option value="s" selected?={ retryCfg == nil || durationUnit(retryCfg.Delay) == "s" }>s</option>
-										<option value="min" selected?={ retryCfg != nil && durationUnit(retryCfg.Delay) == "min" }>min</option>
-									</select>
+									@selectbox.SelectBox(selectbox.Props{ID: "retry_delay_unit", Class: "w-24"}) {
+										@selectbox.Trigger(selectbox.TriggerProps{Name: "retry_delay_unit"}) {
+											@selectbox.Value(selectbox.ValueProps{Placeholder: "Unité"})
+										}
+										@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+											@selectbox.Group() {
+												@selectbox.Item(selectbox.ItemProps{Value: "ms", Selected: retryCfg != nil && durationUnit(retryCfg.Delay) == "ms"}) {
+													ms
+												}
+												@selectbox.Item(selectbox.ItemProps{Value: "s", Selected: retryCfg == nil || durationUnit(retryCfg.Delay) == "s"}) {
+													s
+												}
+												@selectbox.Item(selectbox.ItemProps{Value: "min", Selected: retryCfg != nil && durationUnit(retryCfg.Delay) == "min"}) {
+													min
+												}
+											}
+										}
+									}
 								</div>
 							</div>
 						</div>
@@ -423,7 +463,7 @@ templ ProviderForm(vmodel ProviderFormVModel) {
 					<div class="rounded-md border p-4 space-y-3">
 						{{ rlEnabled := rlCfg != nil && rlCfg.Enabled }}
 						<div class="flex items-center gap-2">
-							<input type="checkbox" name="rate_limit_enabled" id="rate_limit_enabled" value="on" checked?={ rlEnabled }/>
+							@checkbox.Checkbox(checkbox.Props{ID: "rate_limit_enabled", Name: "rate_limit_enabled", Checked: rlEnabled})
 							<label for="rate_limit_enabled" class="text-sm font-semibold">Rate limit (limitation de débit)</label>
 						</div>
 						<div class="grid grid-cols-2 gap-3">
@@ -435,11 +475,24 @@ templ ProviderForm(vmodel ProviderFormVModel) {
 									} else {
 										@input.Input(input.Props{Name: "rate_limit_interval_value", Type: "number", Placeholder: "1", Attributes: templ.Attributes{"min": "1", "class": "flex-1"}})
 									}
-									<select name="rate_limit_interval_unit" class="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm">
-										<option value="ms" selected?={ rlCfg != nil && durationUnit(rlCfg.Interval) == "ms" }>ms</option>
-										<option value="s" selected?={ rlCfg == nil || durationUnit(rlCfg.Interval) == "s" }>s</option>
-										<option value="min" selected?={ rlCfg != nil && durationUnit(rlCfg.Interval) == "min" }>min</option>
-									</select>
+									@selectbox.SelectBox(selectbox.Props{ID: "rate_limit_interval_unit", Class: "w-24"}) {
+										@selectbox.Trigger(selectbox.TriggerProps{Name: "rate_limit_interval_unit"}) {
+											@selectbox.Value(selectbox.ValueProps{Placeholder: "Unité"})
+										}
+										@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+											@selectbox.Group() {
+												@selectbox.Item(selectbox.ItemProps{Value: "ms", Selected: rlCfg != nil && durationUnit(rlCfg.Interval) == "ms"}) {
+													ms
+												}
+												@selectbox.Item(selectbox.ItemProps{Value: "s", Selected: rlCfg == nil || durationUnit(rlCfg.Interval) == "s"}) {
+													s
+												}
+												@selectbox.Item(selectbox.ItemProps{Value: "min", Selected: rlCfg != nil && durationUnit(rlCfg.Interval) == "min"}) {
+													min
+												}
+											}
+										}
+									}
 								</div>
 							</div>
 							<div class="space-y-2">
@@ -458,14 +511,16 @@ templ ProviderForm(vmodel ProviderFormVModel) {
 				}
 			</form>
 			if !vmodel.IsNew && vmodel.Provider != nil {
-				<button
-					type="button"
-					data-url={ common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()))) }
-					onclick="if(confirm('Supprimer ce fournisseur et tous ses modèles ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)"
-					class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4"
-				>
+				@button.Button(button.Props{
+					Variant: button.VariantDestructive,
+					Attributes: templ.Attributes{
+						"type":     "button",
+						"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()))),
+						"onclick":  "if(confirm('Supprimer ce fournisseur et tous ses modèles ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
+					},
+				}) {
 					Supprimer le fournisseur
-				</button>
+				}
 			}
 		</div>
 	}
@@ -632,17 +687,20 @@ templ ModelForm(vmodel ModelFormVModel) {
 				<div class="space-y-2">
 					<div class="flex items-center justify-between">
 						<label class="text-sm font-medium">Modèle réel (transmis au fournisseur)</label>
-						<button
-							type="button"
-							data-lookup-url={ common.BaseURLString(ctx, common.WithPath("/api/models-dev/lookup")) }
-							data-exchange-rate-url={ common.BaseURLString(ctx, common.WithPath("/api/exchange-rate")) }
-							data-currency={ vmodel.Provider.Currency() }
-							data-provider-type={ vmodel.Provider.Type() }
-							onclick="fillFromModelsDev(this)"
-							class="text-xs text-muted-foreground underline hover:text-foreground transition-colors"
-						>
+						@button.Button(button.Props{
+							Variant: button.VariantLink,
+							Class:   "text-xs h-auto p-0",
+							Attributes: templ.Attributes{
+								"type":                   "button",
+								"data-lookup-url":        common.BaseURLString(ctx, common.WithPath("/api/models-dev/lookup")),
+								"data-exchange-rate-url": common.BaseURLString(ctx, common.WithPath("/api/exchange-rate")),
+								"data-currency":          vmodel.Provider.Currency(),
+								"data-provider-type":     vmodel.Provider.Type(),
+								"onclick":                "fillFromModelsDev(this)",
+							},
+						}) {
 							Pré-remplir depuis models.dev
-						</button>
+						}
 					</div>
 					if !vmodel.IsNew && vmodel.Model != nil {
 						@input.Input(input.Props{Name: "real_model", Value: vmodel.Model.RealModel()})
@@ -685,23 +743,23 @@ templ ModelForm(vmodel ModelFormVModel) {
 						{{ capAudio := !vmodel.IsNew && vmodel.Model != nil && vmodel.Model.Capabilities().Audio }}
 						{{ capEmbeddings := !vmodel.IsNew && vmodel.Model != nil && vmodel.Model.Capabilities().Embeddings }}
 						<label class="flex items-center gap-2 text-sm cursor-pointer">
-							<input type="checkbox" name="cap_tools" value="on" checked?={ capTools }/>
+							@checkbox.Checkbox(checkbox.Props{Name: "cap_tools", Checked: capTools})
 							Outils (tools)
 						</label>
 						<label class="flex items-center gap-2 text-sm cursor-pointer">
-							<input type="checkbox" name="cap_vision" value="on" checked?={ capVision }/>
+							@checkbox.Checkbox(checkbox.Props{Name: "cap_vision", Checked: capVision})
 							Vision
 						</label>
 						<label class="flex items-center gap-2 text-sm cursor-pointer">
-							<input type="checkbox" name="cap_reasoning" value="on" checked?={ capReasoning }/>
+							@checkbox.Checkbox(checkbox.Props{Name: "cap_reasoning", Checked: capReasoning})
 							Raisonnement (reasoning)
 						</label>
 						<label class="flex items-center gap-2 text-sm cursor-pointer">
-							<input type="checkbox" name="cap_audio" value="on" checked?={ capAudio }/>
+							@checkbox.Checkbox(checkbox.Props{Name: "cap_audio", Checked: capAudio})
 							Audio
 						</label>
 						<label class="flex items-center gap-2 text-sm cursor-pointer">
-							<input type="checkbox" name="cap_embeddings" value="on" checked?={ capEmbeddings }/>
+							@checkbox.Checkbox(checkbox.Props{Name: "cap_embeddings", Checked: capEmbeddings})
 							Embeddings
 						</label>
 					</div>
@@ -763,7 +821,7 @@ templ ModelForm(vmodel ModelFormVModel) {
 				</div>
 				if !vmodel.IsNew && vmodel.Model != nil {
 					<div class="flex items-center gap-2">
-						<input type="checkbox" name="enabled" id="enabled" value="on" checked?={ vmodel.Model.Enabled() }/>
+						@checkbox.Checkbox(checkbox.Props{ID: "enabled", Name: "enabled", Checked: vmodel.Model.Enabled()})
 						<label for="enabled" class="text-sm font-medium">Activé</label>
 					</div>
 					// ── Token limit ──────────────────────────────────────────
@@ -771,7 +829,7 @@ templ ModelForm(vmodel ModelFormVModel) {
 					<div class="rounded-md border p-4 space-y-3">
 						{{ tlEnabled := tlCfg != nil && tlCfg.Enabled }}
 						<div class="flex items-center gap-2">
-							<input type="checkbox" name="token_limit_enabled" id="token_limit_enabled" value="on" checked?={ tlEnabled }/>
+							@checkbox.Checkbox(checkbox.Props{ID: "token_limit_enabled", Name: "token_limit_enabled", Checked: tlEnabled})
 							<label for="token_limit_enabled" class="text-sm font-semibold">Limite de tokens (chat completion)</label>
 						</div>
 						<div class="grid grid-cols-2 gap-3">
@@ -791,11 +849,24 @@ templ ModelForm(vmodel ModelFormVModel) {
 									} else {
 										@input.Input(input.Props{Name: "token_limit_interval_value", Type: "number", Placeholder: "1", Attributes: templ.Attributes{"min": "1", "class": "flex-1"}})
 									}
-									<select name="token_limit_interval_unit" class="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm">
-										<option value="ms" selected?={ tlCfg != nil && durationUnit(tlCfg.Interval) == "ms" }>ms</option>
-										<option value="s" selected?={ tlCfg == nil || durationUnit(tlCfg.Interval) == "s" }>s</option>
-										<option value="min" selected?={ tlCfg != nil && durationUnit(tlCfg.Interval) == "min" }>min</option>
-									</select>
+									@selectbox.SelectBox(selectbox.Props{ID: "token_limit_interval_unit", Class: "w-24"}) {
+										@selectbox.Trigger(selectbox.TriggerProps{Name: "token_limit_interval_unit"}) {
+											@selectbox.Value(selectbox.ValueProps{Placeholder: "Unité"})
+										}
+										@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+											@selectbox.Group() {
+												@selectbox.Item(selectbox.ItemProps{Value: "ms", Selected: tlCfg != nil && durationUnit(tlCfg.Interval) == "ms"}) {
+													ms
+												}
+												@selectbox.Item(selectbox.ItemProps{Value: "s", Selected: tlCfg == nil || durationUnit(tlCfg.Interval) == "s"}) {
+													s
+												}
+												@selectbox.Item(selectbox.ItemProps{Value: "min", Selected: tlCfg != nil && durationUnit(tlCfg.Interval) == "min"}) {
+													min
+												}
+											}
+										}
+									}
 								</div>
 							</div>
 						</div>
@@ -806,14 +877,16 @@ templ ModelForm(vmodel ModelFormVModel) {
 				}
 			</form>
 			if !vmodel.IsNew && vmodel.Model != nil {
-				<button
-					type="button"
-					data-url={ common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()), "/models/", string(vmodel.Model.ID()))) }
-					onclick="if(confirm('Supprimer ce modèle ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)"
-					class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4"
-				>
+				@button.Button(button.Props{
+					Variant: button.VariantDestructive,
+					Attributes: templ.Attributes{
+						"type":     "button",
+						"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()), "/models/", string(vmodel.Model.ID()))),
+						"onclick":  "if(confirm('Supprimer ce modèle ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
+					},
+				}) {
 					Supprimer le modèle
-				</button>
+				}
 			}
 		</div>
 	}
@@ -891,24 +964,25 @@ templ OrgSettingsPage(vmodel OrgSettingsPageVModel) {
 			<form method="POST" action={ templ.SafeURL(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/settings"))) } class="space-y-4">
 				<div class="space-y-2">
 					<label class="text-sm font-medium">Devise préférée</label>
-					<select name="currency" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-						for _, c := range model.SupportedCurrencies {
-							if vmodel.Org.Currency() == c {
-								<option value={ c } selected>{ c }</option>
-							} else {
-								<option value={ c }>{ c }</option>
+					@selectbox.SelectBox(selectbox.Props{ID: "org_currency"}) {
+						@selectbox.Trigger(selectbox.TriggerProps{Name: "currency"}) {
+							@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner une devise"})
+						}
+						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+							@selectbox.Group() {
+								for _, c := range model.SupportedCurrencies {
+									@selectbox.Item(selectbox.ItemProps{Value: c, Selected: vmodel.Org.Currency() == c}) {
+										{ c }
+									}
+								}
 							}
 						}
-					</select>
+					}
 					<p class="text-xs text-muted-foreground">Utilisée pour les quotas et l'affichage des coûts.</p>
 				</div>
 				<div class="space-y-2">
 					<div class="flex items-center space-x-2">
-						if vmodel.Org.ShareQuotaEqually() {
-							<input type="checkbox" id="share_quota_equally" name="share_quota_equally" checked class="h-4 w-4"/>
-						} else {
-							<input type="checkbox" id="share_quota_equally" name="share_quota_equally" class="h-4 w-4"/>
-						}
+						@checkbox.Checkbox(checkbox.Props{ID: "share_quota_equally", Name: "share_quota_equally", Checked: vmodel.Org.ShareQuotaEqually()})
 						<label for="share_quota_equally" class="text-sm font-medium">
 							Répartir le budget de l'organisation équitablement entre les membres
 						</label>
@@ -1031,14 +1105,17 @@ templ InvitesPage(vmodel InvitesPageVModel) {
 											<div class="flex gap-2">
 												<a href={ templ.SafeURL(vmodel.BaseURL + "/join/" + string(inv.ID())) } target="_blank" class="text-sm underline">Lien</a>
 												if inv.RevokedAt() == nil {
-													<button
-														type="button"
-														data-url={ common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/", string(inv.ID()))) }
-														onclick="if(confirm('Révoquer cette invitation ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)"
-														class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-destructive text-destructive-foreground hover:bg-destructive/90 h-8 px-3"
-													>
+													@button.Button(button.Props{
+														Variant: button.VariantDestructive,
+														Size:    button.SizeSm,
+														Attributes: templ.Attributes{
+															"type":     "button",
+															"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/", string(inv.ID()))),
+															"onclick":  "if(confirm('Révoquer cette invitation ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
+														},
+													}) {
 														Révoquer
-													</button>
+													}
 												}
 											</div>
 										}
@@ -1066,10 +1143,21 @@ templ InviteForm(vmodel InviteFormVModel) {
 				</div>
 				<div class="space-y-2">
 					<label class="text-sm font-medium">Rôle</label>
-					<select name="role" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-						<option value="member">Membre</option>
-						<option value="org:admin">Admin organisation</option>
-					</select>
+					@selectbox.SelectBox(selectbox.Props{ID: "invite_role"}) {
+						@selectbox.Trigger(selectbox.TriggerProps{Name: "role"}) {
+							@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner un rôle"})
+						}
+						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+							@selectbox.Group() {
+								@selectbox.Item(selectbox.ItemProps{Value: "member", Selected: true}) {
+									Membre
+								}
+								@selectbox.Item(selectbox.ItemProps{Value: "org:admin"}) {
+									Admin organisation
+								}
+							}
+						}
+					}
 				</div>
 				<div class="space-y-2">
 					<label class="text-sm font-medium">Date d'expiration (optionnel)</label>
@@ -1202,22 +1290,33 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 				</div>
 				<form method="GET" class="flex items-center gap-3 flex-wrap">
 					<label class="text-sm text-muted-foreground">Période :</label>
-					<select name="range" onchange="this.form.submit()" class="h-9 rounded-md border border-input bg-background px-3 text-sm">
-						for _, opt := range []struct{ Value, Label string }{
-							{"1d", "Dernier jour"},
-							{"7d", "7 derniers jours"},
-							{"30d", "30 derniers jours"},
-							{"90d", "3 derniers mois"},
-							{"180d", "6 derniers mois"},
-							{"365d", "Dernière année"},
-						} {
-							if vmodel.Range == opt.Value || (vmodel.Range == "" && opt.Value == "7d") {
-								<option value={ opt.Value } selected>{ opt.Label }</option>
-							} else {
-								<option value={ opt.Value }>{ opt.Label }</option>
+					@selectbox.SelectBox(selectbox.Props{ID: "range", Class: "w-40"}) {
+						@selectbox.Trigger(selectbox.TriggerProps{
+							Name:       "range",
+							Attributes: templ.Attributes{"onchange": "this.form.submit()"},
+						}) {
+							@selectbox.Value(selectbox.ValueProps{Placeholder: "Période"})
+						}
+						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+							@selectbox.Group() {
+								for _, opt := range []struct{ Value, Label string }{
+									{"1d", "Dernier jour"},
+									{"7d", "7 derniers jours"},
+									{"30d", "30 derniers jours"},
+									{"90d", "3 derniers mois"},
+									{"180d", "6 derniers mois"},
+									{"365d", "Dernière année"},
+								} {
+									@selectbox.Item(selectbox.ItemProps{
+										Value:    opt.Value,
+										Selected: vmodel.Range == opt.Value || (vmodel.Range == "" && opt.Value == "7d"),
+									}) {
+										{ opt.Label }
+									}
+								}
 							}
 						}
-					</select>
+					}
 					if len(vmodel.Members) > 0 || len(vmodel.Applications) > 0 {
 						<label class="text-sm text-muted-foreground">Owner :</label>
 						@selectbox.SelectBox(selectbox.Props{Multiple: true, Class: "w-64"}) {
@@ -1243,7 +1342,7 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 												Selected: slices.Contains(vmodel.OwnerFilter, string(m.User().ID())),
 											}) {
 												<span class="flex items-center gap-2">
-													<i class="fa-solid fa-user text-muted-foreground"></i>
+													@icon.User(icon.Props{Class: "h-4 w-4 text-muted-foreground"})
 													{ m.User().DisplayName() }
 												</span>
 											}
@@ -1257,7 +1356,7 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 											Selected: slices.Contains(vmodel.OwnerFilter, string(app.ID())),
 										}) {
 											<span class="flex items-center gap-2">
-												<i class="fa-solid fa-window-restore text-muted-foreground"></i>
+												@icon.ExternalLink(icon.Props{Class: "h-4 w-4 text-muted-foreground"})
 												{ app.Name() }
 											</span>
 										}
@@ -1595,7 +1694,7 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 						href={ common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage"), common.WithValues("range", vmodel.Range, "owner", strings.Join(vmodel.OwnerFilter, ","), "format", "csv")) }
 						class="text-sm text-muted-foreground hover:text-foreground flex items-center gap-2"
 					>
-						<i class="fa-solid fa-download"></i>
+						@icon.Download(icon.Props{Class: "h-4 w-4"})
 						Télécharger en CSV
 					</a>
 				</div>

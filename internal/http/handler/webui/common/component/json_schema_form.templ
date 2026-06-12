@@ -6,6 +6,8 @@ import (
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/checkbox"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/textarea"
 )
 
 // JSONSchemaFormArrayObjectField renders a dynamic list editor for array-of-objects fields.
@@ -20,6 +22,7 @@ templ JSONSchemaFormArrayObjectField(name string, schema map[string]any, existin
 		data-schema={ itemsSchemaJSON }
 	>
 		<div class="array-field-items flex flex-col gap-3"></div>
+		<!-- hidden input: no templui equivalent, not rendered -->
 		<input type="hidden" class="array-field-json" name={ name + "__json" }/>
 		@button.Button(button.Props{
 			Type:    button.TypeButton,
@@ -232,68 +235,77 @@ templ JSONSchemaFormField(name string, schema map[string]any, value string) {
 		@JSONSchemaFormArrayObjectField(name, schema, value)
 	} else {
 		switch schema["type"] {
-		case "boolean":
-			<div class="flex items-center gap-2">
-				@checkbox.Checkbox(checkbox.Props{
-					ID:      name,
-					Name:    name,
-					Checked: value == "true",
-				})
-				<label for={ name } class="text-sm font-medium">{ getTitle(schema, name) }</label>
-			</div>
-		case "number", "integer":
-			<div class="flex flex-col gap-1">
-				<label for={ name } class="text-sm font-medium">{ getTitle(schema, name) }</label>
-				if desc, ok := schema["description"].(string); ok && desc != "" {
-					<p class="text-xs text-muted-foreground">{ desc }</p>
-				}
-				@input.Input(input.Props{
-					ID:    name,
-					Name:  name,
-					Type:  input.TypeNumber,
-					Value: value,
-				})
-			</div>
-		default:
-			if enum, ok := schema["enum"].([]any); ok {
+			case "boolean":
+				<div class="flex items-center gap-2">
+					@checkbox.Checkbox(checkbox.Props{
+						ID:      name,
+						Name:    name,
+						Checked: value == "true",
+					})
+					<label for={ name } class="text-sm font-medium">{ getTitle(schema, name) }</label>
+				</div>
+			case "number", "integer":
 				<div class="flex flex-col gap-1">
 					<label for={ name } class="text-sm font-medium">{ getTitle(schema, name) }</label>
 					if desc, ok := schema["description"].(string); ok && desc != "" {
 						<p class="text-xs text-muted-foreground">{ desc }</p>
 					}
-					<select id={ name } name={ name } class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-						for _, opt := range enum {
-							<option
-								value={ fmt.Sprintf("%v", opt) }
-								if fmt.Sprintf("%v", opt) == value {
-									selected
-								}
-							>{ fmt.Sprintf("%v", opt) }</option>
+					@input.Input(input.Props{
+						ID:    name,
+						Name:  name,
+						Type:  input.TypeNumber,
+						Value: value,
+					})
+				</div>
+			default:
+				if enum, ok := schema["enum"].([]any); ok {
+					<div class="flex flex-col gap-1">
+						<label for={ name } class="text-sm font-medium">{ getTitle(schema, name) }</label>
+						if desc, ok := schema["description"].(string); ok && desc != "" {
+							<p class="text-xs text-muted-foreground">{ desc }</p>
 						}
-					</select>
-				</div>
-			} else {
-				<div class="flex flex-col gap-1">
-					<label for={ name } class="text-sm font-medium">{ getTitle(schema, name) }</label>
-					if desc, ok := schema["description"].(string); ok && desc != "" {
-						<p class="text-xs text-muted-foreground">{ desc }</p>
-					}
-					if format, _ := schema["format"].(string); format == "textarea" {
-						<textarea
-							id={ name }
-							name={ name }
-							class="flex min-h-32 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm font-mono shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-						>{ value }</textarea>
-					} else {
-						@input.Input(input.Props{
-							ID:    name,
-							Name:  name,
-							Type:  input.TypeText,
-							Value: value,
-						})
-					}
-				</div>
-			}
+						// NOTE: caller must register popover.Script() and selectbox.Script() via common.WithScripts(...)
+						@selectbox.SelectBox(selectbox.Props{ID: name}) {
+							@selectbox.Trigger(selectbox.TriggerProps{Name: name}) {
+								@selectbox.Value(selectbox.ValueProps{Placeholder: getTitle(schema, name)})
+							}
+							@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+								@selectbox.Group() {
+									for _, opt := range enum {
+										@selectbox.Item(selectbox.ItemProps{
+											Value:    fmt.Sprintf("%v", opt),
+											Selected: fmt.Sprintf("%v", opt) == value,
+										}) {
+											{ fmt.Sprintf("%v", opt) }
+										}
+									}
+								}
+							}
+						}
+					</div>
+				} else {
+					<div class="flex flex-col gap-1">
+						<label for={ name } class="text-sm font-medium">{ getTitle(schema, name) }</label>
+						if desc, ok := schema["description"].(string); ok && desc != "" {
+							<p class="text-xs text-muted-foreground">{ desc }</p>
+						}
+						if format, _ := schema["format"].(string); format == "textarea" {
+							@textarea.Textarea(textarea.Props{
+								ID:    name,
+								Name:  name,
+								Value: value,
+								Class: "font-mono min-h-32",
+							})
+						} else {
+							@input.Input(input.Props{
+								ID:    name,
+								Name:  name,
+								Type:  input.TypeText,
+								Value: value,
+							})
+						}
+					</div>
+				}
 		}
 	}
 }

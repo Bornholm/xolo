@@ -7,6 +7,7 @@ import (
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/checkbox"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
 )
@@ -124,7 +125,7 @@ templ ApplicationForm(vmodel ApplicationFormVModel) {
 							</div>
 							if !vmodel.IsNew && vmodel.App != nil {
 								<div class="flex items-center gap-2">
-									<input type="checkbox" name="active" id="active" value="on" checked?={ vmodel.App.Active() }/>
+									@checkbox.Checkbox(checkbox.Props{ID: "active", Name: "active", Checked: vmodel.App.Active()})
 									<label for="active" class="text-sm font-medium">Active</label>
 								</div>
 							}

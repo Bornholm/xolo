@@ -9,6 +9,8 @@ import (
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/dialog"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/popover"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
 )
 
@@ -120,43 +122,43 @@ templ TokensPage(vmodel TokensPageVModel) {
 							if len(vmodel.OrgMemberships) == 0 {
 								<p class="text-sm text-muted-foreground">Vous n’appartenez à aucune organisation. Contactez un administrateur pour rejoindre une organisation avant de créer une clé API.</p>
 							} else {
-								<select
-									id="token-org"
-									name="org_id"
-									required
-									class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none md:text-sm"
-								>
-									<option value="">— Sélectionnez une organisation —</option>
-									for _, m := range vmodel.OrgMemberships {
-										if m.Org() != nil {
-											<option value={ string(m.OrgID()) }>{ m.Org().Name() }</option>
+								@selectbox.SelectBox(selectbox.Props{ID: "token-org"}) {
+									@selectbox.Trigger(selectbox.TriggerProps{
+										Name:       "org_id",
+										Attributes: templ.Attributes{"required": "required"},
+									}) {
+										@selectbox.Value(selectbox.ValueProps{Placeholder: "— Sélectionnez une organisation —"})
+									}
+									@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+										@selectbox.Group() {
+											for _, m := range vmodel.OrgMemberships {
+												if m.Org() != nil {
+													@selectbox.Item(selectbox.ItemProps{Value: string(m.OrgID())}) {
+														{ m.Org().Name() }
+													}
+												}
+											}
 										}
 									}
-								</select>
+								}
 							}
 						</div>
 						<div class="space-y-2">
 							<label for="token-expires" class="text-sm font-medium">Date d'expiration (optionnel)</label>
-							<input
-								id="token-expires"
-								name="expires_at"
-								type="date"
-								class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none md:text-sm"
-							/>
+							@input.Input(input.Props{ID: "token-expires", Name: "expires_at", Type: input.TypeDate})
 						</div>
 					</form>
 				</div>
 				@dialog.Footer(dialog.FooterProps{}) {
-					<button
-						type="submit"
-						if len(vmodel.OrgMemberships) == 0 {
-							disabled
-						}
-						class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 h-9 rounded-md px-4 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-						onclick="document.getElementById('token-create-form').requestSubmit()"
-					>
+					@button.Button(button.Props{
+						Type:     button.TypeSubmit,
+						Disabled: len(vmodel.OrgMemberships) == 0,
+						Attributes: templ.Attributes{
+							"onclick": "document.getElementById('token-create-form').requestSubmit()",
+						},
+					}) {
 						Créer la clé
-					</button>
+					}
 				}
 			}
 		}
@@ -172,7 +174,7 @@ templ TokensPage(vmodel TokensPageVModel) {
 					<div class="space-y-4">
 						<label class="text-sm font-medium block">Votre nouvelle clé API :</label>
 						<div class="flex gap-2">
-							<input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none md:text-sm" type="text" value={ vmodel.CreatedToken } readonly id="created-token"/>
+							@input.Input(input.Props{ID: "created-token", Type: input.TypeText, Value: vmodel.CreatedToken, Readonly: true})
 							@button.Button(button.Props{
 								Class: "px-3 py-1 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80",
 								Attributes: templ.Attributes{
@@ -198,14 +200,23 @@ templ TokensPage(vmodel TokensPageVModel) {
 			<div class="fixed top-4 right-4 z-50 bg-green-600 text-white px-4 py-3 rounded-md shadow-lg">
 				<div class="flex items-center gap-2">
 					<span>Clé API supprimée avec succès</span>
-					<button onclick="this.parentElement.parentElement.remove()" class="ml-2 hover:bg-white/20 rounded p-1">
+					@button.Button(button.Props{
+						Variant: button.VariantGhost,
+						Size:    button.SizeIcon,
+						Class:   "hover:bg-white/20 text-white",
+						Attributes: templ.Attributes{
+							"onclick": "this.parentElement.parentElement.remove()",
+						},
+					}) {
 						@icon.X(icon.Props{Class: "h-4 w-4"})
-					</button>
+					}
 				</div>
 			</div>
 		}
 		<!-- Dialog Script -->
 		@dialog.Script()
+		@popover.Script()
+		@selectbox.Script()
 		<script>
 			function copyToken() {
 				const tokenInput = document.getElementById('created-token');

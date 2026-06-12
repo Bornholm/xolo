@@ -45,7 +45,7 @@ type OAuth2Provider struct {
 type OIDCProvider struct {
 	OAuth2Provider
 	DiscoveryURL string `env:"DISCOVERY_URL"`
-	Icon         string `env:"ICON"`
+	Icon         string `env:"ICON" envDefault:"log-in"`
 	Label        string `env:"LABEL"`
 }
 

@@ -176,14 +176,14 @@ func LoginPage(vmodel LoginPageVModel) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" method=\"post\" id=\"loginForm\"><input type=\"hidden\" name=\"token\" id=\"tokenInput\"></form><script type=\"text/javascript\" data-allowed-origins=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" method=\"post\" id=\"loginForm\"><!-- hidden input: no templui equivalent, not rendered --><input type=\"hidden\" name=\"token\" id=\"tokenInput\"></form><script type=\"text/javascript\" data-allowed-origins=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var9 string
 					templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(strings.Join(vmodel.AllowedOrigins, ","))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/middleware/authn/token/component/login_page.templ`, Line: 34, Col: 99}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/middleware/authn/token/component/login_page.templ`, Line: 35, Col: 99}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 					if templ_7745c5c3_Err != nil {

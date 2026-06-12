@@ -50,13 +50,13 @@ func getOIDCAuthnHandlerFromConfig(ctx context.Context, conf *config.Config) (*o
 		providers = append(providers, oidc.Provider{
 			ID:    googleProvider.Name(),
 			Label: "Google",
-			Icon:  "fa-google",
+			Icon:  "log-in",
 		})
 
 		providersWithJWKS = append(providersWithJWKS, oidc.ProviderWithJWKS{
 			ID:      googleProvider.Name(),
 			Label:   "Google",
-			Icon:    "fa-google",
+			Icon:    "log-in",
 			Issuer:  "https://accounts.google.com",
 			JWKSURL: "https://www.googleapis.com/oauth2/v3/certs",
 		})
@@ -75,7 +75,7 @@ func getOIDCAuthnHandlerFromConfig(ctx context.Context, conf *config.Config) (*o
 		providers = append(providers, oidc.Provider{
 			ID:    githubProvider.Name(),
 			Label: "Github",
-			Icon:  "fa-github",
+			Icon:  "github",
 		})
 
 		issuer := "https://github.com"
@@ -85,7 +85,7 @@ func getOIDCAuthnHandlerFromConfig(ctx context.Context, conf *config.Config) (*o
 		providersWithJWKS = append(providersWithJWKS, oidc.ProviderWithJWKS{
 			ID:      githubProvider.Name(),
 			Label:   "Github",
-			Icon:    "fa-github",
+			Icon:    "github",
 			Issuer:  issuer,
 			JWKSURL: "https://token.actions.githubusercontent.com/.well-known/jwks",
 		})
@@ -107,7 +107,7 @@ func getOIDCAuthnHandlerFromConfig(ctx context.Context, conf *config.Config) (*o
 		providers = append(providers, oidc.Provider{
 			ID:    giteaProvider.Name(),
 			Label: string(conf.HTTP.Authn.Providers.Gitea.Label),
-			Icon:  "fa-git-alt",
+			Icon:  "gitlab",
 		})
 
 		discoveryURL := string(conf.HTTP.Authn.Providers.Gitea.DiscoveryURL)
@@ -117,7 +117,7 @@ func getOIDCAuthnHandlerFromConfig(ctx context.Context, conf *config.Config) (*o
 			providersWithJWKS = append(providersWithJWKS, oidc.ProviderWithJWKS{
 				ID:      giteaProvider.Name(),
 				Label:   string(conf.HTTP.Authn.Providers.Gitea.Label),
-				Icon:    "fa-git-alt",
+				Icon:    "gitlab",
 				Issuer:  issuer,
 				JWKSURL: jwksURL,
 			})

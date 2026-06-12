@@ -29,6 +29,7 @@ templ LoginPage(vmodel LoginPageVModel) {
 				}
 				@templuicard.Content(templuicard.ContentProps{Class: "space-y-4"}) {
 					<form hx-boost="false" action={ component.CurrentURL(ctx) } method="post" id="loginForm">
+						<!-- hidden input: no templui equivalent, not rendered -->
 						<input type="hidden" name="token" id="tokenInput"/>
 					</form>
 					<script type="text/javascript" data-allowed-origins={ strings.Join(vmodel.AllowedOrigins, ",") }>

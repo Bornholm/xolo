@@ -3,7 +3,10 @@ package component
 import (
 	"github.com/bornholm/xolo/internal/core/model"
 	commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/popover"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
 )
 
 type EditMemberPageVModel struct {
@@ -15,6 +18,15 @@ type EditMemberPageVModel struct {
 templ EditMemberPage(vmodel EditMemberPageVModel) {
 	@commonComp.AppLayout(vmodel.AppLayoutVModel,
 		commonComp.WithTitle("Modifier le membre"),
+		commonComp.WithScripts(
+			commonComp.Script{
+				Name:      "popover",
+				Component: popover.Script(),
+			},
+			commonComp.Script{
+				Name:      "selectbox",
+				Component: selectbox.Script(),
+			}),
 	) {
 		<div class="space-y-6">
 			<!-- Header with back button and title -->
@@ -62,30 +74,31 @@ templ EditMemberPage(vmodel EditMemberPageVModel) {
 						<div class="space-y-4">
 							<div class="space-y-2">
 								<label for="role" class="text-sm font-medium">Rôle dans l'organisation</label>
-								<select
-									id="role"
-									name="role"
-									class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-								>
-									<option value={ model.RoleMember } selected?={ vmodel.Membership.Role() == model.RoleMember }>Membre</option>
-									<option value={ model.RoleOrgAdmin } selected?={ vmodel.Membership.Role() == model.RoleOrgAdmin }>Admin organisation</option>
-								</select>
+								@selectbox.SelectBox(selectbox.Props{ID: "role"}) {
+									@selectbox.Trigger(selectbox.TriggerProps{Name: "role"}) {
+										@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner un rôle"})
+									}
+									@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+										@selectbox.Group() {
+											@selectbox.Item(selectbox.ItemProps{Value: string(model.RoleMember), Selected: vmodel.Membership.Role() == model.RoleMember}) {
+												Membre
+											}
+											@selectbox.Item(selectbox.ItemProps{Value: string(model.RoleOrgAdmin), Selected: vmodel.Membership.Role() == model.RoleOrgAdmin}) {
+												Admin organisation
+											}
+										}
+									}
+								}
 							</div>
 							<!-- Action buttons -->
 							<div class="flex items-center gap-2 pt-2">
-								<button
-									type="submit"
-									class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 h-10 rounded-md px-4 cursor-pointer"
-								>
+								@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeLg}) {
 									@icon.Save()
 									<span>Enregistrer</span>
-								</button>
-								<a
-									href={ commonComp.BaseURL(ctx, commonComp.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members")) }
-									class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 cursor-pointer"
-								>
+								}
+								@button.Button(button.Props{Variant: button.VariantOutline, Size: button.SizeLg, Href: commonComp.BaseURLString(ctx, commonComp.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members"))}) {
 									Annuler
-								</a>
+								}
 							</div>
 						</div>
 					</form>

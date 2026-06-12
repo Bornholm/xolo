@@ -5,6 +5,7 @@ import (
 	"github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	templuibutton "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	templuicard "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 )
 
 type Provider struct {
@@ -46,7 +47,11 @@ templ LoginPage(vmodel LoginPageVModel) {
 								"hx-boost": "false",
 							},
 						}) {
-							<i class={ fmt.Sprintf("fab %s", p.Icon) } aria-hidden="true"></i>
+							{{ providerIcon := p.Icon }}
+							if providerIcon == "" {
+								{{ providerIcon = "log-in" }}
+							}
+							@icon.Icon(providerIcon)(icon.Props{Class: "h-4 w-4"})
 							{ p.Label }
 						}
 					}

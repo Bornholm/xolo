@@ -2,6 +2,8 @@ package component
 
 import (
 	commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
 	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
 )
 
@@ -17,26 +19,28 @@ templ PluginsDiagnosticsPage(vmodel PluginsDiagnosticsPageVModel) {
 			if len(vmodel.Descriptors) == 0 {
 				<p class="text-muted-foreground">Aucun plugin chargé.</p>
 			} else {
-				<table class="table w-full">
-					<thead>
-						<tr>
-							<th>Nom</th>
-							<th>Version</th>
-							<th>Description</th>
-							<th>Statut</th>
-						</tr>
-					</thead>
-					<tbody>
-						for _, d := range vmodel.Descriptors {
-							<tr>
-								<td class="font-mono">{ d.Name }</td>
-								<td>{ d.Version }</td>
-								<td>{ d.Description }</td>
-								<td><span class="badge badge-success">actif</span></td>
-							</tr>
+				@table.Table() {
+					@table.Header() {
+						@table.Row() {
+							@table.Head() { Nom }
+							@table.Head() { Version }
+							@table.Head() { Description }
+							@table.Head() { Statut }
 						}
-					</tbody>
-				</table>
+					}
+					@table.Body() {
+						for _, d := range vmodel.Descriptors {
+							@table.Row() {
+								@table.Cell(table.CellProps{Class: "font-mono"}) { { d.Name } }
+								@table.Cell() { { d.Version } }
+								@table.Cell() { { d.Description } }
+								@table.Cell() {
+									@badge.Badge(badge.Props{}) { actif }
+								}
+							}
+						}
+					}
+				}
 			}
 		</div>
 	}

@@ -83,19 +83,13 @@ templ EditUserPage(vmodel EditUserPageVModel) {
 					@formx.FormWrapper(vmodel.UserForm, commonComp.BaseURL(ctx, commonComp.WithPath("/admin/users/"+string(vmodel.User.ID())+"/edit")), "POST") {
 						<!-- Action buttons -->
 						<div class="flex items-center gap-2 pt-2">
-							<button
-								type="submit"
-								class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 h-10 rounded-md px-4 cursor-pointer"
-							>
+							@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeLg}) {
 								@icon.Save()
 								<span>Enregistrer</span>
-							</button>
-							<a
-								href={ commonComp.BaseURL(ctx, commonComp.WithPath("/admin/users")) }
-								class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 cursor-pointer"
-							>
+							}
+							@button.Button(button.Props{Variant: button.VariantOutline, Size: button.SizeLg, Href: commonComp.BaseURLString(ctx, commonComp.WithPath("/admin/users"))}) {
 								Annuler
-							</a>
+							}
 						</div>
 					}
 				</div>
@@ -139,15 +133,17 @@ templ EditUserPage(vmodel EditUserPageVModel) {
 						Annuler
 					}
 				}
-				<button
-					type="button"
-					class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 rounded-md px-4 cursor-pointer"
-					data-url={ commonComp.BaseURLString(ctx, commonComp.WithPath("/admin/users/"+string(vmodel.User.ID()))) }
-					onclick="fetch(this.dataset.url,{method:'DELETE'}).then(()=>window.location.href='/admin/users')"
-				>
+				@button.Button(button.Props{
+					Variant: button.VariantDestructive,
+					Size:    button.SizeLg,
+					Attributes: templ.Attributes{
+						"data-url": commonComp.BaseURLString(ctx, commonComp.WithPath("/admin/users/"+string(vmodel.User.ID()))),
+						"onclick":  "fetch(this.dataset.url,{method:'DELETE'}).then(()=>window.location.href='/admin/users')",
+					},
+				}) {
 					@icon.Trash2(icon.Props{Class: "h-4 w-4"})
 					<span>Supprimer</span>
-				</button>
+				}
 			}
 		}
 	}

@@ -91,8 +91,6 @@ templ Page(funcs ...PageOptionFunc) {
 			}
 			<link rel="icon" type="image/png" href={ string(BaseURL(ctx, WithPath("/assets/favicon.png"))) }/>
 			<link rel="stylesheet" href={ string(BaseURL(ctx, WithPath("/assets/templui.css"))) }/>
-			<link rel="stylesheet" href={ string(BaseURL(ctx, WithPath("/assets/fontawesome/css/all.min.css"))) }/>
-			<link rel="stylesheet" href={ string(BaseURL(ctx, WithPath("/assets/style.css"))) }/>
 			<script src={ string(BaseURL(ctx, WithPath("/assets/htmx.min.js"))) }></script>
 			if opts.Head != nil {
 				@opts.Head()

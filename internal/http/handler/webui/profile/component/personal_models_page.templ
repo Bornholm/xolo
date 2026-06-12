@@ -6,6 +6,7 @@ import (
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/textarea"
 )
 
 templ PersonalModelsPage(vmodel PersonalModelsPageVModel) {
@@ -14,26 +15,29 @@ templ PersonalModelsPage(vmodel PersonalModelsPageVModel) {
 			<div class="flex items-center justify-between">
 				<h1 class="text-2xl font-semibold">Mes modèles</h1>
 				<div class="flex items-center gap-2">
-					<input
-						id="pvm-import-input"
-						type="file"
-						accept=".json,application/json"
-						style="display:none"
-						data-api-base={ vmodel.BaseURL }
-						data-redirect-base={ common.BaseURLString(ctx, common.WithPath("/profile/personal-models/")) }
-						onchange="(async function(el){
-							var file=el.files[0]; if(!file) return;
-							try {
-								var txt=await file.text();
-								var bundle=JSON.parse(txt);
-								var res=await fetch(el.dataset.apiBase+'/api/personal-models/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(bundle)});
-								if(!res.ok){var e=await res.text();alert('Erreur import : '+e);return;}
-								var vm=await res.json();
-								window.location.href=el.dataset.redirectBase+vm.id+'/pipeline';
-							} catch(e) { alert('Fichier invalide : '+e); }
-							finally { el.value=''; }
-						})(this)"
-					/>
+					<div class="hidden">
+						@input.Input(input.Props{
+							ID:         "pvm-import-input",
+							Type:       input.TypeFile,
+							FileAccept: ".json,application/json",
+							Attributes: templ.Attributes{
+								"data-api-base":      vmodel.BaseURL,
+								"data-redirect-base": common.BaseURLString(ctx, common.WithPath("/profile/personal-models/")),
+								"onchange": "(async function(el){" +
+									"var file=el.files[0]; if(!file) return;" +
+									"try {" +
+									"var txt=await file.text();" +
+									"var bundle=JSON.parse(txt);" +
+									"var res=await fetch(el.dataset.apiBase+'/api/personal-models/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(bundle)});" +
+									"if(!res.ok){var e=await res.text();alert('Erreur import : '+e);return;}" +
+									"var vm=await res.json();" +
+									"window.location.href=el.dataset.redirectBase+vm.id+'/pipeline';" +
+									"} catch(e) { alert('Fichier invalide : '+e); }" +
+									"finally { el.value=''; }" +
+									"})(this)",
+							},
+						})
+					</div>
 					@button.Button(button.Props{
 						Variant: button.VariantOutline,
 						Attributes: templ.Attributes{
@@ -187,7 +191,7 @@ templ PersonalModelFormPage(vmodel PersonalModelFormVModel) {
 				</div>
 				<div class="space-y-2">
 					<label class="text-sm font-medium">Description</label>
-					<textarea name="description" rows="3" class="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-base shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm">{ vmodel.Description }</textarea>
+					@textarea.Textarea(textarea.Props{Name: "description", Rows: 3, Value: vmodel.Description})
 				</div>
 				<div class="flex gap-2">
 					@button.Button(button.Props{Type: button.TypeSubmit}) {
