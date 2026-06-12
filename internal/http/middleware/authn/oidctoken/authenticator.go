@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/bornholm/xolo/internal/http/middleware/authn"
 	"github.com/golang-jwt/jwt/v5"
@@ -24,8 +25,8 @@ type claims struct {
 }
 
 type Options struct {
-	CookieNames       []string
-	IgnoreTokenExpiry bool
+	CookieNames  []string
+	ExpiryLeeway time.Duration
 }
 
 type OptionFunc func(*Options)
@@ -36,9 +37,14 @@ func WithCookieNames(names ...string) OptionFunc {
 	}
 }
 
-func WithIgnoreTokenExpiry() OptionFunc {
+// WithExpiryLeeway allows tokens to be considered valid for up to the given
+// duration after their `exp` claim has passed. This accommodates identity
+// providers (eg. OpenWebUI's forwarded `oauth_id_token` cookie) that do not
+// refresh short-lived ID tokens while the underlying session stays active,
+// without turning the token into a permanently valid credential.
+func WithExpiryLeeway(d time.Duration) OptionFunc {
 	return func(o *Options) {
-		o.IgnoreTokenExpiry = true
+		o.ExpiryLeeway = d
 	}
 }
 
@@ -119,11 +125,12 @@ func (h *Handler) validateToken(ctx context.Context, rawToken string, provider P
 		return nil, errors.WithStack(err)
 	}
 
-	parseOpts := []jwt.ParserOption{}
-	if h.options.IgnoreTokenExpiry {
-		parseOpts = append(parseOpts, jwt.WithoutClaimsValidation())
-	} else {
-		parseOpts = append(parseOpts, jwt.WithIssuer(provider.Issuer))
+	parseOpts := []jwt.ParserOption{
+		jwt.WithIssuer(provider.Issuer),
+		jwt.WithExpirationRequired(),
+	}
+	if h.options.ExpiryLeeway > 0 {
+		parseOpts = append(parseOpts, jwt.WithLeeway(h.options.ExpiryLeeway))
 	}
 
 	token, err := jwt.ParseWithClaims(rawToken, &claims{}, func(t *jwt.Token) (interface{}, error) {
@@ -153,10 +160,6 @@ func (h *Handler) validateToken(ctx context.Context, rawToken string, provider P
 
 	cl, ok := token.Claims.(*claims)
 	if !ok {
-		return nil, errInvalidToken
-	}
-
-	if h.options.IgnoreTokenExpiry && cl.Issuer != provider.Issuer {
 		return nil, errInvalidToken
 	}
 

@@ -14,7 +14,7 @@ type Authn struct {
 	DefaultAdmins         []string      `env:"DEFAULT_ADMINS" envSeparator:","`
 	ActiveByDefault       bool          `env:"ACTIVE_BY_DEFAULT" envDefault:"false"`
 	CookiesToCheck        []string      `env:"COOKIES_TO_CHECK" envSeparator:"," envDefault:"oauth_id_token"`
-	OIDCTokenIgnoreExpiry bool          `env:"OIDCTOKEN_IGNORE_EXPIRY" envDefault:"false"`
+	OIDCTokenExpiryLeeway time.Duration `env:"OIDCTOKEN_EXPIRY_LEEWAY" envDefault:"0"`
 }
 
 type Session struct {

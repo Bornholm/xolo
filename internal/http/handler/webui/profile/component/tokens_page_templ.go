@@ -257,7 +257,7 @@ func TokensPage(vmodel TokensPageVModel) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if len(vmodel.AuthTokens) == 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"rounded-lg border p-6 text-center text-muted-foreground\">Aucune clé API configurée. Les clés API permettent aux applications externes d'accéder à votre compte de manière sécurisée.</div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"rounded-lg border p-6 text-center text-muted-foreground\">Aucune clé API configurée. Les clés API permettent d'utiliser les modèles exposés par Xolo depuis vos applications et outils habituels.</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
