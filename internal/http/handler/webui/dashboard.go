@@ -334,7 +334,7 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 		Page:                page,
 		HasNext:             hasNext,
 		ChartPerDay:         dashChartByDate(perDay),
-		ChartSharesPerModel: dashChartShares(dashChartByValue(perModel)),
+		ChartSharesPerModel: common.ChartShares(dashChartByValue(perModel)),
 		ChartPerProvider:    dashChartByProvider(perProvider, providerNames),
 		TotalEnergyWh:       totalEnergyWh,
 		TotalCO2GramsMid:    totalCO2GramsMid,
@@ -383,29 +383,6 @@ func dashChartByProvider(m map[model.ProviderID]int64, names map[model.ProviderI
 	}
 	sort.Slice(pts, func(i, j int) bool { return pts[i].Value > pts[j].Value })
 	return pts
-}
-
-// dashChartShares converts a sorted list of cost data points into
-// percentage shares of the total, cycling through the chart color palette.
-func dashChartShares(pts []component.ProfileChartDataPoint) []component.ChartShare {
-	var total float64
-	for _, p := range pts {
-		total += p.Value
-	}
-	colors := []string{"var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)"}
-	shares := make([]component.ChartShare, 0, len(pts))
-	for i, p := range pts {
-		pct := 0
-		if total > 0 {
-			pct = int(p.Value / total * 100)
-		}
-		shares = append(shares, component.ChartShare{
-			Label: p.Label,
-			Pct:   pct,
-			Color: colors[i%len(colors)],
-		})
-	}
-	return shares
 }
 
 func dashChartByDate(m map[string]int64) []component.ProfileChartDataPoint {

@@ -431,9 +431,9 @@ func ModelsPage(vmodel ModelsPageVModel) templ.Component {
 									return templ_7745c5c3_Err
 								}
 								var templ_7745c5c3_Var21 string
-								templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(formatCost(mu.Aggregate.TotalCost, mu.Aggregate.Currency))
+								templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(common.FormatCost(mu.Aggregate.TotalCost, mu.Aggregate.Currency))
 								if templ_7745c5c3_Err != nil {
-									return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 135, Col: 95}
+									return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 135, Col: 102}
 								}
 								_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 								if templ_7745c5c3_Err != nil {
@@ -877,20 +877,7 @@ func openCodeConfigExample(baseURL string, modelUsages []ModelUsage) string {
 }
 
 func formatCostPerM(microcentsPer1K int64, currency string) string {
-	return formatCostPerMCurrency(currency, microcentsPer1K*1000)
-}
-
-func formatCostPerMCurrency(currency string, microcents int64) string {
-	symbol := "$"
-	switch currency {
-	case "EUR":
-		symbol = "€"
-	case "GBP":
-		symbol = "£"
-	case "JPY":
-		symbol = "¥"
-	}
-	return fmt.Sprintf("%.6f%s", float64(microcents)/1_000_000, symbol)
+	return common.FormatCost(microcentsPer1K*1000, currency)
 }
 
 func orgCurrency(org model.Organization) string {
@@ -970,7 +957,7 @@ func ModelsGrid(modelUsages []ModelUsage) templ.Component {
 							var templ_7745c5c3_Var39 string
 							templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(mu.Org.Slug() + "/" + mu.Model.ProxyName())
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 382, Col: 51}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 369, Col: 51}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 							if templ_7745c5c3_Err != nil {
@@ -980,7 +967,7 @@ func ModelsGrid(modelUsages []ModelUsage) templ.Component {
 							var templ_7745c5c3_Var40 string
 							templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(mu.Model.ProxyName())
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 384, Col: 29}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 371, Col: 29}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 							if templ_7745c5c3_Err != nil {
@@ -1005,7 +992,7 @@ func ModelsGrid(modelUsages []ModelUsage) templ.Component {
 						var templ_7745c5c3_Var41 string
 						templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(mu.Org.Name())
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 388, Col: 62}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 375, Col: 62}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 						if templ_7745c5c3_Err != nil {
@@ -1050,7 +1037,7 @@ func ModelsGrid(modelUsages []ModelUsage) templ.Component {
 						var templ_7745c5c3_Var43 string
 						templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(mu.Model.Description())
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 394, Col: 72}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 381, Col: 72}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 						if templ_7745c5c3_Err != nil {
@@ -1068,7 +1055,7 @@ func ModelsGrid(modelUsages []ModelUsage) templ.Component {
 					var templ_7745c5c3_Var44 string
 					templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(formatCostPerM(mu.Model.PromptCostPer1KTokens(), orgCurrency(mu.Org)))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 399, Col: 102}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 386, Col: 102}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 					if templ_7745c5c3_Err != nil {
@@ -1081,7 +1068,7 @@ func ModelsGrid(modelUsages []ModelUsage) templ.Component {
 					var templ_7745c5c3_Var45 string
 					templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(formatCostPerM(mu.Model.CompletionCostPer1KTokens(), orgCurrency(mu.Org)))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 403, Col: 106}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 390, Col: 106}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 					if templ_7745c5c3_Err != nil {
@@ -1099,7 +1086,7 @@ func ModelsGrid(modelUsages []ModelUsage) templ.Component {
 						var templ_7745c5c3_Var46 string
 						templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", mu.Aggregate.TotalRequests))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 410, Col: 79}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 397, Col: 79}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 						if templ_7745c5c3_Err != nil {
@@ -1112,7 +1099,7 @@ func ModelsGrid(modelUsages []ModelUsage) templ.Component {
 						var templ_7745c5c3_Var47 string
 						templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", mu.Aggregate.TotalTokens))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 414, Col: 77}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 401, Col: 77}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
 						if templ_7745c5c3_Err != nil {
@@ -1123,9 +1110,9 @@ func ModelsGrid(modelUsages []ModelUsage) templ.Component {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var48 string
-						templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(formatCost(mu.Aggregate.TotalCost, mu.Aggregate.Currency))
+						templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(common.FormatCost(mu.Aggregate.TotalCost, mu.Aggregate.Currency))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 418, Col: 91}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/models_page.templ`, Line: 405, Col: 98}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 						if templ_7745c5c3_Err != nil {

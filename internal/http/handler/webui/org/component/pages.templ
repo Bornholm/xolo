@@ -3,7 +3,6 @@ package component
 import (
 	"fmt"
 	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/estimator/energy"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
@@ -992,13 +991,13 @@ templ OrgSettingsPage(vmodel OrgSettingsPageVModel) {
 						<div class="text-xs text-muted-foreground space-y-1">
 							<p>Aperçu ({ strconv.Itoa(vmodel.MemberCount) } membres) :</p>
 							if vmodel.SharedDailyBudget != nil {
-								<p>Journalier : { currencySymbol(vmodel.Org.Currency()) }{ formatBudgetField(*vmodel.SharedDailyBudget) }</p>
+								<p>Journalier : { common.CurrencySymbol(vmodel.Org.Currency()) }{ formatBudgetField(*vmodel.SharedDailyBudget) }</p>
 							}
 							if vmodel.SharedMonthlyBudget != nil {
-								<p>Mensuel : { currencySymbol(vmodel.Org.Currency()) }{ formatBudgetField(*vmodel.SharedMonthlyBudget) }</p>
+								<p>Mensuel : { common.CurrencySymbol(vmodel.Org.Currency()) }{ formatBudgetField(*vmodel.SharedMonthlyBudget) }</p>
 							}
 							if vmodel.SharedYearlyBudget != nil {
-								<p>Annuel : { currencySymbol(vmodel.Org.Currency()) }{ formatBudgetField(*vmodel.SharedYearlyBudget) }</p>
+								<p>Annuel : { common.CurrencySymbol(vmodel.Org.Currency()) }{ formatBudgetField(*vmodel.SharedYearlyBudget) }</p>
 							}
 						</div>
 					}
@@ -1187,108 +1186,11 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 		),
 	) {
 		<div class="space-y-6">
-			<!-- Quotas title -->
-			<div class="flex items-center gap-4">
-				@icon.ChartPie(icon.Props{Class: "h-8 w-8"})
-				<h1 class="text-2xl font-semibold">Quotas</h1>
-			</div>
-			if vmodel.OrgQuota != nil {
-				<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-					if vmodel.OrgQuota.DailyBudget() != nil {
-						{{ budget := microToFloat(*vmodel.OrgQuota.DailyBudget()) }}
-						{{ spent := microToFloat(vmodel.DailyCost) }}
-						@card.Card() {
-							@card.Header() {
-								@card.Title() {
-									Budget journalier
-									<p class="text-sm font-medium shadow-xs py-2">{ fmt.Sprintf("Restant: %d%%", 100-int(spent/budget*100)) }</p>
-								}
-							}
-							@card.Content() {
-								{{ remaining := maxFloat(0, budget-spent) }}
-								@chart.Chart(chart.Props{
-									Variant:    chart.VariantDoughnut,
-									ShowLegend: true,
-									Class:      "h-48",
-									Data: chart.Data{
-										Labels: []string{fmt.Sprintf("Utilisé"), "Disponible"},
-										Datasets: []chart.Dataset{{
-											Data:            []float64{spent, remaining},
-											BackgroundColor: []string{"rgba(239,68,68,0.8)", "rgba(34,197,94,0.8)"},
-											BorderWidth:     0,
-										}},
-									},
-								})
-							}
-						}
-					}
-					if vmodel.OrgQuota.MonthlyBudget() != nil {
-						{{ budget := microToFloat(*vmodel.OrgQuota.MonthlyBudget()) }}
-						{{ spent := microToFloat(vmodel.MonthlyCost) }}
-						@card.Card() {
-							@card.Header() {
-								@card.Title() {
-									Budget mensuel
-									<p class="text-sm font-medium shadow-xs py-2">{ fmt.Sprintf("Restant: %d%%", 100-int(spent/budget*100)) }</p>
-								}
-							}
-							@card.Content() {
-								{{ remaining := maxFloat(0, budget-spent) }}
-								@chart.Chart(chart.Props{
-									Variant:    chart.VariantDoughnut,
-									ShowLegend: true,
-									Class:      "h-48",
-									Data: chart.Data{
-										Labels: []string{"Utilisé", "Disponible"},
-										Datasets: []chart.Dataset{{
-											Data:            []float64{spent, remaining},
-											BackgroundColor: []string{"rgba(239,68,68,0.8)", "rgba(34,197,94,0.8)"},
-											BorderWidth:     0,
-										}},
-									},
-								})
-							}
-						}
-					}
-					if vmodel.OrgQuota.YearlyBudget() != nil {
-						{{ budget := microToFloat(*vmodel.OrgQuota.YearlyBudget()) }}
-						{{ spent := microToFloat(vmodel.YearlyCost) }}
-						@card.Card() {
-							@card.Header() {
-								@card.Title() {
-									Budget annuel
-									<p class="text-sm font-medium shadow-xs py-2">{ fmt.Sprintf("Restant: %d%%", 100-int(spent/budget*100)) }</p>
-								}
-							}
-							@card.Content() {
-								{{ budget := microToFloat(*vmodel.OrgQuota.YearlyBudget()) }}
-								{{ spent := microToFloat(vmodel.YearlyCost) }}
-								{{ remaining := maxFloat(0, budget-spent) }}
-								@chart.Chart(chart.Props{
-									Variant:    chart.VariantDoughnut,
-									ShowLegend: true,
-									Class:      "h-48",
-									Data: chart.Data{
-										Labels: []string{"Utilisé", "Disponible"},
-										Datasets: []chart.Dataset{{
-											Data:            []float64{spent, remaining},
-											BackgroundColor: []string{"rgba(239,68,68,0.8)", "rgba(34,197,94,0.8)"},
-											BorderWidth:     0,
-										}},
-									},
-								})
-							}
-						}
-					}
-				</div>
-			}
-			<!-- Statistiques title + period selector -->
-			<div class="flex items-center justify-between mt-8">
-				<div class="flex items-center gap-4">
-					@icon.TrendingUp(icon.Props{Class: "h-8 w-8"})
-					<h1 class="text-2xl font-semibold">Statistiques</h1>
-				</div>
-				<form method="GET" class="flex items-center gap-3 flex-wrap">
+			<!-- Header: title + period selector + owner filter + CSV export -->
+			<div class="flex items-center gap-4 flex-wrap">
+				<h1 class="text-2xl font-semibold">Usage — { vmodel.Org.Name() }</h1>
+				<div class="flex-1"></div>
+				<form method="GET" class="flex items-center gap-2 flex-wrap">
 					<label class="text-sm text-muted-foreground">Période :</label>
 					@selectbox.SelectBox(selectbox.Props{ID: "range", Class: "w-40"}) {
 						@selectbox.Trigger(selectbox.TriggerProps{
@@ -1369,89 +1271,165 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 						Filtrer
 					}
 				</form>
+				@button.Button(button.Props{
+					Variant: button.VariantOutline,
+					Size:    button.SizeSm,
+					Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage"), common.WithValues("range", vmodel.Range, "owner", strings.Join(vmodel.OwnerFilter, ","), "format", "csv")),
+				}) {
+					@icon.Download(icon.Props{Class: "h-4 w-4"})
+					Export CSV
+				}
 			</div>
-			<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+			<!-- Org quota card -->
+			if vmodel.OrgQuota != nil {
+				{{
+					var budget *int64
+					var spent int64
+					periodLabel := "mensuel"
+					switch {
+					case vmodel.OrgQuota.MonthlyBudget() != nil:
+						budget = vmodel.OrgQuota.MonthlyBudget()
+						spent = vmodel.MonthlyCost
+						periodLabel = "mensuel"
+					case vmodel.OrgQuota.YearlyBudget() != nil:
+						budget = vmodel.OrgQuota.YearlyBudget()
+						spent = vmodel.YearlyCost
+						periodLabel = "annuel"
+					case vmodel.OrgQuota.DailyBudget() != nil:
+						budget = vmodel.OrgQuota.DailyBudget()
+						spent = vmodel.DailyCost
+						periodLabel = "journalier"
+					}
+					pct := common.UsagePercent(spent, budget)
+					barColor := "var(--chart-2)"
+					badgeVariant := badge.VariantSecondary
+					if pct > 90 {
+						barColor = "var(--destructive)"
+						badgeVariant = badge.VariantDestructive
+					} else if pct > 70 {
+						barColor = "var(--chart-3)"
+					}
+				}}
 				@card.Card() {
-					@card.Header() {
-						@card.Title() {
-							Requêtes
-						}
-					}
 					@card.Content() {
-						<p class="text-3xl font-bold">{ fmt.Sprintf("%d", vmodel.Aggregate.TotalRequests) }</p>
-					}
-				}
-				@card.Card() {
-					@card.Header() {
-						@card.Title() {
-							Coût total
-						}
-					}
-					@card.Content() {
-						if vmodel.Aggregate.TotalCost == 0 {
-							<p class="text-3xl font-bold">—</p>
-						} else {
-							<p class="text-3xl font-bold">{ formatCost(vmodel.Aggregate.TotalCost, vmodel.Aggregate.Currency) }</p>
-						}
-					}
-				}
-				@card.Card() {
-					@card.Header() {
-						@card.Title() {
-							Tokens totaux
-						}
-					}
-					@card.Content() {
-						<p class="text-3xl font-bold">{ fmt.Sprintf("%d", vmodel.Aggregate.TotalTokens) }</p>
-					}
-				}
-				if vmodel.Aggregate.CachedTokens > 0 {
-					@card.Card() {
-						@card.Header() {
-							@card.Title() {
-								Tokens en cache
+						<div class="flex items-start justify-between gap-2 mb-3">
+							<div>
+								<div class="font-semibold">Quota</div>
+								<div class="text-xs text-muted-foreground mt-1">
+									if budget != nil {
+										{ common.FormatCost(spent, vmodel.Currency) } / { common.FormatCost(*budget, vmodel.Currency) } · { fmt.Sprintf("%d%% du quota %s", pct, periodLabel) }
+									} else {
+										Aucun quota défini (utilisation illimitée)
+									}
+								</div>
+							</div>
+							if budget != nil {
+								@badge.Badge(badge.Props{Variant: badgeVariant}) {
+									{ fmt.Sprintf("%d%%", pct) }
+								}
+							} else {
+								@badge.Badge(badge.Props{Variant: badge.VariantOutline}) {
+									Illimité
+								}
 							}
+						</div>
+						if budget != nil {
+							<div class="h-1.5 rounded-full bg-muted overflow-hidden">
+								<div class="h-full rounded-full" style={ fmt.Sprintf("width: %d%%; background: %s", pct, barColor) }></div>
+							</div>
 						}
+						<div class="grid grid-cols-3 gap-4 mt-3.5 text-xs">
+							<div>
+								<div class="text-muted-foreground">Aujourd'hui</div>
+								<div class="font-semibold mt-0.5">{ common.FormatCost(vmodel.DailyCost, vmodel.Currency) }</div>
+							</div>
+							<div>
+								<div class="text-muted-foreground">Ce mois</div>
+								<div class="font-semibold mt-0.5">{ common.FormatCost(vmodel.MonthlyCost, vmodel.Currency) }</div>
+							</div>
+							<div>
+								<div class="text-muted-foreground">Cette année</div>
+								<div class="font-semibold mt-0.5">{ common.FormatCost(vmodel.YearlyCost, vmodel.Currency) }</div>
+							</div>
+						</div>
+					}
+				}
+			}
+			<!-- Summary cards -->
+			if vmodel.Aggregate != nil {
+				<div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+					@card.Card() {
 						@card.Content() {
-							<p class="text-3xl font-bold">{ fmt.Sprintf("%d", vmodel.Aggregate.CachedTokens) }</p>
-							if vmodel.Aggregate.PromptTokens > 0 {
-								<p class="text-sm text-muted-foreground mt-1">
-									{ fmt.Sprintf("%.0f%% des tokens prompt", float64(vmodel.Aggregate.CachedTokens)/float64(vmodel.Aggregate.PromptTokens)*100) }
+							<div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+								@icon.Send(icon.Props{Class: "h-4 w-4 text-primary"})
+								Requêtes
+							</div>
+							<p class="text-2xl font-bold mt-2">{ fmt.Sprintf("%d", vmodel.Aggregate.TotalRequests) }</p>
+						}
+					}
+					@card.Card() {
+						@card.Content() {
+							<div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+								@icon.Coins(icon.Props{Class: "h-4 w-4", Color: "var(--chart-3)"})
+								Tokens
+							</div>
+							<p class="text-2xl font-bold mt-2">{ fmt.Sprintf("%d", vmodel.Aggregate.TotalTokens) }</p>
+							if vmodel.Aggregate.CachedTokens > 0 && vmodel.Aggregate.PromptTokens > 0 {
+								<p class="text-xs text-muted-foreground mt-1">
+									{ fmt.Sprintf("dont %d en cache (%.0f%% des tokens prompt)", vmodel.Aggregate.CachedTokens, float64(vmodel.Aggregate.CachedTokens)/float64(vmodel.Aggregate.PromptTokens)*100) }
 								</p>
 							}
 						}
 					}
-				}
-				if vmodel.TotalEnergyWh > 0 {
 					@card.Card() {
-						@card.Header() {
-							@card.Title() {
-								Énergie / CO₂ estimés
+						@card.Content() {
+							<div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+								@icon.Euro(icon.Props{Class: "h-4 w-4", Color: "var(--chart-2)"})
+								Coût total
+							</div>
+							if vmodel.Aggregate.TotalCost == 0 {
+								<p class="text-2xl font-bold mt-2">—</p>
+							} else {
+								<p class="text-2xl font-bold mt-2">{ common.FormatCost(vmodel.Aggregate.TotalCost, vmodel.Aggregate.Currency) }</p>
 							}
 						}
-						@card.Content() {
-							<div class="flex items-center gap-2">
-								<p class="text-3xl font-bold">{ formatEnergyWh(vmodel.TotalEnergyWh) }</p>
-								{{ energyMessage := formatEnergyToHuman(vmodel.TotalEnergyWh) }}
-								if energyMessage != "" {
-									{{ tooltipID := "energy-tooltip-" + fmt.Sprintf("%.0f", vmodel.TotalEnergyWh) }}
-									@tooltip.Tooltip() {
-										@tooltip.Trigger(tooltip.TriggerProps{For: tooltipID, Class: "cursor-help text-muted-foreground hover:text-foreground"}) {
-											@icon.CircleQuestionMark(icon.Props{Class: "h-5 w-5"})
-										}
-										@tooltip.Content(tooltip.ContentProps{ID: tooltipID, Position: tooltip.PositionRight, Class: "max-w-xs"}) {
-											<p>{ energyMessage }</p>
+					}
+					if vmodel.TotalEnergyWh > 0 {
+						@card.Card() {
+							@card.Content() {
+								<div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+									@icon.Zap(icon.Props{Class: "h-4 w-4", Color: "var(--chart-4)"})
+									Énergie
+								</div>
+								<div class="flex items-center gap-2 mt-2">
+									<p class="text-2xl font-bold">{ common.FormatEnergyWh(vmodel.TotalEnergyWh) }</p>
+									{{ energyMessage := common.FormatEnergyToHuman(vmodel.TotalEnergyWh) }}
+									if energyMessage != "" {
+										{{ tooltipID := "energy-tooltip-" + fmt.Sprintf("%.0f", vmodel.TotalEnergyWh) }}
+										@tooltip.Tooltip() {
+											@tooltip.Trigger(tooltip.TriggerProps{For: tooltipID, Class: "cursor-help text-muted-foreground hover:text-foreground"}) {
+												@icon.CircleQuestionMark(icon.Props{Class: "h-5 w-5"})
+											}
+											@tooltip.Content(tooltip.ContentProps{ID: tooltipID, Position: tooltip.PositionRight, Class: "max-w-xs"}) {
+												<p>{ energyMessage }</p>
+											}
 										}
 									}
-								}
-							</div>
-							if vmodel.TotalCO2GramsMid > 0 {
-								<div class="flex items-center gap-2 mt-1">
-									<p class="text-sm font-medium text-muted-foreground">
-										{ formatCO2Grams(vmodel.TotalCO2GramsMid) }
-										<span class="text-xs">(mix monde)</span>
-									</p>
-									{{ co2Message := formatCO2ToCarKilometers(vmodel.TotalCO2GramsMid) }}
+								</div>
+								<p class="text-xs text-muted-foreground mt-1">estimation ±facteur ×3-5</p>
+							}
+						}
+					}
+					if vmodel.TotalCO2GramsMid > 0 {
+						@card.Card() {
+							@card.Content() {
+								<div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+									@icon.Leaf(icon.Props{Class: "h-4 w-4", Color: "oklch(0.55 0.15 140)"})
+									CO₂
+								</div>
+								<div class="flex items-center gap-2 mt-2">
+									<p class="text-2xl font-bold">{ common.FormatCO2Grams(vmodel.TotalCO2GramsMid) }</p>
+									{{ co2Message := common.FormatCO2ToCarKilometers(vmodel.TotalCO2GramsMid) }}
 									if co2Message != "" {
 										{{ tooltipID := "co2-tooltip-" + fmt.Sprintf("%.0f", vmodel.TotalCO2GramsMid) }}
 										@tooltip.Tooltip() {
@@ -1464,13 +1442,14 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 										}
 									}
 								</div>
+								<p class="text-xs text-muted-foreground mt-1">estimation mix monde, ±facteur ×3-5</p>
 							}
-							<p class="text-xs text-muted-foreground mt-1">estimation ±facteur ×3-5</p>
 						}
 					}
-				}
-			</div>
-			if len(vmodel.ChartPerDay) > 0 || len(vmodel.ChartPerModel) > 0 || len(vmodel.ChartPerUser) > 0 || len(vmodel.ChartPerProvider) > 0 {
+				</div>
+			}
+			<!-- Charts: cost per day, model breakdown, per user, per provider -->
+			if len(vmodel.ChartPerDay) > 0 || len(vmodel.ChartSharesPerModel) > 0 || len(vmodel.ChartPerUser) > 0 || len(vmodel.ChartPerProvider) > 0 {
 				{{ trueVal := true }}
 				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 					if len(vmodel.ChartPerDay) > 0 {
@@ -1490,10 +1469,10 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 									BeginAtZero: &trueVal,
 									Class:       "h-64",
 									Data: chart.Data{
-										Labels: chartLabels(vmodel.ChartPerDay),
+										Labels: common.ChartLabels(vmodel.ChartPerDay),
 										Datasets: []chart.Dataset{{
 											Label:           vmodel.Currency,
-											Data:            chartValues(vmodel.ChartPerDay),
+											Data:            common.ChartValues(vmodel.ChartPerDay),
 											BackgroundColor: "rgba(99,102,241,0.8)",
 										}},
 									},
@@ -1501,31 +1480,24 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 							}
 						}
 					}
-					if len(vmodel.ChartPerModel) > 0 {
+					if len(vmodel.ChartSharesPerModel) > 0 {
 						@card.Card() {
 							@card.Header() {
 								@card.Title() {
-									Coût par modèle
+									Répartition par modèle
 								}
 							}
 							@card.Content() {
-								@chart.Chart(chart.Props{
-									Variant:     chart.VariantBar,
-									ShowXLabels: true,
-									ShowYLabels: true,
-									ShowYGrid:   true,
-									ShowLegend:  false,
-									BeginAtZero: &trueVal,
-									Class:       "h-64",
-									Data: chart.Data{
-										Labels: chartLabels(vmodel.ChartPerModel),
-										Datasets: []chart.Dataset{{
-											Label:           vmodel.Currency,
-											Data:            chartValues(vmodel.ChartPerModel),
-											BackgroundColor: "rgba(20,184,166,0.8)",
-										}},
-									},
-								})
+								for _, share := range vmodel.ChartSharesPerModel {
+									<div class="flex items-center gap-2.5 py-1.5">
+										<span class="w-2.5 h-2.5 rounded-xs shrink-0" style={ fmt.Sprintf("background: %s", share.Color) }></span>
+										<span class="text-sm font-mono text-foreground w-28 overflow-hidden text-ellipsis whitespace-nowrap">{ share.Label }</span>
+										<div class="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+											<div class="h-full rounded-full" style={ fmt.Sprintf("width: %d%%; background: %s", share.Pct, share.Color) }></div>
+										</div>
+										<span class="text-xs text-muted-foreground w-10 text-right">{ fmt.Sprintf("%d%%", share.Pct) }</span>
+									</div>
+								}
 							}
 						}
 					}
@@ -1546,10 +1518,10 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 									BeginAtZero: &trueVal,
 									Class:       "h-64",
 									Data: chart.Data{
-										Labels: chartLabels(vmodel.ChartPerUser),
+										Labels: common.ChartLabels(vmodel.ChartPerUser),
 										Datasets: []chart.Dataset{{
 											Label:           vmodel.Currency,
-											Data:            chartValues(vmodel.ChartPerUser),
+											Data:            common.ChartValues(vmodel.ChartPerUser),
 											BackgroundColor: "rgba(245,158,11,0.8)",
 										}},
 									},
@@ -1574,10 +1546,10 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 									BeginAtZero: &trueVal,
 									Class:       "h-64",
 									Data: chart.Data{
-										Labels: chartLabels(vmodel.ChartPerProvider),
+										Labels: common.ChartLabels(vmodel.ChartPerProvider),
 										Datasets: []chart.Dataset{{
 											Label:           vmodel.Currency,
-											Data:            chartValues(vmodel.ChartPerProvider),
+											Data:            common.ChartValues(vmodel.ChartPerProvider),
 											BackgroundColor: "rgba(168,85,247,0.8)",
 										}},
 									},
@@ -1587,11 +1559,15 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 					}
 				</div>
 			}
+			<!-- Usage records table -->
 			if len(vmodel.Records) > 0 {
 				@card.Card() {
 					@card.Content() {
 						@table.Table() {
 							@table.Header() {
+								@table.Head() {
+									Date
+								}
 								@table.Head() {
 									Utilisateur / Application
 								}
@@ -1599,75 +1575,78 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 									Modèle
 								}
 								@table.Head() {
-									Tokens prompt
-								}
-								@table.Head() {
-									Tokens compl.
+									Tokens (in/out)
 								}
 								@table.Head() {
 									Coût
 								}
 								@table.Head() {
-									Énergie (est.)
+									Énergie
 								}
 								@table.Head() {
-									Date
+									CO₂
 								}
 							}
 							@table.Body() {
 								for _, dr := range vmodel.Records {
 									@table.Row() {
 										@table.Cell() {
+											{ dr.Record.CreatedAt().Format("2006-01-02 15:04") }
+										}
+										@table.Cell() {
 											{ displayOwner(vmodel.Users, vmodel.ApplicationsMap, dr.Record) }
 										}
 										@table.Cell() {
-											{ dr.DisplayModelName }
+											<span class="font-mono">{ dr.DisplayModelName }</span>
 										}
 										@table.Cell() {
-											{ fmt.Sprintf("%d", dr.Record.PromptTokens()) }
-											if dr.Record.CachedTokens() > 0 {
-												<span class="block text-xs text-muted-foreground">
-													{ fmt.Sprintf("dont %d en cache", dr.Record.CachedTokens()) }
-												</span>
-											}
-										}
-										@table.Cell() {
-											{ fmt.Sprintf("%d", dr.Record.CompletionTokens()) }
+											<div class="flex items-center gap-1.5">
+												{ fmt.Sprintf("%d / %d", dr.Record.PromptTokens(), dr.Record.CompletionTokens()) }
+												if dr.Record.CachedTokens() > 0 {
+													<span
+														title={ fmt.Sprintf("%d tokens en cache", dr.Record.CachedTokens()) }
+														class="cursor-help text-muted-foreground"
+													>
+														@icon.DatabaseZap(icon.Props{Class: "h-3.5 w-3.5"})
+													</span>
+												}
+											</div>
 										}
 										@table.Cell() {
 											if dr.Converted {
 												<span
-													title={ formatCost(dr.Record.Cost(), dr.Record.Currency()) }
+													title={ common.FormatCost(dr.Record.Cost(), dr.Record.Currency()) }
 													class="cursor-help underline decoration-dotted"
 												>
-													{ formatCost(dr.DisplayCost, dr.DisplayCurrency) }
+													{ common.FormatCost(dr.DisplayCost, dr.DisplayCurrency) }
 												</span>
 											} else {
-												{ formatCost(dr.DisplayCost, dr.DisplayCurrency) }
+												{ common.FormatCost(dr.DisplayCost, dr.DisplayCurrency) }
 											}
 										}
 										@table.Cell() {
 											if dr.EnergyWh > 0 {
 												<span
-													title={ fmt.Sprintf("min: %s / max: %s", formatEnergyWh(dr.EnergyLowWh), formatEnergyWh(dr.EnergyHighWh)) }
+													title={ fmt.Sprintf("min: %s / max: %s", common.FormatEnergyWh(dr.EnergyLowWh), common.FormatEnergyWh(dr.EnergyHighWh)) }
 													class="cursor-help underline decoration-dotted"
 												>
-													{ formatEnergyWh(dr.EnergyWh) }
+													{ common.FormatEnergyWh(dr.EnergyWh) }
 												</span>
-												if dr.CO2GramsMid > 0 {
-													<span
-														title={ fmt.Sprintf("CO₂ France : %s / monde : %s / charbon : %s", formatCO2Grams(dr.CO2GramsMin), formatCO2Grams(dr.CO2GramsMid), formatCO2Grams(dr.CO2GramsMax)) }
-														class="block text-xs text-muted-foreground cursor-help"
-													>
-														{ formatCO2Grams(dr.CO2GramsMid) }
-													</span>
-												}
 											} else {
 												—
 											}
 										}
 										@table.Cell() {
-											{ dr.Record.CreatedAt().Format("2006-01-02 15:04") }
+											if dr.CO2GramsMid > 0 {
+												<span
+													title={ fmt.Sprintf("CO₂ France : %s / monde : %s / charbon : %s", common.FormatCO2Grams(dr.CO2GramsMin), common.FormatCO2Grams(dr.CO2GramsMid), common.FormatCO2Grams(dr.CO2GramsMax)) }
+													class="cursor-help underline decoration-dotted text-muted-foreground"
+												>
+													{ common.FormatCO2Grams(dr.CO2GramsMid) }
+												</span>
+											} else {
+												—
+											}
 										}
 									}
 								}
@@ -1689,37 +1668,12 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 						})
 					}
 				}
-				<div class="flex justify-end mt-4">
-					<a
-						href={ common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage"), common.WithValues("range", vmodel.Range, "owner", strings.Join(vmodel.OwnerFilter, ","), "format", "csv")) }
-						class="text-sm text-muted-foreground hover:text-foreground flex items-center gap-2"
-					>
-						@icon.Download(icon.Props{Class: "h-4 w-4"})
-						Télécharger en CSV
-					</a>
-				</div>
 			}
 		</div>
 	}
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-func chartLabels(pts []ChartDataPoint) []string {
-	labels := make([]string, len(pts))
-	for i, p := range pts {
-		labels[i] = p.Label
-	}
-	return labels
-}
-
-func chartValues(pts []ChartDataPoint) []float64 {
-	vals := make([]float64, len(pts))
-	for i, p := range pts {
-		vals[i] = p.Value
-	}
-	return vals
-}
 
 func displayOwner(users map[model.UserID]model.User, apps map[model.ApplicationID]model.Application, rec model.UsageRecord) string {
 	// Check if this is an Application record (has non-empty ApplicationID)
@@ -1738,43 +1692,10 @@ func displayOwner(users map[model.UserID]model.User, apps map[model.ApplicationI
 	return string(uid)
 }
 
-func microToFloat(v int64) float64 { return float64(v) / 1_000_000 }
-
-func maxFloat(a, b float64) float64 {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func currencySymbol(currency string) string {
-	switch currency {
-	case "EUR":
-		return "€"
-	case "GBP":
-		return "£"
-	case "JPY":
-		return "¥"
-	case "CHF":
-		return "CHF "
-	case "CAD":
-		return "CA$"
-	case "AUD":
-		return "AU$"
-	default:
-		return "$" // USD
-	}
-}
-
-// formatCost formats an absolute cost stored in microcents (1 microcent = $0.000001).
-func formatCost(v int64, currency string) string {
-	return fmt.Sprintf("%.6f%s", float64(v)/1_000_000, currencySymbol(currency))
-}
-
 // formatCostRate formats a pricing rate stored as microcents per 1K tokens,
 // displaying it as dollars per million tokens (industry standard).
 func formatCostRate(v int64, currency string) string {
-	return fmt.Sprintf("%.4f%s/1M", float64(v)/1_000, currencySymbol(currency))
+	return fmt.Sprintf("%.4f%s/1M", float64(v)/1_000, common.CurrencySymbol(currency))
 }
 
 func fmtInt(v int64) string {
@@ -1795,64 +1716,6 @@ func formatActiveParamsBillions(v int64) string {
 		return ""
 	}
 	return strconv.FormatFloat(float64(v)/1e9, 'f', -1, 64)
-}
-
-// formatEnergyWh formats an energy value with auto-scaling (kWh, Wh, mWh, µWh).
-func formatEnergyWh(wh float64) string {
-	if wh <= 0 {
-		return "—"
-	}
-	if wh >= 1000 {
-		return fmt.Sprintf("%.3f kWh", wh/1000)
-	}
-	if wh >= 1 {
-		return fmt.Sprintf("%.3f Wh", wh)
-	}
-	if wh >= 0.001 {
-		return fmt.Sprintf("%.3f mWh", wh*1000)
-	}
-	return fmt.Sprintf("%.3f µWh", wh*1_000_000)
-}
-
-// formatCO2Grams formats a CO₂ quantity in grams with auto-scaling (g, mg, µg).
-func formatCO2Grams(g float64) string {
-	if g <= 0 {
-		return "—"
-	}
-	if g >= 1 {
-		return fmt.Sprintf("%.3f gCO₂", g)
-	}
-	if g >= 0.001 {
-		return fmt.Sprintf("%.3f mgCO₂", g*1000)
-	}
-	return fmt.Sprintf("%.3f µgCO₂", g*1_000_000)
-}
-
-// formatCO2ToCarKilometers converts CO2 grams to equivalent car kilometers based on ADEME data (~109g CO2/km for petrol vehicle).
-func formatCO2ToCarKilometers(grams float64) string {
-	if grams <= 0 {
-		return ""
-	}
-	km := grams / 109
-	if km < 1 {
-		return fmt.Sprintf("Soit environ %d m parcouru seul dans un véhicule thermique à essence, selon les chiffres de l'ADEME.", int(km*1000))
-	}
-	if km < 1000 {
-		return fmt.Sprintf("Soit environ %d km parcouru seul dans un véhicule thermique à essence, selon les chiffres de l'ADEME.", int(km))
-	}
-	return fmt.Sprintf("Soit environ %s km parcouru seul dans un véhicule thermique à essence, selon les chiffres de l'ADEME.", formatNumber(km))
-}
-
-// formatEnergyToHuman converts energy in Wh to human-equivalent appliance usage.
-func formatEnergyToHuman(wh float64) string {
-	if wh <= 0 {
-		return ""
-	}
-	return energy.HumanEquivalent(wh)
-}
-
-func formatNumber(n float64) string {
-	return fmt.Sprintf("%.1f", n)
 }
 
 func formatBudgetField(v int64) string {

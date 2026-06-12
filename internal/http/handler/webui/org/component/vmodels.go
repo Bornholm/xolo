@@ -106,10 +106,11 @@ type OrgDisplayUsageRecord struct {
 	CO2GramsMax      float64 // gCO₂ at coal plant intensity (worst case)
 }
 
-type ChartDataPoint struct {
-	Label string
-	Value float64 // currency units (NOT microcents)
-}
+type ChartDataPoint = common.ChartDataPoint
+
+// ChartShare represents a value's share of a total, as a percentage, with
+// an associated chart color (cycling through the design system's palette).
+type ChartShare = common.ChartShare
 
 type OrgUsagePageVModel struct {
 	common.AppLayoutVModel
@@ -127,15 +128,15 @@ type OrgUsagePageVModel struct {
 	PageSize        int
 	HasNext         bool
 	// Chart/quota fields
-	OrgQuota         model.Quota // may be nil if no quota defined
-	DailyCost        int64       // today's org cost in org currency (microcents)
-	MonthlyCost      int64       // this month's org cost in org currency (microcents)
-	YearlyCost       int64       // this year's org cost in org currency (microcents)
-	Currency         string      // org currency
-	ChartPerDay      []ChartDataPoint
-	ChartPerModel    []ChartDataPoint
-	ChartPerUser     []ChartDataPoint
-	ChartPerProvider []ChartDataPoint
+	OrgQuota            model.Quota // may be nil if no quota defined
+	DailyCost           int64       // today's org cost in org currency (microcents)
+	MonthlyCost         int64       // this month's org cost in org currency (microcents)
+	YearlyCost          int64       // this year's org cost in org currency (microcents)
+	Currency            string      // org currency
+	ChartPerDay         []ChartDataPoint
+	ChartSharesPerModel []ChartShare
+	ChartPerUser        []ChartDataPoint
+	ChartPerProvider    []ChartDataPoint
 	// Energy estimation
 	TotalEnergyWh    float64 // sum of midpoint estimates (0 if all unknown)
 	TotalCO2GramsMid float64 // sum of CO₂ midpoints (world average, grams)

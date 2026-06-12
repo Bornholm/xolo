@@ -9,7 +9,6 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"fmt"
 	"github.com/bornholm/xolo/internal/core/model"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
@@ -209,7 +208,7 @@ func InvitationsPage(vmodel InvitationsPageVModel) templ.Component {
 											var templ_7745c5c3_Var11 string
 											templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(inv.Org().Name())
 											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/sub_pages.templ`, Line: 51, Col: 31}
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/sub_pages.templ`, Line: 50, Col: 31}
 											}
 											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 											if templ_7745c5c3_Err != nil {
@@ -219,7 +218,7 @@ func InvitationsPage(vmodel InvitationsPageVModel) templ.Component {
 											var templ_7745c5c3_Var12 string
 											templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(string(inv.OrgID()))
 											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/sub_pages.templ`, Line: 53, Col: 34}
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/sub_pages.templ`, Line: 52, Col: 34}
 											}
 											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 											if templ_7745c5c3_Err != nil {
@@ -245,7 +244,7 @@ func InvitationsPage(vmodel InvitationsPageVModel) templ.Component {
 											var templ_7745c5c3_Var14 string
 											templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(inv.Role())
 											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/sub_pages.templ`, Line: 58, Col: 25}
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/sub_pages.templ`, Line: 57, Col: 25}
 											}
 											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 											if templ_7745c5c3_Err != nil {
@@ -265,7 +264,7 @@ func InvitationsPage(vmodel InvitationsPageVModel) templ.Component {
 											var templ_7745c5c3_Var15 string
 											templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(inv.ExpiresAt().Format("02/01/2006"))
 											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/sub_pages.templ`, Line: 63, Col: 51}
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/sub_pages.templ`, Line: 62, Col: 51}
 											}
 											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 											if templ_7745c5c3_Err != nil {
@@ -359,38 +358,6 @@ func InvitationsPage(vmodel InvitationsPageVModel) templ.Component {
 
 // ─── Chart helpers ───────────────────────────────────────────────────────────
 
-type ProfileChartDataPoint struct {
-	Label string
-	Value float64
-}
-
-func profileChartLabels(pts []ProfileChartDataPoint) []string {
-	labels := make([]string, len(pts))
-	for i, p := range pts {
-		labels[i] = p.Label
-	}
-	return labels
-}
-
-func profileChartValues(pts []ProfileChartDataPoint) []float64 {
-	vals := make([]float64, len(pts))
-	for i, p := range pts {
-		vals[i] = p.Value
-	}
-	return vals
-}
-
-func formatCost(microcents int64, currency string) string {
-	symbol := "$"
-	switch currency {
-	case "EUR":
-		symbol = "€"
-	case "GBP":
-		symbol = "£"
-	case "JPY":
-		symbol = "¥"
-	}
-	return fmt.Sprintf("%.6f%s", float64(microcents)/1_000_000, symbol)
-}
+type ProfileChartDataPoint = common.ChartDataPoint
 
 var _ = templruntime.GeneratedTemplate

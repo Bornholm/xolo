@@ -132,7 +132,7 @@ templ ModelsPage(vmodel ModelsPageVModel) {
 												</div>
 												<div>
 													<span class="text-muted-foreground">Coût</span>
-													<p class="font-medium">{ formatCost(mu.Aggregate.TotalCost, mu.Aggregate.Currency) }</p>
+													<p class="font-medium">{ common.FormatCost(mu.Aggregate.TotalCost, mu.Aggregate.Currency) }</p>
 												</div>
 											</div>
 										}
@@ -345,20 +345,7 @@ func openCodeConfigExample(baseURL string, modelUsages []ModelUsage) string {
 }
 
 func formatCostPerM(microcentsPer1K int64, currency string) string {
-	return formatCostPerMCurrency(currency, microcentsPer1K*1000)
-}
-
-func formatCostPerMCurrency(currency string, microcents int64) string {
-	symbol := "$"
-	switch currency {
-	case "EUR":
-		symbol = "€"
-	case "GBP":
-		symbol = "£"
-	case "JPY":
-		symbol = "¥"
-	}
-	return fmt.Sprintf("%.6f%s", float64(microcents)/1_000_000, symbol)
+	return common.FormatCost(microcentsPer1K*1000, currency)
 }
 
 func orgCurrency(org model.Organization) string {
@@ -415,7 +402,7 @@ templ ModelsGrid(modelUsages []ModelUsage) {
 								</div>
 								<div>
 									<span class="text-muted-foreground">Coût</span>
-									<p class="font-medium">{ formatCost(mu.Aggregate.TotalCost, mu.Aggregate.Currency) }</p>
+									<p class="font-medium">{ common.FormatCost(mu.Aggregate.TotalCost, mu.Aggregate.Currency) }</p>
 								</div>
 							</div>
 						}

@@ -1,7 +1,6 @@
 package component
 
 import (
-	"fmt"
 	"github.com/bornholm/xolo/internal/core/model"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
@@ -88,36 +87,4 @@ templ InvitationsPage(vmodel InvitationsPageVModel) {
 
 // ─── Chart helpers ───────────────────────────────────────────────────────────
 
-type ProfileChartDataPoint struct {
-	Label string
-	Value float64
-}
-
-func profileChartLabels(pts []ProfileChartDataPoint) []string {
-	labels := make([]string, len(pts))
-	for i, p := range pts {
-		labels[i] = p.Label
-	}
-	return labels
-}
-
-func profileChartValues(pts []ProfileChartDataPoint) []float64 {
-	vals := make([]float64, len(pts))
-	for i, p := range pts {
-		vals[i] = p.Value
-	}
-	return vals
-}
-
-func formatCost(microcents int64, currency string) string {
-	symbol := "$"
-	switch currency {
-	case "EUR":
-		symbol = "€"
-	case "GBP":
-		symbol = "£"
-	case "JPY":
-		symbol = "¥"
-	}
-	return fmt.Sprintf("%.6f%s", float64(microcents)/1_000_000, symbol)
-}
+type ProfileChartDataPoint = common.ChartDataPoint

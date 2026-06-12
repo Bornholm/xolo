@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
-	"github.com/bornholm/xolo/internal/estimator/energy"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
@@ -65,80 +64,7 @@ type DashboardPageVModel struct {
 
 // ChartShare represents a value's share of a total, as a percentage, with
 // an associated chart color (cycling through the design system's palette).
-type ChartShare struct {
-	Label string
-	Pct   int
-	Color string
-}
-
-// formatEnergyWh formats an energy value with auto-scaling (kWh, Wh, mWh, µWh).
-func formatEnergyWh(wh float64) string {
-	if wh <= 0 {
-		return "—"
-	}
-	if wh >= 1000 {
-		return fmt.Sprintf("%.3f kWh", wh/1000)
-	}
-	if wh >= 1 {
-		return fmt.Sprintf("%.3f Wh", wh)
-	}
-	if wh >= 0.001 {
-		return fmt.Sprintf("%.3f mWh", wh*1000)
-	}
-	return fmt.Sprintf("%.3f µWh", wh*1_000_000)
-}
-
-// formatCO2Grams formats a CO₂ quantity in grams with auto-scaling (g, mg, µg).
-func formatCO2Grams(g float64) string {
-	if g <= 0 {
-		return "—"
-	}
-	if g >= 1 {
-		return fmt.Sprintf("%.3f gCO₂", g)
-	}
-	if g >= 0.001 {
-		return fmt.Sprintf("%.3f mgCO₂", g*1000)
-	}
-	return fmt.Sprintf("%.3f µgCO₂", g*1_000_000)
-}
-
-// formatCO2ToCarKilometers converts CO2 grams to equivalent car kilometers based on ADEME data (~109g CO2/km for petrol vehicle).
-func formatCO2ToCarKilometers(grams float64) string {
-	if grams <= 0 {
-		return ""
-	}
-	km := grams / 109
-	if km < 1 {
-		return fmt.Sprintf("Soit environ %d m parcouru seul dans un véhicule thermique à essence, selon les chiffres de l'ADEME.", int(km*1000))
-	}
-	if km < 1000 {
-		return fmt.Sprintf("Soit environ %d km parcouru seul dans un véhicule thermique à essence, selon les chiffres de l'ADEME.", int(km))
-	}
-	return fmt.Sprintf("Soit environ %s km parcouru seul dans un véhicule thermique à essence, selon les chiffres de l'ADEME.", formatNumber(km))
-}
-
-// formatEnergyToHuman converts energy in Wh to human-equivalent appliance usage.
-func formatEnergyToHuman(wh float64) string {
-	if wh <= 0 {
-		return ""
-	}
-	return energy.HumanEquivalent(wh)
-}
-
-func formatNumber(n float64) string {
-	return fmt.Sprintf("%.1f", n)
-}
-
-func usagePercent(used int64, budget *int64) int {
-	if budget == nil || *budget == 0 {
-		return 0
-	}
-	pct := int(used * 100 / *budget)
-	if pct > 100 {
-		return 100
-	}
-	return pct
-}
+type ChartShare = common.ChartShare
 
 templ DashboardPage(vmodel DashboardPageVModel) {
 	@common.AppLayout(vmodel.AppLayoutVModel,
@@ -228,7 +154,7 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 								spent = ou.DailyCost
 								periodLabel = "journalier"
 							}
-							pct := usagePercent(spent, budget)
+							pct := common.UsagePercent(spent, budget)
 							barColor := "var(--chart-2)"
 							badgeVariant := badge.VariantSecondary
 							if pct > 90 {
@@ -245,7 +171,7 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 										<div class="font-semibold">{ orgName }</div>
 										<div class="text-xs text-muted-foreground mt-1">
 											if budget != nil {
-												{ formatCost(spent, ou.Currency) } / { formatCost(*budget, ou.Currency) } · { fmt.Sprintf("%d%% du quota %s", pct, periodLabel) }
+												{ common.FormatCost(spent, ou.Currency) } / { common.FormatCost(*budget, ou.Currency) } · { fmt.Sprintf("%d%% du quota %s", pct, periodLabel) }
 											} else {
 												Aucun quota défini (utilisation illimitée)
 											}
@@ -269,15 +195,15 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 								<div class="grid grid-cols-3 gap-4 mt-3.5 text-xs">
 									<div>
 										<div class="text-muted-foreground">Aujourd'hui</div>
-										<div class="font-semibold mt-0.5">{ formatCost(ou.DailyCost, ou.Currency) }</div>
+										<div class="font-semibold mt-0.5">{ common.FormatCost(ou.DailyCost, ou.Currency) }</div>
 									</div>
 									<div>
 										<div class="text-muted-foreground">Ce mois</div>
-										<div class="font-semibold mt-0.5">{ formatCost(ou.MonthlyCost, ou.Currency) }</div>
+										<div class="font-semibold mt-0.5">{ common.FormatCost(ou.MonthlyCost, ou.Currency) }</div>
 									</div>
 									<div>
 										<div class="text-muted-foreground">Cette année</div>
-										<div class="font-semibold mt-0.5">{ formatCost(ou.YearlyCost, ou.Currency) }</div>
+										<div class="font-semibold mt-0.5">{ common.FormatCost(ou.YearlyCost, ou.Currency) }</div>
 									</div>
 								</div>
 							}
@@ -320,7 +246,7 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 							if vmodel.Aggregate.TotalCost == 0 {
 								<p class="text-2xl font-bold mt-2">—</p>
 							} else {
-								<p class="text-2xl font-bold mt-2">{ formatCost(vmodel.Aggregate.TotalCost, vmodel.Aggregate.Currency) }</p>
+								<p class="text-2xl font-bold mt-2">{ common.FormatCost(vmodel.Aggregate.TotalCost, vmodel.Aggregate.Currency) }</p>
 							}
 						}
 					}
@@ -332,8 +258,8 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 									Énergie
 								</div>
 								<div class="flex items-center gap-2 mt-2">
-									<p class="text-2xl font-bold">{ formatEnergyWh(vmodel.TotalEnergyWh) }</p>
-									{{ energyMessage := formatEnergyToHuman(vmodel.TotalEnergyWh) }}
+									<p class="text-2xl font-bold">{ common.FormatEnergyWh(vmodel.TotalEnergyWh) }</p>
+									{{ energyMessage := common.FormatEnergyToHuman(vmodel.TotalEnergyWh) }}
 									if energyMessage != "" {
 										{{ tooltipID := "energy-tooltip-" + fmt.Sprintf("%.0f", vmodel.TotalEnergyWh) }}
 										@tooltip.Tooltip() {
@@ -358,8 +284,8 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 									CO₂
 								</div>
 								<div class="flex items-center gap-2 mt-2">
-									<p class="text-2xl font-bold">{ formatCO2Grams(vmodel.TotalCO2GramsMid) }</p>
-									{{ co2Message := formatCO2ToCarKilometers(vmodel.TotalCO2GramsMid) }}
+									<p class="text-2xl font-bold">{ common.FormatCO2Grams(vmodel.TotalCO2GramsMid) }</p>
+									{{ co2Message := common.FormatCO2ToCarKilometers(vmodel.TotalCO2GramsMid) }}
 									if co2Message != "" {
 										{{ tooltipID := "co2-tooltip-" + fmt.Sprintf("%.0f", vmodel.TotalCO2GramsMid) }}
 										@tooltip.Tooltip() {
@@ -399,10 +325,10 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 									BeginAtZero: &trueVal,
 									Class:       "h-64",
 									Data: chart.Data{
-										Labels: profileChartLabels(vmodel.ChartPerDay),
+										Labels: common.ChartLabels(vmodel.ChartPerDay),
 										Datasets: []chart.Dataset{{
 											Label:           "Coût",
-											Data:            profileChartValues(vmodel.ChartPerDay),
+											Data:            common.ChartValues(vmodel.ChartPerDay),
 											BackgroundColor: "rgba(99,102,241,0.8)",
 										}},
 									},
@@ -448,10 +374,10 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 									BeginAtZero: &trueVal,
 									Class:       "h-64",
 									Data: chart.Data{
-										Labels: profileChartLabels(vmodel.ChartPerProvider),
+										Labels: common.ChartLabels(vmodel.ChartPerProvider),
 										Datasets: []chart.Dataset{{
 											Label:           "Coût",
-											Data:            profileChartValues(vmodel.ChartPerProvider),
+											Data:            common.ChartValues(vmodel.ChartPerProvider),
 											BackgroundColor: "rgba(168,85,247,0.8)",
 										}},
 									},
@@ -525,22 +451,22 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 										@table.Cell() {
 											if dr.Converted {
 												<span
-													title={ formatCost(dr.Record.Cost(), dr.Record.Currency()) }
+													title={ common.FormatCost(dr.Record.Cost(), dr.Record.Currency()) }
 													class="cursor-help underline decoration-dotted"
 												>
-													{ formatCost(dr.DisplayCost, dr.DisplayCurrency) }
+													{ common.FormatCost(dr.DisplayCost, dr.DisplayCurrency) }
 												</span>
 											} else {
-												{ formatCost(dr.DisplayCost, dr.DisplayCurrency) }
+												{ common.FormatCost(dr.DisplayCost, dr.DisplayCurrency) }
 											}
 										}
 										@table.Cell() {
 											if dr.EnergyWh > 0 {
 												<span
-													title={ fmt.Sprintf("min: %s / max: %s", formatEnergyWh(dr.EnergyLowWh), formatEnergyWh(dr.EnergyHighWh)) }
+													title={ fmt.Sprintf("min: %s / max: %s", common.FormatEnergyWh(dr.EnergyLowWh), common.FormatEnergyWh(dr.EnergyHighWh)) }
 													class="cursor-help underline decoration-dotted"
 												>
-													{ formatEnergyWh(dr.EnergyWh) }
+													{ common.FormatEnergyWh(dr.EnergyWh) }
 												</span>
 											} else {
 												—
@@ -549,10 +475,10 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 										@table.Cell() {
 											if dr.CO2GramsMid > 0 {
 												<span
-													title={ fmt.Sprintf("CO₂ France : %s / monde : %s / charbon : %s", formatCO2Grams(dr.CO2GramsMin), formatCO2Grams(dr.CO2GramsMid), formatCO2Grams(dr.CO2GramsMax)) }
+													title={ fmt.Sprintf("CO₂ France : %s / monde : %s / charbon : %s", common.FormatCO2Grams(dr.CO2GramsMin), common.FormatCO2Grams(dr.CO2GramsMid), common.FormatCO2Grams(dr.CO2GramsMax)) }
 													class="cursor-help underline decoration-dotted text-muted-foreground"
 												>
-													{ formatCO2Grams(dr.CO2GramsMid) }
+													{ common.FormatCO2Grams(dr.CO2GramsMid) }
 												</span>
 											} else {
 												—
