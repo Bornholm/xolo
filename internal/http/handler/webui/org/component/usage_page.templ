@@ -1,0 +1,517 @@
+package component
+
+import (
+	"fmt"
+	"slices"
+	"strings"
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/chart"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/pagination"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/popover"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/tooltip"
+)
+
+// ── Org Usage Page ────────────────────────────────────────────────────────────
+templ OrgUsagePage(vmodel OrgUsagePageVModel) {
+	@common.AppLayout(
+		vmodel.AppLayoutVModel,
+		common.WithTitle("Usage — "+vmodel.Org.Name()),
+		common.WithScripts(
+			common.Script{Name: "chart", Component: chart.Script()},
+			common.Script{Name: "popover", Component: popover.Script()},
+			common.Script{Name: "selectbox", Component: selectbox.Script()},
+		),
+	) {
+		<div class="space-y-6">
+			<!-- Header: title + period selector + owner filter + CSV export -->
+			<div class="flex items-center gap-4 flex-wrap">
+				<h1 class="text-2xl font-semibold">Usage — { vmodel.Org.Name() }</h1>
+				<div class="flex-1"></div>
+				<form method="GET" class="flex items-center gap-2 flex-wrap">
+					<label class="text-sm text-muted-foreground">Période :</label>
+					@selectbox.SelectBox(selectbox.Props{ID: "range", Class: "w-40"}) {
+						@selectbox.Trigger(selectbox.TriggerProps{
+							Name:       "range",
+							Attributes: templ.Attributes{"onchange": "this.form.submit()"},
+						}) {
+							@selectbox.Value(selectbox.ValueProps{Placeholder: "Période"})
+						}
+						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+							@selectbox.Group() {
+								for _, opt := range []struct{ Value, Label string }{
+									{"1d", "Dernier jour"},
+									{"7d", "7 derniers jours"},
+									{"30d", "30 derniers jours"},
+									{"90d", "3 derniers mois"},
+									{"180d", "6 derniers mois"},
+									{"365d", "Dernière année"},
+								} {
+									@selectbox.Item(selectbox.ItemProps{
+										Value:    opt.Value,
+										Selected: vmodel.Range == opt.Value || (vmodel.Range == "" && opt.Value == "7d"),
+									}) {
+										{ opt.Label }
+									}
+								}
+							}
+						}
+					}
+					if len(vmodel.Members) > 0 || len(vmodel.Applications) > 0 {
+						<label class="text-sm text-muted-foreground">Owner :</label>
+						@selectbox.SelectBox(selectbox.Props{Multiple: true, Class: "w-64"}) {
+							@selectbox.Trigger(selectbox.TriggerProps{
+								Name:              "owner",
+								Multiple:          true,
+								ShowPills:         false,
+								SelectedCountText: "{n} sélectionnées",
+							}) {
+								@selectbox.Value(selectbox.ValueProps{
+									Placeholder: "Tous",
+									Multiple:    true,
+								})
+							}
+							@selectbox.Content(selectbox.ContentProps{
+								SearchPlaceholder: "Rechercher...",
+							}) {
+								@selectbox.Group() {
+									for _, m := range vmodel.Members {
+										if m.User() != nil {
+											@selectbox.Item(selectbox.ItemProps{
+												Value:    string(m.User().ID()),
+												Selected: slices.Contains(vmodel.OwnerFilter, string(m.User().ID())),
+											}) {
+												<span class="flex items-center gap-2">
+													@icon.User(icon.Props{Class: "h-4 w-4 text-muted-foreground"})
+													{ m.User().DisplayName() }
+												</span>
+											}
+										}
+									}
+								}
+								@selectbox.Group() {
+									for _, app := range vmodel.Applications {
+										@selectbox.Item(selectbox.ItemProps{
+											Value:    string(app.ID()),
+											Selected: slices.Contains(vmodel.OwnerFilter, string(app.ID())),
+										}) {
+											<span class="flex items-center gap-2">
+												@icon.ExternalLink(icon.Props{Class: "h-4 w-4 text-muted-foreground"})
+												{ app.Name() }
+											</span>
+										}
+									}
+								}
+							}
+						}
+					}
+					@button.Button(button.Props{Type: "submit", Variant: button.VariantOutline, Size: button.SizeSm}) {
+						Filtrer
+					}
+				</form>
+				@button.Button(button.Props{
+					Variant: button.VariantOutline,
+					Size:    button.SizeSm,
+					Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage"), common.WithValues("range", vmodel.Range, "owner", strings.Join(vmodel.OwnerFilter, ","), "format", "csv")),
+				}) {
+					@icon.Download(icon.Props{Class: "h-4 w-4"})
+					Export CSV
+				}
+			</div>
+			<!-- Org quota card -->
+			if vmodel.OrgQuota != nil {
+				{{
+					var budget *int64
+					var spent int64
+					periodLabel := "mensuel"
+					switch {
+					case vmodel.OrgQuota.MonthlyBudget() != nil:
+						budget = vmodel.OrgQuota.MonthlyBudget()
+						spent = vmodel.MonthlyCost
+						periodLabel = "mensuel"
+					case vmodel.OrgQuota.YearlyBudget() != nil:
+						budget = vmodel.OrgQuota.YearlyBudget()
+						spent = vmodel.YearlyCost
+						periodLabel = "annuel"
+					case vmodel.OrgQuota.DailyBudget() != nil:
+						budget = vmodel.OrgQuota.DailyBudget()
+						spent = vmodel.DailyCost
+						periodLabel = "journalier"
+					}
+					pct := common.UsagePercent(spent, budget)
+					barColor := "var(--chart-2)"
+					badgeVariant := badge.VariantSecondary
+					if pct > 90 {
+						barColor = "var(--destructive)"
+						badgeVariant = badge.VariantDestructive
+					} else if pct > 70 {
+						barColor = "var(--chart-3)"
+					}
+				}}
+				@card.Card() {
+					@card.Content() {
+						<div class="flex items-start justify-between gap-2 mb-3">
+							<div>
+								<div class="font-semibold">Quota</div>
+								<div class="text-xs text-muted-foreground mt-1">
+									if budget != nil {
+										{ common.FormatCost(spent, vmodel.Currency) } / { common.FormatCost(*budget, vmodel.Currency) } · { fmt.Sprintf("%d%% du quota %s", pct, periodLabel) }
+									} else {
+										Aucun quota défini (utilisation illimitée)
+									}
+								</div>
+							</div>
+							if budget != nil {
+								@badge.Badge(badge.Props{Variant: badgeVariant}) {
+									{ fmt.Sprintf("%d%%", pct) }
+								}
+							} else {
+								@badge.Badge(badge.Props{Variant: badge.VariantOutline}) {
+									Illimité
+								}
+							}
+						</div>
+						if budget != nil {
+							<div class="h-1.5 rounded-full bg-muted overflow-hidden">
+								<div class="h-full rounded-full" style={ fmt.Sprintf("width: %d%%; background: %s", pct, barColor) }></div>
+							</div>
+						}
+						<div class="grid grid-cols-3 gap-4 mt-3.5 text-xs">
+							<div>
+								<div class="text-muted-foreground">Aujourd'hui</div>
+								<div class="font-semibold mt-0.5">{ common.FormatCost(vmodel.DailyCost, vmodel.Currency) }</div>
+							</div>
+							<div>
+								<div class="text-muted-foreground">Ce mois</div>
+								<div class="font-semibold mt-0.5">{ common.FormatCost(vmodel.MonthlyCost, vmodel.Currency) }</div>
+							</div>
+							<div>
+								<div class="text-muted-foreground">Cette année</div>
+								<div class="font-semibold mt-0.5">{ common.FormatCost(vmodel.YearlyCost, vmodel.Currency) }</div>
+							</div>
+						</div>
+					}
+				}
+			}
+			<!-- Summary cards -->
+			if vmodel.Aggregate != nil {
+				<div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+					@card.Card() {
+						@card.Content() {
+							<div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+								@icon.Send(icon.Props{Class: "h-4 w-4 text-primary"})
+								Requêtes
+							</div>
+							<p class="text-2xl font-bold mt-2">{ fmt.Sprintf("%d", vmodel.Aggregate.TotalRequests) }</p>
+						}
+					}
+					@card.Card() {
+						@card.Content() {
+							<div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+								@icon.Coins(icon.Props{Class: "h-4 w-4", Color: "var(--chart-3)"})
+								Tokens
+							</div>
+							<p class="text-2xl font-bold mt-2">{ fmt.Sprintf("%d", vmodel.Aggregate.TotalTokens) }</p>
+							if vmodel.Aggregate.CachedTokens > 0 && vmodel.Aggregate.PromptTokens > 0 {
+								<p class="text-xs text-muted-foreground mt-1">
+									{ fmt.Sprintf("dont %d en cache (%.0f%% des tokens prompt)", vmodel.Aggregate.CachedTokens, float64(vmodel.Aggregate.CachedTokens)/float64(vmodel.Aggregate.PromptTokens)*100) }
+								</p>
+							}
+						}
+					}
+					@card.Card() {
+						@card.Content() {
+							<div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+								@icon.Euro(icon.Props{Class: "h-4 w-4", Color: "var(--chart-2)"})
+								Coût total
+							</div>
+							if vmodel.Aggregate.TotalCost == 0 {
+								<p class="text-2xl font-bold mt-2">—</p>
+							} else {
+								<p class="text-2xl font-bold mt-2">{ common.FormatCost(vmodel.Aggregate.TotalCost, vmodel.Aggregate.Currency) }</p>
+							}
+						}
+					}
+					if vmodel.TotalEnergyWh > 0 {
+						@card.Card() {
+							@card.Content() {
+								<div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+									@icon.Zap(icon.Props{Class: "h-4 w-4", Color: "var(--chart-4)"})
+									Énergie
+								</div>
+								<div class="flex items-center gap-2 mt-2">
+									<p class="text-2xl font-bold">{ common.FormatEnergyWh(vmodel.TotalEnergyWh) }</p>
+									{{ energyMessage := common.FormatEnergyToHuman(vmodel.TotalEnergyWh) }}
+									if energyMessage != "" {
+										{{ tooltipID := "energy-tooltip-" + fmt.Sprintf("%.0f", vmodel.TotalEnergyWh) }}
+										@tooltip.Tooltip() {
+											@tooltip.Trigger(tooltip.TriggerProps{For: tooltipID, Class: "cursor-help text-muted-foreground hover:text-foreground"}) {
+												@icon.CircleQuestionMark(icon.Props{Class: "h-5 w-5"})
+											}
+											@tooltip.Content(tooltip.ContentProps{ID: tooltipID, Position: tooltip.PositionRight, Class: "max-w-xs"}) {
+												<p>{ energyMessage }</p>
+											}
+										}
+									}
+								</div>
+								<p class="text-xs text-muted-foreground mt-1">estimation ±facteur ×3-5</p>
+							}
+						}
+					}
+					if vmodel.TotalCO2GramsMid > 0 {
+						@card.Card() {
+							@card.Content() {
+								<div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+									@icon.Leaf(icon.Props{Class: "h-4 w-4", Color: "oklch(0.55 0.15 140)"})
+									CO₂
+								</div>
+								<div class="flex items-center gap-2 mt-2">
+									<p class="text-2xl font-bold">{ common.FormatCO2Grams(vmodel.TotalCO2GramsMid) }</p>
+									{{ co2Message := common.FormatCO2ToCarKilometers(vmodel.TotalCO2GramsMid) }}
+									if co2Message != "" {
+										{{ tooltipID := "co2-tooltip-" + fmt.Sprintf("%.0f", vmodel.TotalCO2GramsMid) }}
+										@tooltip.Tooltip() {
+											@tooltip.Trigger(tooltip.TriggerProps{For: tooltipID, Class: "cursor-help text-muted-foreground hover:text-foreground"}) {
+												@icon.CircleQuestionMark(icon.Props{Class: "h-5 w-5"})
+											}
+											@tooltip.Content(tooltip.ContentProps{ID: tooltipID, Position: tooltip.PositionRight, Class: "max-w-xs"}) {
+												<p>{ co2Message }</p>
+											}
+										}
+									}
+								</div>
+								<p class="text-xs text-muted-foreground mt-1">estimation mix monde, ±facteur ×3-5</p>
+							}
+						}
+					}
+				</div>
+			}
+			<!-- Charts: cost per day, model breakdown, per user, per provider -->
+			if len(vmodel.ChartPerDay) > 0 || len(vmodel.ChartSharesPerModel) > 0 || len(vmodel.ChartPerUser) > 0 || len(vmodel.ChartPerProvider) > 0 {
+				{{ trueVal := true }}
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+					if len(vmodel.ChartPerDay) > 0 {
+						@card.Card() {
+							@card.Header() {
+								@card.Title() {
+									Coût par jour
+								}
+							}
+							@card.Content() {
+								@chart.Chart(chart.Props{
+									Variant:     chart.VariantBar,
+									ShowXLabels: true,
+									ShowYLabels: true,
+									ShowYGrid:   true,
+									ShowLegend:  false,
+									BeginAtZero: &trueVal,
+									Class:       "h-64",
+									Data: chart.Data{
+										Labels: common.ChartLabels(vmodel.ChartPerDay),
+										Datasets: []chart.Dataset{{
+											Label:           vmodel.Currency,
+											Data:            common.ChartValues(vmodel.ChartPerDay),
+											BackgroundColor: "rgba(99,102,241,0.8)",
+										}},
+									},
+								})
+							}
+						}
+					}
+					if len(vmodel.ChartSharesPerModel) > 0 {
+						@card.Card() {
+							@card.Header() {
+								@card.Title() {
+									Répartition par modèle
+								}
+							}
+							@card.Content() {
+								for _, share := range vmodel.ChartSharesPerModel {
+									<div class="flex items-center gap-2.5 py-1.5">
+										<span class="w-2.5 h-2.5 rounded-xs shrink-0" style={ fmt.Sprintf("background: %s", share.Color) }></span>
+										<span class="text-sm font-mono text-foreground w-28 overflow-hidden text-ellipsis whitespace-nowrap">{ share.Label }</span>
+										<div class="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+											<div class="h-full rounded-full" style={ fmt.Sprintf("width: %d%%; background: %s", share.Pct, share.Color) }></div>
+										</div>
+										<span class="text-xs text-muted-foreground w-10 text-right">{ fmt.Sprintf("%d%%", share.Pct) }</span>
+									</div>
+								}
+							}
+						}
+					}
+					if len(vmodel.ChartPerUser) > 0 {
+						@card.Card() {
+							@card.Header() {
+								@card.Title() {
+									Coût par utilisateur
+								}
+							}
+							@card.Content() {
+								@chart.Chart(chart.Props{
+									Variant:     chart.VariantBar,
+									ShowXLabels: true,
+									ShowYLabels: true,
+									ShowYGrid:   true,
+									ShowLegend:  false,
+									BeginAtZero: &trueVal,
+									Class:       "h-64",
+									Data: chart.Data{
+										Labels: common.ChartLabels(vmodel.ChartPerUser),
+										Datasets: []chart.Dataset{{
+											Label:           vmodel.Currency,
+											Data:            common.ChartValues(vmodel.ChartPerUser),
+											BackgroundColor: "rgba(245,158,11,0.8)",
+										}},
+									},
+								})
+							}
+						}
+					}
+					if len(vmodel.ChartPerProvider) > 0 {
+						@card.Card() {
+							@card.Header() {
+								@card.Title() {
+									Coût par fournisseur
+								}
+							}
+							@card.Content() {
+								@chart.Chart(chart.Props{
+									Variant:     chart.VariantBar,
+									ShowXLabels: true,
+									ShowYLabels: true,
+									ShowYGrid:   true,
+									ShowLegend:  false,
+									BeginAtZero: &trueVal,
+									Class:       "h-64",
+									Data: chart.Data{
+										Labels: common.ChartLabels(vmodel.ChartPerProvider),
+										Datasets: []chart.Dataset{{
+											Label:           vmodel.Currency,
+											Data:            common.ChartValues(vmodel.ChartPerProvider),
+											BackgroundColor: "rgba(168,85,247,0.8)",
+										}},
+									},
+								})
+							}
+						}
+					}
+				</div>
+			}
+			<!-- Usage records table -->
+			if len(vmodel.Records) > 0 {
+				@card.Card() {
+					@card.Content() {
+						@table.Table() {
+							@table.Header() {
+								@table.Head() {
+									Date
+								}
+								@table.Head() {
+									Utilisateur / Application
+								}
+								@table.Head() {
+									Modèle
+								}
+								@table.Head() {
+									Tokens (in/out)
+								}
+								@table.Head() {
+									Coût
+								}
+								@table.Head() {
+									Énergie
+								}
+								@table.Head() {
+									CO₂
+								}
+							}
+							@table.Body() {
+								for _, dr := range vmodel.Records {
+									@table.Row() {
+										@table.Cell() {
+											{ dr.Record.CreatedAt().Format("2006-01-02 15:04") }
+										}
+										@table.Cell() {
+											{ displayOwner(vmodel.Users, vmodel.ApplicationsMap, dr.Record) }
+										}
+										@table.Cell() {
+											<span class="font-mono">{ dr.DisplayModelName }</span>
+										}
+										@table.Cell() {
+											<div class="flex items-center gap-1.5">
+												{ fmt.Sprintf("%d / %d", dr.Record.PromptTokens(), dr.Record.CompletionTokens()) }
+												if dr.Record.CachedTokens() > 0 {
+													<span
+														title={ fmt.Sprintf("%d tokens en cache", dr.Record.CachedTokens()) }
+														class="cursor-help text-muted-foreground"
+													>
+														@icon.DatabaseZap(icon.Props{Class: "h-3.5 w-3.5"})
+													</span>
+												}
+											</div>
+										}
+										@table.Cell() {
+											if dr.Converted {
+												<span
+													title={ common.FormatCost(dr.Record.Cost(), dr.Record.Currency()) }
+													class="cursor-help underline decoration-dotted"
+												>
+													{ common.FormatCost(dr.DisplayCost, dr.DisplayCurrency) }
+												</span>
+											} else {
+												{ common.FormatCost(dr.DisplayCost, dr.DisplayCurrency) }
+											}
+										}
+										@table.Cell() {
+											if dr.EnergyWh > 0 {
+												<span
+													title={ fmt.Sprintf("min: %s / max: %s", common.FormatEnergyWh(dr.EnergyLowWh), common.FormatEnergyWh(dr.EnergyHighWh)) }
+													class="cursor-help underline decoration-dotted"
+												>
+													{ common.FormatEnergyWh(dr.EnergyWh) }
+												</span>
+											} else {
+												—
+											}
+										}
+										@table.Cell() {
+											if dr.CO2GramsMid > 0 {
+												<span
+													title={ fmt.Sprintf("CO₂ France : %s / monde : %s / charbon : %s", common.FormatCO2Grams(dr.CO2GramsMin), common.FormatCO2Grams(dr.CO2GramsMid), common.FormatCO2Grams(dr.CO2GramsMax)) }
+													class="cursor-help underline decoration-dotted text-muted-foreground"
+												>
+													{ common.FormatCO2Grams(dr.CO2GramsMid) }
+												</span>
+											} else {
+												—
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+				@pagination.Pagination() {
+					@pagination.Content() {
+						@pagination.Previous(pagination.PreviousProps{
+							Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage"), common.WithValues("range", vmodel.Range, "page", fmt.Sprintf("%d", vmodel.Page-1), "owner", strings.Join(vmodel.OwnerFilter, ","))),
+							Disabled: vmodel.Page <= 1,
+							Label:    "Précédent",
+						})
+						@pagination.Next(pagination.NextProps{
+							Href:     common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage"), common.WithValues("range", vmodel.Range, "page", fmt.Sprintf("%d", vmodel.Page+1), "owner", strings.Join(vmodel.OwnerFilter, ","))),
+							Disabled: !vmodel.HasNext,
+							Label:    "Suivant",
+						})
+					}
+				}
+			}
+		</div>
+	}
+}

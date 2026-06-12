@@ -1,0 +1,131 @@
+package component
+
+import (
+	"fmt"
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
+)
+
+// ── Invites Page ──────────────────────────────────────────────────────────────
+templ InvitesPage(vmodel InvitesPageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Invitations — "+vmodel.Org.Name())) {
+		<div class="space-y-6">
+			<div class="flex items-center justify-between">
+				<h1 class="text-2xl font-semibold">Invitations</h1>
+				@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/new"))}) {
+					@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
+					Créer un lien
+				}
+			</div>
+			if vmodel.NewURL != "" {
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					@alert.Description() {
+						<div class="font-medium">Lien d'invitation créé</div>
+						<div class="text-sm mt-1 font-mono break-all">{ vmodel.NewURL }</div>
+					}
+				}
+			}
+			if vmodel.Success != "" && vmodel.NewURL == "" {
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					@alert.Description() {
+						Opération réussie.
+					}
+				}
+			}
+			if len(vmodel.Invites) == 0 {
+				<div class="rounded-lg border p-6 text-center text-muted-foreground">Aucune invitation.</div>
+			} else {
+				@card.Card() {
+					@card.Content() {
+						@table.Table() {
+							@table.Header() {
+								@table.Head() {
+									Email cible
+								}
+								@table.Head() {
+									Rôle
+								}
+								@table.Head() {
+									Utilisations
+								}
+								@table.Head() {
+									Expire
+								}
+								@table.Head() {
+									Statut
+								}
+								@table.Head() {
+									Actions
+								}
+							}
+							@table.Body() {
+								for _, inv := range vmodel.Invites {
+									@table.Row() {
+										@table.Cell() {
+											if inv.InviteeEmail() != nil {
+												{ *inv.InviteeEmail() }
+											} else {
+												<span class="text-muted-foreground">Lien ouvert</span>
+											}
+										}
+										@table.Cell() {
+											{ inv.Role() }
+										}
+										@table.Cell() {
+											if inv.MaxUses() != nil {
+												{ fmt.Sprintf("%d / %d", inv.UsesCount(), *inv.MaxUses()) }
+											} else {
+												{ fmt.Sprintf("%d / ∞", inv.UsesCount()) }
+											}
+										}
+										@table.Cell() {
+											if inv.ExpiresAt() != nil {
+												{ inv.ExpiresAt().Format("2006-01-02") }
+											} else {
+												Jamais
+											}
+										}
+										@table.Cell() {
+											if inv.RevokedAt() != nil {
+												@badge.Badge(badge.Props{Variant: badge.VariantDestructive}) {
+													Révoqué
+												}
+											} else {
+												@badge.Badge(badge.Props{Variant: badge.VariantDefault}) {
+													Actif
+												}
+											}
+										}
+										@table.Cell() {
+											<div class="flex gap-2">
+												<a href={ templ.SafeURL(vmodel.BaseURL + "/join/" + string(inv.ID())) } target="_blank" class="text-sm underline">Lien</a>
+												if inv.RevokedAt() == nil {
+													@button.Button(button.Props{
+														Variant: button.VariantDestructive,
+														Size:    button.SizeSm,
+														Attributes: templ.Attributes{
+															"type":     "button",
+															"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/", string(inv.ID()))),
+															"onclick":  "if(confirm('Révoquer cette invitation ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
+														},
+													}) {
+														Révoquer
+													}
+												}
+											</div>
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		</div>
+	}
+}

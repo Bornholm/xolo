@@ -1,0 +1,28 @@
+package component
+
+import (
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+)
+
+type JoinErrorVModel struct {
+	common.AppLayoutVModel
+	Message string
+}
+
+templ JoinError(vmodel JoinErrorVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Invitation invalide")) {
+		<div class="flex items-center justify-center min-h-[60vh]">
+			@card.Card() {
+				@card.Header() {
+					@card.Title() {
+						Invitation invalide
+					}
+				}
+				@card.Content() {
+					<p class="text-sm text-muted-foreground">{ vmodel.Message }</p>
+				}
+			}
+		</div>
+	}
+}

@@ -13,18 +13,6 @@ type JoinPageVModel struct {
 	LoginURL string
 }
 
-type JoinSuccessVModel struct {
-	common.AppLayoutVModel
-	OrgName string
-	OrgSlug string
-	Role    string
-}
-
-type JoinErrorVModel struct {
-	common.AppLayoutVModel
-	Message string
-}
-
 templ JoinPage(vmodel JoinPageVModel) {
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Rejoindre "+vmodel.Invite.Org().Name())) {
 		<div class="flex items-center justify-center min-h-[60vh]">
@@ -55,51 +43,6 @@ templ JoinPage(vmodel JoinPageVModel) {
 							</form>
 						}
 					</div>
-				}
-			}
-		</div>
-	}
-}
-
-templ JoinSuccess(vmodel JoinSuccessVModel) {
-	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Bienvenue dans "+vmodel.OrgName)) {
-		<div class="flex items-center justify-center min-h-[60vh]">
-			@card.Card() {
-				@card.Header() {
-					@card.Title() {
-						Bienvenue ! 
-					}
-				}
-				@card.Content() {
-					<div class="space-y-4">
-						<p class="text-sm">Vous avez rejoint l'organisation <strong>{ vmodel.OrgName }</strong>.</p>
-						if vmodel.Role == "admin" {
-							@button.Button(button.Props{Href: "/orgs/" + vmodel.OrgSlug + "/usage"}) {
-								Accéder à l'organisation
-							}
-						} else {
-							@button.Button(button.Props{Href: "/usage"}) {
-								Accéder à mon espace
-							}
-						}
-					</div>
-				}
-			}
-		</div>
-	}
-}
-
-templ JoinError(vmodel JoinErrorVModel) {
-	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Invitation invalide")) {
-		<div class="flex items-center justify-center min-h-[60vh]">
-			@card.Card() {
-				@card.Header() {
-					@card.Title() {
-						Invitation invalide 
-					}
-				}
-				@card.Content() {
-					<p class="text-sm text-muted-foreground">{ vmodel.Message }</p>
 				}
 			}
 		</div>

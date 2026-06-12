@@ -1,0 +1,53 @@
+package component
+
+import (
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
+)
+
+// ── Invite Form ───────────────────────────────────────────────────────────────
+templ InviteForm(vmodel InviteFormVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Créer une invitation")) {
+		<div class="space-y-6">
+			<h1 class="text-2xl font-semibold">Créer une invitation</h1>
+			<form method="POST" action={ common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites")) } class="space-y-4">
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Email de l'invité (optionnel)</label>
+					<p class="text-xs text-muted-foreground">Laisser vide pour un lien utilisable par n'importe qui.</p>
+					@input.Input(input.Props{Name: "invitee_email", Type: "email", Placeholder: "utilisateur@exemple.com"})
+				</div>
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Rôle</label>
+					@selectbox.SelectBox(selectbox.Props{ID: "invite_role"}) {
+						@selectbox.Trigger(selectbox.TriggerProps{Name: "role"}) {
+							@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner un rôle"})
+						}
+						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+							@selectbox.Group() {
+								@selectbox.Item(selectbox.ItemProps{Value: "member", Selected: true}) {
+									Membre
+								}
+								@selectbox.Item(selectbox.ItemProps{Value: "org:admin"}) {
+									Admin organisation
+								}
+							}
+						}
+					}
+				</div>
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Date d'expiration (optionnel)</label>
+					@input.Input(input.Props{Name: "expires_at", Type: "date"})
+				</div>
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Nombre max d'utilisations (optionnel)</label>
+					@input.Input(input.Props{Name: "max_uses", Type: "number", Placeholder: "1"})
+				</div>
+				@button.Button(button.Props{Type: "submit"}) {
+					Créer le lien
+				}
+			</form>
+		</div>
+	}
+}

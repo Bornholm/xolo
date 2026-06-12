@@ -1,0 +1,71 @@
+package component
+
+import (
+	"fmt"
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/separator"
+)
+
+// ── Org Dashboard ─────────────────────────────────────────────────────────────
+templ OrgDashboard(vmodel OrgDashboardVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(vmodel.Org.Name())) {
+		<div class="space-y-6">
+			<div class="flex items-center justify-between">
+				<div>
+					<h1 class="text-2xl font-semibold">{ vmodel.Org.Name() }</h1>
+					<p class="text-sm text-muted-foreground">{ vmodel.Org.Description() }</p>
+				</div>
+			</div>
+			@separator.Separator()
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+				@card.Card() {
+					@card.Header() {
+						@card.Title() {
+							Membres
+						}
+					}
+					@card.Content() {
+						<p class="text-3xl font-bold">{ fmt.Sprintf("%d", len(vmodel.Members)) }</p>
+					}
+					@card.Footer() {
+						@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members")), Variant: button.VariantOutline, Size: button.SizeSm}) {
+							Gérer
+						}
+					}
+				}
+				@card.Card() {
+					@card.Header() {
+						@card.Title() {
+							Fournisseurs
+						}
+					}
+					@card.Content() {
+						<p class="text-3xl font-bold">{ fmt.Sprintf("%d", len(vmodel.Providers)) }</p>
+					}
+					@card.Footer() {
+						@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers")), Variant: button.VariantOutline, Size: button.SizeSm}) {
+							Gérer
+						}
+					}
+				}
+				@card.Card() {
+					@card.Header() {
+						@card.Title() {
+							Usage (30j)
+						}
+					}
+					@card.Content() {
+						<p class="text-3xl font-bold">—</p>
+					}
+					@card.Footer() {
+						@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/usage")), Variant: button.VariantOutline, Size: button.SizeSm}) {
+							Voir
+						}
+					}
+				}
+			</div>
+		</div>
+	}
+}

@@ -1,0 +1,94 @@
+package component
+
+import (
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
+)
+
+// ── Providers Page ────────────────────────────────────────────────────────────
+templ ProvidersPage(vmodel ProvidersPageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Fournisseurs — "+vmodel.Org.Name())) {
+		<div class="space-y-6">
+			<div class="flex items-center justify-between">
+				<h1 class="text-2xl font-semibold">Fournisseurs LLM</h1>
+				@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/new"))}) {
+					@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
+					Ajouter
+				}
+			</div>
+			if vmodel.Success != "" {
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					@alert.Description() {
+						Opération réussie.
+					}
+				}
+			}
+			if len(vmodel.Providers) == 0 {
+				<div class="rounded-lg border p-6 text-center text-muted-foreground">
+					Aucun fournisseur. Ajoutez un fournisseur LLM pour commencer.
+				</div>
+			} else {
+				@card.Card() {
+					@card.Content() {
+						@table.Table() {
+							@table.Header() {
+								@table.Head() {
+									Nom
+								}
+								@table.Head() {
+									Type
+								}
+								@table.Head() {
+									Statut
+								}
+								@table.Head() {
+									Actions
+								}
+							}
+							@table.Body() {
+								for _, p := range vmodel.Providers {
+									@table.Row() {
+										@table.Cell() {
+											{ p.Name() }
+										}
+										@table.Cell() {
+											@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
+												{ p.Type() }
+											}
+										}
+										@table.Cell() {
+											if p.Active() {
+												@badge.Badge(badge.Props{Variant: badge.VariantDefault}) {
+													Actif
+												}
+											} else {
+												@badge.Badge(badge.Props{Variant: badge.VariantDestructive}) {
+													Inactif
+												}
+											}
+										}
+										@table.Cell() {
+											<div class="flex gap-2">
+												@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(p.ID()), "/models")), Variant: button.VariantOutline, Size: button.SizeSm}) {
+													Modèles
+												}
+												@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(p.ID()), "/edit")), Variant: button.VariantOutline, Size: button.SizeSm}) {
+													Modifier
+												}
+											</div>
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		</div>
+	}
+}
