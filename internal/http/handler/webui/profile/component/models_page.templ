@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/bornholm/xolo/internal/core/model"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
@@ -73,72 +74,18 @@ templ ModelsPage(vmodel ModelsPageVModel) {
 					}
 				</form>
 			</div>
-			<!-- Models grid -->
+			<!-- Models list -->
 			if len(vmodel.ModelUsages) == 0 {
 				<p class="text-sm text-muted-foreground">Aucun modèle disponible.</p>
 			} else {
 				<div class="space-y-4">
-					<div id="models-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+					<div id="models-grid" class="flex flex-col gap-3">
 						{{ max := DefaultMaxDisplayedModels }}
 						if vmodel.RemainingCount == 0 {
 							{{ max = len(vmodel.ModelUsages) }}
 						}
 						for _, mu := range vmodel.ModelUsages[:max] {
-							@card.Card() {
-								@card.Header() {
-									@card.Title() {
-										if mu.Org != nil {
-											{ mu.Org.Slug() + "/" + mu.Model.ProxyName() }
-										} else {
-											{ mu.Model.ProxyName() }
-										}
-										if mu.Model.IsVirtual() {
-											<span class="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Virtuel</span>
-										}
-										if mu.Model.Capabilities().Embeddings {
-											<span class="ml-2 text-xs bg-secondary/80 text-secondary-foreground px-2 py-0.5 rounded">Embeddings</span>
-										}
-									}
-									if mu.Org != nil {
-										<p class="text-xs text-muted-foreground">{ mu.Org.Name() }</p>
-									}
-								}
-								@card.Content() {
-									<div class="space-y-3">
-										if mu.Model.Description() != "" {
-											<p class="text-sm text-muted-foreground">{ mu.Model.Description() }</p>
-										}
-										if !mu.Model.IsVirtual() {
-											<div class="grid grid-cols-2 gap-2 text-sm">
-												<div>
-													<span class="text-muted-foreground">Prompt (1M tokens)</span>
-													<p class="font-medium">{ formatCostPerM(mu.Model.PromptCostPer1KTokens(), orgCurrency(mu.Org)) }</p>
-												</div>
-												<div>
-													<span class="text-muted-foreground">Complétion (1M tokens)</span>
-													<p class="font-medium">{ formatCostPerM(mu.Model.CompletionCostPer1KTokens(), orgCurrency(mu.Org)) }</p>
-												</div>
-											</div>
-										}
-										if mu.Aggregate != nil && mu.Aggregate.TotalRequests > 0 {
-											<div class="border-t pt-3 grid grid-cols-3 gap-2 text-sm">
-												<div>
-													<span class="text-muted-foreground">Requêtes</span>
-													<p class="font-medium">{ fmt.Sprintf("%d", mu.Aggregate.TotalRequests) }</p>
-												</div>
-												<div>
-													<span class="text-muted-foreground">Tokens</span>
-													<p class="font-medium">{ fmt.Sprintf("%d", mu.Aggregate.TotalTokens) }</p>
-												</div>
-												<div>
-													<span class="text-muted-foreground">Coût</span>
-													<p class="font-medium">{ common.FormatCost(mu.Aggregate.TotalCost, mu.Aggregate.Currency) }</p>
-												</div>
-											</div>
-										}
-									</div>
-								}
-							}
+							@modelCard(mu)
 						}
 					</div>
 					if vmodel.RemainingCount > 0 {
@@ -230,6 +177,81 @@ templ ModelsPage(vmodel ModelsPageVModel) {
 				}
 			}
 		</div>
+	}
+}
+
+templ modelCard(mu ModelUsage) {
+	@card.Card() {
+		@card.Content(card.ContentProps{Class: "flex items-center gap-4"}) {
+			<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent">
+				if mu.Model.IsVirtual() {
+					@icon.Network(icon.Props{Size: 20, Class: "text-primary"})
+				} else {
+					@icon.BrainCircuit(icon.Props{Size: 20, Class: "text-primary"})
+				}
+			</div>
+			<div class="flex-1 min-w-0">
+				<div class="flex items-center gap-2">
+					<span class="font-semibold font-mono text-sm truncate">
+						if mu.Org != nil {
+							{ mu.Org.Slug() + "/" + mu.Model.ProxyName() }
+						} else {
+							{ mu.Model.ProxyName() }
+						}
+					</span>
+					if mu.Model.IsVirtual() {
+						@badge.Badge(badge.Props{Variant: badge.VariantOutline}) {
+							virtuel
+						}
+					}
+					if mu.Model.Capabilities().Embeddings {
+						@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
+							embeddings
+						}
+					}
+				</div>
+				<div class="text-xs text-muted-foreground mt-0.5 truncate">
+					if mu.Model.Description() != "" {
+						{ mu.Model.Description() }
+						if mu.Org != nil {
+							{ " · " }
+						}
+					}
+					if mu.Org != nil {
+						@badge.Badge(badge.Props{Variant: badge.VariantSecondary, Class: "text-[0.7rem]"}) {
+							{ mu.Org.Name() }
+						}
+					}
+				</div>
+			</div>
+			if mu.Aggregate != nil && mu.Aggregate.TotalRequests > 0 {
+				<div class="flex gap-4 shrink-0">
+					<div class="text-right">
+						<div class="text-sm font-semibold">{ fmt.Sprintf("%d", mu.Aggregate.TotalRequests) }</div>
+						<div class="text-xs text-muted-foreground">req.</div>
+					</div>
+					<div class="text-right">
+						<div class="text-sm font-semibold">{ fmt.Sprintf("%d", mu.Aggregate.TotalTokens) }</div>
+						<div class="text-xs text-muted-foreground">tokens</div>
+					</div>
+					<div class="text-right">
+						<div class="text-sm font-semibold">{ common.FormatCost(mu.Aggregate.TotalCost, mu.Aggregate.Currency) }</div>
+						<div class="text-xs text-muted-foreground">coût</div>
+					</div>
+				</div>
+			} else if !mu.Model.IsVirtual() {
+				<div class="flex gap-4 shrink-0">
+					<div class="text-right">
+						<div class="text-sm font-semibold">{ formatCostPerM(mu.Model.PromptCostPer1KTokens(), orgCurrency(mu.Org)) }</div>
+						<div class="text-xs text-muted-foreground">prompt / 1M</div>
+					</div>
+					<div class="text-right">
+						<div class="text-sm font-semibold">{ formatCostPerM(mu.Model.CompletionCostPer1KTokens(), orgCurrency(mu.Org)) }</div>
+						<div class="text-xs text-muted-foreground">complétion / 1M</div>
+					</div>
+				</div>
+			}
+		}
 	}
 }
 
