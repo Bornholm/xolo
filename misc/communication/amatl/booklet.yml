@@ -1,0 +1,8 @@
+html-layout: ./layout.gohtml
+pdf-scale: 1.0
+pdf-margin-left: 0.0
+pdf-margin-right: 0.0
+pdf-margin-top: 0.0
+pdf-margin-bottom: 0.0
+pdf-background: true
+pdf-display-header-footer: false
