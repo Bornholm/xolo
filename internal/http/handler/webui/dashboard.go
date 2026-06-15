@@ -334,7 +334,7 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 		Page:                page,
 		HasNext:             hasNext,
 		ChartPerDay:         dashChartByDate(perDay),
-		ChartSharesPerModel: common.ChartShares(dashChartByValue(perModel)),
+		ChartSharesPerModel: common.ChartShares(common.TopNChartDataPoints(dashChartByValue(perModel), 5)),
 		ChartPerProvider:    dashChartByProvider(perProvider, providerNames),
 		TotalEnergyWh:       totalEnergyWh,
 		TotalCO2GramsMid:    totalCO2GramsMid,

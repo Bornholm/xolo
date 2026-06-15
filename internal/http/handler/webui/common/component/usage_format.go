@@ -39,6 +39,25 @@ type ChartShare struct {
 	Color string
 }
 
+// TopNChartDataPoints returns the n highest-value points (pts must be
+// sorted by descending value), aggregating the remaining ones into a
+// trailing "Autres" entry.
+func TopNChartDataPoints(pts []ChartDataPoint, n int) []ChartDataPoint {
+	if len(pts) <= n {
+		return pts
+	}
+	top := make([]ChartDataPoint, 0, n+1)
+	top = append(top, pts[:n]...)
+	var rest float64
+	for _, p := range pts[n:] {
+		rest += p.Value
+	}
+	if rest > 0 {
+		top = append(top, ChartDataPoint{Label: "Autres", Value: rest})
+	}
+	return top
+}
+
 // ChartShares converts a list of data points into percentage shares of
 // their total, cycling through the design system's chart color palette.
 func ChartShares(pts []ChartDataPoint) []ChartShare {
@@ -81,6 +100,47 @@ func CurrencySymbol(currency string) string {
 // FormatCost formats an absolute cost stored in microcents (1 microcent = $0.000001).
 func FormatCost(v int64, currency string) string {
 	return fmt.Sprintf("%.6f%s", float64(v)/1_000_000, CurrencySymbol(currency))
+}
+
+// FormatCostCompact formats a cost stored in microcents, using k/M/B suffixes
+// once the amount reaches the thousands, falling back to FormatCost otherwise.
+func FormatCostCompact(v int64, currency string) string {
+	amount := float64(v) / 1_000_000
+	abs := amount
+	if abs < 0 {
+		abs = -abs
+	}
+	symbol := CurrencySymbol(currency)
+	switch {
+	case abs >= 1_000_000_000:
+		return fmt.Sprintf("%.2fB%s", amount/1_000_000_000, symbol)
+	case abs >= 1_000_000:
+		return fmt.Sprintf("%.2fM%s", amount/1_000_000, symbol)
+	case abs >= 1_000:
+		return fmt.Sprintf("%.2fk%s", amount/1_000, symbol)
+	default:
+		return FormatCost(v, currency)
+	}
+}
+
+// FormatCount formats an integer count using k/M/B suffixes once the value
+// reaches the thousands.
+func FormatCount(n int64) string {
+	f := float64(n)
+	abs := f
+	if abs < 0 {
+		abs = -abs
+	}
+	switch {
+	case abs >= 1_000_000_000:
+		return fmt.Sprintf("%.2fB", f/1_000_000_000)
+	case abs >= 1_000_000:
+		return fmt.Sprintf("%.2fM", f/1_000_000)
+	case abs >= 1_000:
+		return fmt.Sprintf("%.2fk", f/1_000)
+	default:
+		return fmt.Sprintf("%d", n)
+	}
 }
 
 // UsagePercent returns the percentage of budget consumed by used, capped at 100.
@@ -131,10 +191,16 @@ func FormatEnergyWh(wh float64) string {
 	return fmt.Sprintf("%.3f µWh", wh*1_000_000)
 }
 
-// FormatCO2Grams formats a CO₂ quantity in grams with auto-scaling (g, mg, µg).
+// FormatCO2Grams formats a CO₂ quantity in grams with auto-scaling (t, kg, g, mg, µg).
 func FormatCO2Grams(g float64) string {
 	if g <= 0 {
 		return "—"
+	}
+	if g >= 1_000_000 {
+		return fmt.Sprintf("%.3f tCO₂", g/1_000_000)
+	}
+	if g >= 1000 {
+		return fmt.Sprintf("%.3f kgCO₂", g/1000)
 	}
 	if g >= 1 {
 		return fmt.Sprintf("%.3f gCO₂", g)

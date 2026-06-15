@@ -391,7 +391,7 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 		YearlyCost:          yearlyCost,
 		Currency:            orgCurrency,
 		ChartPerDay:         chartByDate(perDay),
-		ChartSharesPerModel: common.ChartShares(chartByValue(perModel)),
+		ChartSharesPerModel: common.ChartShares(common.TopNChartDataPoints(chartByValue(perModel), 5)),
 		ChartPerUser:        chartByValue(perUser),
 		ChartPerProvider:    chartByProvider(perProvider, providerNames),
 		TotalEnergyWh:       totalEnergyWh,
