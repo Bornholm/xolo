@@ -1,31 +1,8 @@
 ---
-title: L'IA et ses défis pour votre organisation
-data: Juin 2026
+title: Xolo
+description: Passerelle LLM souveraine pour l'entreprise. Auto-hébergéable et auditable.
+date: Juin 2026
 ---
-
-<style>
-  .img {
-    display: block;
-    width: 100%;
-    text-align: center;
-  }
-  .img.small > img {
-    width: 33%;
-  }
-  .img.medium  > img {
-    width: 66%;
-  }
-  .img.large  > img {
-    width: 100%;
-  }
-  .img::after {
-    content: attr(data-label);
-    text-align: center;
-    display: block;
-    font-style: italic;
-    margin-top: -5px;
-  }
-</style>
 
 ## L'essentiel
 
@@ -89,7 +66,7 @@ flowchart LR
 
 ---
 
-## 1. Intégration au SI existant
+## Intégration au SI existant
 
 **Authentification fédérée (OIDC)**
 
@@ -110,7 +87,7 @@ Xolo se branche sur votre fournisseur d'identité existant: **Google, Github, Gi
 
 ---
 
-## 2. Architecture multi-organisation
+## Architecture multi-organisation
 
 Pensée pour les **structures complexes**:
 
@@ -127,7 +104,7 @@ Chaque organisation dispose de **ses propres** : membres, rôles (propriétaire 
 
 ---
 
-## 3. Liberté de choix technologique
+## Liberté de choix technologique
 
 Aucun verrouillage fournisseur. Chaque organisation peut connecter **plusieurs fournisseurs LLM** en parallèle.
 
@@ -151,7 +128,7 @@ Aucun verrouillage fournisseur. Chaque organisation peut connecter **plusieurs f
 
 ---
 
-## 4. Pilotage budgétaire et FinOps IA
+## Pilotage budgétaire et FinOps IA
 
 L'un des angles morts des déploiements IA actuels : **personne ne sait combien ça coûte vraiment, ni pour quoi**.
 
@@ -178,7 +155,7 @@ L'un des angles morts des déploiements IA actuels : **personne ne sait combien 
 
 ![](screenshots/screenshot-2.png)
 
-## 5. Souveraineté et exploitation
+## Souveraineté et exploitation
 
 **Auto-hébergement sans complexité**
 
@@ -200,7 +177,7 @@ L'un des angles morts des déploiements IA actuels : **personne ne sait combien 
 
 ---
 
-## 6. Plugins, modèles virtuels et anonymisation
+## Plugins, modèles virtuels et anonymisation
 
 Xolo ne se limite pas au relais: c'est une **plateforme extensible**.
 
@@ -271,3 +248,27 @@ Chaque modèle virtuel peut intégrer :
 | **Réversibilité** | Verrou fournisseur              | Multi-fournisseurs                   |
 | **Exploitation**  | Outils hétérogènes              | Socle unique, auto-hébergé ou managé |
 | **Souveraineté**  | Données chez des tiers          | Données chez vous                    |
+
+<style>
+  .img {
+    display: block;
+    width: 100%;
+    text-align: center;
+  }
+  .img.small > img {
+    width: 33%;
+  }
+  .img.medium  > img {
+    width: 66%;
+  }
+  .img.large  > img {
+    width: 100%;
+  }
+  .img::after {
+    content: attr(data-label);
+    text-align: center;
+    display: block;
+    font-style: italic;
+    margin-top: -5px;
+  }
+</style>
