@@ -17,7 +17,6 @@ import (
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/dialog"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/popover"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
 )
@@ -189,7 +188,7 @@ func TokensPage(vmodel TokensPageVModel) templ.Component {
 						var templ_7745c5c3_Var9 string
 						templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(vmodel.CreatedToken)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/tokens_page.templ`, Line: 54, Col: 113}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/tokens_page.templ`, Line: 53, Col: 113}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 						if templ_7745c5c3_Err != nil {
@@ -464,7 +463,7 @@ func TokensPage(vmodel TokensPageVModel) templ.Component {
 											var templ_7745c5c3_Var22 string
 											templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(token.Label())
 											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/tokens_page.templ`, Line: 100, Col: 52}
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/tokens_page.templ`, Line: 99, Col: 52}
 											}
 											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 											if templ_7745c5c3_Err != nil {
@@ -499,7 +498,7 @@ func TokensPage(vmodel TokensPageVModel) templ.Component {
 											var templ_7745c5c3_Var24 string
 											templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(tokenOrgName(token, vmodel.OrgMemberships))
 											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/tokens_page.templ`, Line: 103, Col: 55}
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/tokens_page.templ`, Line: 102, Col: 55}
 											}
 											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 											if templ_7745c5c3_Err != nil {
@@ -530,7 +529,7 @@ func TokensPage(vmodel TokensPageVModel) templ.Component {
 											var templ_7745c5c3_Var26 string
 											templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(tokenExpiry(token))
 											if templ_7745c5c3_Err != nil {
-												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/tokens_page.templ`, Line: 106, Col: 31}
+												return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/tokens_page.templ`, Line: 105, Col: 31}
 											}
 											_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 											if templ_7745c5c3_Err != nil {
@@ -706,7 +705,7 @@ func TokensPage(vmodel TokensPageVModel) templ.Component {
 					var templ_7745c5c3_Var33 templ.SafeURL
 					templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinURLErrs(common.BaseURL(ctx, common.WithPath("/profile/tokens")))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/tokens_page.templ`, Line: 143, Col: 112}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/tokens_page.templ`, Line: 142, Col: 112}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 					if templ_7745c5c3_Err != nil {
@@ -816,7 +815,7 @@ func TokensPage(vmodel TokensPageVModel) templ.Component {
 												var templ_7745c5c3_Var39 string
 												templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(m.Org().Name())
 												if templ_7745c5c3_Err != nil {
-													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/tokens_page.templ`, Line: 169, Col: 30}
+													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/profile/component/tokens_page.templ`, Line: 168, Col: 30}
 												}
 												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 												if templ_7745c5c3_Err != nil {
@@ -919,33 +918,9 @@ func TokensPage(vmodel TokensPageVModel) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, " <!-- Dialog Script --> ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = dialog.Script().Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, " ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = popover.Script().Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, " ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = selectbox.Script().Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
 			return nil
 		})
-		templ_7745c5c3_Err = common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Clés API")).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Clés API"), common.WithScripts(common.Script{Name: "selectbox", Component: selectbox.Script()})).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
