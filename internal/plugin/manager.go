@@ -45,14 +45,22 @@ type Manager struct {
 // NewManager creates a Manager that will scan dir for plugin binaries.
 // memLimit is passed as GOMEMLIMIT to each plugin subprocess; empty string disables it.
 // restartCooldown is the minimum interval between consecutive restarts of a given plugin.
-func NewManager(dir string, memLimit string, restartCooldown time.Duration, providerStore port.ProviderStore, virtualModelStore port.VirtualModelStore) *Manager {
+func NewManager(
+	dir string,
+	memLimit string,
+	restartCooldown time.Duration,
+	providerStore port.ProviderStore,
+	virtualModelStore port.VirtualModelStore,
+	secretStore port.SecretStore,
+	secretKey string,
+) *Manager {
 	return &Manager{
 		dir:               dir,
 		memLimit:          memLimit,
 		restartCooldown:   restartCooldown,
 		providerStore:     providerStore,
 		virtualModelStore: virtualModelStore,
-		hostService:       NewXoloHostService(providerStore, virtualModelStore),
+		hostService:       NewXoloHostService(providerStore, virtualModelStore, secretStore, secretKey),
 	}
 }
 

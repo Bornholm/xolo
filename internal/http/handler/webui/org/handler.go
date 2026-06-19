@@ -25,6 +25,7 @@ type Handler struct {
 	userStore           port.UserStore
 	applicationStore    port.ApplicationStore
 	quotaStore          port.QuotaStore
+	secretStore         port.SecretStore
 	secretKey           string
 	exchangeRateService *service.ExchangeRateService
 	pluginManager       pluginManagerIface
@@ -45,6 +46,7 @@ func NewHandler(
 	applicationStore port.ApplicationStore,
 	exchangeRateService *service.ExchangeRateService,
 	quotaStore port.QuotaStore,
+	secretStore port.SecretStore,
 	secretKey string,
 	pluginManager pluginManagerIface,
 ) *Handler {
@@ -58,6 +60,7 @@ func NewHandler(
 		userStore:           userStore,
 		applicationStore:    applicationStore,
 		quotaStore:          quotaStore,
+		secretStore:         secretStore,
 		secretKey:           secretKey,
 		exchangeRateService: exchangeRateService,
 		pluginManager:       pluginManager,

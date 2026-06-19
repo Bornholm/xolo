@@ -3,11 +3,13 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
+	"github.com/bornholm/xolo/internal/core/secretcleanup"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	"github.com/pkg/errors"
 )
@@ -158,6 +160,8 @@ func (h *Handler) handleUpdatePersonalVM(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	oldGraph := vm.Graph()
+
 	if req.Description != "" {
 		m.SetDescription(req.Description)
 	}
@@ -167,6 +171,10 @@ func (h *Handler) handleUpdatePersonalVM(w http.ResponseWriter, r *http.Request)
 	if err := h.personalVMStore.SavePersonalVirtualModel(ctx, vm); err != nil {
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
+	}
+
+	if err := secretcleanup.PruneRemovedNodes(ctx, h.secretStore, oldGraph, req.Graph); err != nil {
+		slog.ErrorContext(ctx, "could not prune secrets for removed pipeline nodes", slog.Any("error", err))
 	}
 
 	writeJSON(w, http.StatusOK, toPVMResponse(vm))
@@ -202,6 +210,11 @@ func (h *Handler) handleDeletePersonalVM(w http.ResponseWriter, r *http.Request)
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
+
+	if err := secretcleanup.PruneRemovedNodes(ctx, h.secretStore, vm.Graph(), nil); err != nil {
+		slog.ErrorContext(ctx, "could not prune secrets for deleted personal virtual model", slog.Any("error", err))
+	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 

@@ -3,12 +3,14 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
+	"github.com/bornholm/xolo/internal/core/secretcleanup"
 	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
 	"github.com/pkg/errors"
 )
@@ -58,6 +60,14 @@ func (h *Handler) handleListVirtualModels(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	if allowed, err := h.hasOrgAdminAccess(ctx, org.ID()); err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	} else if !allowed {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
 	vms, err := h.virtualModelStore.ListVirtualModels(ctx, org.ID())
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
@@ -84,6 +94,14 @@ func (h *Handler) handleCreateVirtualModel(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	if allowed, err := h.hasOrgAdminAccess(ctx, org.ID()); err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	} else if !allowed {
+		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
 
@@ -125,6 +143,15 @@ func (h *Handler) handleGetVirtualModel(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+
+	if allowed, err := h.hasOrgAdminAccess(ctx, vm.OrgID()); err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	} else if !allowed {
+		http.Error(w, "virtual model not found", http.StatusNotFound)
+		return
+	}
+
 	writeJSON(w, http.StatusOK, toVMResponse(vm))
 }
 
@@ -141,6 +168,14 @@ func (h *Handler) handleUpdateVirtualModel(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	if allowed, err := h.hasOrgAdminAccess(ctx, vm.OrgID()); err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	} else if !allowed {
+		http.Error(w, "virtual model not found", http.StatusNotFound)
 		return
 	}
 
@@ -162,6 +197,8 @@ func (h *Handler) handleUpdateVirtualModel(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	oldGraph := vm.Graph()
+
 	if req.Description != "" {
 		m.SetDescription(req.Description)
 	}
@@ -173,6 +210,10 @@ func (h *Handler) handleUpdateVirtualModel(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	if err := secretcleanup.PruneRemovedNodes(ctx, h.secretStore, oldGraph, req.Graph); err != nil {
+		slog.ErrorContext(ctx, "could not prune secrets for removed pipeline nodes", slog.Any("error", err))
+	}
+
 	writeJSON(w, http.StatusOK, toVMResponse(vm))
 }
 
@@ -182,6 +223,24 @@ func (h *Handler) handleDeleteVirtualModel(w http.ResponseWriter, r *http.Reques
 	ctx := r.Context()
 	vmID := model.VirtualModelID(r.PathValue("vmID"))
 
+	vm, err := h.virtualModelStore.GetVirtualModelByID(ctx, vmID)
+	if err != nil {
+		if errors.Is(err, port.ErrNotFound) {
+			http.Error(w, "virtual model not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	if allowed, err := h.hasOrgAdminAccess(ctx, vm.OrgID()); err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	} else if !allowed {
+		http.Error(w, "virtual model not found", http.StatusNotFound)
+		return
+	}
+
 	if err := h.virtualModelStore.DeleteVirtualModel(ctx, vmID); err != nil {
 		if errors.Is(err, port.ErrNotFound) {
 			http.Error(w, "virtual model not found", http.StatusNotFound)
@@ -190,6 +249,11 @@ func (h *Handler) handleDeleteVirtualModel(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+
+	if err := secretcleanup.PruneRemovedNodes(ctx, h.secretStore, vm.Graph(), nil); err != nil {
+		slog.ErrorContext(ctx, "could not prune secrets for deleted virtual model", slog.Any("error", err))
+	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -286,6 +350,14 @@ func (h *Handler) handleExportVirtualModel(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	if allowed, err := h.hasOrgAdminAccess(ctx, vm.OrgID()); err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	} else if !allowed {
+		http.Error(w, "virtual model not found", http.StatusNotFound)
+		return
+	}
+
 	bundle := model.PipelineBundle{
 		Version:     "1",
 		ExportedAt:  time.Now().UTC(),
@@ -314,6 +386,14 @@ func (h *Handler) handleImportVirtualModel(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	if allowed, err := h.hasOrgAdminAccess(ctx, org.ID()); err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	} else if !allowed {
+		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
 

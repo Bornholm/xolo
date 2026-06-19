@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 
+	"github.com/bornholm/genai/llm"
 	"github.com/bornholm/xolo/internal/core/model"
 	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
 	"github.com/pkg/errors"
@@ -47,6 +48,7 @@ func (e *PluginExecutor) Forward(ctx context.Context, node model.PipelineNode, i
 		TokenId:     ec.TokenID,
 		DisplayName: ec.DisplayName,
 		ConfigJson:  configJSON,
+		NodeId:      node.ID,
 	}
 
 	inputsJSON := InputsJSON(inputs)
@@ -58,9 +60,74 @@ func (e *PluginExecutor) Forward(ctx context.Context, node model.PipelineNode, i
 	if hasCapability(desc, proto.PluginDescriptor_RESOLVE_MODEL) {
 		return e.forwardResolveModel(ctx, client, reqCtx, node, inputs, inputsJSON, ec)
 	}
+	if hasCapability(desc, proto.PluginDescriptor_TOOL_PROVIDER) {
+		return e.forwardToolProvider(ctx, client, reqCtx, node, inputs)
+	}
 
 	// No relevant capability: pass through.
 	return &ForwardResult{OutputValues: inputs}, nil
+}
+
+// forwardToolProvider handles nodes whose plugin declares the TOOL_PROVIDER
+// capability: it lists the tools the plugin exposes, wraps each as an
+// llm.Tool backed by a CallTool gRPC call, and returns a ClientDecorator
+// that drives the multi-turn tool-resolution loop once the model node has
+// resolved a real llm.Client. The plugin controls maxConsecutiveToolCalls
+// via its own ListTools response, since that setting is exposed through the
+// plugin's own configuration UI rather than a generic node-level field.
+func (e *PluginExecutor) forwardToolProvider(
+	ctx context.Context,
+	client proto.XoloPluginClient,
+	reqCtx *proto.RequestContext,
+	node model.PipelineNode,
+	inputs map[string]interface{},
+) (*ForwardResult, error) {
+	out, err := client.ListTools(ctx, &proto.ListToolsInput{Ctx: reqCtx})
+	if err != nil {
+		return nil, errors.Wrap(err, "plugin ListTools failed")
+	}
+
+	tools := make([]llm.Tool, 0, len(out.Tools))
+	for _, td := range out.Tools {
+		tools = append(tools, newGRPCTool(client, reqCtx, td))
+	}
+
+	maxConsecutiveToolCalls := int(out.MaxConsecutiveToolCalls)
+
+	return &ForwardResult{
+		OutputValues: inputs,
+		Tools:        tools,
+		ClientDecorator: func(inner llm.Client) llm.Client {
+			return NewToolLoopClient(inner, tools, 0, maxConsecutiveToolCalls)
+		},
+	}, nil
+}
+
+// newGRPCTool wraps a single plugin-advertised tool as an llm.Tool whose
+// Execute calls back into the plugin via gRPC CallTool.
+func newGRPCTool(client proto.XoloPluginClient, reqCtx *proto.RequestContext, td *proto.ToolDescriptor) llm.Tool {
+	var schema map[string]any
+	if td.InputSchemaJson != "" {
+		_ = json.Unmarshal([]byte(td.InputSchemaJson), &schema)
+	}
+	return llm.NewFuncTool(td.Name, td.Description, schema, func(ctx context.Context, params map[string]any) (llm.ToolResult, error) {
+		argsJSON, err := json.Marshal(params)
+		if err != nil {
+			return nil, errors.Wrap(err, "marshal tool call arguments")
+		}
+		out, err := client.CallTool(ctx, &proto.CallToolInput{
+			Ctx:           reqCtx,
+			Name:          td.Name,
+			ArgumentsJson: string(argsJSON),
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "plugin CallTool failed")
+		}
+		if out.IsError {
+			return nil, errors.New(out.ResultText)
+		}
+		return llm.NewToolResult(out.ResultText), nil
+	})
 }
 
 func (e *PluginExecutor) forwardPreRequest(

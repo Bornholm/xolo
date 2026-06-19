@@ -25,6 +25,8 @@ const (
 	XoloPlugin_PostResponse_FullMethodName = "/xolo.plugin.v1.XoloPlugin/PostResponse"
 	XoloPlugin_ResolveModel_FullMethodName = "/xolo.plugin.v1.XoloPlugin/ResolveModel"
 	XoloPlugin_ListModels_FullMethodName   = "/xolo.plugin.v1.XoloPlugin/ListModels"
+	XoloPlugin_ListTools_FullMethodName    = "/xolo.plugin.v1.XoloPlugin/ListTools"
+	XoloPlugin_CallTool_FullMethodName     = "/xolo.plugin.v1.XoloPlugin/CallTool"
 )
 
 // XoloPluginClient is the client API for XoloPlugin service.
@@ -37,6 +39,8 @@ type XoloPluginClient interface {
 	PostResponse(ctx context.Context, in *PostResponseInput, opts ...grpc.CallOption) (*PostResponseOutput, error)
 	ResolveModel(ctx context.Context, in *ResolveModelInput, opts ...grpc.CallOption) (*ResolveModelOutput, error)
 	ListModels(ctx context.Context, in *ListModelsInput, opts ...grpc.CallOption) (*ListModelsOutput, error)
+	ListTools(ctx context.Context, in *ListToolsInput, opts ...grpc.CallOption) (*ListToolsOutput, error)
+	CallTool(ctx context.Context, in *CallToolInput, opts ...grpc.CallOption) (*CallToolOutput, error)
 }
 
 type xoloPluginClient struct {
@@ -107,6 +111,26 @@ func (c *xoloPluginClient) ListModels(ctx context.Context, in *ListModelsInput, 
 	return out, nil
 }
 
+func (c *xoloPluginClient) ListTools(ctx context.Context, in *ListToolsInput, opts ...grpc.CallOption) (*ListToolsOutput, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListToolsOutput)
+	err := c.cc.Invoke(ctx, XoloPlugin_ListTools_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *xoloPluginClient) CallTool(ctx context.Context, in *CallToolInput, opts ...grpc.CallOption) (*CallToolOutput, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CallToolOutput)
+	err := c.cc.Invoke(ctx, XoloPlugin_CallTool_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // XoloPluginServer is the server API for XoloPlugin service.
 // All implementations must embed UnimplementedXoloPluginServer
 // for forward compatibility.
@@ -117,6 +141,8 @@ type XoloPluginServer interface {
 	PostResponse(context.Context, *PostResponseInput) (*PostResponseOutput, error)
 	ResolveModel(context.Context, *ResolveModelInput) (*ResolveModelOutput, error)
 	ListModels(context.Context, *ListModelsInput) (*ListModelsOutput, error)
+	ListTools(context.Context, *ListToolsInput) (*ListToolsOutput, error)
+	CallTool(context.Context, *CallToolInput) (*CallToolOutput, error)
 	mustEmbedUnimplementedXoloPluginServer()
 }
 
@@ -144,6 +170,12 @@ func (UnimplementedXoloPluginServer) ResolveModel(context.Context, *ResolveModel
 }
 func (UnimplementedXoloPluginServer) ListModels(context.Context, *ListModelsInput) (*ListModelsOutput, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListModels not implemented")
+}
+func (UnimplementedXoloPluginServer) ListTools(context.Context, *ListToolsInput) (*ListToolsOutput, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListTools not implemented")
+}
+func (UnimplementedXoloPluginServer) CallTool(context.Context, *CallToolInput) (*CallToolOutput, error) {
+	return nil, status.Error(codes.Unimplemented, "method CallTool not implemented")
 }
 func (UnimplementedXoloPluginServer) mustEmbedUnimplementedXoloPluginServer() {}
 func (UnimplementedXoloPluginServer) testEmbeddedByValue()                    {}
@@ -274,6 +306,42 @@ func _XoloPlugin_ListModels_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _XoloPlugin_ListTools_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListToolsInput)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(XoloPluginServer).ListTools(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: XoloPlugin_ListTools_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(XoloPluginServer).ListTools(ctx, req.(*ListToolsInput))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _XoloPlugin_CallTool_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CallToolInput)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(XoloPluginServer).CallTool(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: XoloPlugin_CallTool_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(XoloPluginServer).CallTool(ctx, req.(*CallToolInput))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // XoloPlugin_ServiceDesc is the grpc.ServiceDesc for XoloPlugin service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -305,15 +373,26 @@ var XoloPlugin_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "ListModels",
 			Handler:    _XoloPlugin_ListModels_Handler,
 		},
+		{
+			MethodName: "ListTools",
+			Handler:    _XoloPlugin_ListTools_Handler,
+		},
+		{
+			MethodName: "CallTool",
+			Handler:    _XoloPlugin_CallTool_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "pkg/pluginsdk/proto/plugin.proto",
 }
 
 const (
-	XoloHostService_GetConfig_FullMethodName  = "/xolo.plugin.v1.XoloHostService/GetConfig"
-	XoloHostService_SaveConfig_FullMethodName = "/xolo.plugin.v1.XoloHostService/SaveConfig"
-	XoloHostService_ListModels_FullMethodName = "/xolo.plugin.v1.XoloHostService/ListModels"
+	XoloHostService_GetConfig_FullMethodName    = "/xolo.plugin.v1.XoloHostService/GetConfig"
+	XoloHostService_SaveConfig_FullMethodName   = "/xolo.plugin.v1.XoloHostService/SaveConfig"
+	XoloHostService_ListModels_FullMethodName   = "/xolo.plugin.v1.XoloHostService/ListModels"
+	XoloHostService_GetSecret_FullMethodName    = "/xolo.plugin.v1.XoloHostService/GetSecret"
+	XoloHostService_SetSecret_FullMethodName    = "/xolo.plugin.v1.XoloHostService/SetSecret"
+	XoloHostService_DeleteSecret_FullMethodName = "/xolo.plugin.v1.XoloHostService/DeleteSecret"
 )
 
 // XoloHostServiceClient is the client API for XoloHostService service.
@@ -323,6 +402,9 @@ type XoloHostServiceClient interface {
 	GetConfig(ctx context.Context, in *GetConfigRequest, opts ...grpc.CallOption) (*GetConfigResponse, error)
 	SaveConfig(ctx context.Context, in *SaveConfigRequest, opts ...grpc.CallOption) (*SaveConfigResponse, error)
 	ListModels(ctx context.Context, in *ListModelsForOrgRequest, opts ...grpc.CallOption) (*ListModelsForOrgResponse, error)
+	GetSecret(ctx context.Context, in *GetSecretRequest, opts ...grpc.CallOption) (*GetSecretResponse, error)
+	SetSecret(ctx context.Context, in *SetSecretRequest, opts ...grpc.CallOption) (*SetSecretResponse, error)
+	DeleteSecret(ctx context.Context, in *DeleteSecretRequest, opts ...grpc.CallOption) (*DeleteSecretResponse, error)
 }
 
 type xoloHostServiceClient struct {
@@ -363,6 +445,36 @@ func (c *xoloHostServiceClient) ListModels(ctx context.Context, in *ListModelsFo
 	return out, nil
 }
 
+func (c *xoloHostServiceClient) GetSecret(ctx context.Context, in *GetSecretRequest, opts ...grpc.CallOption) (*GetSecretResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSecretResponse)
+	err := c.cc.Invoke(ctx, XoloHostService_GetSecret_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *xoloHostServiceClient) SetSecret(ctx context.Context, in *SetSecretRequest, opts ...grpc.CallOption) (*SetSecretResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetSecretResponse)
+	err := c.cc.Invoke(ctx, XoloHostService_SetSecret_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *xoloHostServiceClient) DeleteSecret(ctx context.Context, in *DeleteSecretRequest, opts ...grpc.CallOption) (*DeleteSecretResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteSecretResponse)
+	err := c.cc.Invoke(ctx, XoloHostService_DeleteSecret_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // XoloHostServiceServer is the server API for XoloHostService service.
 // All implementations must embed UnimplementedXoloHostServiceServer
 // for forward compatibility.
@@ -370,6 +482,9 @@ type XoloHostServiceServer interface {
 	GetConfig(context.Context, *GetConfigRequest) (*GetConfigResponse, error)
 	SaveConfig(context.Context, *SaveConfigRequest) (*SaveConfigResponse, error)
 	ListModels(context.Context, *ListModelsForOrgRequest) (*ListModelsForOrgResponse, error)
+	GetSecret(context.Context, *GetSecretRequest) (*GetSecretResponse, error)
+	SetSecret(context.Context, *SetSecretRequest) (*SetSecretResponse, error)
+	DeleteSecret(context.Context, *DeleteSecretRequest) (*DeleteSecretResponse, error)
 	mustEmbedUnimplementedXoloHostServiceServer()
 }
 
@@ -388,6 +503,15 @@ func (UnimplementedXoloHostServiceServer) SaveConfig(context.Context, *SaveConfi
 }
 func (UnimplementedXoloHostServiceServer) ListModels(context.Context, *ListModelsForOrgRequest) (*ListModelsForOrgResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListModels not implemented")
+}
+func (UnimplementedXoloHostServiceServer) GetSecret(context.Context, *GetSecretRequest) (*GetSecretResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetSecret not implemented")
+}
+func (UnimplementedXoloHostServiceServer) SetSecret(context.Context, *SetSecretRequest) (*SetSecretResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetSecret not implemented")
+}
+func (UnimplementedXoloHostServiceServer) DeleteSecret(context.Context, *DeleteSecretRequest) (*DeleteSecretResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteSecret not implemented")
 }
 func (UnimplementedXoloHostServiceServer) mustEmbedUnimplementedXoloHostServiceServer() {}
 func (UnimplementedXoloHostServiceServer) testEmbeddedByValue()                         {}
@@ -464,6 +588,60 @@ func _XoloHostService_ListModels_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _XoloHostService_GetSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSecretRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(XoloHostServiceServer).GetSecret(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: XoloHostService_GetSecret_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(XoloHostServiceServer).GetSecret(ctx, req.(*GetSecretRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _XoloHostService_SetSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetSecretRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(XoloHostServiceServer).SetSecret(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: XoloHostService_SetSecret_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(XoloHostServiceServer).SetSecret(ctx, req.(*SetSecretRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _XoloHostService_DeleteSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteSecretRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(XoloHostServiceServer).DeleteSecret(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: XoloHostService_DeleteSecret_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(XoloHostServiceServer).DeleteSecret(ctx, req.(*DeleteSecretRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // XoloHostService_ServiceDesc is the grpc.ServiceDesc for XoloHostService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -482,6 +660,18 @@ var XoloHostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListModels",
 			Handler:    _XoloHostService_ListModels_Handler,
+		},
+		{
+			MethodName: "GetSecret",
+			Handler:    _XoloHostService_GetSecret_Handler,
+		},
+		{
+			MethodName: "SetSecret",
+			Handler:    _XoloHostService_SetSecret_Handler,
+		},
+		{
+			MethodName: "DeleteSecret",
+			Handler:    _XoloHostService_DeleteSecret_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

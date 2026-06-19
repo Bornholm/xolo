@@ -15,6 +15,14 @@ func PreRequestDescriptor(name string) *proto.PluginDescriptor {
 	}
 }
 
+// ToolProviderDescriptor returns a PluginDescriptor with the TOOL_PROVIDER capability only.
+func ToolProviderDescriptor(name string) *proto.PluginDescriptor {
+	return &proto.PluginDescriptor{
+		Name:         name,
+		Capabilities: []proto.PluginDescriptor_Capability{proto.PluginDescriptor_TOOL_PROVIDER},
+	}
+}
+
 // PrePostDescriptor returns a PluginDescriptor with PRE_REQUEST and POST_RESPONSE capabilities.
 func PrePostDescriptor(name string) *proto.PluginDescriptor {
 	return &proto.PluginDescriptor{

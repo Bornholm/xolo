@@ -51,6 +51,7 @@ func NewHandler(
 	quotaStore port.QuotaStore,
 	quotaService *service.QuotaService,
 	exchangeRateService *service.ExchangeRateService,
+	secretStore port.SecretStore,
 	secretKey string,
 	pluginManager pluginManagerIface,
 ) *Handler {
@@ -75,9 +76,9 @@ func NewHandler(
 	h.mux.Handle("POST /no-org/invitations/{tokenID}/decline", isActive(http.HandlerFunc(h.declineInvitation)))
 	mount(h.mux, "/usage", isActive(http.HandlerFunc(h.getDashboardPage)))
 	mount(h.mux, "/models", isActive(http.HandlerFunc(h.getModelsPage)))
-	mount(h.mux, "/profile/", isActive(profile.NewHandler(userStore, orgStore, inviteStore, personalVMStore, pluginManager)))
+	mount(h.mux, "/profile/", isActive(profile.NewHandler(userStore, orgStore, inviteStore, personalVMStore, secretStore, pluginManager)))
 	mount(h.mux, "/admin/", isActive(admin.NewHandler(userStore, orgStore, taskRunner, exchangeRateService, pluginManager)))
-	mount(h.mux, "/orgs/", isActive(org.NewHandler(orgStore, providerStore, virtualModelStore, usageStore, inviteStore, userStore, applicationStore, exchangeRateService, quotaStore, secretKey, pluginManager)))
+	mount(h.mux, "/orgs/", isActive(org.NewHandler(orgStore, providerStore, virtualModelStore, usageStore, inviteStore, userStore, applicationStore, exchangeRateService, quotaStore, secretStore, secretKey, pluginManager)))
 
 	// Public join flow — no isActive wrapper (unauthenticated users get a sign-in prompt)
 	h.mux.Handle("/join/", http.StripPrefix("/join", join.NewHandler(orgStore, inviteStore)))

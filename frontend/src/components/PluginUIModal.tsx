@@ -36,14 +36,15 @@ async function readConfig(orgSlugVal: string, pluginName: string, base: string):
   try { return JSON.parse(data.configJson) } catch { return {} }
 }
 
-export function PluginUIModal({ pluginName, nodeId: _nodeId, currentConfig, baseUrl, onClose }: PluginUIModalProps) {
+export function PluginUIModal({ pluginName, nodeId, currentConfig, baseUrl, onClose }: PluginUIModalProps) {
   const [ready, setReady] = useState(false)
   const [closing, setClosing] = useState(false)
   const slug = orgSlug()
 
-  const uiURL = isPersonalContext()
+  const uiURL = (isPersonalContext()
     ? `${baseUrl}/profile/plugins/${encodeURIComponent(pluginName)}/ui/`
     : `${baseUrl}/orgs/${slug}/plugins/${encodeURIComponent(pluginName)}/ui/`
+  ) + `?nodeId=${encodeURIComponent(nodeId)}`
 
   useEffect(() => {
     seedConfig(slug, pluginName, currentConfig, baseUrl)

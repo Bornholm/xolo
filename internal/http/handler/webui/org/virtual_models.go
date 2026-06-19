@@ -7,6 +7,7 @@ import (
 	"github.com/a-h/templ"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
+	"github.com/bornholm/xolo/internal/core/secretcleanup"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/org/component"
@@ -230,6 +231,17 @@ func (h *Handler) deleteVirtualModel(w http.ResponseWriter, r *http.Request) {
 	orgSlug := r.PathValue("orgSlug")
 	modelID := r.PathValue("modelID")
 
+	vm, err := h.virtualModelStore.GetVirtualModelByID(ctx, model.VirtualModelID(modelID))
+	if err != nil {
+		if errors.Is(err, port.ErrNotFound) {
+			http.NotFound(w, r)
+			return
+		}
+		slog.ErrorContext(ctx, "could not get virtual model", slog.Any("error", err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
 	if err := h.virtualModelStore.DeleteVirtualModel(ctx, model.VirtualModelID(modelID)); err != nil {
 		if errors.Is(err, port.ErrNotFound) {
 			http.NotFound(w, r)
@@ -238,6 +250,10 @@ func (h *Handler) deleteVirtualModel(w http.ResponseWriter, r *http.Request) {
 		slog.ErrorContext(ctx, "could not delete virtual model", slog.Any("error", err))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
+	}
+
+	if err := secretcleanup.PruneRemovedNodes(ctx, h.secretStore, vm.Graph(), nil); err != nil {
+		slog.ErrorContext(ctx, "could not prune secrets for deleted virtual model", slog.Any("error", err))
 	}
 
 	http.Redirect(w, r, "/orgs/"+orgSlug+"/admin/virtual-models?success=deleted", http.StatusSeeOther)

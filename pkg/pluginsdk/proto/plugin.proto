@@ -9,12 +9,17 @@ service XoloPlugin {
   rpc PostResponse(PostResponseInput) returns (PostResponseOutput);
   rpc ResolveModel(ResolveModelInput) returns (ResolveModelOutput);
   rpc ListModels(ListModelsInput) returns (ListModelsOutput);
+  rpc ListTools(ListToolsInput) returns (ListToolsOutput);
+  rpc CallTool(CallToolInput) returns (CallToolOutput);
 }
 
 service XoloHostService {
   rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);
   rpc SaveConfig(SaveConfigRequest) returns (SaveConfigResponse);
   rpc ListModels(ListModelsForOrgRequest) returns (ListModelsForOrgResponse);
+  rpc GetSecret(GetSecretRequest) returns (GetSecretResponse);
+  rpc SetSecret(SetSecretRequest) returns (SetSecretResponse);
+  rpc DeleteSecret(DeleteSecretRequest) returns (DeleteSecretResponse);
 }
 
 message ListModelsForOrgRequest {
@@ -45,6 +50,32 @@ message SaveConfigRequest {
 }
 message SaveConfigResponse {}
 
+message GetSecretRequest {
+  string org_id      = 1;
+  string plugin_name = 2;
+  string node_id     = 3;
+  string key         = 4;
+}
+message GetSecretResponse {
+  string value = 1;
+  bool   found = 2;
+}
+message SetSecretRequest {
+  string org_id      = 1;
+  string plugin_name = 2;
+  string node_id      = 3;
+  string key          = 4;
+  string value        = 5;
+}
+message SetSecretResponse {}
+message DeleteSecretRequest {
+  string org_id      = 1;
+  string plugin_name = 2;
+  string node_id     = 3;
+  string key         = 4;
+}
+message DeleteSecretResponse {}
+
 message DescribeRequest {}
 
 // PortDescriptor describes a typed input or output port of a plugin node.
@@ -65,6 +96,7 @@ message PluginDescriptor {
     POST_RESPONSE = 2;
     RESOLVE_MODEL = 3;
     LIST_MODELS = 4;
+    TOOL_PROVIDER = 5;
   }
   string config_schema = 5;
   string user_config_schema = 6;
@@ -80,6 +112,9 @@ message RequestContext {
   string config_json = 4;
   string user_config_json = 5;
   string display_name = 6;
+  // node_id is the stable ID of this node instance within its pipeline graph.
+  // Plugins use it to scope GetSecret/SetSecret calls to this specific placement.
+  string node_id = 7;
 }
 
 message ModelInfo {
@@ -181,4 +216,33 @@ message ListModelsInput {
 
 message ListModelsOutput {
   repeated string additional_proxy_names = 1;
+}
+
+message ToolDescriptor {
+  string name = 1;
+  string description = 2;
+  // input_schema_json is a JSON Schema object describing the tool's parameters.
+  string input_schema_json = 3;
+}
+
+message ListToolsInput {
+  RequestContext ctx = 1;
+}
+message ListToolsOutput {
+  repeated ToolDescriptor tools = 1;
+  // max_consecutive_tool_calls bounds how many consecutive tool-resolution
+  // rounds the host's tool loop performs before forcing tool_choice="none"
+  // on the next LLM call, so the model answers with whatever results it
+  // already has instead of looping further. <= 0 means "use host default".
+  int32 max_consecutive_tool_calls = 2;
+}
+
+message CallToolInput {
+  RequestContext ctx = 1;
+  string name = 2;
+  string arguments_json = 3;
+}
+message CallToolOutput {
+  string result_text = 1;
+  bool is_error = 2;
 }

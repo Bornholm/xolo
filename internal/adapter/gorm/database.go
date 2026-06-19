@@ -55,6 +55,17 @@ func createGetDatabase(db *gorm.DB) func(ctx context.Context) (*gorm.DB, error) 
 						return tx.Migrator().DropColumn(&UsageRecord{}, "cached_tokens")
 					},
 				},
+				{
+					// Add plugin_node_secrets table backing the GetSecret/SetSecret
+					// host service RPCs (per-node-instance encrypted key/value store).
+					ID: "202606180001",
+					Migrate: func(tx *gorm.DB) error {
+						return tx.AutoMigrate(&PluginNodeSecret{})
+					},
+					Rollback: func(tx *gorm.DB) error {
+						return tx.Migrator().DropTable("plugin_node_secrets")
+					},
+				},
 			})
 
 			m.InitSchema(func(tx *gorm.DB) error {
@@ -87,6 +98,8 @@ func createGetDatabase(db *gorm.DB) func(ctx context.Context) (*gorm.DB, error) 
 					&InviteToken{},
 					// Exchange rate cache
 					&ExchangeRate{},
+					// Plugin node secrets
+					&PluginNodeSecret{},
 				)
 				if err != nil {
 					return errors.WithStack(err)

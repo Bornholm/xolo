@@ -39,11 +39,16 @@ func (h *Handler) servePersonalPluginUI(w http.ResponseWriter, r *http.Request) 
 
 	pluginBasePath := fmt.Sprintf("/profile/plugins/%s/ui", pluginName)
 
+	nodeID := r.URL.Query().Get("nodeId")
+
 	originalDirector := proxy.Director
 	proxy.Director = func(req *http.Request) {
 		originalDirector(req)
 		req.Header.Set("X-Xolo-Org-Id", scopeID)
 		req.Header.Set("X-Xolo-Plugin-Base-Path", pluginBasePath+"/")
+		if nodeID != "" {
+			req.Header.Set("X-Xolo-Node-Id", nodeID)
+		}
 		uiPath := r.PathValue("uiPath")
 		if uiPath == "" {
 			uiPath = "/"

@@ -159,9 +159,14 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		return nil, errors.Wrap(err, "could not create application store from config")
 	}
 
-	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, providerStore, virtualModelStore, personalVMStore, usageStore, inviteStore, applicationStore, quotaStore, quotaService, exchangeRateService, conf.SecretKey, pluginManager)
+	secretStore, err := getSecretStoreFromConfig(ctx, conf)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create secret store from config")
+	}
 
-	apiHandler := api.NewHandler(providerStore, orgStore, virtualModelStore, personalVMStore, exchangeRateService, pluginManager)
+	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, providerStore, virtualModelStore, personalVMStore, usageStore, inviteStore, applicationStore, quotaStore, quotaService, exchangeRateService, secretStore, conf.SecretKey, pluginManager)
+
+	apiHandler := api.NewHandler(providerStore, orgStore, virtualModelStore, personalVMStore, secretStore, exchangeRateService, pluginManager)
 
 	proxyServer := proxy.NewServer(
 		proxy.WithAuthExtractor(proxyAdapter.XoloAuthExtractor()),

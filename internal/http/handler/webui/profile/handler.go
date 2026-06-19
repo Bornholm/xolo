@@ -27,6 +27,7 @@ type Handler struct {
 	orgStore        port.OrgStore
 	inviteStore     port.InviteStore
 	personalVMStore port.PersonalVirtualModelStore
+	secretStore     port.SecretStore
 	pluginManager   pluginManagerIface
 }
 
@@ -35,13 +36,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.mux.ServeHTTP(w, r)
 }
 
-func NewHandler(userStore port.UserStore, orgStore port.OrgStore, inviteStore port.InviteStore, personalVMStore port.PersonalVirtualModelStore, pluginManager pluginManagerIface) *Handler {
+func NewHandler(userStore port.UserStore, orgStore port.OrgStore, inviteStore port.InviteStore, personalVMStore port.PersonalVirtualModelStore, secretStore port.SecretStore, pluginManager pluginManagerIface) *Handler {
 	h := &Handler{
 		mux:             http.NewServeMux(),
 		userStore:       userStore,
 		orgStore:        orgStore,
 		inviteStore:     inviteStore,
 		personalVMStore: personalVMStore,
+		secretStore:     secretStore,
 		pluginManager:   pluginManager,
 	}
 

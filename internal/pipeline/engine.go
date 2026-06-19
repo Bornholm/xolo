@@ -34,6 +34,10 @@ type ForwardExecution struct {
 	// produced by plugin nodes (e.g. modified_messages_json). It defaults to
 	// ec.MessagesJSON when no node modified the messages.
 	FinalMessagesJSON string
+	// Tools is the aggregated list of llm.Tool contributed by executed nodes
+	// (e.g. TOOL_PROVIDER plugins). Informational: ResolvedClient is already
+	// wrapped with whatever decorator needs these tools.
+	Tools []llm.Tool
 }
 
 // ExecutedNode pairs a node with the opaque state returned by its Forward call.
@@ -56,6 +60,8 @@ func (e *Engine) RunForward(ctx context.Context, graph *model.PipelineGraph, ec 
 
 	vc := newValueContext()
 	var executed []ExecutedNode
+	var tools []llm.Tool
+	var decorators []func(llm.Client) llm.Client
 	currentMessagesJSON := ec.MessagesJSON
 
 	// Seed the generator node's output.
@@ -97,14 +103,26 @@ func (e *Engine) RunForward(ctx context.Context, graph *model.PipelineGraph, ec 
 			currentMessagesJSON = msgs
 		}
 
+		if len(result.Tools) > 0 {
+			tools = append(tools, result.Tools...)
+		}
+		if result.ClientDecorator != nil {
+			decorators = append(decorators, result.ClientDecorator)
+		}
+
 		// Terminal: model node resolved the LLM client.
 		if result.ResolvedClient != nil {
+			resolvedClient := result.ResolvedClient
+			for _, decorate := range decorators {
+				resolvedClient = decorate(resolvedClient)
+			}
 			return &ForwardExecution{
-				ResolvedClient:    result.ResolvedClient,
+				ResolvedClient:    resolvedClient,
 				ResolvedModel:     result.ResolvedModel,
 				ResolvedModelID:   result.ResolvedModelID,
 				ExecutedNodes:     executed,
 				FinalMessagesJSON: currentMessagesJSON,
+				Tools:             tools,
 			}, nil
 		}
 	}

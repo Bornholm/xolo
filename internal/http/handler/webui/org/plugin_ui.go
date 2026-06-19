@@ -18,6 +18,8 @@ import (
 //   - X-Xolo-Org-Id        — org UUID, used by the plugin to scope GetConfig/SaveConfig calls
 //   - X-Xolo-Plugin-Base-Path — absolute prefix under which the plugin UI is mounted in the app,
 //     used by the plugin to construct correct relative URLs
+//   - X-Xolo-Node-Id       — pipeline node instance ID (from the ?nodeId= query param), used
+//     by the plugin to scope GetSecret/SetSecret calls to this node placement
 //
 // Redirects emitted by the plugin are rewritten to stay under the plugin's base path.
 func (h *Handler) servePluginUI(w http.ResponseWriter, r *http.Request) {
@@ -49,6 +51,7 @@ func (h *Handler) servePluginUI(w http.ResponseWriter, r *http.Request) {
 	proxy := httputil.NewSingleHostReverseProxy(target)
 
 	pluginBasePath := fmt.Sprintf("/orgs/%s/plugins/%s/ui", orgSlug, pluginName)
+	nodeID := r.URL.Query().Get("nodeId")
 
 	originalDirector := proxy.Director
 	proxy.Director = func(req *http.Request) {
@@ -57,6 +60,10 @@ func (h *Handler) servePluginUI(w http.ResponseWriter, r *http.Request) {
 		req.Header.Set("X-Xolo-Org-Id", string(org.ID()))
 		// Inject the mount base path so the plugin can build correct relative/absolute URLs.
 		req.Header.Set("X-Xolo-Plugin-Base-Path", pluginBasePath+"/")
+		// Inject the node instance ID so the plugin can scope GetSecret/SetSecret calls.
+		if nodeID != "" {
+			req.Header.Set("X-Xolo-Node-Id", nodeID)
+		}
 		// Rewrite the path to the plugin's internal path space.
 		uiPath := r.PathValue("uiPath")
 		if uiPath == "" {

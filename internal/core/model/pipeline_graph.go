@@ -40,6 +40,18 @@ type PipelineGraph struct {
 	Edges []PipelineEdge `json:"edges"`
 }
 
+// NodeIDs returns the ID of every node in the graph.
+func (g *PipelineGraph) NodeIDs() []string {
+	if g == nil {
+		return nil
+	}
+	ids := make([]string, len(g.Nodes))
+	for i, n := range g.Nodes {
+		ids[i] = n.ID
+	}
+	return ids
+}
+
 // PipelineNode is a single node in a pipeline graph.
 type PipelineNode struct {
 	ID       string           `json:"id"`

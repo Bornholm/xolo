@@ -9,6 +9,7 @@ import (
 	"github.com/bornholm/go-x/slogx"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
+	"github.com/bornholm/xolo/internal/core/secretcleanup"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/profile/component"
@@ -228,6 +229,10 @@ func (h *Handler) deletePersonalModel(w http.ResponseWriter, r *http.Request) {
 		slog.ErrorContext(ctx, "could not delete personal virtual model", slogx.Error(err))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
+	}
+
+	if err := secretcleanup.PruneRemovedNodes(ctx, h.secretStore, vm.Graph(), nil); err != nil {
+		slog.ErrorContext(ctx, "could not prune secrets for deleted personal virtual model", slogx.Error(err))
 	}
 
 	http.Redirect(w, r, "/profile/personal-models?success=deleted", http.StatusSeeOther)

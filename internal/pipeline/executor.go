@@ -50,6 +50,14 @@ type ForwardResult struct {
 	// Rejected is true when a plugin node blocks the request.
 	Rejected        bool
 	RejectionReason string
+	// Tools are additional llm.Tool definitions contributed by this node
+	// (e.g. a TOOL_PROVIDER plugin), to be made available to the LLM call.
+	Tools []llm.Tool
+	// ClientDecorator, when set, wraps the eventually-resolved llm.Client
+	// (e.g. to intercept and resolve tool calls server-side before they
+	// reach the API client). Applied by the engine once the terminal model
+	// node has resolved a client.
+	ClientDecorator func(llm.Client) llm.Client
 }
 
 // BackwardResult is the output of a node's Backward execution.

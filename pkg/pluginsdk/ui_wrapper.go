@@ -10,6 +10,14 @@ import (
 	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
 )
 
+// HostClientSetter is implemented by plugins that need direct access to a
+// HostClient from their gRPC methods (e.g. calling GetSecret/SetSecret from
+// ListTools/CallTool), not just from their HTTP UI. ServeWithUI calls
+// SetHostClient once the broker connection to XoloHostService is established.
+type HostClientSetter interface {
+	SetHostClient(HostClient)
+}
+
 // uiWrapper wraps an XoloPluginServer and handles Initialize by:
 // 1. Connecting to XoloHostService via the broker
 // 2. Starting the plugin's HTTP server
@@ -46,6 +54,10 @@ func (w *uiWrapper) Initialize(_ context.Context, req *proto.InitializeRequest) 
 	}
 
 	hostClient := newGRPCHostClient(conn)
+
+	if setter, ok := w.XoloPluginServer.(HostClientSetter); ok {
+		setter.SetHostClient(hostClient)
+	}
 
 	// Inject HostClient and plugin name into every request context.
 	wrapped := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {

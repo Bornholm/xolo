@@ -14,6 +14,13 @@ type HostClient interface {
 	SaveConfig(ctx context.Context, orgID, pluginName, configJSON string) error
 	// ListModels returns all enabled LLM models available for the given org.
 	ListModels(ctx context.Context, orgID string) ([]*proto.ModelInfo, error)
+	// GetSecret returns the value stored for (orgID, pluginName, nodeID, key),
+	// and whether it was found.
+	GetSecret(ctx context.Context, orgID, pluginName, nodeID, key string) (string, bool, error)
+	// SetSecret persists value for (orgID, pluginName, nodeID, key).
+	SetSecret(ctx context.Context, orgID, pluginName, nodeID, key, value string) error
+	// DeleteSecret removes the value stored for (orgID, pluginName, nodeID, key).
+	DeleteSecret(ctx context.Context, orgID, pluginName, nodeID, key string) error
 }
 
 // grpcHostClient implements HostClient over gRPC.
@@ -57,4 +64,44 @@ func (c *grpcHostClient) ListModels(ctx context.Context, orgID string) ([]*proto
 		return nil, fmt.Errorf("ListModels gRPC: %w", err)
 	}
 	return resp.Models, nil
+}
+
+func (c *grpcHostClient) GetSecret(ctx context.Context, orgID, pluginName, nodeID, key string) (string, bool, error) {
+	resp, err := c.client.GetSecret(ctx, &proto.GetSecretRequest{
+		OrgId:      orgID,
+		PluginName: pluginName,
+		NodeId:     nodeID,
+		Key:        key,
+	})
+	if err != nil {
+		return "", false, fmt.Errorf("GetSecret gRPC: %w", err)
+	}
+	return resp.Value, resp.Found, nil
+}
+
+func (c *grpcHostClient) SetSecret(ctx context.Context, orgID, pluginName, nodeID, key, value string) error {
+	_, err := c.client.SetSecret(ctx, &proto.SetSecretRequest{
+		OrgId:      orgID,
+		PluginName: pluginName,
+		NodeId:     nodeID,
+		Key:        key,
+		Value:      value,
+	})
+	if err != nil {
+		return fmt.Errorf("SetSecret gRPC: %w", err)
+	}
+	return nil
+}
+
+func (c *grpcHostClient) DeleteSecret(ctx context.Context, orgID, pluginName, nodeID, key string) error {
+	_, err := c.client.DeleteSecret(ctx, &proto.DeleteSecretRequest{
+		OrgId:      orgID,
+		PluginName: pluginName,
+		NodeId:     nodeID,
+		Key:        key,
+	})
+	if err != nil {
+		return fmt.Errorf("DeleteSecret gRPC: %w", err)
+	}
+	return nil
 }

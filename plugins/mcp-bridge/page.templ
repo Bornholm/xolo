@@ -1,0 +1,129 @@
+package main
+
+import (
+	"strings"
+
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/label"
+)
+
+// page renders the mcp-bridge plugin configuration UI.
+templ page(pd uiPageData) {
+	<!DOCTYPE html>
+	<html class="dark">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<base href={ pd.BasePath }/>
+			<link rel="stylesheet" href="/assets/templui.css"/>
+		</head>
+		<body class="bg-background text-foreground min-h-screen p-4 space-y-4">
+			<h1 class="text-lg font-semibold">Serveur MCP (Streamable HTTP)</h1>
+			<p class="text-sm text-muted-foreground">
+				Les tools exposés par ce serveur seront proposés au LLM. Les appels
+				d'outils correspondants sont résolus automatiquement côté serveur et
+				ne sont jamais renvoyés au client de l'API.
+			</p>
+
+			if pd.Success {
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					@alert.Description() {
+						Configuration sauvegardée avec succès.
+					}
+				}
+			}
+
+			<form id="main-form" method="POST" action="api/config" class="space-y-6">
+				<input type="hidden" name="nodeId" value={ pd.NodeID }/>
+				@card.Card() {
+					@card.Header() {
+						@card.Title() { Connexion }
+					}
+					@card.Content() {
+						<div class="space-y-4">
+							<div class="space-y-1">
+								@label.Label(label.Props{For: "endpoint"}) { URL du serveur MCP }
+								@input.Input(input.Props{
+									ID:          "endpoint",
+									Name:        "endpoint",
+									Value:       pd.Config.Endpoint,
+									Placeholder: "https://mcp.example.com/mcp",
+								})
+							</div>
+							<div class="space-y-1">
+								@label.Label(label.Props{For: "auth_header_name"}) { Nom de l'en-tête d'authentification }
+								@input.Input(input.Props{
+									ID:          "auth_header_name",
+									Name:        "auth_header_name",
+									Value:       pd.Config.AuthHeaderName,
+									Placeholder: "Authorization",
+								})
+							</div>
+							<div class="space-y-1">
+								@label.Label(label.Props{For: "auth_value"}) { Valeur d'authentification }
+								@input.Input(input.Props{
+									ID:          "auth_value",
+									Name:        "auth_value",
+									Type:        input.TypePassword,
+									Placeholder: authValuePlaceholder(pd.HasAuthValue),
+								})
+								<p class="text-xs text-muted-foreground">
+									if pd.HasAuthValue {
+										Une valeur est déjà configurée pour ce nœud. Laisser vide pour la conserver.
+									} else {
+										ex: jeton Bearer. Stockée séparément, jamais affichée.
+									}
+								</p>
+							</div>
+							<div class="space-y-1">
+								@label.Label(label.Props{For: "tool_filter"}) { Tools autorisés (séparés par des virgules) }
+								@input.Input(input.Props{
+									ID:          "tool_filter",
+									Name:        "tool_filter",
+									Value:       strings.Join(pd.Config.ToolFilter, ", "),
+									Placeholder: "vide = tous les tools exposés",
+								})
+							</div>
+							<div class="space-y-1">
+								@label.Label(label.Props{For: "timeout_seconds"}) { Timeout (secondes) }
+								@input.Input(input.Props{
+									ID:          "timeout_seconds",
+									Name:        "timeout_seconds",
+									Type:        input.TypeNumber,
+									Value:       zeroAsEmpty(pd.Config.TimeoutSeconds),
+									Placeholder: "120",
+								})
+								<p class="text-xs text-muted-foreground">
+									Les outils MCP de type RAG peuvent être lents (recherche +
+									génération). Vide = défaut (120s).
+								</p>
+							</div>
+							<div class="space-y-1">
+								@label.Label(label.Props{For: "max_consecutive_tool_calls"}) { Appels d'outils consécutifs max. }
+								@input.Input(input.Props{
+									ID:          "max_consecutive_tool_calls",
+									Name:        "max_consecutive_tool_calls",
+									Type:        input.TypeNumber,
+									Value:       zeroAsEmpty(pd.Config.MaxConsecutiveToolCalls),
+									Placeholder: "2",
+								})
+								<p class="text-xs text-muted-foreground">
+									Au-delà, le LLM est forcé de répondre sans appeler d'outil supplémentaire. Vide = défaut (2).
+								</p>
+							</div>
+						</div>
+					}
+				}
+
+				<div class="flex justify-end">
+					@button.Button(button.Props{Type: button.TypeSubmit}) {
+						Sauvegarder
+					}
+				</div>
+			</form>
+		</body>
+	</html>
+}

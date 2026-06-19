@@ -59,17 +59,19 @@ type Handler struct {
 	orgStore            port.OrgStore
 	virtualModelStore   port.VirtualModelStore
 	personalVMStore     port.PersonalVirtualModelStore
+	secretStore         port.SecretStore
 	exchangeRateService *service.ExchangeRateService
 	pluginManager       pluginManagerIface
 	mux                 *http.ServeMux
 }
 
-func NewHandler(providerStore port.ProviderStore, orgStore port.OrgStore, virtualModelStore port.VirtualModelStore, personalVMStore port.PersonalVirtualModelStore, exchangeRateService *service.ExchangeRateService, pluginManager pluginManagerIface) *Handler {
+func NewHandler(providerStore port.ProviderStore, orgStore port.OrgStore, virtualModelStore port.VirtualModelStore, personalVMStore port.PersonalVirtualModelStore, secretStore port.SecretStore, exchangeRateService *service.ExchangeRateService, pluginManager pluginManagerIface) *Handler {
 	h := &Handler{
 		providerStore:       providerStore,
 		orgStore:            orgStore,
 		virtualModelStore:   virtualModelStore,
 		personalVMStore:     personalVMStore,
+		secretStore:         secretStore,
 		exchangeRateService: exchangeRateService,
 		pluginManager:       pluginManager,
 		mux:                 http.NewServeMux(),

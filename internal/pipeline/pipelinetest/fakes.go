@@ -151,6 +151,8 @@ type PluginClient struct {
 	PreRequestFunc   func(ctx context.Context, in *proto.PreRequestInput) (*proto.PreRequestOutput, error)
 	PostResponseFunc func(ctx context.Context, in *proto.PostResponseInput) (*proto.PostResponseOutput, error)
 	ResolveModelFunc func(ctx context.Context, in *proto.ResolveModelInput) (*proto.ResolveModelOutput, error)
+	ListToolsFunc    func(ctx context.Context, in *proto.ListToolsInput) (*proto.ListToolsOutput, error)
+	CallToolFunc     func(ctx context.Context, in *proto.CallToolInput) (*proto.CallToolOutput, error)
 }
 
 func (c *PluginClient) Describe(_ context.Context, _ *proto.DescribeRequest, _ ...grpc.CallOption) (*proto.PluginDescriptor, error) {
@@ -184,6 +186,20 @@ func (c *PluginClient) ResolveModel(ctx context.Context, in *proto.ResolveModelI
 
 func (c *PluginClient) ListModels(_ context.Context, _ *proto.ListModelsInput, _ ...grpc.CallOption) (*proto.ListModelsOutput, error) {
 	return &proto.ListModelsOutput{}, nil
+}
+
+func (c *PluginClient) ListTools(ctx context.Context, in *proto.ListToolsInput, _ ...grpc.CallOption) (*proto.ListToolsOutput, error) {
+	if c.ListToolsFunc != nil {
+		return c.ListToolsFunc(ctx, in)
+	}
+	return &proto.ListToolsOutput{}, nil
+}
+
+func (c *PluginClient) CallTool(ctx context.Context, in *proto.CallToolInput, _ ...grpc.CallOption) (*proto.CallToolOutput, error) {
+	if c.CallToolFunc != nil {
+		return c.CallToolFunc(ctx, in)
+	}
+	return &proto.CallToolOutput{}, nil
 }
 
 var _ proto.XoloPluginClient = (*PluginClient)(nil)

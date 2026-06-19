@@ -7,6 +7,7 @@ import (
 
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
+	"github.com/bornholm/xolo/internal/crypto"
 	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -16,19 +17,33 @@ import (
 // Config persistence uses an in-memory store keyed by (orgID, pluginName).
 // This config is used by the plugin HTTP UI for display/edit; the authoritative
 // per-node config lives in the pipeline graph (PluginNodeData.Config).
+//
+// GetSecret/SetSecret/DeleteSecret are a separate, persisted channel scoped
+// per node instance (orgID, pluginName, nodeID, key), used by plugins to
+// store sensitive values (e.g. an MCP server auth token) that must never
+// appear in the pipeline graph's visible JSON.
 type XoloHostService struct {
 	proto.UnimplementedXoloHostServiceServer
 	providerStore     port.ProviderStore
 	virtualModelStore port.VirtualModelStore
+	secretStore       port.SecretStore
+	secretKey         string
 	mu                sync.RWMutex
 	configs           map[string]string // key: orgID+":"+pluginName → JSON
 }
 
 // NewXoloHostService creates an XoloHostService.
-func NewXoloHostService(providerStore port.ProviderStore, virtualModelStore port.VirtualModelStore) *XoloHostService {
+func NewXoloHostService(
+	providerStore port.ProviderStore,
+	virtualModelStore port.VirtualModelStore,
+	secretStore port.SecretStore,
+	secretKey string,
+) *XoloHostService {
 	return &XoloHostService{
 		providerStore:     providerStore,
 		virtualModelStore: virtualModelStore,
+		secretStore:       secretStore,
+		secretKey:         secretKey,
 		configs:           make(map[string]string),
 	}
 }
@@ -115,4 +130,49 @@ func (s *XoloHostService) ListModels(ctx context.Context, req *proto.ListModelsF
 		}
 	}
 	return &proto.ListModelsForOrgResponse{Models: protoModels}, nil
+}
+
+// GetSecret returns the decrypted secret value for (orgID, pluginName, nodeID, key).
+func (s *XoloHostService) GetSecret(ctx context.Context, req *proto.GetSecretRequest) (*proto.GetSecretResponse, error) {
+	if s.secretStore == nil {
+		return &proto.GetSecretResponse{Found: false}, nil
+	}
+	encrypted, found, err := s.secretStore.GetSecret(ctx, req.OrgId, req.PluginName, req.NodeId, req.Key)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "get secret: %v", err)
+	}
+	if !found {
+		return &proto.GetSecretResponse{Found: false}, nil
+	}
+	value, err := crypto.Decrypt(s.secretKey, encrypted)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "decrypt secret: %v", err)
+	}
+	return &proto.GetSecretResponse{Value: value, Found: true}, nil
+}
+
+// SetSecret encrypts and persists value for (orgID, pluginName, nodeID, key).
+func (s *XoloHostService) SetSecret(ctx context.Context, req *proto.SetSecretRequest) (*proto.SetSecretResponse, error) {
+	if s.secretStore == nil {
+		return nil, status.Error(codes.Unavailable, "secret store not configured")
+	}
+	encrypted, err := crypto.Encrypt(s.secretKey, req.Value)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "encrypt secret: %v", err)
+	}
+	if err := s.secretStore.SetSecret(ctx, req.OrgId, req.PluginName, req.NodeId, req.Key, encrypted); err != nil {
+		return nil, status.Errorf(codes.Internal, "set secret: %v", err)
+	}
+	return &proto.SetSecretResponse{}, nil
+}
+
+// DeleteSecret removes the secret for (orgID, pluginName, nodeID, key).
+func (s *XoloHostService) DeleteSecret(ctx context.Context, req *proto.DeleteSecretRequest) (*proto.DeleteSecretResponse, error) {
+	if s.secretStore == nil {
+		return &proto.DeleteSecretResponse{}, nil
+	}
+	if err := s.secretStore.DeleteSecret(ctx, req.OrgId, req.PluginName, req.NodeId, req.Key); err != nil {
+		return nil, status.Errorf(codes.Internal, "delete secret: %v", err)
+	}
+	return &proto.DeleteSecretResponse{}, nil
 }
