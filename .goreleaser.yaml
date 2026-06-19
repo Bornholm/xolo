@@ -75,6 +75,16 @@ builds:
     ldflags:
       - -w -s
 
+  - id: xolo-plugin-mcp-bridge
+    targets: [go_first_class]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    dir: ./plugins/mcp-bridge
+    binary: xolo-plugin-mcp-bridge
+    flags:
+      - -trimpath
+    ldflags:
+      - -w -s
+
 checksum:
   name_template: "checksums.txt"
 snapshot:
@@ -99,6 +109,7 @@ dockers:
       - xolo-plugin-request-evaluator
       - xolo-plugin-script-processor
       - xolo-plugin-pseudonymizer
+      - xolo-plugin-mcp-bridge
     use: docker
     dockerfile: misc/docker/xolo-server.Dockerfile
     image_templates:
