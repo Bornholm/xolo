@@ -19,7 +19,7 @@ templ ModelForm(vmodel ModelFormVModel) {
 		{{ title = "Modifier — " + vmodel.Model.ProxyName() }}
 		{{ action = common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()), "/models/", string(vmodel.Model.ID()), "/edit")) }}
 	}
-	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(title)) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(title), common.WithScripts(common.Script{Name: "selectbox", Component: selectbox.Script()})) {
 		<script>
 		async function fillFromModelsDev(btn) {
 			var form = btn.closest('form');
