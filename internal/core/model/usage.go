@@ -12,6 +12,20 @@ func NewUsageRecordID() UsageRecordID {
 	return UsageRecordID(xid.New().String())
 }
 
+// CostSource identifies whether a UsageRecord's cost was reported by the
+// provider itself or estimated from the configured per-model tariff.
+type CostSource string
+
+const (
+	// CostSourceProvider means the cost was taken directly from the
+	// provider's response (e.g. OpenRouter's usage.cost).
+	CostSourceProvider CostSource = "provider"
+	// CostSourceComputed means the cost was estimated from the model's
+	// configured PromptCostPer1KTokens/CompletionCostPer1KTokens tariff,
+	// because the provider did not report an actual cost.
+	CostSourceComputed CostSource = "computed"
+)
+
 // UsageRecord captures one proxy call with cost frozen at recording time.
 type UsageRecord interface {
 	WithID[UsageRecordID]
@@ -27,8 +41,9 @@ type UsageRecord interface {
 	CachedTokens() int
 	CompletionTokens() int
 	TotalTokens() int
-	Cost() int64      // microcents, frozen at recording time
-	Currency() string // currency code, e.g. USD, EUR — frozen from provider at recording time
+	Cost() int64            // microcents, frozen at recording time
+	Currency() string       // currency code, e.g. USD, EUR — frozen from provider at recording time
+	CostSource() CostSource // whether Cost is provider-reported or computed from tariff
 	// ResolvedModelName is the actual model used when a virtual model was resolved.
 	// Empty if the requested model was not a virtual model.
 	ResolvedModelName() string
@@ -51,6 +66,7 @@ type BaseUsageRecord struct {
 	totalTokens       int
 	cost              int64
 	currency          string
+	costSource        CostSource
 	createdAt         time.Time
 }
 
@@ -68,6 +84,7 @@ func (r *BaseUsageRecord) CompletionTokens() int        { return r.completionTok
 func (r *BaseUsageRecord) TotalTokens() int             { return r.totalTokens }
 func (r *BaseUsageRecord) Cost() int64                  { return r.cost }
 func (r *BaseUsageRecord) Currency() string             { return r.currency }
+func (r *BaseUsageRecord) CostSource() CostSource       { return r.costSource }
 func (r *BaseUsageRecord) ResolvedModelName() string    { return r.resolvedModelName }
 func (r *BaseUsageRecord) CreatedAt() time.Time         { return r.createdAt }
 
@@ -81,6 +98,7 @@ func NewUsageRecord(
 	promptTokens, cachedTokens, completionTokens int,
 	cost int64,
 	currency string,
+	costSource CostSource,
 	resolvedModelName string,
 ) *BaseUsageRecord {
 	total := promptTokens + completionTokens
@@ -100,6 +118,7 @@ func NewUsageRecord(
 		totalTokens:       total,
 		cost:              cost,
 		currency:          currency,
+		costSource:        costSource,
 		createdAt:         time.Now(),
 	}
 }

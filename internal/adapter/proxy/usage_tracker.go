@@ -3,6 +3,7 @@ package proxy
 import (
 	"context"
 	"log/slog"
+	"math"
 
 	genaiProxy "github.com/bornholm/genai/proxy"
 	"github.com/bornholm/xolo/internal/core/model"
@@ -99,12 +100,25 @@ func (t *XoloUsageTracker) PostResponse(ctx context.Context, req *genaiProxy.Pro
 		metrics.LabelOrg: string(orgID),
 	}).Add(float64(promptTokens))
 
-	nonCachedPrompt := promptTokens - cachedTokens
-	providerCost := (int64(nonCachedPrompt) * llmModel.PromptCostPer1KTokens() / 1000) +
-		(int64(cachedTokens) * llmModel.CachedPromptCostPer1KTokens() / 1000) +
-		(int64(completionTokens) * llmModel.CompletionCostPer1KTokens() / 1000)
+	var (
+		providerCost     int64
+		providerCurrency string
+		costSource       model.CostSource
+	)
+	if res.TokensUsed.Cost != nil {
+		// Provider reported the actual billed cost (e.g. OpenRouter usage.cost).
+		providerCost = int64(math.Round(*res.TokensUsed.Cost * 1_000_000))
+		providerCurrency = res.TokensUsed.CostCurrency
+		costSource = model.CostSourceProvider
+	} else {
+		nonCachedPrompt := promptTokens - cachedTokens
+		providerCost = (int64(nonCachedPrompt) * llmModel.PromptCostPer1KTokens() / 1000) +
+			(int64(cachedTokens) * llmModel.CachedPromptCostPer1KTokens() / 1000) +
+			(int64(completionTokens) * llmModel.CompletionCostPer1KTokens() / 1000)
+		providerCurrency = p.Currency()
+		costSource = model.CostSourceComputed
+	}
 
-	providerCurrency := p.Currency()
 	recordCost := providerCost
 	recordCurrency := providerCurrency
 
@@ -139,6 +153,7 @@ func (t *XoloUsageTracker) PostResponse(ctx context.Context, req *genaiProxy.Pro
 		completionTokens,
 		recordCost,
 		recordCurrency,
+		costSource,
 		resolvedModel,
 	)
 

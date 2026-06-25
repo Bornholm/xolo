@@ -23,6 +23,7 @@ type UsageRecord struct {
 	TotalTokens       int
 	Cost              int64  // microcents, frozen at recording time
 	Currency          string // frozen from provider
+	CostSource        string // "provider" or "computed", see model.CostSource
 }
 
 type wrappedUsageRecord struct {
@@ -45,6 +46,7 @@ func (w *wrappedUsageRecord) CompletionTokens() int        { return w.r.Completi
 func (w *wrappedUsageRecord) TotalTokens() int             { return w.r.TotalTokens }
 func (w *wrappedUsageRecord) Cost() int64                  { return w.r.Cost }
 func (w *wrappedUsageRecord) Currency() string             { return w.r.Currency }
+func (w *wrappedUsageRecord) CostSource() model.CostSource { return model.CostSource(w.r.CostSource) }
 func (w *wrappedUsageRecord) ResolvedModelName() string    { return w.r.ResolvedModelName }
 func (w *wrappedUsageRecord) CreatedAt() time.Time         { return w.r.CreatedAt }
 
@@ -67,5 +69,6 @@ func fromUsageRecord(r model.UsageRecord) *UsageRecord {
 		TotalTokens:       r.TotalTokens(),
 		Cost:              r.Cost(),
 		Currency:          r.Currency(),
+		CostSource:        string(r.CostSource()),
 	}
 }
