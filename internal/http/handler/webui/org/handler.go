@@ -145,6 +145,7 @@ func NewHandler(
 	h.mux.Handle("GET /{orgSlug}/admin/invites/new", assertPerm(rbac.PermInvitesWrite)(http.HandlerFunc(h.getNewInvitePage)))
 	h.mux.Handle("POST /{orgSlug}/admin/invites", assertPerm(rbac.PermInvitesWrite)(http.HandlerFunc(h.createInvite)))
 	h.mux.Handle("DELETE /{orgSlug}/admin/invites/{inviteID}", assertPerm(rbac.PermInvitesWrite)(http.HandlerFunc(h.revokeInvite)))
+	h.mux.Handle("DELETE /{orgSlug}/admin/invites/{inviteID}/delete", assertPerm(rbac.PermInvitesWrite)(http.HandlerFunc(h.deleteInvite)))
 
 	h.mux.Handle("GET /{orgSlug}/usage", assertPerm(rbac.PermUsageRead)(http.HandlerFunc(h.getUsagePage)))
 

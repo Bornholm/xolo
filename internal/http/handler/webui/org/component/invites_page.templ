@@ -116,16 +116,30 @@ templ InvitesPage(vmodel InvitesPageVModel) {
 													@icon.Copy(icon.Props{Size: 14, Class: "mr-2"})
 													Copier le lien
 												}
-												if inv.RevokedAt() == nil && common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermInvitesWrite) {
+												if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermInvitesWrite) {
+													if inv.RevokedAt() == nil {
+														@button.Button(button.Props{
+															Variant: button.VariantGhost,
+															Size:    button.SizeIcon,
+															Attributes: templ.Attributes{
+																"type":    "button",
+																"title":   "Révoquer",
+																"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/", string(inv.ID()))),
+																"onclick": "if(confirm('Révoquer cette invitation ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
+															},
+														}) {
+															@icon.Ban(icon.Props{Size: 15})
+														}
+													}
 													@button.Button(button.Props{
 														Variant: button.VariantGhost,
 														Size:    button.SizeIcon,
 														Class:   "text-destructive hover:text-destructive",
 														Attributes: templ.Attributes{
-															"type":     "button",
-															"title":    "Révoquer",
-															"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/", string(inv.ID()))),
-															"onclick":  "if(confirm('Révoquer cette invitation ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
+															"type":    "button",
+															"title":   "Supprimer définitivement",
+															"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/", string(inv.ID()), "/delete")),
+															"onclick": "if(confirm('Supprimer définitivement cette invitation ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
 														},
 													}) {
 														@icon.Trash2(icon.Props{Size: 15})

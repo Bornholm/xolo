@@ -174,6 +174,24 @@ func (h *Handler) createInvite(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/orgs/"+orgSlug+"/admin/invites?success=created&new_url="+joinURL, http.StatusSeeOther)
 }
 
+func (h *Handler) deleteInvite(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	orgSlug := r.PathValue("orgSlug")
+	inviteID := r.PathValue("inviteID")
+
+	if err := h.inviteStore.DeleteInvite(ctx, model.InviteTokenID(inviteID)); err != nil {
+		if errors.Is(err, port.ErrNotFound) {
+			http.Error(w, "Invite not found", http.StatusNotFound)
+			return
+		}
+		slog.ErrorContext(ctx, "could not delete invite", slogx.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/orgs/"+orgSlug+"/admin/invites?success=deleted", http.StatusSeeOther)
+}
+
 func (h *Handler) revokeInvite(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	orgSlug := r.PathValue("orgSlug")
