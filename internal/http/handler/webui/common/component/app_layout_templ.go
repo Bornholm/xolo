@@ -572,7 +572,7 @@ func AppLayout(vmodel AppLayoutVModel, funcs ...PageOptionFunc) templ.Component 
 		ctx = templ.ClearChildren(ctx)
 		funcs = append(funcs, WithScripts(
 			Script{Name: "dialog", Component: dialog.Script()},
-			Script{Name: "dropdown", Component: dialog.Script()},
+			Script{Name: "dropdown", Component: dropdown.Script()},
 			Script{Name: "popover", Component: popover.Script()},
 		))
 		if vmodel.User != nil {

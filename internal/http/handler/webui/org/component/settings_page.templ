@@ -12,7 +12,7 @@ import (
 
 // ── Settings Page ─────────────────────────────────────────────────────────────
 templ OrgSettingsPage(vmodel OrgSettingsPageVModel) {
-	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Paramètres — "+vmodel.Org.Name())) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Paramètres — "+vmodel.Org.Name()), common.WithScripts(common.Script{Name: "selectbox", Component: selectbox.Script()})) {
 		<div class="space-y-6">
 			<h1 class="text-2xl font-semibold">Paramètres</h1>
 			if vmodel.Success != "" {

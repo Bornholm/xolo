@@ -19,7 +19,7 @@ templ ProviderForm(vmodel ProviderFormVModel) {
 		{{ title = "Modifier — " + vmodel.Provider.Name() }}
 		{{ action = common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()), "/edit")) }}
 	}
-	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(title)) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(title), common.WithScripts(common.Script{Name: "selectbox", Component: selectbox.Script()})) {
 		<div class="space-y-6">
 			<h1 class="text-2xl font-semibold">{ title }</h1>
 			if vmodel.Error != "" {

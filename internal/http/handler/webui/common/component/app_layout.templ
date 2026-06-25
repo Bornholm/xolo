@@ -106,7 +106,7 @@ templ AppLayout(vmodel AppLayoutVModel, funcs ...PageOptionFunc) {
 	{{
 		funcs = append(funcs, WithScripts(
 			Script{Name: "dialog", Component: dialog.Script()},
-			Script{Name: "dropdown", Component: dialog.Script()},
+			Script{Name: "dropdown", Component: dropdown.Script()},
 			Script{Name: "popover", Component: popover.Script()},
 		))
 	}}
