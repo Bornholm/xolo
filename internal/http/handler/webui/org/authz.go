@@ -5,19 +5,21 @@ import (
 	"slices"
 
 	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/bornholm/xolo/internal/core/rbac"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	"github.com/bornholm/xolo/internal/http/middleware/authz"
 	"github.com/pkg/errors"
 )
 
-// hasOrgAdminRole returns an authz.AssertFunc that checks whether the current
-// user has org:admin, org:owner, or global admin role in the given org.
-func (h *Handler) hasOrgAdminRole(orgSlug string) authz.AssertFunc {
+// hasPermission returns an authz.AssertFunc that checks whether the current
+// user holds the given permission within the org identified by orgSlug. A
+// global admin and a member with the builtin owner role bypass the check.
+func (h *Handler) hasPermission(orgSlug string, perm rbac.Permission) authz.AssertFunc {
 	return func(ctx context.Context, user model.User) (bool, error) {
 		if user == nil {
 			return false, nil
 		}
-		// Global admin has access to everything
+		// Global admin has access to everything.
 		if slices.Contains(user.Roles(), authz.RoleAdmin) {
 			return true, nil
 		}
@@ -27,12 +29,12 @@ func (h *Handler) hasOrgAdminRole(orgSlug string) authz.AssertFunc {
 			return false, errors.WithStack(err)
 		}
 
-		membership, err := h.orgStore.GetUserOrgMembership(ctx, user.ID(), org.ID())
+		set, err := h.roleStore.ResolveEffectivePermissions(ctx, user.ID(), org.ID())
 		if err != nil {
-			return false, nil // not a member
+			return false, errors.WithStack(err)
 		}
 
-		return membership.Role() == model.RoleOrgAdmin || membership.Role() == model.RoleOrgOwner, nil
+		return set.IsOwner() || set.Has(perm), nil
 	}
 }
 
@@ -55,8 +57,7 @@ func (h *Handler) hasOrgMembership(orgSlug string) authz.AssertFunc {
 	}
 }
 
-// orgAdminFromRequest resolves the org from the request path and checks admin permission.
-// Returns the org or writes an HTTP error and returns nil.
+// orgFromSlug resolves the org from the request path slug.
 func (h *Handler) orgFromSlug(ctx context.Context, orgSlug string) (model.Organization, error) {
 	return h.orgStore.GetOrgBySlug(ctx, orgSlug)
 }

@@ -7,9 +7,10 @@ import (
 
 type VirtualModelEditorVModel struct {
 	common.AppLayoutVModel
-	Org     model.Organization
-	VM      model.VirtualModel
-	APIBase string
+	Org      model.Organization
+	VM       model.VirtualModel
+	APIBase  string
+	Readonly bool
 }
 
 templ VirtualModelEditorPage(vmodel VirtualModelEditorVModel) {
@@ -19,6 +20,9 @@ templ VirtualModelEditorPage(vmodel VirtualModelEditorVModel) {
 			data-org-slug={ vmodel.Org.Slug() }
 			data-vm-id={ string(vmodel.VM.ID()) }
 			data-api-base-url={ vmodel.APIBase }
+			if vmodel.Readonly {
+				data-readonly="true"
+			}
 			style="flex: 1; min-height: 0; width: 100%; position: relative;"
 		></div>
 		<link rel="stylesheet" href={ common.BaseURLString(ctx, common.WithPath("/assets/pipeline/pipeline-editor.css")) }/>

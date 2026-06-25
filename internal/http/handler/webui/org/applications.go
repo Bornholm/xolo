@@ -22,7 +22,6 @@ func (h *Handler) getApplicationsPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	orgSlug := r.PathValue("orgSlug")
 	user := httpCtx.User(ctx)
-	nav, footer := orgAdminNav(orgSlug)
 
 	org, err := h.orgStore.GetOrgBySlug(ctx, orgSlug)
 	if err != nil {
@@ -34,6 +33,8 @@ func (h *Handler) getApplicationsPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+
+	nav, footer := orgAdminNav(org)
 
 	apps, err := h.applicationStore.QueryApplications(ctx, org.ID())
 	if err != nil {
@@ -67,7 +68,6 @@ func (h *Handler) getNewApplicationPage(w http.ResponseWriter, r *http.Request) 
 	ctx := r.Context()
 	orgSlug := r.PathValue("orgSlug")
 	user := httpCtx.User(ctx)
-	nav, footer := orgAdminNav(orgSlug)
 
 	org, err := h.orgStore.GetOrgBySlug(ctx, orgSlug)
 	if err != nil {
@@ -78,6 +78,8 @@ func (h *Handler) getNewApplicationPage(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+
+	nav, footer := orgAdminNav(org)
 
 	vmodel := component.ApplicationFormVModel{
 		Org:   org,
@@ -142,7 +144,6 @@ func (h *Handler) getEditApplicationPage(w http.ResponseWriter, r *http.Request)
 	orgSlug := r.PathValue("orgSlug")
 	appID := r.PathValue("appID")
 	user := httpCtx.User(ctx)
-	nav, footer := orgAdminNav(orgSlug)
 
 	org, err := h.orgStore.GetOrgBySlug(ctx, orgSlug)
 	if err != nil {
@@ -153,6 +154,8 @@ func (h *Handler) getEditApplicationPage(w http.ResponseWriter, r *http.Request)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+
+	nav, footer := orgAdminNav(org)
 
 	app, err := h.applicationStore.GetApplication(ctx, model.ApplicationID(appID))
 	if err != nil {

@@ -12,6 +12,7 @@ import (
 	genaiProxy "github.com/bornholm/genai/proxy"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
+	"github.com/bornholm/xolo/internal/core/rbac"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	"github.com/bornholm/xolo/internal/pipeline"
 	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
@@ -79,6 +80,11 @@ func (a *PipelineHookAdapter) PreRequest(ctx context.Context, req *genaiProxy.Pr
 	slog.DebugContext(ctx, "pipeline: virtual model found",
 		slog.String("model", req.Model),
 		slog.String("vmID", string(vm.ID())))
+
+	// Enforce RBAC before running the pipeline.
+	if forbidden := a.assertVirtualModelAccess(ctx, req, org, vm); forbidden != nil {
+		return forbidden, nil
+	}
 
 	if vm.Graph() == nil {
 		slog.WarnContext(ctx, "pipeline: virtual model has no pipeline configured — returning error",
@@ -198,7 +204,14 @@ func (a *PipelineHookAdapter) ListModels(ctx context.Context) ([]genaiProxy.Mode
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}
+			perms, err := httpCtx.ResolvePermissions(ctx, model.OrgID(orgID))
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
 			for _, vm := range vms {
+				if !perms.IsOwner() && !perms.Has(rbac.PermModelUseVirtual) && !perms.HasModelAccess(string(vm.ID()), rbac.ModelKindVirtual) {
+					continue
+				}
 				infos = append(infos, genaiProxy.ModelInfo{
 					ID:      org.Slug() + "/" + vm.Name(),
 					OwnedBy: "xolo",
@@ -214,17 +227,88 @@ func (a *PipelineHookAdapter) ListModels(ctx context.Context) ([]genaiProxy.Mode
 			if err != nil {
 				slog.WarnContext(ctx, "pipeline: could not list personal virtual models", slog.Any("error", err))
 			} else {
-				for _, pvm := range pvms {
-					infos = append(infos, genaiProxy.ModelInfo{
-						ID:      "~/" + pvm.Name(),
-						OwnedBy: "xolo",
-					})
+				canUsePersonal := true
+				if orgID != "" {
+					if perms, err := httpCtx.ResolvePermissions(ctx, model.OrgID(orgID)); err == nil {
+						canUsePersonal = perms.IsOwner() || perms.Has(rbac.PermPersonalVMCreate)
+					}
+				}
+				if canUsePersonal {
+					for _, pvm := range pvms {
+						infos = append(infos, genaiProxy.ModelInfo{
+							ID:      "~/" + pvm.Name(),
+							OwnedBy: "xolo",
+						})
+					}
 				}
 			}
 		}
 	}
 
 	return infos, nil
+}
+
+// assertVirtualModelAccess enforces RBAC for virtual model usage. It returns a
+// 403 HookResult when access is denied, or nil when allowed. org is nil for
+// personal virtual models, in which case the token's org scope is used.
+func (a *PipelineHookAdapter) assertVirtualModelAccess(ctx context.Context, req *genaiProxy.ProxyRequest, org model.Organization, vm model.VirtualModel) *genaiProxy.HookResult {
+	isPersonal := org == nil
+
+	var permOrgID model.OrgID
+	if isPersonal {
+		permOrgID = OrgIDFromMeta(req.Metadata)
+		if permOrgID == "" {
+			permOrgID = model.OrgID(OrgIDFromContext(ctx))
+		}
+	} else {
+		permOrgID = org.ID()
+	}
+
+	if permOrgID == "" {
+		return virtualModelForbidden(req.Model)
+	}
+
+	perms, err := httpCtx.ResolvePermissions(ctx, permOrgID)
+	if err != nil {
+		slog.ErrorContext(ctx, "pipeline: could not resolve permissions", slog.Any("error", err))
+		return &genaiProxy.HookResult{
+			Response: &genaiProxy.ProxyResponse{
+				StatusCode: http.StatusInternalServerError,
+				Body: map[string]any{"error": map[string]any{
+					"type":    "server_error",
+					"message": "Could not resolve permissions.",
+					"code":    "permission_error",
+				}},
+			},
+		}
+	}
+
+	if perms.IsOwner() {
+		return nil
+	}
+	if isPersonal {
+		if perms.Has(rbac.PermPersonalVMCreate) {
+			return nil
+		}
+	} else if perms.Has(rbac.PermModelUseVirtual) || perms.HasModelAccess(string(vm.ID()), rbac.ModelKindVirtual) {
+		return nil
+	}
+
+	return virtualModelForbidden(req.Model)
+}
+
+// virtualModelForbidden builds a 403 response that does not leak model existence.
+func virtualModelForbidden(modelName string) *genaiProxy.HookResult {
+	return &genaiProxy.HookResult{
+		Response: &genaiProxy.ProxyResponse{
+			StatusCode: http.StatusForbidden,
+			Body: map[string]any{"error": map[string]any{
+				"type":    "permission_error",
+				"message": "model '" + modelName + "' not available in your organization",
+				"code":    "model_forbidden",
+			}},
+		},
+	}
 }
 
 // lookupVirtualModel resolves the org and virtual model from a qualified model name.

@@ -10,6 +10,7 @@ import (
 
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
+	"github.com/bornholm/xolo/internal/core/rbac"
 	"github.com/bornholm/xolo/internal/core/secretcleanup"
 	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
 	"github.com/pkg/errors"
@@ -60,7 +61,7 @@ func (h *Handler) handleListVirtualModels(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if allowed, err := h.hasOrgAdminAccess(ctx, org.ID()); err != nil {
+	if allowed, err := h.hasPermission(ctx, org.ID(), rbac.PermVirtualModelsRead); err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	} else if !allowed {
@@ -97,7 +98,7 @@ func (h *Handler) handleCreateVirtualModel(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if allowed, err := h.hasOrgAdminAccess(ctx, org.ID()); err != nil {
+	if allowed, err := h.hasPermission(ctx, org.ID(), rbac.PermVirtualModelsWrite); err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	} else if !allowed {
@@ -144,7 +145,7 @@ func (h *Handler) handleGetVirtualModel(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if allowed, err := h.hasOrgAdminAccess(ctx, vm.OrgID()); err != nil {
+	if allowed, err := h.hasPermission(ctx, vm.OrgID(), rbac.PermVirtualModelsRead); err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	} else if !allowed {
@@ -171,7 +172,7 @@ func (h *Handler) handleUpdateVirtualModel(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if allowed, err := h.hasOrgAdminAccess(ctx, vm.OrgID()); err != nil {
+	if allowed, err := h.hasPermission(ctx, vm.OrgID(), rbac.PermVirtualModelsWrite); err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	} else if !allowed {
@@ -233,7 +234,7 @@ func (h *Handler) handleDeleteVirtualModel(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if allowed, err := h.hasOrgAdminAccess(ctx, vm.OrgID()); err != nil {
+	if allowed, err := h.hasPermission(ctx, vm.OrgID(), rbac.PermVirtualModelsWrite); err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	} else if !allowed {
@@ -350,7 +351,7 @@ func (h *Handler) handleExportVirtualModel(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if allowed, err := h.hasOrgAdminAccess(ctx, vm.OrgID()); err != nil {
+	if allowed, err := h.hasPermission(ctx, vm.OrgID(), rbac.PermVirtualModelsRead); err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	} else if !allowed {
@@ -389,7 +390,7 @@ func (h *Handler) handleImportVirtualModel(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if allowed, err := h.hasOrgAdminAccess(ctx, org.ID()); err != nil {
+	if allowed, err := h.hasPermission(ctx, org.ID(), rbac.PermVirtualModelsWrite); err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	} else if !allowed {

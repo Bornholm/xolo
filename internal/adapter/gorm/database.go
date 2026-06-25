@@ -66,6 +66,42 @@ func createGetDatabase(db *gorm.DB) func(ctx context.Context) (*gorm.DB, error) 
 						return tx.Migrator().DropTable("plugin_node_secrets")
 					},
 				},
+				{
+					// Introduce org-scoped RBAC: roles, role permissions, role model
+					// grants and the membership<->role join table. Migrate the legacy
+					// single Membership.Role to builtin role assignments, then drop the
+					// deprecated column.
+					ID: "202606250001",
+					Migrate: func(tx *gorm.DB) error {
+						// Disable foreign keys while rebuilding tables: gormlite/SQLite
+						// recreates tables via INSERT...SELECT into a temp table, which
+						// would otherwise fail FK checks on legacy rows.
+						if err := tx.Exec("PRAGMA foreign_keys=off").Error; err != nil {
+							return errors.WithStack(err)
+						}
+						if err := tx.SetupJoinTable(&Membership{}, "Roles", &MembershipRole{}); err != nil {
+							return errors.WithStack(err)
+						}
+						if err := tx.AutoMigrate(&Role{}, &RolePermission{}, &RoleModel{}, &MembershipRole{}); err != nil {
+							return errors.WithStack(err)
+						}
+						if err := migrateLegacyMembershipRoles(tx); err != nil {
+							return errors.WithStack(err)
+						}
+						if tx.Migrator().HasColumn(&Membership{}, "role") {
+							if err := tx.Migrator().DropColumn(&Membership{}, "role"); err != nil {
+								return errors.WithStack(err)
+							}
+						}
+						if err := tx.Exec("PRAGMA foreign_keys=on").Error; err != nil {
+							return errors.WithStack(err)
+						}
+						return nil
+					},
+					Rollback: func(tx *gorm.DB) error {
+						return tx.Migrator().DropTable("membership_roles", "role_models", "role_permissions", "roles")
+					},
+				},
 			})
 
 			m.InitSchema(func(tx *gorm.DB) error {
@@ -79,11 +115,17 @@ func createGetDatabase(db *gorm.DB) func(ctx context.Context) (*gorm.DB, error) 
 				// Drop the deprecated index if exists (used in old migration)
 				tx.Exec("DROP INDEX IF EXISTS `idx_users_email`")
 
+				if err := tx.SetupJoinTable(&Membership{}, "Roles", &MembershipRole{}); err != nil {
+					return errors.WithStack(err)
+				}
+
 				err := tx.AutoMigrate(
 					// User store
 					&User{}, &AuthToken{}, &UserRole{}, &UserPreferences{},
 					// Org store
 					&Organization{}, &Membership{}, &Application{},
+					// RBAC store
+					&Role{}, &RolePermission{}, &RoleModel{}, &MembershipRole{},
 					// Provider store
 					&Provider{}, &LLMModel{},
 					// Virtual model store

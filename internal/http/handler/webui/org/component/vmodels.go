@@ -166,6 +166,31 @@ type VirtualModelFormVModel struct {
 	Error        string
 }
 
+type RolesPageVModel struct {
+	common.AppLayoutVModel
+	Org     model.Organization
+	Roles   []model.Role
+	Success string
+}
+
+// RoleModelOption is a selectable model (LLM or virtual) for role model grants.
+type RoleModelOption struct {
+	ID    string
+	Kind  string // rbac.ModelKindLLM | rbac.ModelKindVirtual
+	Label string
+}
+
+type RoleFormVModel struct {
+	common.AppLayoutVModel
+	Org          model.Organization
+	Role         model.Role
+	IsNew        bool
+	Error        string
+	Selected     map[string]bool // permission code -> checked
+	ModelOptions []RoleModelOption
+	SelectedMode map[string]bool // "kind\x00id" -> checked
+}
+
 // roleLabel returns the display label for an organization role.
 func roleLabel(role string) string {
 	switch role {

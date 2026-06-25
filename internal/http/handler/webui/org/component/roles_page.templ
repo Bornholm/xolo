@@ -1,0 +1,110 @@
+package component
+
+import (
+	"github.com/bornholm/xolo/internal/core/rbac"
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
+)
+
+templ RolesPage(vmodel RolesPageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Rôles — "+vmodel.Org.Name())) {
+		<div class="space-y-6">
+			<div class="flex items-start justify-between gap-4">
+				<div>
+					<h1 class="text-2xl font-semibold">Rôles & permissions</h1>
+					<p class="text-sm text-muted-foreground">Définissez des rôles et leurs autorisations pour les membres de l'organisation.</p>
+				</div>
+				if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermRolesWrite) {
+					@button.Button(button.Props{Size: button.SizeSm, Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/roles/new"))}) {
+						@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
+						Nouveau rôle
+					}
+				}
+			</div>
+			if vmodel.Success != "" {
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					@alert.Description() {
+						Opération réussie.
+					}
+				}
+			}
+			@card.Card() {
+				@card.Content() {
+					@table.Table() {
+						@table.Header() {
+							@table.Head() {
+								Rôle
+							}
+							@table.Head() {
+								Description
+							}
+							@table.Head() {
+								Type
+							}
+							@table.Head(table.HeadProps{Class: "text-right"}) {
+								Actions
+							}
+						}
+						@table.Body() {
+							for _, role := range vmodel.Roles {
+								@table.Row() {
+									@table.Cell() {
+										<span class="font-medium">{ role.Name() }</span>
+									}
+									@table.Cell() {
+										<span class="text-sm text-muted-foreground">{ role.Description() }</span>
+									}
+									@table.Cell() {
+										if role.Builtin() {
+											@badge.Badge(badge.Props{Variant: badge.VariantOutline}) {
+												Intégré
+											}
+										} else {
+											@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
+												Personnalisé
+											}
+										}
+									}
+									@table.Cell(table.CellProps{Class: "text-right"}) {
+										<div class="inline-flex gap-1">
+											if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermRolesWrite) && role.BuiltinKind() != "owner" {
+												@button.Button(button.Props{
+													Href:       common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/roles/", string(role.ID()), "/edit")),
+													Variant:    button.VariantGhost,
+													Size:       button.SizeIcon,
+													Attributes: templ.Attributes{"title": "Modifier"},
+												}) {
+													@icon.Pencil(icon.Props{Size: 15})
+												}
+											}
+											if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermRolesWrite) && !role.Builtin() {
+												@button.Button(button.Props{
+													Variant: button.VariantGhost,
+													Size:    button.SizeIcon,
+													Class:   "text-destructive hover:text-destructive",
+													Attributes: templ.Attributes{
+														"type":     "button",
+														"title":    "Supprimer",
+														"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/roles/", string(role.ID()))),
+														"onclick":  "if(confirm('Supprimer ce rôle ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
+													},
+												}) {
+													@icon.Trash(icon.Props{Size: 15})
+												}
+											}
+										</div>
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		</div>
+	}
+}

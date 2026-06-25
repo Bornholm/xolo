@@ -8,9 +8,20 @@ import (
 
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
+	"github.com/bornholm/xolo/internal/core/rbac"
 	"github.com/bornholm/xolo/internal/http/handler/api"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
 )
+
+// fakeRoleStore embeds the interface (nil); it resolves to an empty permission
+// set so the cross-org access test denies the attacker.
+type fakeRoleStore struct {
+	port.RoleStore
+}
+
+func (s *fakeRoleStore) ResolveEffectivePermissions(ctx context.Context, userID model.UserID, orgID model.OrgID) (rbac.PermissionSet, error) {
+	return rbac.NewPermissionSet(nil, nil), nil
+}
 
 // fakeOrgStore embeds the interface (nil) so unused methods panic loudly if
 // ever called by the code under test, while letting us override just the
@@ -75,8 +86,8 @@ func TestHandleDeleteVirtualModel_RejectsCrossOrgRequest(t *testing.T) {
 			"org-b": orgB,
 		},
 		memberships: map[string]model.Membership{
-			// Attacker is only a member (not even admin) of org A.
-			string(attacker.ID()) + "/" + string(orgA.ID()): model.NewMembership(attacker.ID(), orgA.ID(), model.RoleOrgAdmin),
+			// Attacker is only a member of org A, not org B.
+			string(attacker.ID()) + "/" + string(orgA.ID()): model.NewMembership(attacker.ID(), orgA.ID()),
 		},
 	}
 
@@ -87,7 +98,7 @@ func TestHandleDeleteVirtualModel_RejectsCrossOrgRequest(t *testing.T) {
 		},
 	}
 
-	h := api.NewHandler(nil, orgStore, vmStore, nil, nil, nil, nil)
+	h := api.NewHandler(nil, orgStore, &fakeRoleStore{}, vmStore, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/orgs/org-a/virtual-models/"+string(victimVM.ID()), nil)
 	req.SetPathValue("orgSlug", "org-a")

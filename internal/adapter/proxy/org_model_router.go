@@ -14,6 +14,7 @@ import (
 	genaiProxy "github.com/bornholm/genai/proxy"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
+	"github.com/bornholm/xolo/internal/core/rbac"
 	"github.com/bornholm/xolo/internal/crypto"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	"github.com/pkg/errors"
@@ -78,6 +79,16 @@ func (r *OrgModelRouter) ResolveModel(ctx context.Context, req *genaiProxy.Proxy
 			return nil, "", errors.Errorf("model '%s' not available in your organization", req.Model)
 		}
 		return nil, "", errors.WithStack(err)
+	}
+
+	// Enforce RBAC: the user must be allowed to use this model, either through
+	// the generic org-model-usage permission or an explicit model grant.
+	perms, err := httpCtx.ResolvePermissions(ctx, org.ID())
+	if err != nil {
+		return nil, "", errors.WithStack(err)
+	}
+	if !perms.IsOwner() && !perms.Has(rbac.PermModelUseOrg) && !perms.HasModelAccess(string(llmModel.ID()), rbac.ModelKindLLM) {
+		return nil, "", errors.Errorf("model '%s' not available in your organization", req.Model)
 	}
 
 	// Verify capability for embedding requests
@@ -157,8 +168,16 @@ func (r *OrgModelRouter) ListModels(ctx context.Context) ([]genaiProxy.ModelInfo
 		return nil, errors.WithStack(err)
 	}
 
+	perms, err := httpCtx.ResolvePermissions(ctx, model.OrgID(orgID))
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
 	infos := make([]genaiProxy.ModelInfo, 0, len(models))
 	for _, m := range models {
+		if !perms.IsOwner() && !perms.Has(rbac.PermModelUseOrg) && !perms.HasModelAccess(string(m.ID()), rbac.ModelKindLLM) {
+			continue
+		}
 		infos = append(infos, genaiProxy.ModelInfo{
 			ID:      org.Slug() + "/" + m.ProxyName(),
 			OwnedBy: "xolo",

@@ -3,6 +3,7 @@ package component
 import (
 	"strconv"
 	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/bornholm/xolo/internal/core/rbac"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
@@ -13,6 +14,7 @@ import (
 // ── Settings Page ─────────────────────────────────────────────────────────────
 templ OrgSettingsPage(vmodel OrgSettingsPageVModel) {
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Paramètres — "+vmodel.Org.Name()), common.WithScripts(common.Script{Name: "selectbox", Component: selectbox.Script()})) {
+		{{ readonly := !common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermSettingsWrite) }}
 		<div class="space-y-6">
 			<h1 class="text-2xl font-semibold">Paramètres</h1>
 			if vmodel.Success != "" {
@@ -26,7 +28,7 @@ templ OrgSettingsPage(vmodel OrgSettingsPageVModel) {
 				<div class="space-y-2">
 					<label class="text-sm font-medium">Devise préférée</label>
 					@selectbox.SelectBox(selectbox.Props{ID: "org_currency"}) {
-						@selectbox.Trigger(selectbox.TriggerProps{Name: "currency"}) {
+						@selectbox.Trigger(selectbox.TriggerProps{Name: "currency", Disabled: readonly}) {
 							@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner une devise"})
 						}
 						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
@@ -43,7 +45,7 @@ templ OrgSettingsPage(vmodel OrgSettingsPageVModel) {
 				</div>
 				<div class="space-y-2">
 					<div class="flex items-center space-x-2">
-						@checkbox.Checkbox(checkbox.Props{ID: "share_quota_equally", Name: "share_quota_equally", Checked: vmodel.Org.ShareQuotaEqually()})
+						@checkbox.Checkbox(checkbox.Props{ID: "share_quota_equally", Name: "share_quota_equally", Checked: vmodel.Org.ShareQuotaEqually(), Disabled: readonly})
 						<label for="share_quota_equally" class="text-sm font-medium">
 							Répartir le budget de l'organisation équitablement entre les membres
 						</label>
@@ -64,8 +66,10 @@ templ OrgSettingsPage(vmodel OrgSettingsPageVModel) {
 						</div>
 					}
 				</div>
-				@button.Button(button.Props{Type: "submit"}) {
-					Enregistrer
+				if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermSettingsWrite) {
+					@button.Button(button.Props{Type: "submit"}) {
+						Enregistrer
+					}
 				}
 			</form>
 		</div>

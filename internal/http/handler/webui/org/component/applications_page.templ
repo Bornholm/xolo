@@ -2,6 +2,7 @@ package component
 
 import (
 	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/bornholm/xolo/internal/core/rbac"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
@@ -33,8 +34,10 @@ templ ApplicationsPage(vmodel ApplicationsPageVModel) {
 		<div class="space-y-6">
 			<div class="flex items-center justify-between">
 				<h1 class="text-2xl font-semibold">Applications</h1>
-				@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/applications/new"))}) {
-					Nouvelle application
+				if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermApplicationsWrite) {
+					@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/applications/new"))}) {
+						Nouvelle application
+					}
 				}
 			</div>
 			if vmodel.Success != "" {
@@ -89,6 +92,7 @@ templ ApplicationsPage(vmodel ApplicationsPageVModel) {
 }
 
 templ ApplicationForm(vmodel ApplicationFormVModel) {
+	{{ readonly := !common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermApplicationsWrite) }}
 	{{ title := "Nouvelle application" }}
 	{{ action := common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/applications")) }}
 	if !vmodel.IsNew && vmodel.App != nil {
@@ -110,22 +114,22 @@ templ ApplicationForm(vmodel ApplicationFormVModel) {
 							<div class="space-y-2">
 								<label class="text-sm font-medium">Nom</label>
 								if !vmodel.IsNew && vmodel.App != nil {
-									@input.Input(input.Props{Name: "name", Value: vmodel.App.Name()})
+									@input.Input(input.Props{Name: "name", Value: vmodel.App.Name(), Disabled: readonly})
 								} else {
-									@input.Input(input.Props{Name: "name", Placeholder: "Mon application"})
+									@input.Input(input.Props{Name: "name", Placeholder: "Mon application", Disabled: readonly})
 								}
 							</div>
 							<div class="space-y-2">
 								<label class="text-sm font-medium">Description</label>
 								if !vmodel.IsNew && vmodel.App != nil {
-									@input.Input(input.Props{Name: "description", Value: vmodel.App.Description()})
+									@input.Input(input.Props{Name: "description", Value: vmodel.App.Description(), Disabled: readonly})
 								} else {
-									@input.Input(input.Props{Name: "description", Placeholder: "Description"})
+									@input.Input(input.Props{Name: "description", Placeholder: "Description", Disabled: readonly})
 								}
 							</div>
 							if !vmodel.IsNew && vmodel.App != nil {
 								<div class="flex items-center gap-2">
-									@checkbox.Checkbox(checkbox.Props{ID: "active", Name: "active", Checked: vmodel.App.Active()})
+									@checkbox.Checkbox(checkbox.Props{ID: "active", Name: "active", Checked: vmodel.App.Active(), Disabled: readonly})
 									<label for="active" class="text-sm font-medium">Active</label>
 								</div>
 							}
@@ -147,11 +151,11 @@ templ ApplicationForm(vmodel ApplicationFormVModel) {
 								<div class="space-y-4 pt-4">
 									<div class="space-y-2">
 										<label class="text-sm font-medium">Label du token</label>
-										@input.Input(input.Props{Name: "label", Placeholder: "Mon token"})
+										@input.Input(input.Props{Name: "label", Placeholder: "Mon token", Disabled: readonly})
 									</div>
 									<div class="space-y-2">
 										<label class="text-sm font-medium">Expiration (jours)</label>
-										@input.Input(input.Props{Name: "expiry", Value: "365"})
+										@input.Input(input.Props{Name: "expiry", Value: "365", Disabled: readonly})
 									</div>
 								</div>
 							}

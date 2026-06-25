@@ -5,15 +5,16 @@ import (
 	"slices"
 
 	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/bornholm/xolo/internal/core/rbac"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	"github.com/bornholm/xolo/internal/http/middleware/authz"
+	"github.com/pkg/errors"
 )
 
-// hasOrgAdminAccess reports whether the user in ctx may manage org-scoped
-// virtual models for orgID: a global admin, or a member with the org:admin
-// or org:owner role. Mirrors webui/org.Handler.hasOrgAdminRole, which gates
-// the equivalent admin UI routes.
-func (h *Handler) hasOrgAdminAccess(ctx context.Context, orgID model.OrgID) (bool, error) {
+// hasPermission reports whether the user in ctx holds the given permission
+// within orgID. A global admin and a member with the builtin owner role bypass
+// the check. Mirrors webui/org.Handler.hasPermission.
+func (h *Handler) hasPermission(ctx context.Context, orgID model.OrgID, perm rbac.Permission) (bool, error) {
 	user := httpCtx.User(ctx)
 	if user == nil {
 		return false, nil
@@ -22,10 +23,10 @@ func (h *Handler) hasOrgAdminAccess(ctx context.Context, orgID model.OrgID) (boo
 		return true, nil
 	}
 
-	membership, err := h.orgStore.GetUserOrgMembership(ctx, user.ID(), orgID)
+	set, err := h.roleStore.ResolveEffectivePermissions(ctx, user.ID(), orgID)
 	if err != nil {
-		return false, nil // not a member
+		return false, errors.WithStack(err)
 	}
 
-	return membership.Role() == model.RoleOrgAdmin || membership.Role() == model.RoleOrgOwner, nil
+	return set.IsOwner() || set.Has(perm), nil
 }

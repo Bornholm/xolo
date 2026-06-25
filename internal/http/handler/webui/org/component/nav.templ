@@ -1,18 +1,40 @@
 package component
 
 import (
+	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/bornholm/xolo/internal/core/rbac"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 )
 
-// OrgNavItems returns org-admin navigation items for the sidebar.
-templ OrgNavItems(orgSlug string, selectedItem string) {
-	@common.NavItem(icon.ChartColumn, "Usage", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/usage")), selectedItem == "org-"+orgSlug+"-usage")
-	@common.NavItem(icon.PiggyBank, "Budget", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/quota")), selectedItem == "org-"+orgSlug+"-quota")
-	@common.NavItem(icon.Users, "Membres", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/members")), selectedItem == "org-"+orgSlug+"-members")
-	@common.NavItem(icon.Mail, "Invitations", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/invites")), selectedItem == "org-"+orgSlug+"-invites")
-	@common.NavItem(icon.Server, "Fournisseurs", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/providers")), selectedItem == "org-"+orgSlug+"-providers")
-	@common.NavItem(icon.BrainCircuit, "Modèles virtuels", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/virtual-models")), selectedItem == "org-"+orgSlug+"-virtual-models")
-	@common.NavItem(icon.AppWindow, "Applications", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/applications")), selectedItem == "org-"+orgSlug+"-applications")
-	@common.NavItem(icon.Settings, "Paramètres", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/settings")), selectedItem == "org-"+orgSlug+"-settings")
+// OrgNavItems returns org-admin navigation items for the sidebar, filtered by
+// the current user's permissions within the organisation.
+templ OrgNavItems(org model.Organization, selectedItem string) {
+	{{ slug := org.Slug() }}
+	{{ orgID := org.ID() }}
+	@common.NavItem(icon.ChartColumn, "Usage", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/usage")), selectedItem == "org-"+slug+"-usage")
+	if common.HasPermission(ctx, orgID, rbac.PermQuotaRead) {
+		@common.NavItem(icon.PiggyBank, "Budget", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/admin/quota")), selectedItem == "org-"+slug+"-quota")
+	}
+	if common.HasPermission(ctx, orgID, rbac.PermMembersRead) {
+		@common.NavItem(icon.Users, "Membres", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/admin/members")), selectedItem == "org-"+slug+"-members")
+	}
+	if common.HasPermission(ctx, orgID, rbac.PermRolesRead) {
+		@common.NavItem(icon.Shield, "Rôles", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/admin/roles")), selectedItem == "org-"+slug+"-roles")
+	}
+	if common.HasPermission(ctx, orgID, rbac.PermInvitesRead) {
+		@common.NavItem(icon.Mail, "Invitations", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/admin/invites")), selectedItem == "org-"+slug+"-invites")
+	}
+	if common.HasPermission(ctx, orgID, rbac.PermProvidersRead) {
+		@common.NavItem(icon.Server, "Fournisseurs", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/admin/providers")), selectedItem == "org-"+slug+"-providers")
+	}
+	if common.HasPermission(ctx, orgID, rbac.PermVirtualModelsRead) {
+		@common.NavItem(icon.BrainCircuit, "Modèles virtuels", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/admin/virtual-models")), selectedItem == "org-"+slug+"-virtual-models")
+	}
+	if common.HasPermission(ctx, orgID, rbac.PermApplicationsRead) {
+		@common.NavItem(icon.AppWindow, "Applications", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/admin/applications")), selectedItem == "org-"+slug+"-applications")
+	}
+	if common.HasPermission(ctx, orgID, rbac.PermSettingsRead) {
+		@common.NavItem(icon.Settings, "Paramètres", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/admin/settings")), selectedItem == "org-"+slug+"-settings")
+	}
 }

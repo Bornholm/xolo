@@ -64,10 +64,10 @@ type fakeMembership struct{}
 func (m *fakeMembership) ID() model.MembershipID  { return "" }
 func (m *fakeMembership) OrgID() model.OrgID      { return "" }
 func (m *fakeMembership) UserID() model.UserID    { return "" }
-func (m *fakeMembership) Role() string            { return "" }
 func (m *fakeMembership) CreatedAt() time.Time    { return time.Time{} }
 func (m *fakeMembership) User() model.User        { return nil }
 func (m *fakeMembership) Org() model.Organization { return nil }
+func (m *fakeMembership) Roles() []model.Role     { return nil }
 
 // ptr is a convenience helper.
 func ptr[T any](v T) *T { return &v }

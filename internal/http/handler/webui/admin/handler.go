@@ -17,6 +17,7 @@ type Handler struct {
 	mux                 *http.ServeMux
 	userStore           port.UserStore
 	orgStore            port.OrgStore
+	roleStore           port.RoleStore
 	taskRunner          port.TaskRunner
 	exchangeRateService *service.ExchangeRateService
 	pluginManager       pluginManagerIface
@@ -27,11 +28,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.mux.ServeHTTP(w, r)
 }
 
-func NewHandler(userStore port.UserStore, orgStore port.OrgStore, taskRunner port.TaskRunner, exchangeRateService *service.ExchangeRateService, pluginManager pluginManagerIface) *Handler {
+func NewHandler(userStore port.UserStore, orgStore port.OrgStore, roleStore port.RoleStore, taskRunner port.TaskRunner, exchangeRateService *service.ExchangeRateService, pluginManager pluginManagerIface) *Handler {
 	h := &Handler{
 		mux:                 http.NewServeMux(),
 		userStore:           userStore,
 		orgStore:            orgStore,
+		roleStore:           roleStore,
 		taskRunner:          taskRunner,
 		exchangeRateService: exchangeRateService,
 		pluginManager:       pluginManager,

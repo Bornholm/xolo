@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useReactFlow } from '@xyflow/react'
 import { DeleteButton } from './DeleteButton'
 import { OutputPortRow } from './PortRow'
+import { useReadonly } from '../ReadonlyContext'
 
 type PortType = 'string' | 'number' | 'boolean'
 
@@ -26,6 +27,7 @@ const PORT_TYPE_COLOR: Record<PortType, string> = {
 export function ValueNode({ id, data }: NodeProps) {
   const nodeData = data as ValueNodeData
   const { updateNodeData } = useReactFlow()
+  const readonly = useReadonly()
 
   const [portType, setPortType] = useState<PortType>(nodeData.portType ?? 'string')
   const [value, setValue] = useState(nodeData.value ?? '')
@@ -50,6 +52,7 @@ export function ValueNode({ id, data }: NodeProps) {
           className="value-node__type-select"
           value={portType}
           onChange={e => save(e.target.value as PortType, value)}
+          disabled={readonly}
         >
           <option value="string">string</option>
           <option value="number">number</option>
@@ -58,7 +61,7 @@ export function ValueNode({ id, data }: NodeProps) {
       </div>
 
       <div className="pipeline-node__body">
-        {editing ? (
+        {!readonly && editing ? (
           portType === 'boolean' ? (
             <select
               autoFocus
@@ -85,10 +88,10 @@ export function ValueNode({ id, data }: NodeProps) {
         ) : (
           <span
             className="pipeline-node__value pipeline-node__value--code"
-            onClick={() => setEditing(true)}
-            style={{ color }}
+            onClick={() => !readonly && setEditing(true)}
+            style={{ color, cursor: readonly ? 'default' : 'pointer' }}
           >
-            {value !== '' ? value : <em style={{ opacity: 0.4 }}>cliquer pour saisir</em>}
+            {value !== '' ? value : <em style={{ opacity: 0.4 }}>{readonly ? '—' : 'cliquer pour saisir'}</em>}
           </span>
         )}
       </div>

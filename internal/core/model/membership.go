@@ -12,6 +12,8 @@ func NewMembershipID() MembershipID {
 	return MembershipID(xid.New().String())
 }
 
+// Legacy organization role identifiers. Kept for invitation role values and
+// for mapping to the corresponding builtin roles during membership creation.
 const (
 	RoleOrgOwner = "org:owner"
 	RoleOrgAdmin = "org:admin"
@@ -23,40 +25,39 @@ type Membership interface {
 
 	UserID() UserID
 	OrgID() OrgID
-	Role() string
 	CreatedAt() time.Time
 
 	// Populated via preload
 	User() User
 	Org() Organization
+	Roles() []Role
 }
 
 type BaseMembership struct {
 	id        MembershipID
 	userID    UserID
 	orgID     OrgID
-	role      string
 	createdAt time.Time
 	user      User
 	org       Organization
+	roles     []Role
 }
 
-func (m *BaseMembership) ID() MembershipID     { return m.id }
-func (m *BaseMembership) UserID() UserID        { return m.userID }
-func (m *BaseMembership) OrgID() OrgID          { return m.orgID }
-func (m *BaseMembership) Role() string           { return m.role }
-func (m *BaseMembership) CreatedAt() time.Time   { return m.createdAt }
-func (m *BaseMembership) User() User             { return m.user }
-func (m *BaseMembership) Org() Organization      { return m.org }
+func (m *BaseMembership) ID() MembershipID   { return m.id }
+func (m *BaseMembership) UserID() UserID      { return m.userID }
+func (m *BaseMembership) OrgID() OrgID        { return m.orgID }
+func (m *BaseMembership) CreatedAt() time.Time { return m.createdAt }
+func (m *BaseMembership) User() User          { return m.user }
+func (m *BaseMembership) Org() Organization   { return m.org }
+func (m *BaseMembership) Roles() []Role       { return m.roles }
 
 var _ Membership = &BaseMembership{}
 
-func NewMembership(userID UserID, orgID OrgID, role string) *BaseMembership {
+func NewMembership(userID UserID, orgID OrgID) *BaseMembership {
 	return &BaseMembership{
 		id:        NewMembershipID(),
 		userID:    userID,
 		orgID:     orgID,
-		role:      role,
 		createdAt: time.Now(),
 	}
 }

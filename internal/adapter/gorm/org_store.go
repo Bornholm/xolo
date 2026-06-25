@@ -135,7 +135,7 @@ func (s *Store) RemoveMember(ctx context.Context, id model.MembershipID) error {
 func (s *Store) GetMembership(ctx context.Context, id model.MembershipID) (model.Membership, error) {
 	var m Membership
 	err := s.withRetry(ctx, false, func(ctx context.Context, db *gorm.DB) error {
-		if err := db.Preload("User").Preload("Org").First(&m, "id = ?", string(id)).Error; err != nil {
+		if err := db.Preload("User").Preload("Org").Preload("Roles").First(&m, "id = ?", string(id)).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return errors.WithStack(port.ErrNotFound)
 			}
@@ -153,7 +153,7 @@ func (s *Store) GetMembership(ctx context.Context, id model.MembershipID) (model
 func (s *Store) GetUserOrgMembership(ctx context.Context, userID model.UserID, orgID model.OrgID) (model.Membership, error) {
 	var m Membership
 	err := s.withRetry(ctx, false, func(ctx context.Context, db *gorm.DB) error {
-		if err := db.Preload("User").Preload("Org").
+		if err := db.Preload("User").Preload("Org").Preload("Roles").
 			Where("user_id = ? AND org_id = ?", string(userID), string(orgID)).
 			First(&m).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -181,7 +181,7 @@ func (s *Store) ListOrgMembers(ctx context.Context, orgID model.OrgID, opts port
 			return errors.WithStack(err)
 		}
 
-		query := db.Preload("User").Preload("Org").Where("org_id = ?", string(orgID))
+		query := db.Preload("User").Preload("Org").Preload("Roles").Where("org_id = ?", string(orgID))
 
 		if opts.Page != nil && opts.Limit != nil {
 			query = query.Offset(*opts.Page * *opts.Limit)
@@ -207,7 +207,7 @@ func (s *Store) ListOrgMembers(ctx context.Context, orgID model.OrgID, opts port
 func (s *Store) GetUserMemberships(ctx context.Context, userID model.UserID) ([]model.Membership, error) {
 	var members []*Membership
 	err := s.withRetry(ctx, false, func(ctx context.Context, db *gorm.DB) error {
-		return errors.WithStack(db.Preload("Org").
+		return errors.WithStack(db.Preload("Org").Preload("Roles").Preload("Roles.Permissions").
 			Where("user_id = ?", string(userID)).
 			Find(&members).Error)
 	}, sqlite3.BUSY, sqlite3.LOCKED)
@@ -233,16 +233,6 @@ func (s *Store) IsMember(ctx context.Context, userID model.UserID, orgID model.O
 		return false, err
 	}
 	return count > 0, nil
-}
-
-// UpdateMembership implements port.OrgStore.
-func (s *Store) UpdateMembership(ctx context.Context, id model.MembershipID, role string) error {
-	err := s.withRetry(ctx, false, func(ctx context.Context, db *gorm.DB) error {
-		return errors.WithStack(db.Model(&Membership{}).
-			Where("id = ?", string(id)).
-			Update("role", role).Error)
-	}, sqlite3.BUSY, sqlite3.LOCKED)
-	return err
 }
 
 var _ port.OrgStore = &Store{}

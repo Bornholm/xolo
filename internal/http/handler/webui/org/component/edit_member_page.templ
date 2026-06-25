@@ -2,32 +2,27 @@ package component
 
 import (
 	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/bornholm/xolo/internal/core/rbac"
 	commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/checkbox"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/popover"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/label"
 )
 
 type EditMemberPageVModel struct {
 	AppLayoutVModel commonComp.AppLayoutVModel
 	Membership      model.Membership
 	Org             model.Organization
+	OrgRoles        []model.Role
+	AssignedRoleIDs map[model.RoleID]bool
 }
 
 templ EditMemberPage(vmodel EditMemberPageVModel) {
 	@commonComp.AppLayout(vmodel.AppLayoutVModel,
 		commonComp.WithTitle("Modifier le membre"),
-		commonComp.WithScripts(
-			commonComp.Script{
-				Name:      "popover",
-				Component: popover.Script(),
-			},
-			commonComp.Script{
-				Name:      "selectbox",
-				Component: selectbox.Script(),
-			}),
 	) {
+		{{ readonly := !commonComp.HasPermission(ctx, vmodel.Org.ID(), rbac.PermMembersWrite) }}
 		<div class="space-y-6">
 			<!-- Header with back button and title -->
 			<div class="flex items-center justify-between">
@@ -61,40 +56,46 @@ templ EditMemberPage(vmodel EditMemberPageVModel) {
 					</div>
 				</div>
 			</div>
-			<!-- Edit Role -->
+			<!-- Edit Roles -->
 			<div class="rounded-lg border bg-card text-card-foreground shadow-sm">
 				<div class="flex flex-col space-y-1.5 p-6">
 					<h3 class="text-lg font-semibold">
 						@icon.Shield(icon.Props{Class: "h-4 w-4 inline mr-2"})
-						Rôle
+						Rôles
 					</h3>
+					<p class="text-sm text-muted-foreground">Sélectionnez les rôles attribués à ce membre dans l'organisation.</p>
 				</div>
 				<div class="p-6 pt-0">
 					<form method="POST" action={ commonComp.BaseURL(ctx, commonComp.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members/", string(vmodel.Membership.ID()), "/edit")) }>
 						<div class="space-y-4">
-							<div class="space-y-2">
-								<label for="role" class="text-sm font-medium">Rôle dans l'organisation</label>
-								@selectbox.SelectBox(selectbox.Props{ID: "role"}) {
-									@selectbox.Trigger(selectbox.TriggerProps{Name: "role"}) {
-										@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner un rôle"})
-									}
-									@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
-										@selectbox.Group() {
-											@selectbox.Item(selectbox.ItemProps{Value: string(model.RoleMember), Selected: vmodel.Membership.Role() == model.RoleMember}) {
-												Membre
+							<div class="space-y-3">
+								for _, role := range vmodel.OrgRoles {
+									<div class="flex items-start gap-3">
+										@checkbox.Checkbox(checkbox.Props{
+											ID:       "role-" + string(role.ID()),
+											Name:     "roles",
+											Value:    string(role.ID()),
+											Checked:  vmodel.AssignedRoleIDs[role.ID()],
+											Disabled: readonly,
+										})
+										<div class="grid gap-0.5 leading-none">
+											@label.Label(label.Props{For: "role-" + string(role.ID())}) {
+												{ role.Name() }
 											}
-											@selectbox.Item(selectbox.ItemProps{Value: string(model.RoleOrgAdmin), Selected: vmodel.Membership.Role() == model.RoleOrgAdmin}) {
-												Admin organisation
+											if role.Description() != "" {
+												<p class="text-xs text-muted-foreground">{ role.Description() }</p>
 											}
-										}
-									}
+										</div>
+									</div>
 								}
 							</div>
 							<!-- Action buttons -->
 							<div class="flex items-center gap-2 pt-2">
-								@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeLg}) {
-									@icon.Save()
-									<span>Enregistrer</span>
+								if commonComp.HasPermission(ctx, vmodel.Org.ID(), rbac.PermMembersWrite) {
+									@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeLg}) {
+										@icon.Save()
+										<span>Enregistrer</span>
+									}
 								}
 								@button.Button(button.Props{Variant: button.VariantOutline, Size: button.SizeLg, Href: commonComp.BaseURLString(ctx, commonComp.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members"))}) {
 									Annuler

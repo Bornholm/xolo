@@ -3,6 +3,7 @@ package component
 import (
 	"fmt"
 
+	"github.com/bornholm/xolo/internal/core/rbac"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
@@ -19,6 +20,7 @@ templ QuotaPage(vmodel QuotaPageVModel) {
 		{{ action = common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members/", string(vmodel.Membership.ID()), "/quota")) }}
 	}
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(title)) {
+		{{ readonly := !common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermQuotaWrite) }}
 		<div class="space-y-6">
 			<h1 class="text-2xl font-semibold">{ title }</h1>
 			if vmodel.Success != "" {
@@ -43,25 +45,25 @@ templ QuotaPage(vmodel QuotaPageVModel) {
 							<div class="space-y-2">
 								<label class="text-sm font-medium">Budget journalier (vide = illimité)</label>
 								if vmodel.Quota != nil && vmodel.Quota.DailyBudget() != nil {
-									@input.Input(input.Props{Name: "daily_budget", Type: "number", Placeholder: "10.00", Value: formatBudgetField(*vmodel.Quota.DailyBudget()), Attributes: templ.Attributes{"step": "any"}})
+									@input.Input(input.Props{Name: "daily_budget", Type: "number", Placeholder: "10.00", Value: formatBudgetField(*vmodel.Quota.DailyBudget()), Disabled: readonly, Attributes: templ.Attributes{"step": "any"}})
 								} else {
-									@input.Input(input.Props{Name: "daily_budget", Type: "number", Placeholder: "10.00", Attributes: templ.Attributes{"step": "any"}})
+									@input.Input(input.Props{Name: "daily_budget", Type: "number", Placeholder: "10.00", Disabled: readonly, Attributes: templ.Attributes{"step": "any"}})
 								}
 							</div>
 							<div class="space-y-2">
 								<label class="text-sm font-medium">Budget mensuel (vide = illimité)</label>
 								if vmodel.Quota != nil && vmodel.Quota.MonthlyBudget() != nil {
-									@input.Input(input.Props{Name: "monthly_budget", Type: "number", Placeholder: "100.00", Value: formatBudgetField(*vmodel.Quota.MonthlyBudget()), Attributes: templ.Attributes{"step": "any"}})
+									@input.Input(input.Props{Name: "monthly_budget", Type: "number", Placeholder: "100.00", Value: formatBudgetField(*vmodel.Quota.MonthlyBudget()), Disabled: readonly, Attributes: templ.Attributes{"step": "any"}})
 								} else {
-									@input.Input(input.Props{Name: "monthly_budget", Type: "number", Placeholder: "100.00", Attributes: templ.Attributes{"step": "any"}})
+									@input.Input(input.Props{Name: "monthly_budget", Type: "number", Placeholder: "100.00", Disabled: readonly, Attributes: templ.Attributes{"step": "any"}})
 								}
 							</div>
 							<div class="space-y-2">
 								<label class="text-sm font-medium">Budget annuel (vide = illimité)</label>
 								if vmodel.Quota != nil && vmodel.Quota.YearlyBudget() != nil {
-									@input.Input(input.Props{Name: "yearly_budget", Type: "number", Placeholder: "1000.00", Value: formatBudgetField(*vmodel.Quota.YearlyBudget()), Attributes: templ.Attributes{"step": "any"}})
+									@input.Input(input.Props{Name: "yearly_budget", Type: "number", Placeholder: "1000.00", Value: formatBudgetField(*vmodel.Quota.YearlyBudget()), Disabled: readonly, Attributes: templ.Attributes{"step": "any"}})
 								} else {
-									@input.Input(input.Props{Name: "yearly_budget", Type: "number", Placeholder: "1000.00", Attributes: templ.Attributes{"step": "any"}})
+									@input.Input(input.Props{Name: "yearly_budget", Type: "number", Placeholder: "1000.00", Disabled: readonly, Attributes: templ.Attributes{"step": "any"}})
 								}
 							</div>
 						</div>
@@ -73,8 +75,10 @@ templ QuotaPage(vmodel QuotaPageVModel) {
 						}
 					}
 					@card.Footer() {
-						@button.Button(button.Props{Type: "submit"}) {
-							Enregistrer
+						if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermQuotaWrite) {
+							@button.Button(button.Props{Type: "submit"}) {
+								Enregistrer
+							}
 						}
 					}
 				}

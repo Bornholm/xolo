@@ -95,6 +95,11 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		return nil, errors.Wrap(err, "could not create org store from config")
 	}
 
+	roleStore, err := getRoleStoreFromConfig(ctx, conf)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create role store from config")
+	}
+
 	providerStore, err := getProviderStoreFromConfig(ctx, conf)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create provider store from config")
@@ -152,7 +157,7 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		orgModelRouter,
 	)
 
-	withMemberships := membershipsMiddleware.Middleware(orgStore)
+	withMemberships := membershipsMiddleware.Middleware(orgStore, roleStore)
 
 	applicationStore, err := getApplicationStoreFromConfig(ctx, conf)
 	if err != nil {
@@ -164,9 +169,9 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		return nil, errors.Wrap(err, "could not create secret store from config")
 	}
 
-	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, providerStore, virtualModelStore, personalVMStore, usageStore, inviteStore, applicationStore, quotaStore, quotaService, exchangeRateService, secretStore, conf.SecretKey, pluginManager)
+	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, roleStore, providerStore, virtualModelStore, personalVMStore, usageStore, inviteStore, applicationStore, quotaStore, quotaService, exchangeRateService, secretStore, conf.SecretKey, pluginManager)
 
-	apiHandler := api.NewHandler(providerStore, orgStore, virtualModelStore, personalVMStore, secretStore, exchangeRateService, pluginManager)
+	apiHandler := api.NewHandler(providerStore, orgStore, roleStore, virtualModelStore, personalVMStore, secretStore, exchangeRateService, pluginManager)
 
 	proxyServer := proxy.NewServer(
 		proxy.WithAuthExtractor(proxyAdapter.XoloAuthExtractor()),

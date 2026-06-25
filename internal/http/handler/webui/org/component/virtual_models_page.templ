@@ -2,6 +2,7 @@ package component
 
 import (
 	"strconv"
+	"github.com/bornholm/xolo/internal/core/rbac"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
@@ -19,46 +20,48 @@ templ VirtualModelsPage(vmodel VirtualModelsPageVModel) {
 					<p class="text-sm text-muted-foreground">Pipelines de routage et de load-balancing composant plusieurs modèles.</p>
 				</div>
 				<div class="flex items-center gap-2">
-					<div class="hidden">
-						@input.Input(input.Props{
-							ID:         "vm-import-input",
-							Type:       input.TypeFile,
-							FileAccept: ".json,application/json",
+					if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermVirtualModelsWrite) {
+						<div class="hidden">
+							@input.Input(input.Props{
+								ID:         "vm-import-input",
+								Type:       input.TypeFile,
+								FileAccept: ".json,application/json",
+								Attributes: templ.Attributes{
+									"data-api-base":      vmodel.BaseURL,
+									"data-org-slug":      vmodel.Org.Slug(),
+									"data-redirect-base": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/")),
+									"onchange": "(async function(el){" +
+										"var file=el.files[0]; if(!file) return;" +
+										"try {" +
+										"var txt=await file.text();" +
+										"var bundle=JSON.parse(txt);" +
+										"var res=await fetch(el.dataset.apiBase+'/api/orgs/'+el.dataset.orgSlug+'/virtual-models/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(bundle)});" +
+										"if(!res.ok){var e=await res.text();alert('Erreur import : '+e);return;}" +
+										"var vm=await res.json();" +
+										"window.location.href=el.dataset.redirectBase+vm.id+'/pipeline';" +
+										"} catch(e) { alert('Fichier invalide : '+e); }" +
+										"finally { el.value=''; }" +
+										"})(this)",
+								},
+							})
+						</div>
+						@button.Button(button.Props{
+							Variant: button.VariantOutline,
+							Size:    button.SizeSm,
 							Attributes: templ.Attributes{
-								"data-api-base":      vmodel.BaseURL,
-								"data-org-slug":      vmodel.Org.Slug(),
-								"data-redirect-base": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/")),
-								"onchange": "(async function(el){" +
-									"var file=el.files[0]; if(!file) return;" +
-									"try {" +
-									"var txt=await file.text();" +
-									"var bundle=JSON.parse(txt);" +
-									"var res=await fetch(el.dataset.apiBase+'/api/orgs/'+el.dataset.orgSlug+'/virtual-models/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(bundle)});" +
-									"if(!res.ok){var e=await res.text();alert('Erreur import : '+e);return;}" +
-									"var vm=await res.json();" +
-									"window.location.href=el.dataset.redirectBase+vm.id+'/pipeline';" +
-									"} catch(e) { alert('Fichier invalide : '+e); }" +
-									"finally { el.value=''; }" +
-									"})(this)",
+								"onclick": "document.getElementById('vm-import-input').click()",
+								"type":    "button",
 							},
-						})
-					</div>
-					@button.Button(button.Props{
-						Variant: button.VariantOutline,
-						Size:    button.SizeSm,
-						Attributes: templ.Attributes{
-							"onclick": "document.getElementById('vm-import-input').click()",
-							"type":    "button",
-						},
-					}) {
-						Importer depuis un fichier
-					}
-					@button.Button(button.Props{
-						Size: button.SizeSm,
-						Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/new")),
-					}) {
-						@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
-						Nouveau modèle virtuel
+						}) {
+							Importer depuis un fichier
+						}
+						@button.Button(button.Props{
+							Size: button.SizeSm,
+							Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/new")),
+						}) {
+							@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
+							Nouveau modèle virtuel
+						}
 					}
 				</div>
 			</div>
@@ -117,47 +120,51 @@ templ VirtualModelsPage(vmodel VirtualModelsPageVModel) {
 									}
 								</div>
 								<div class="flex gap-1 shrink-0">
-									@button.Button(button.Props{
-										Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()), "/pipeline")),
-										Variant: button.VariantOutline,
-										Size:    button.SizeSm,
-									}) {
-										@icon.Workflow(icon.Props{Size: 14, Class: "mr-2"})
-										Configurer
+									if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermVirtualModelsRead) {
+										@button.Button(button.Props{
+											Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()), "/pipeline")),
+											Variant: button.VariantOutline,
+											Size:    button.SizeSm,
+										}) {
+											@icon.Workflow(icon.Props{Size: 14, Class: "mr-2"})
+											Pipeline
+										}
 									}
-									@button.Button(button.Props{
-										Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()), "/edit")),
-										Variant: button.VariantGhost,
-										Size:    button.SizeIcon,
-										Attributes: templ.Attributes{"title": "Modifier"},
-									}) {
-										@icon.Pencil(icon.Props{Size: 15})
-									}
-									@button.Button(button.Props{
-										Variant: button.VariantGhost,
-										Size:    button.SizeIcon,
-										Attributes: templ.Attributes{
-											"type":             "button",
-											"title":            "Exporter",
-											"data-export-url": vmodel.BaseURL + "/api/orgs/" + vmodel.Org.Slug() + "/virtual-models/" + string(vm.ID()) + "/export",
-											"data-vm-name":    vm.Name(),
-											"onclick":         `(async function(btn){try{var r=await fetch(btn.dataset.exportUrl);if(!r.ok){alert('Erreur export : '+await r.text());return;}var b=await r.blob();var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='model-'+btn.dataset.vmName.replace(/[\/\\:*?"<>|]/g,'-')+'.json';a.click();URL.revokeObjectURL(a.href);}catch(e){alert('Erreur : '+e);}})(this)`,
-										},
-									}) {
-										@icon.Download(icon.Props{Size: 15})
-									}
-									@button.Button(button.Props{
-										Variant: button.VariantGhost,
-										Size:    button.SizeIcon,
-										Class:   "text-destructive hover:text-destructive",
-										Attributes: templ.Attributes{
-											"type":     "button",
-											"title":    "Supprimer",
-											"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()))),
-											"onclick":  "if(confirm('Supprimer ce modèle virtuel ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
-										},
-									}) {
-										@icon.Trash2(icon.Props{Size: 15})
+									if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermVirtualModelsWrite) {
+										@button.Button(button.Props{
+											Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()), "/edit")),
+											Variant: button.VariantGhost,
+											Size:    button.SizeIcon,
+											Attributes: templ.Attributes{"title": "Modifier"},
+										}) {
+											@icon.Pencil(icon.Props{Size: 15})
+										}
+										@button.Button(button.Props{
+											Variant: button.VariantGhost,
+											Size:    button.SizeIcon,
+											Attributes: templ.Attributes{
+												"type":             "button",
+												"title":            "Exporter",
+												"data-export-url": vmodel.BaseURL + "/api/orgs/" + vmodel.Org.Slug() + "/virtual-models/" + string(vm.ID()) + "/export",
+												"data-vm-name":    vm.Name(),
+												"onclick":         `(async function(btn){try{var r=await fetch(btn.dataset.exportUrl);if(!r.ok){alert('Erreur export : '+await r.text());return;}var b=await r.blob();var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='model-'+btn.dataset.vmName.replace(/[\/\\:*?"<>|]/g,'-')+'.json';a.click();URL.revokeObjectURL(a.href);}catch(e){alert('Erreur : '+e);}})(this)`,
+											},
+										}) {
+											@icon.Download(icon.Props{Size: 15})
+										}
+										@button.Button(button.Props{
+											Variant: button.VariantGhost,
+											Size:    button.SizeIcon,
+											Class:   "text-destructive hover:text-destructive",
+											Attributes: templ.Attributes{
+												"type":     "button",
+												"title":    "Supprimer",
+												"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()))),
+												"onclick":  "if(confirm('Supprimer ce modèle virtuel ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
+											},
+										}) {
+											@icon.Trash2(icon.Props{Size: 15})
+										}
 									}
 								</div>
 							}

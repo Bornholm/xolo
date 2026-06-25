@@ -1,6 +1,7 @@
 package component
 
 import (
+	"github.com/bornholm/xolo/internal/core/rbac"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
@@ -19,9 +20,11 @@ templ ModelsPage(vmodel ModelsPageVModel) {
 					<h1 class="text-2xl font-semibold">Modèles d'org.</h1>
 					<p class="text-sm text-muted-foreground">Fournisseur : { vmodel.Provider.Name() }</p>
 				</div>
-				@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()), "/models/new"))}) {
-					@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
-					Ajouter un modèle
+				if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermProvidersWrite) {
+					@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()), "/models/new"))}) {
+						@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
+						Ajouter un modèle
+					}
 				}
 			</div>
 			if vmodel.Success != "" {
@@ -90,8 +93,10 @@ templ ModelsPage(vmodel ModelsPageVModel) {
 											}
 										}
 										@table.Cell() {
-											@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()), "/models/", string(m.ID()), "/edit")), Variant: button.VariantOutline, Size: button.SizeSm}) {
-												Modifier
+											if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermProvidersWrite) {
+												@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()), "/models/", string(m.ID()), "/edit")), Variant: button.VariantOutline, Size: button.SizeSm}) {
+													Modifier
+												}
 											}
 										}
 									}

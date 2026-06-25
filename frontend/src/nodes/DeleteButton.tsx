@@ -1,4 +1,5 @@
 import { useReactFlow } from '@xyflow/react'
+import { useReadonly } from '../ReadonlyContext'
 
 interface DeleteButtonProps {
   nodeId: string
@@ -6,6 +7,9 @@ interface DeleteButtonProps {
 
 export function DeleteButton({ nodeId }: DeleteButtonProps) {
   const { deleteElements } = useReactFlow()
+  const readonly = useReadonly()
+
+  if (readonly) return null
 
   function handleDelete(e: React.MouseEvent) {
     e.stopPropagation()

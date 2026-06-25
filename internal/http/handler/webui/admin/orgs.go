@@ -101,6 +101,13 @@ func (h *Handler) createOrg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Provision the builtin roles (owner/admin/member) for the new org.
+	if err := h.roleStore.EnsureBuiltinRoles(ctx, org.ID()); err != nil {
+		slog.ErrorContext(ctx, "could not provision builtin roles", slogx.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
 	http.Redirect(w, r, "/admin/orgs?success=created", http.StatusSeeOther)
 }
 

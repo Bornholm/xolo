@@ -26,6 +26,7 @@ type Handler struct {
 	usageStore          port.UsageStore
 	userStore           port.UserStore
 	orgStore            port.OrgStore
+	roleStore           port.RoleStore
 	providerStore       port.ProviderStore
 	virtualModelStore   port.VirtualModelStore
 	applicationStore    port.ApplicationStore
@@ -42,6 +43,7 @@ func NewHandler(
 	taskRunner port.TaskRunner,
 	userStore port.UserStore,
 	orgStore port.OrgStore,
+	roleStore port.RoleStore,
 	providerStore port.ProviderStore,
 	virtualModelStore port.VirtualModelStore,
 	personalVMStore port.PersonalVirtualModelStore,
@@ -62,6 +64,7 @@ func NewHandler(
 		usageStore:          usageStore,
 		userStore:           userStore,
 		orgStore:            orgStore,
+		roleStore:           roleStore,
 		providerStore:       providerStore,
 		virtualModelStore:   virtualModelStore,
 		applicationStore:    applicationStore,
@@ -75,13 +78,14 @@ func NewHandler(
 	mount(h.mux, "/no-org", isActive(http.HandlerFunc(h.getNoOrgPage)))
 	h.mux.Handle("POST /no-org/invitations/{tokenID}/decline", isActive(http.HandlerFunc(h.declineInvitation)))
 	mount(h.mux, "/usage", isActive(http.HandlerFunc(h.getDashboardPage)))
-	mount(h.mux, "/models", isActive(http.HandlerFunc(h.getModelsPage)))
+	hasModelAccess := authz.Middleware(http.HandlerFunc(h.getForbiddenPage), h.canAccessModelsPage())
+	mount(h.mux, "/models", isActive(hasModelAccess(http.HandlerFunc(h.getModelsPage))))
 	mount(h.mux, "/profile/", isActive(profile.NewHandler(userStore, orgStore, inviteStore, personalVMStore, secretStore, pluginManager)))
-	mount(h.mux, "/admin/", isActive(admin.NewHandler(userStore, orgStore, taskRunner, exchangeRateService, pluginManager)))
-	mount(h.mux, "/orgs/", isActive(org.NewHandler(orgStore, providerStore, virtualModelStore, usageStore, inviteStore, userStore, applicationStore, exchangeRateService, quotaStore, secretStore, secretKey, pluginManager)))
+	mount(h.mux, "/admin/", isActive(admin.NewHandler(userStore, orgStore, roleStore, taskRunner, exchangeRateService, pluginManager)))
+	mount(h.mux, "/orgs/", isActive(org.NewHandler(orgStore, roleStore, providerStore, virtualModelStore, usageStore, inviteStore, userStore, applicationStore, exchangeRateService, quotaStore, secretStore, secretKey, pluginManager)))
 
 	// Public join flow — no isActive wrapper (unauthenticated users get a sign-in prompt)
-	h.mux.Handle("/join/", http.StripPrefix("/join", join.NewHandler(orgStore, inviteStore)))
+	h.mux.Handle("/join/", http.StripPrefix("/join", join.NewHandler(orgStore, roleStore, inviteStore)))
 
 	return h
 }

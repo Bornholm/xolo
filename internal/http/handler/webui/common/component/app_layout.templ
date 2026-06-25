@@ -1,6 +1,7 @@
 package component
 
 import (
+	"github.com/bornholm/xolo/internal/core/rbac"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/dialog"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/dropdown"
@@ -12,8 +13,12 @@ import (
 
 templ AppNavigationItems(vmodel AppLayoutVModel) {
 	@NavItem(icon.ChartColumn, "Usage", string(BaseURL(ctx, WithPath("/usage"))), vmodel.SelectedItem == "usage")
-	@NavItem(icon.BrainCircuit, "Modèles d'org.", string(BaseURL(ctx, WithPath("/models"))), vmodel.SelectedItem == "models")
-	@NavItem(icon.Network, "Mes modèles", string(BaseURL(ctx, WithPath("/profile/personal-models"))), vmodel.SelectedItem == "personal-models")
+	if CanAccessModelsPage(ctx) {
+		@NavItem(icon.BrainCircuit, "Modèles d'org.", string(BaseURL(ctx, WithPath("/models"))), vmodel.SelectedItem == "models")
+	}
+	if HasPermissionInAnyOrg(ctx, rbac.PermPersonalVMCreate) {
+		@NavItem(icon.Network, "Mes modèles", string(BaseURL(ctx, WithPath("/profile/personal-models"))), vmodel.SelectedItem == "personal-models")
+	}
 	@NavItem(icon.KeyRound, "Clés API", string(BaseURL(ctx, WithPath("/profile/tokens"))), vmodel.SelectedItem == "tokens")
 }
 

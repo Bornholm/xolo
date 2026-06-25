@@ -8,6 +8,7 @@ import (
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/bornholm/xolo/internal/core/rbac"
 )
 
 // ── Providers Page ────────────────────────────────────────────────────────────
@@ -19,9 +20,11 @@ templ ProvidersPage(vmodel ProvidersPageVModel) {
 					<h1 class="text-2xl font-semibold">Fournisseurs</h1>
 					<p class="text-sm text-muted-foreground">Endpoints LLM actifs pour cette organisation.</p>
 				</div>
-				@button.Button(button.Props{Size: button.SizeSm, Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/new"))}) {
-					@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
-					Ajouter un fournisseur
+				if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermProvidersWrite) {
+					@button.Button(button.Props{Size: button.SizeSm, Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/new"))}) {
+						@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
+						Ajouter un fournisseur
+					}
 				}
 			</div>
 			if vmodel.Success != "" {
@@ -73,22 +76,24 @@ templ ProvidersPage(vmodel ProvidersPageVModel) {
 									@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(p.ID()), "/models")), Variant: button.VariantOutline, Size: button.SizeSm}) {
 										Modèles
 									}
-									@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(p.ID()), "/edit")), Variant: button.VariantOutline, Size: button.SizeSm}) {
-										@icon.Pencil(icon.Props{Size: 14, Class: "mr-2"})
-										Configurer
-									}
-									@button.Button(button.Props{
-										Variant: button.VariantGhost,
-										Size:    button.SizeIcon,
-										Class:   "text-destructive hover:text-destructive",
-										Attributes: templ.Attributes{
-											"type":     "button",
-											"title":    "Supprimer",
-											"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(p.ID()))),
-											"onclick":  "if(confirm('Supprimer ce fournisseur ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
-										},
-									}) {
-										@icon.Trash2(icon.Props{Size: 15})
+									if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermProvidersWrite) {
+										@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(p.ID()), "/edit")), Variant: button.VariantOutline, Size: button.SizeSm}) {
+											@icon.Pencil(icon.Props{Size: 14, Class: "mr-2"})
+											Configurer
+										}
+										@button.Button(button.Props{
+											Variant: button.VariantGhost,
+											Size:    button.SizeIcon,
+											Class:   "text-destructive hover:text-destructive",
+											Attributes: templ.Attributes{
+												"type":     "button",
+												"title":    "Supprimer",
+												"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(p.ID()))),
+												"onclick":  "if(confirm('Supprimer ce fournisseur ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
+											},
+										}) {
+											@icon.Trash2(icon.Props{Size: 15})
+										}
 									}
 								</div>
 							}

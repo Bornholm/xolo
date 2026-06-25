@@ -20,6 +20,11 @@ function isPersonalContext(): boolean {
   return root?.dataset.contextType === 'personal'
 }
 
+export function isReadonly(): boolean {
+  const root = document.getElementById('pipeline-editor-root')
+  return root?.dataset.readonly === 'true'
+}
+
 export { vmId, orgSlug }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {

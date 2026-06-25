@@ -9,12 +9,15 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
+	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/bornholm/xolo/internal/core/rbac"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 )
 
-// OrgNavItems returns org-admin navigation items for the sidebar.
-func OrgNavItems(orgSlug string, selectedItem string) templ.Component {
+// OrgNavItems returns org-admin navigation items for the sidebar, filtered by
+// the current user's permissions within the organisation.
+func OrgNavItems(org model.Organization, selectedItem string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -35,37 +38,59 @@ func OrgNavItems(orgSlug string, selectedItem string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = common.NavItem(icon.ChartColumn, "Usage", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/usage")), selectedItem == "org-"+orgSlug+"-usage").Render(ctx, templ_7745c5c3_Buffer)
+		slug := org.Slug()
+		orgID := org.ID()
+		templ_7745c5c3_Err = common.NavItem(icon.ChartColumn, "Usage", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/usage")), selectedItem == "org-"+slug+"-usage").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = common.NavItem(icon.PiggyBank, "Budget", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/quota")), selectedItem == "org-"+orgSlug+"-quota").Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
+		if common.HasPermission(ctx, orgID, rbac.PermQuotaRead) {
+			templ_7745c5c3_Err = common.NavItem(icon.PiggyBank, "Budget", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/admin/quota")), selectedItem == "org-"+slug+"-quota").Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
-		templ_7745c5c3_Err = common.NavItem(icon.Users, "Membres", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/members")), selectedItem == "org-"+orgSlug+"-members").Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
+		if common.HasPermission(ctx, orgID, rbac.PermMembersRead) {
+			templ_7745c5c3_Err = common.NavItem(icon.Users, "Membres", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/admin/members")), selectedItem == "org-"+slug+"-members").Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
-		templ_7745c5c3_Err = common.NavItem(icon.Mail, "Invitations", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/invites")), selectedItem == "org-"+orgSlug+"-invites").Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
+		if common.HasPermission(ctx, orgID, rbac.PermRolesRead) {
+			templ_7745c5c3_Err = common.NavItem(icon.Shield, "Rôles", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/admin/roles")), selectedItem == "org-"+slug+"-roles").Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
-		templ_7745c5c3_Err = common.NavItem(icon.Server, "Fournisseurs", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/providers")), selectedItem == "org-"+orgSlug+"-providers").Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
+		if common.HasPermission(ctx, orgID, rbac.PermInvitesRead) {
+			templ_7745c5c3_Err = common.NavItem(icon.Mail, "Invitations", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/admin/invites")), selectedItem == "org-"+slug+"-invites").Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
-		templ_7745c5c3_Err = common.NavItem(icon.BrainCircuit, "Modèles virtuels", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/virtual-models")), selectedItem == "org-"+orgSlug+"-virtual-models").Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
+		if common.HasPermission(ctx, orgID, rbac.PermProvidersRead) {
+			templ_7745c5c3_Err = common.NavItem(icon.Server, "Fournisseurs", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/admin/providers")), selectedItem == "org-"+slug+"-providers").Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
-		templ_7745c5c3_Err = common.NavItem(icon.AppWindow, "Applications", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/applications")), selectedItem == "org-"+orgSlug+"-applications").Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
+		if common.HasPermission(ctx, orgID, rbac.PermVirtualModelsRead) {
+			templ_7745c5c3_Err = common.NavItem(icon.BrainCircuit, "Modèles virtuels", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/admin/virtual-models")), selectedItem == "org-"+slug+"-virtual-models").Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
-		templ_7745c5c3_Err = common.NavItem(icon.Settings, "Paramètres", common.BaseURLString(ctx, common.WithPath("/orgs/", orgSlug, "/admin/settings")), selectedItem == "org-"+orgSlug+"-settings").Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
+		if common.HasPermission(ctx, orgID, rbac.PermApplicationsRead) {
+			templ_7745c5c3_Err = common.NavItem(icon.AppWindow, "Applications", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/admin/applications")), selectedItem == "org-"+slug+"-applications").Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		if common.HasPermission(ctx, orgID, rbac.PermSettingsRead) {
+			templ_7745c5c3_Err = common.NavItem(icon.Settings, "Paramètres", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/admin/settings")), selectedItem == "org-"+slug+"-settings").Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
 		return nil
 	})

@@ -29,13 +29,14 @@ func (h *Handler) getProvidersPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := httpCtx.User(ctx)
 	orgSlug := r.PathValue("orgSlug")
-	nav, footer := orgAdminNav(orgSlug)
 
 	org, err := h.orgFromSlug(ctx, orgSlug)
 	if err != nil {
 		http.Error(w, "Organization not found", http.StatusNotFound)
 		return
 	}
+
+	nav, footer := orgAdminNav(org)
 
 	providers, err := h.providerStore.ListProviders(ctx, org.ID())
 	if err != nil {
@@ -81,13 +82,14 @@ func (h *Handler) getNewProviderPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := httpCtx.User(ctx)
 	orgSlug := r.PathValue("orgSlug")
-	nav, footer := orgAdminNav(orgSlug)
 
 	org, err := h.orgFromSlug(ctx, orgSlug)
 	if err != nil {
 		http.Error(w, "Organization not found", http.StatusNotFound)
 		return
 	}
+
+	nav, footer := orgAdminNav(org)
 
 	vmodel := component.ProviderFormVModel{
 		Org:   org,
@@ -149,7 +151,6 @@ func (h *Handler) getEditProviderPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := httpCtx.User(ctx)
 	orgSlug := r.PathValue("orgSlug")
-	nav, footer := orgAdminNav(orgSlug)
 	providerID := r.PathValue("providerID")
 
 	org, err := h.orgFromSlug(ctx, orgSlug)
@@ -157,6 +158,8 @@ func (h *Handler) getEditProviderPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Organization not found", http.StatusNotFound)
 		return
 	}
+
+	nav, footer := orgAdminNav(org)
 
 	p, err := h.providerStore.GetProviderByID(ctx, model.ProviderID(providerID))
 	if err != nil {
@@ -380,7 +383,6 @@ func (h *Handler) getModelsPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := httpCtx.User(ctx)
 	orgSlug := r.PathValue("orgSlug")
-	nav, footer := orgAdminNav(orgSlug)
 	providerID := r.PathValue("providerID")
 
 	org, err := h.orgFromSlug(ctx, orgSlug)
@@ -388,6 +390,8 @@ func (h *Handler) getModelsPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Organization not found", http.StatusNotFound)
 		return
 	}
+
+	nav, footer := orgAdminNav(org)
 
 	p, err := h.providerStore.GetProviderByID(ctx, model.ProviderID(providerID))
 	if err != nil {
@@ -437,7 +441,6 @@ func (h *Handler) getNewModelPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := httpCtx.User(ctx)
 	orgSlug := r.PathValue("orgSlug")
-	nav, footer := orgAdminNav(orgSlug)
 	providerID := r.PathValue("providerID")
 
 	org, err := h.orgFromSlug(ctx, orgSlug)
@@ -445,6 +448,8 @@ func (h *Handler) getNewModelPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Organization not found", http.StatusNotFound)
 		return
 	}
+
+	nav, footer := orgAdminNav(org)
 
 	p, err := h.providerStore.GetProviderByID(ctx, model.ProviderID(providerID))
 	if err != nil {
@@ -606,7 +611,6 @@ func (h *Handler) getEditModelPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := httpCtx.User(ctx)
 	orgSlug := r.PathValue("orgSlug")
-	nav, footer := orgAdminNav(orgSlug)
 	providerID := r.PathValue("providerID")
 	modelID := r.PathValue("modelID")
 
@@ -615,6 +619,8 @@ func (h *Handler) getEditModelPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Organization not found", http.StatusNotFound)
 		return
 	}
+
+	nav, footer := orgAdminNav(org)
 
 	p, err := h.providerStore.GetProviderByID(ctx, model.ProviderID(providerID))
 	if err != nil {
@@ -759,7 +765,7 @@ func (h *Handler) updateModel(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) renderModelFormError(w http.ResponseWriter, r *http.Request, ctx context.Context, user model.User, orgSlug string, org model.Organization, p model.Provider, m model.LLMModel, isNew bool, errMsg string) {
-	nav, footer := orgAdminNav(orgSlug)
+	nav, footer := orgAdminNav(org)
 	vmodel := component.ModelFormVModel{
 		Org:      org,
 		Provider: p,
@@ -786,7 +792,7 @@ func (h *Handler) renderModelFormError(w http.ResponseWriter, r *http.Request, c
 }
 
 func (h *Handler) renderProviderFormError(w http.ResponseWriter, r *http.Request, ctx context.Context, user model.User, orgSlug string, org model.Organization, p model.Provider, isNew bool, errMsg string) {
-	nav, footer := orgAdminNav(orgSlug)
+	nav, footer := orgAdminNav(org)
 	vmodel := component.ProviderFormVModel{
 		Org:      org,
 		Provider: p,

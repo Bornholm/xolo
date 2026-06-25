@@ -20,13 +20,14 @@ func (h *Handler) getInvitesPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := httpCtx.User(ctx)
 	orgSlug := r.PathValue("orgSlug")
-	nav, footer := orgAdminNav(orgSlug)
 
 	org, err := h.orgFromSlug(ctx, orgSlug)
 	if err != nil {
 		http.Error(w, "Organization not found", http.StatusNotFound)
 		return
 	}
+
+	nav, footer := orgAdminNav(org)
 
 	invites, err := h.inviteStore.ListInvites(ctx, org.ID())
 	if err != nil {
@@ -64,13 +65,14 @@ func (h *Handler) getNewInvitePage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := httpCtx.User(ctx)
 	orgSlug := r.PathValue("orgSlug")
-	nav, footer := orgAdminNav(orgSlug)
 
 	org, err := h.orgFromSlug(ctx, orgSlug)
 	if err != nil {
 		http.Error(w, "Organization not found", http.StatusNotFound)
 		return
 	}
+
+	nav, footer := orgAdminNav(org)
 
 	vmodel := component.InviteFormVModel{
 		Org: org,

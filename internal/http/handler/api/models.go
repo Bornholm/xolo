@@ -10,6 +10,7 @@ import (
 	proxyAdapter "github.com/bornholm/xolo/internal/adapter/proxy"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
+	"github.com/bornholm/xolo/internal/core/rbac"
 	"github.com/bornholm/xolo/internal/core/service"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
@@ -57,6 +58,7 @@ type pluginManagerIface interface {
 type Handler struct {
 	providerStore       port.ProviderStore
 	orgStore            port.OrgStore
+	roleStore           port.RoleStore
 	virtualModelStore   port.VirtualModelStore
 	personalVMStore     port.PersonalVirtualModelStore
 	secretStore         port.SecretStore
@@ -65,10 +67,11 @@ type Handler struct {
 	mux                 *http.ServeMux
 }
 
-func NewHandler(providerStore port.ProviderStore, orgStore port.OrgStore, virtualModelStore port.VirtualModelStore, personalVMStore port.PersonalVirtualModelStore, secretStore port.SecretStore, exchangeRateService *service.ExchangeRateService, pluginManager pluginManagerIface) *Handler {
+func NewHandler(providerStore port.ProviderStore, orgStore port.OrgStore, roleStore port.RoleStore, virtualModelStore port.VirtualModelStore, personalVMStore port.PersonalVirtualModelStore, secretStore port.SecretStore, exchangeRateService *service.ExchangeRateService, pluginManager pluginManagerIface) *Handler {
 	h := &Handler{
 		providerStore:       providerStore,
 		orgStore:            orgStore,
+		roleStore:           roleStore,
 		virtualModelStore:   virtualModelStore,
 		personalVMStore:     personalVMStore,
 		secretStore:         secretStore,
@@ -170,11 +173,20 @@ func (h *Handler) handleModels(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := make([]openRouterModel, 0)
+	canUsePersonalVM := false
 	for _, orgID := range orgIDs {
 		org, err := h.orgStore.GetOrgByID(ctx, orgID)
 		if err != nil {
 			slog.WarnContext(ctx, "could not get org for models listing", slogx.Error(err), slog.String("orgID", string(orgID)))
 			continue
+		}
+		perms, err := httpCtx.ResolvePermissions(ctx, orgID)
+		if err != nil {
+			slog.WarnContext(ctx, "could not resolve permissions", slogx.Error(err), slog.String("orgID", string(orgID)))
+			continue
+		}
+		if perms.IsOwner() || perms.Has(rbac.PermPersonalVMCreate) {
+			canUsePersonalVM = true
 		}
 		models, err := h.providerStore.ListEnabledLLMModels(ctx, orgID)
 		if err != nil {
@@ -182,6 +194,9 @@ func (h *Handler) handleModels(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		for _, m := range models {
+			if !perms.IsOwner() && !perms.Has(rbac.PermModelUseOrg) && !perms.HasModelAccess(string(m.ID()), rbac.ModelKindLLM) {
+				continue
+			}
 			model := h.llmModelToOpenRouterModel(org.Slug(), m)
 			if filterModel(model, filterParams, filterModalities) {
 				data = append(data, model)
@@ -192,6 +207,9 @@ func (h *Handler) handleModels(w http.ResponseWriter, r *http.Request) {
 			slog.WarnContext(ctx, "could not list virtual models", slogx.Error(err), slog.String("orgID", string(orgID)))
 		} else {
 			for _, vm := range virtualModels {
+				if !perms.IsOwner() && !perms.Has(rbac.PermModelUseVirtual) && !perms.HasModelAccess(string(vm.ID()), rbac.ModelKindVirtual) {
+					continue
+				}
 				model := h.virtualModelToOpenRouterModel(org.Slug(), vm)
 				if filterModel(model, filterParams, filterModalities) {
 					data = append(data, model)
@@ -200,8 +218,8 @@ func (h *Handler) handleModels(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Personal virtual models
-	if h.personalVMStore != nil {
+	// Personal virtual models — gated by the personal-vm permission.
+	if h.personalVMStore != nil && canUsePersonalVM {
 		user := httpCtx.User(ctx)
 		if user != nil {
 			pvms, err := h.personalVMStore.ListPersonalVirtualModels(ctx, user.ID())

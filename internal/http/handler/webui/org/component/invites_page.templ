@@ -2,6 +2,7 @@ package component
 
 import (
 	"fmt"
+	"github.com/bornholm/xolo/internal/core/rbac"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
@@ -20,9 +21,11 @@ templ InvitesPage(vmodel InvitesPageVModel) {
 					<h1 class="text-2xl font-semibold">Invitations</h1>
 					<p class="text-sm text-muted-foreground">Liens d'invitation en attente.</p>
 				</div>
-				@button.Button(button.Props{Size: button.SizeSm, Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/new"))}) {
-					@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
-					Nouvelle invitation
+				if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermInvitesWrite) {
+					@button.Button(button.Props{Size: button.SizeSm, Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/new"))}) {
+						@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
+						Nouvelle invitation
+					}
 				}
 			</div>
 			if vmodel.NewURL != "" {
@@ -113,7 +116,7 @@ templ InvitesPage(vmodel InvitesPageVModel) {
 													@icon.Copy(icon.Props{Size: 14, Class: "mr-2"})
 													Copier le lien
 												}
-												if inv.RevokedAt() == nil {
+												if inv.RevokedAt() == nil && common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermInvitesWrite) {
 													@button.Button(button.Props{
 														Variant: button.VariantGhost,
 														Size:    button.SizeIcon,

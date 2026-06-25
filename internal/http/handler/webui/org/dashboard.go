@@ -17,7 +17,6 @@ func (h *Handler) getDashboard(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := httpCtx.User(ctx)
 	orgSlug := r.PathValue("orgSlug")
-	nav, footer := orgAdminNav(orgSlug)
 
 	org, err := h.orgFromSlug(ctx, orgSlug)
 	if err != nil {
@@ -25,6 +24,8 @@ func (h *Handler) getDashboard(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Organization not found", http.StatusNotFound)
 		return
 	}
+
+	nav, footer := orgAdminNav(org)
 
 	members, _, err := h.orgStore.ListOrgMembers(ctx, org.ID(), port.ListOrgMembersOptions{})
 	if err != nil {

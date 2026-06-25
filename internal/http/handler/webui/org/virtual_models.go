@@ -7,6 +7,7 @@ import (
 	"github.com/a-h/templ"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
+	"github.com/bornholm/xolo/internal/core/rbac"
 	"github.com/bornholm/xolo/internal/core/secretcleanup"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
@@ -18,13 +19,14 @@ func (h *Handler) getVirtualModelsPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := httpCtx.User(ctx)
 	orgSlug := r.PathValue("orgSlug")
-	nav, footer := orgAdminNav(orgSlug)
 
 	org, err := h.orgFromSlug(ctx, orgSlug)
 	if err != nil {
 		http.Error(w, "Organization not found", http.StatusNotFound)
 		return
 	}
+
+	nav, footer := orgAdminNav(org)
 
 	vms, err := h.virtualModelStore.ListVirtualModels(ctx, org.ID())
 	if err != nil {
@@ -62,13 +64,14 @@ func (h *Handler) getNewVirtualModelPage(w http.ResponseWriter, r *http.Request)
 	ctx := r.Context()
 	user := httpCtx.User(ctx)
 	orgSlug := r.PathValue("orgSlug")
-	nav, footer := orgAdminNav(orgSlug)
 
 	org, err := h.orgFromSlug(ctx, orgSlug)
 	if err != nil {
 		http.Error(w, "Organization not found", http.StatusNotFound)
 		return
 	}
+
+	nav, footer := orgAdminNav(org)
 
 	vmodel := component.VirtualModelFormVModel{
 		Org:   org,
@@ -137,13 +140,14 @@ func (h *Handler) getEditVirtualModelPage(w http.ResponseWriter, r *http.Request
 	user := httpCtx.User(ctx)
 	orgSlug := r.PathValue("orgSlug")
 	modelID := r.PathValue("modelID")
-	nav, footer := orgAdminNav(orgSlug)
 
 	org, err := h.orgFromSlug(ctx, orgSlug)
 	if err != nil {
 		http.Error(w, "Organization not found", http.StatusNotFound)
 		return
 	}
+
+	nav, footer := orgAdminNav(org)
 
 	vm, err := h.virtualModelStore.GetVirtualModelByID(ctx, model.VirtualModelID(modelID))
 	if err != nil {
@@ -264,13 +268,14 @@ func (h *Handler) getPipelineEditorPage(w http.ResponseWriter, r *http.Request) 
 	user := httpCtx.User(ctx)
 	orgSlug := r.PathValue("orgSlug")
 	modelID := r.PathValue("modelID")
-	nav, footer := orgAdminNav(orgSlug)
 
 	org, err := h.orgFromSlug(ctx, orgSlug)
 	if err != nil {
 		http.Error(w, "Organization not found", http.StatusNotFound)
 		return
 	}
+
+	nav, footer := orgAdminNav(org)
 
 	vm, err := h.virtualModelStore.GetVirtualModelByID(ctx, model.VirtualModelID(modelID))
 	if err != nil {
@@ -283,11 +288,13 @@ func (h *Handler) getPipelineEditorPage(w http.ResponseWriter, r *http.Request) 
 	}
 
 	baseURL := httpCtx.BaseURL(ctx)
+	readonly := !common.HasPermission(ctx, org.ID(), rbac.PermVirtualModelsWrite)
 
 	vmodel := component.VirtualModelEditorVModel{
-		Org:     org,
-		VM:      vm,
-		APIBase: baseURL.String(),
+		Org:      org,
+		VM:       vm,
+		APIBase:  baseURL.String(),
+		Readonly: readonly,
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:          user,
 			SelectedItem:  "org-" + orgSlug + "-virtual-models",

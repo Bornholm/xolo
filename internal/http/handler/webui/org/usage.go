@@ -28,13 +28,14 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := httpCtx.User(ctx)
 	orgSlug := r.PathValue("orgSlug")
-	nav, footer := orgAdminNav(orgSlug)
 
 	org, err := h.orgFromSlug(ctx, orgSlug)
 	if err != nil {
 		http.Error(w, "Organization not found", http.StatusNotFound)
 		return
 	}
+
+	nav, footer := orgAdminNav(org)
 
 	page := 1
 	if p := r.URL.Query().Get("page"); p != "" {

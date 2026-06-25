@@ -1,6 +1,7 @@
 package org
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -19,13 +20,14 @@ func (h *Handler) getMembersPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := httpCtx.User(ctx)
 	orgSlug := r.PathValue("orgSlug")
-	nav, footer := orgAdminNav(orgSlug)
 
 	org, err := h.orgFromSlug(ctx, orgSlug)
 	if err != nil {
 		http.Error(w, "Organization not found", http.StatusNotFound)
 		return
 	}
+
+	nav, footer := orgAdminNav(org)
 
 	const membersPageSize = 20
 
@@ -112,13 +114,14 @@ func (h *Handler) getEditMemberPage(w http.ResponseWriter, r *http.Request) {
 	user := httpCtx.User(ctx)
 	orgSlug := r.PathValue("orgSlug")
 	membershipID := r.PathValue("membershipID")
-	nav, footer := orgAdminNav(orgSlug)
 
 	org, err := h.orgFromSlug(ctx, orgSlug)
 	if err != nil {
 		http.Error(w, "Organization not found", http.StatusNotFound)
 		return
 	}
+
+	nav, footer := orgAdminNav(org)
 
 	membership, err := h.orgStore.GetMembership(ctx, model.MembershipID(membershipID))
 	if err != nil {
@@ -136,9 +139,23 @@ func (h *Handler) getEditMemberPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	orgRoles, err := h.roleStore.ListOrgRoles(ctx, org.ID())
+	if err != nil {
+		slog.ErrorContext(ctx, "could not list org roles", slogx.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	assignedRoleIDs := map[model.RoleID]bool{}
+	for _, role := range membership.Roles() {
+		assignedRoleIDs[role.ID()] = true
+	}
+
 	vmodel := component.EditMemberPageVModel{
-		Membership: membership,
-		Org:        org,
+		Membership:      membership,
+		Org:             org,
+		OrgRoles:        orgRoles,
+		AssignedRoleIDs: assignedRoleIDs,
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:          user,
 			SelectedItem:  "org-" + orgSlug + "-members",
@@ -184,17 +201,84 @@ func (h *Handler) postEditMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	role := r.FormValue("role")
-	if role == "" {
-		http.Error(w, "Role is required", http.StatusBadRequest)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form", http.StatusBadRequest)
 		return
 	}
 
-	if err := h.orgStore.UpdateMembership(ctx, model.MembershipID(membershipID), role); err != nil {
-		slog.ErrorContext(ctx, "could not update membership", slogx.Error(err))
+	orgRoles, err := h.roleStore.ListOrgRoles(ctx, org.ID())
+	if err != nil {
+		slog.ErrorContext(ctx, "could not list org roles", slogx.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	// Keep only role IDs that belong to this organization.
+	validRoleIDs := map[model.RoleID]model.Role{}
+	for _, role := range orgRoles {
+		validRoleIDs[role.ID()] = role
+	}
+
+	var selected []model.RoleID
+	selectsOwner := false
+	for _, raw := range r.Form["roles"] {
+		roleID := model.RoleID(raw)
+		role, ok := validRoleIDs[roleID]
+		if !ok {
+			continue
+		}
+		selected = append(selected, roleID)
+		if role.BuiltinKind() == model.BuiltinKindOwner {
+			selectsOwner = true
+		}
+	}
+
+	// Guard: never leave the organization without an owner.
+	wasOwner := false
+	for _, role := range membership.Roles() {
+		if role.BuiltinKind() == model.BuiltinKindOwner {
+			wasOwner = true
+			break
+		}
+	}
+	if wasOwner && !selectsOwner {
+		lastOwner, err := h.isLastOwner(ctx, org.ID(), membership.ID())
+		if err != nil {
+			slog.ErrorContext(ctx, "could not check owners", slogx.Error(err))
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		if lastOwner {
+			http.Error(w, "Impossible de retirer le dernier propriétaire de l'organisation", http.StatusBadRequest)
+			return
+		}
+	}
+
+	if err := h.roleStore.SetMembershipRoles(ctx, model.MembershipID(membershipID), selected); err != nil {
+		slog.ErrorContext(ctx, "could not update membership roles", slogx.Error(err))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
 	http.Redirect(w, r, "/orgs/"+orgSlug+"/admin/members?success=updated", http.StatusSeeOther)
+}
+
+// isLastOwner reports whether the given membership is the only one holding a
+// builtin owner role within the organization.
+func (h *Handler) isLastOwner(ctx context.Context, orgID model.OrgID, exclude model.MembershipID) (bool, error) {
+	members, _, err := h.orgStore.ListOrgMembers(ctx, orgID, port.ListOrgMembersOptions{})
+	if err != nil {
+		return false, errors.WithStack(err)
+	}
+	for _, m := range members {
+		if m.ID() == exclude {
+			continue
+		}
+		for _, role := range m.Roles() {
+			if role.BuiltinKind() == model.BuiltinKindOwner {
+				return false, nil
+			}
+		}
+	}
+	return true, nil
 }

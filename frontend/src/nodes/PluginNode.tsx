@@ -5,12 +5,14 @@ import type { PluginNodeData, NodeTypeDescriptor } from '../types'
 import { DeleteButton } from './DeleteButton'
 import { PluginUIModal } from '../components/PluginUIModal'
 import { InputPortRow, OutputPortRow } from './PortRow'
+import { useReadonly } from '../ReadonlyContext'
 
 interface PluginNodeProps extends NodeProps {
   data: PluginNodeData & { __descriptor?: NodeTypeDescriptor }
 }
 
 export function PluginNode({ id, data }: PluginNodeProps) {
+  const readonly = useReadonly()
   const desc = data.__descriptor
   const cfg = data.config as { inputs?: Array<{ name: string; portType?: string }>; outputs?: Array<{ name: string; portType?: string }> } | undefined
   const inputPorts: Array<{ name: string; port_type: string }> = cfg?.inputs
@@ -42,7 +44,7 @@ export function PluginNode({ id, data }: PluginNodeProps) {
         {hasPostResponse && <span title="Supporte la passe-retour" style={{ marginLeft: 4 }}>↩</span>}
       </div>
 
-      {desc?.hasUI && (
+      {desc?.hasUI && !readonly && (
         <div className="pipeline-node__subheader">
           <button className="plugin-node__config-btn" onClick={() => setShowModal(true)}>
             ⚙ Configurer

@@ -19,8 +19,9 @@ import { ModelNode } from './nodes/ModelNode'
 import { ValueNode } from './nodes/ValueNode'
 import { PluginNode } from './nodes/PluginNode'
 import { NodePalette } from './components/NodePalette'
-import { fetchVirtualModel, fetchNodeTypes, updateVirtualModel, exportVirtualModelURL, vmId, orgSlug } from './api'
+import { fetchVirtualModel, fetchNodeTypes, updateVirtualModel, exportVirtualModelURL, vmId, orgSlug, isReadonly } from './api'
 import type { NodeTypeDescriptor, PipelineGraph, PipelineNode, PipelineEdge, PipelineBundle, PluginNodeData } from './types'
+import { ReadonlyContext } from './ReadonlyContext'
 
 const nodeTypes = {
   generator: GeneratorNode,
@@ -93,6 +94,7 @@ function flowToGraph(nodes: Node[], edges: Edge[]): PipelineGraph {
 export function VirtualModelEditor() {
   const id = vmId()
   const slug = orgSlug()
+  const readonly = isReadonly()
 
   const [vmName, setVmName] = useState('')
   const [vmDescription, setVmDescription] = useState('')
@@ -221,59 +223,70 @@ export function VirtualModelEditor() {
   if (loading) return <div className="pipeline-loading">Chargement…</div>
 
   return (
-    <div className="pipeline-editor">
-      <header className="pipeline-editor__toolbar">
-        <span className="pipeline-editor__vm-name">{vmName}</span>
-        {error && <span className="pipeline-editor__error">{error}</span>}
-        <input
-          ref={importInputRef}
-          type="file"
-          accept=".json,application/json"
-          style={{ display: 'none' }}
-          onChange={handleImportFile}
-        />
-        <button
-          className="pipeline-editor__import-btn"
-          onClick={triggerImport}
-          title="Charger un pipeline depuis un fichier JSON"
-        >
-          Importer
-        </button>
-        <button
-          className="pipeline-editor__export-btn"
-          onClick={exportPipeline}
-          disabled={!id}
-          title="Télécharger le pipeline courant (incluant la configuration de chaque nœud)"
-        >
-          Exporter
-        </button>
-        <button
-          className="pipeline-editor__save-btn"
-          onClick={save}
-          disabled={saving || !id}
-        >
-          {saving ? 'Enregistrement…' : 'Enregistrer'}
-        </button>
-      </header>
-      <div className="pipeline-editor__body">
-        <NodePalette nodeTypes={paletteTypes} onAddNode={addNode} />
-        <div className="pipeline-editor__canvas">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            nodeTypes={nodeTypes}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            deleteKeyCode={['Backspace', 'Delete']}
-            fitView
+    <ReadonlyContext.Provider value={readonly}>
+      <div className="pipeline-editor">
+        <header className="pipeline-editor__toolbar">
+          <span className="pipeline-editor__vm-name">{vmName}</span>
+          {error && <span className="pipeline-editor__error">{error}</span>}
+          {!readonly && (
+            <>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".json,application/json"
+                style={{ display: 'none' }}
+                onChange={handleImportFile}
+              />
+              <button
+                className="pipeline-editor__import-btn"
+                onClick={triggerImport}
+                title="Charger un pipeline depuis un fichier JSON"
+              >
+                Importer
+              </button>
+            </>
+          )}
+          <button
+            className="pipeline-editor__export-btn"
+            onClick={exportPipeline}
+            disabled={!id}
+            title="Télécharger le pipeline courant (incluant la configuration de chaque nœud)"
           >
-            <Background />
-            <Controls />
-            <MiniMap />
-          </ReactFlow>
+            Exporter
+          </button>
+          {!readonly && (
+            <button
+              className="pipeline-editor__save-btn"
+              onClick={save}
+              disabled={saving || !id}
+            >
+              {saving ? 'Enregistrement…' : 'Enregistrer'}
+            </button>
+          )}
+        </header>
+        <div className="pipeline-editor__body">
+          {!readonly && <NodePalette nodeTypes={paletteTypes} onAddNode={addNode} />}
+          <div className="pipeline-editor__canvas">
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              nodeTypes={nodeTypes}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={readonly ? undefined : onConnect}
+              deleteKeyCode={readonly ? null : ['Backspace', 'Delete']}
+              nodesDraggable={!readonly}
+              nodesConnectable={!readonly}
+              edgesUpdatable={!readonly}
+              fitView
+            >
+              <Background />
+              <Controls />
+              <MiniMap />
+            </ReactFlow>
+          </div>
         </div>
       </div>
-    </div>
+    </ReadonlyContext.Provider>
   )
 }

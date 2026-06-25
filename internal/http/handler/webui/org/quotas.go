@@ -20,13 +20,14 @@ func (h *Handler) getOrgQuotaPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := httpCtx.User(ctx)
 	orgSlug := r.PathValue("orgSlug")
-	nav, footer := orgAdminNav(orgSlug)
 
 	org, err := h.orgFromSlug(ctx, orgSlug)
 	if err != nil {
 		http.Error(w, "Organization not found", http.StatusNotFound)
 		return
 	}
+
+	nav, footer := orgAdminNav(org)
 
 	quotaStore, ok := h.orgStore.(port.QuotaStore)
 	if !ok {
@@ -114,7 +115,6 @@ func (h *Handler) getMemberQuotaPage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := httpCtx.User(ctx)
 	orgSlug := r.PathValue("orgSlug")
-	nav, footer := orgAdminNav(orgSlug)
 	membershipID := r.PathValue("membershipID")
 
 	org, err := h.orgFromSlug(ctx, orgSlug)
@@ -122,6 +122,8 @@ func (h *Handler) getMemberQuotaPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Organization not found", http.StatusNotFound)
 		return
 	}
+
+	nav, footer := orgAdminNav(org)
 
 	membership, err := h.orgStore.GetMembership(ctx, model.MembershipID(membershipID))
 	if err != nil {
