@@ -74,16 +74,18 @@ type QuotaPageVModel struct {
 
 type InvitesPageVModel struct {
 	common.AppLayoutVModel
-	Org     model.Organization
-	Invites []model.InviteToken
-	BaseURL string
-	Success string
-	NewURL  string
+	Org       model.Organization
+	Invites   []model.InviteToken
+	BaseURL   string
+	Success   string
+	NewURL    string
+	RoleNames map[string]string // role ID → display name
 }
 
 type InviteFormVModel struct {
 	common.AppLayoutVModel
-	Org model.Organization
+	Org      model.Organization
+	OrgRoles []model.Role
 }
 
 type OrgSettingsPageVModel struct {
@@ -191,12 +193,35 @@ type RoleFormVModel struct {
 	SelectedMode map[string]bool // "kind\x00id" -> checked
 }
 
-// roleLabel returns the display label for an organization role.
+// roleLabel returns the display label for an organization role (legacy builtin strings).
 func roleLabel(role string) string {
 	switch role {
 	case model.RoleOrgOwner:
 		return "Propriétaire"
 	case model.RoleOrgAdmin:
+		return "Administrateur"
+	default:
+		return "Utilisateur"
+	}
+}
+
+// roleLabelFromMap resolves a role display name from the preloaded RoleNames map,
+// falling back to roleLabel for legacy builtin strings.
+func roleLabelFromMap(names map[string]string, roleID string) string {
+	if names != nil {
+		if name, ok := names[roleID]; ok {
+			return name
+		}
+	}
+	return roleLabel(roleID)
+}
+
+// BuiltinRoleLabel returns the French label for a builtin role kind.
+func BuiltinRoleLabel(kind string) string {
+	switch kind {
+	case model.BuiltinKindOwner:
+		return "Propriétaire"
+	case model.BuiltinKindAdmin:
 		return "Administrateur"
 	default:
 		return "Utilisateur"

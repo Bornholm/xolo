@@ -1,6 +1,7 @@
 package component
 
 import (
+	"github.com/bornholm/xolo/internal/core/model"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
@@ -26,11 +27,14 @@ templ InviteForm(vmodel InviteFormVModel) {
 						}
 						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
 							@selectbox.Group() {
-								@selectbox.Item(selectbox.ItemProps{Value: "member", Selected: true}) {
-									Membre
-								}
-								@selectbox.Item(selectbox.ItemProps{Value: "org:admin"}) {
-									Admin organisation
+								for _, r := range vmodel.OrgRoles {
+									{{ label := r.Name() }}
+									if r.BuiltinKind() != "" {
+										{{ label = BuiltinRoleLabel(r.BuiltinKind()) }}
+									}
+									@selectbox.Item(selectbox.ItemProps{Value: string(r.ID()), Selected: r.BuiltinKind() == model.BuiltinKindMember}) {
+										{ label }
+									}
 								}
 							}
 						}

@@ -36,14 +36,31 @@ func (h *Handler) getInvitesPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	orgRoles, err := h.roleStore.ListOrgRoles(ctx, org.ID())
+	if err != nil {
+		slog.ErrorContext(ctx, "could not list org roles", slogx.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	roleNames := make(map[string]string, len(orgRoles))
+	for _, r := range orgRoles {
+		label := r.Name()
+		if r.BuiltinKind() != "" {
+			label = component.BuiltinRoleLabel(r.BuiltinKind())
+		}
+		roleNames[string(r.ID())] = label
+	}
+
 	baseURL := httpCtx.BaseURL(ctx)
 
 	vmodel := component.InvitesPageVModel{
-		Org:     org,
-		Invites: invites,
-		BaseURL: baseURL.String(),
-		Success: r.URL.Query().Get("success"),
-		NewURL:  r.URL.Query().Get("new_url"),
+		Org:       org,
+		Invites:   invites,
+		RoleNames: roleNames,
+		BaseURL:   baseURL.String(),
+		Success:   r.URL.Query().Get("success"),
+		NewURL:    r.URL.Query().Get("new_url"),
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:          user,
 			SelectedItem:  "org-" + orgSlug + "-invites",
@@ -72,10 +89,18 @@ func (h *Handler) getNewInvitePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	orgRoles, err := h.roleStore.ListOrgRoles(ctx, org.ID())
+	if err != nil {
+		slog.ErrorContext(ctx, "could not list org roles", slogx.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
 	nav, footer := orgAdminNav(org)
 
 	vmodel := component.InviteFormVModel{
-		Org: org,
+		Org:      org,
+		OrgRoles: orgRoles,
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:          user,
 			SelectedItem:  "org-" + orgSlug + "-invites",

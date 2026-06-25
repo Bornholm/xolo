@@ -80,7 +80,7 @@ templ InvitesPage(vmodel InvitesPageVModel) {
 										}
 										@table.Cell() {
 											@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
-												{ roleLabel(inv.Role()) }
+												{ roleLabelFromMap(vmodel.RoleNames, inv.Role()) }
 											}
 										}
 										@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {

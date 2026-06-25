@@ -164,13 +164,24 @@ func (h *Handler) acceptInvite(w http.ResponseWriter, r *http.Request) {
 	templ.Handler(component.JoinSuccess(vmodel)).ServeHTTP(w, r)
 }
 
-// assignInviteRole assigns the builtin role corresponding to the invite role
-// (org:admin/org:owner/member) to the given membership.
+// assignInviteRole assigns a role to the given membership.
+// inviteRole may be a role ID (for custom or new-style invites) or a legacy
+// builtin string ("member", "org:admin", "org:owner") for backward compat.
 func (h *Handler) assignInviteRole(ctx context.Context, membershipID model.MembershipID, orgID model.OrgID, inviteRole string) error {
 	if err := h.roleStore.EnsureBuiltinRoles(ctx, orgID); err != nil {
 		return errors.WithStack(err)
 	}
 
+	// Try direct role ID lookup (new-style invites store a role ID).
+	role, err := h.roleStore.GetRoleByID(ctx, model.RoleID(inviteRole))
+	if err == nil {
+		return errors.WithStack(h.roleStore.SetMembershipRoles(ctx, membershipID, []model.RoleID{role.ID()}))
+	}
+	if !errors.Is(err, port.ErrNotFound) {
+		return errors.WithStack(err)
+	}
+
+	// Fall back to builtin kind matching for legacy invite strings.
 	var kind string
 	switch inviteRole {
 	case model.RoleOrgOwner:
@@ -185,9 +196,9 @@ func (h *Handler) assignInviteRole(ctx context.Context, membershipID model.Membe
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	for _, role := range roles {
-		if role.BuiltinKind() == kind {
-			return errors.WithStack(h.roleStore.SetMembershipRoles(ctx, membershipID, []model.RoleID{role.ID()}))
+	for _, r := range roles {
+		if r.BuiltinKind() == kind {
+			return errors.WithStack(h.roleStore.SetMembershipRoles(ctx, membershipID, []model.RoleID{r.ID()}))
 		}
 	}
 	return nil

@@ -473,9 +473,9 @@ func InvitesPage(vmodel InvitesPageVModel) templ.Component {
 												}
 												ctx = templ.InitializeContext(ctx)
 												var templ_7745c5c3_Var24 string
-												templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(roleLabel(inv.Role()))
+												templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(roleLabelFromMap(vmodel.RoleNames, inv.Role()))
 												if templ_7745c5c3_Err != nil {
-													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/invites_page.templ`, Line: 83, Col: 35}
+													return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/invites_page.templ`, Line: 83, Col: 60}
 												}
 												_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 												if templ_7745c5c3_Err != nil {
