@@ -102,6 +102,17 @@ func createGetDatabase(db *gorm.DB) func(ctx context.Context) (*gorm.DB, error) 
 						return tx.Migrator().DropTable("membership_roles", "role_models", "role_permissions", "roles")
 					},
 				},
+				{
+					// Add cost_source column to usage_records to track whether the
+					// cost was reported by the provider or computed from the tariff.
+					ID: "202606290001",
+					Migrate: func(tx *gorm.DB) error {
+						return tx.AutoMigrate(&UsageRecord{})
+					},
+					Rollback: func(tx *gorm.DB) error {
+						return tx.Migrator().DropColumn(&UsageRecord{}, "cost_source")
+					},
+				},
 			})
 
 			m.InitSchema(func(tx *gorm.DB) error {
