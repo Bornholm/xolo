@@ -140,15 +140,10 @@ templ VirtualModelsPage(vmodel VirtualModelsPageVModel) {
 											@icon.Pencil(icon.Props{Size: 15})
 										}
 										@button.Button(button.Props{
+											Href:    common.BaseURLString(ctx, common.WithPath("/api/orgs/", vmodel.Org.Slug(), "/virtual-models/", string(vm.ID()), "/export")),
 											Variant: button.VariantGhost,
 											Size:    button.SizeIcon,
-											Attributes: templ.Attributes{
-												"type":             "button",
-												"title":            "Exporter",
-												"data-export-url": vmodel.BaseURL + "/api/orgs/" + vmodel.Org.Slug() + "/virtual-models/" + string(vm.ID()) + "/export",
-												"data-vm-name":    vm.Name(),
-												"onclick":         `(async function(btn){try{var r=await fetch(btn.dataset.exportUrl);if(!r.ok){alert('Erreur export : '+await r.text());return;}var b=await r.blob();var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='model-'+btn.dataset.vmName.replace(/[\/\\:*?"<>|]/g,'-')+'.json';a.click();URL.revokeObjectURL(a.href);}catch(e){alert('Erreur : '+e);}})(this)`,
-											},
+											Attributes: templ.Attributes{"title": "Exporter"},
 										}) {
 											@icon.Download(icon.Props{Size: 15})
 										}
