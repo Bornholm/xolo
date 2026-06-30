@@ -21,6 +21,9 @@ type UsageStore interface {
 	// provider+org since the given time, returning total tokens and total provider-currency value
 	// (in microcents of provider currency). Used to enforce rolling-window budgets.
 	SumPlanUsageSince(ctx context.Context, orgID model.OrgID, providerID model.ProviderID, since time.Time) (tokens int64, providerValue int64, err error)
+	// SumUserPlanUsageSince aggregates subscription-covered (plan_covered=true) usage for a specific
+	// user+provider+org since the given time. Used to enforce per-user fair-share rolling-window budgets.
+	SumUserPlanUsageSince(ctx context.Context, userID model.UserID, orgID model.OrgID, providerID model.ProviderID, since time.Time) (tokens int64, providerValue int64, err error)
 }
 
 type UsageFilter struct {

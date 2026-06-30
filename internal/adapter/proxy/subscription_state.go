@@ -25,15 +25,23 @@ type constraintKey struct {
 	label string
 }
 
+type userScopeKey struct {
+	orgID      model.OrgID
+	providerID model.ProviderID
+	userID     model.UserID
+}
+
 type SubscriptionStateDetailed struct {
-	mu              sync.Mutex
-	inFlight        map[scopeKey]int
-	exhaustedUntil  map[constraintKey]time.Time
+	mu             sync.Mutex
+	inFlight       map[scopeKey]int
+	userInFlight   map[userScopeKey]int
+	exhaustedUntil map[constraintKey]time.Time
 }
 
 func NewSubscriptionState() *SubscriptionStateDetailed {
 	return &SubscriptionStateDetailed{
 		inFlight:       make(map[scopeKey]int),
+		userInFlight:   make(map[userScopeKey]int),
 		exhaustedUntil: make(map[constraintKey]time.Time),
 	}
 }
@@ -62,6 +70,32 @@ func (s *SubscriptionStateDetailed) CurrentInFlight(orgID model.OrgID, providerI
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.inFlight[scopeKey{orgID, providerID}]
+}
+
+// IncrementUserInFlight atomically increments the per-user in-flight counter and returns the new value.
+func (s *SubscriptionStateDetailed) IncrementUserInFlight(orgID model.OrgID, providerID model.ProviderID, userID model.UserID) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	k := userScopeKey{orgID, providerID, userID}
+	s.userInFlight[k]++
+	return s.userInFlight[k]
+}
+
+// DecrementUserInFlight atomically decrements the per-user in-flight counter (floors at 0).
+func (s *SubscriptionStateDetailed) DecrementUserInFlight(orgID model.OrgID, providerID model.ProviderID, userID model.UserID) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	k := userScopeKey{orgID, providerID, userID}
+	if s.userInFlight[k] > 0 {
+		s.userInFlight[k]--
+	}
+}
+
+// CurrentUserInFlight returns the per-user in-flight count for the given scope.
+func (s *SubscriptionStateDetailed) CurrentUserInFlight(orgID model.OrgID, providerID model.ProviderID, userID model.UserID) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.userInFlight[userScopeKey{orgID, providerID, userID}]
 }
 
 // MarkExhausted sets a cooldown for a specific constraint label until the given time.

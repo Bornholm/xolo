@@ -9,10 +9,12 @@ import (
 	"github.com/bornholm/xolo/internal/core/port"
 )
 
-// planScope identifies the org+provider pair for a subscription plan constraint.
+// planScope identifies the org+provider+user context for a subscription plan constraint.
 type planScope struct {
-	OrgID      model.OrgID
-	ProviderID model.ProviderID
+	OrgID       model.OrgID
+	ProviderID  model.ProviderID
+	UserID      model.UserID // empty if no user context
+	MemberCount int          // 0 disables per-user fair-share checks
 }
 
 // planDenial describes why a constraint blocked a request.
@@ -30,7 +32,7 @@ type noopReservation struct{}
 
 func (noopReservation) Release(_ context.Context) {}
 
-// concurrencyReservation decrements the in-flight counter on release.
+// concurrencyReservation decrements the org-level in-flight counter on release.
 type concurrencyReservation struct {
 	state      *SubscriptionStateDetailed
 	orgID      model.OrgID
@@ -39,6 +41,27 @@ type concurrencyReservation struct {
 
 func (r *concurrencyReservation) Release(_ context.Context) {
 	r.state.DecrementInFlight(r.orgID, r.providerID)
+}
+
+// userConcurrencyReservation decrements the per-user in-flight counter on release.
+type userConcurrencyReservation struct {
+	state      *SubscriptionStateDetailed
+	orgID      model.OrgID
+	providerID model.ProviderID
+	userID     model.UserID
+}
+
+func (r *userConcurrencyReservation) Release(_ context.Context) {
+	r.state.DecrementUserInFlight(r.orgID, r.providerID, r.userID)
+}
+
+// compositeReservation releases multiple reservations in order.
+type compositeReservation []planReservation
+
+func (c compositeReservation) Release(ctx context.Context) {
+	for _, r := range c {
+		r.Release(ctx)
+	}
 }
 
 // constraintEvaluator evaluates a single plan constraint and either grants or denies access.
@@ -82,6 +105,35 @@ func (e *rollingWindowEvaluator) Acquire(ctx context.Context, scope planScope, c
 		}, nil
 	}
 
+	// Per-user fair-share check.
+	if scope.UserID != "" && scope.MemberCount > 0 {
+		userTokens, userProviderValue, err := e.usageStore.SumUserPlanUsageSince(ctx, scope.UserID, scope.OrgID, scope.ProviderID, since)
+		if err != nil {
+			return nil, nil, err
+		}
+		n := int64(scope.MemberCount)
+
+		if c.TokenBudget != nil {
+			fairShare := max(*c.TokenBudget/n, 1)
+			if userTokens >= fairShare {
+				return nil, &planDenial{
+					Message: fmt.Sprintf("fair-share quota exceeded [%s]: %d / %d tokens used in the last %s (1/%d of plan budget)",
+						c.Label, userTokens, fairShare, formatDuration(dur), n),
+				}, nil
+			}
+		}
+
+		if c.ValueBudget != nil {
+			fairShare := max(*c.ValueBudget/n, 1)
+			if userProviderValue >= fairShare {
+				return nil, &planDenial{
+					Message: fmt.Sprintf("fair-share quota exceeded [%s]: value budget of %s / %s reached in the last %s (1/%d of plan budget)",
+						c.Label, formatMicrocents(userProviderValue, "USD"), formatMicrocents(fairShare, "USD"), formatDuration(dur), n),
+				}, nil
+			}
+		}
+	}
+
 	return noopReservation{}, nil, nil
 }
 
@@ -107,12 +159,34 @@ func (e *concurrencyEvaluator) Acquire(_ context.Context, scope planScope, c mod
 				c.Label, current-1, *c.MaxConcurrent),
 		}, nil
 	}
-
-	return &concurrencyReservation{
+	orgRes := &concurrencyReservation{
 		state:      e.state,
 		orgID:      scope.OrgID,
 		providerID: scope.ProviderID,
-	}, nil, nil
+	}
+
+	// Per-user fair-share concurrency check.
+	if scope.UserID != "" && scope.MemberCount > 0 {
+		n := scope.MemberCount
+		fairShare := max(*c.MaxConcurrent/n, 1)
+		userCurrent := e.state.IncrementUserInFlight(scope.OrgID, scope.ProviderID, scope.UserID)
+		if userCurrent > fairShare {
+			e.state.DecrementUserInFlight(scope.OrgID, scope.ProviderID, scope.UserID)
+			orgRes.Release(context.Background())
+			return nil, &planDenial{
+				Message: fmt.Sprintf("fair-share concurrency limit reached [%s]: %d / %d concurrent requests for this user (1/%d of plan)",
+					c.Label, userCurrent-1, fairShare, n),
+			}, nil
+		}
+		return compositeReservation{orgRes, &userConcurrencyReservation{
+			state:      e.state,
+			orgID:      scope.OrgID,
+			providerID: scope.ProviderID,
+			userID:     scope.UserID,
+		}}, nil, nil
+	}
+
+	return orgRes, nil, nil
 }
 
 func formatDuration(d time.Duration) string {

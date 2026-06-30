@@ -152,6 +152,12 @@ func (a *PipelineHookAdapter) PreRequest(ctx context.Context, req *genaiProxy.Pr
 		slog.String("model", req.Model),
 		slog.String("resolvedModel", forwardExec.ResolvedModel))
 
+	// Expose the resolved model ID early so quota/subscription hooks (priority 5+)
+	// can look up the underlying provider without waiting for ResolveModel.
+	if forwardExec.ResolvedModelID != "" {
+		req.Metadata[MetaModelID] = string(forwardExec.ResolvedModelID)
+	}
+
 	// If a pipeline node (e.g. a PRE_REQUEST plugin) returned a modified
 	// messages array, apply it to the actual LLM request by overriding
 	// req.ChatOptions. ChatOptions is normally fixed before hooks run, but

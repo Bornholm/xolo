@@ -182,7 +182,7 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		proxy.WithHook(pipelineHookAdapter),
 		proxy.WithHook(orgModelRouter),
 		proxy.WithHook(proxyAdapter.NewXoloQuotaEnforcer(quotaService, quotaStore, usageStore, providerStore)),
-		proxy.WithHook(proxyAdapter.NewXoloSubscriptionEnforcer(providerStore, usageStore, subscriptionState)),
+		proxy.WithHook(proxyAdapter.NewXoloSubscriptionEnforcer(providerStore, usageStore, subscriptionState, orgStore)),
 		proxy.WithHook(proxyAdapter.NewXoloUsageTracker(usageStore, providerStore, orgStore, exchangeRateService)),
 	)
 

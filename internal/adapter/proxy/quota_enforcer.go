@@ -55,6 +55,11 @@ func (e *XoloQuotaEnforcer) PreRequest(ctx context.Context, req *genaiProxy.Prox
 		return nil, nil
 	}
 
+	// ── Skip quota check if model is subscription-billed (governed by subscription_enforcer) ──
+	if e.isSubscriptionModel(ctx, req) {
+		return nil, nil
+	}
+
 	// ── Per-user quota check (effective = min of user quota and org quota) ──────
 	effectiveQuota, err := e.quotaResolver.ResolveEffectiveQuota(ctx, userID, orgID)
 	if err != nil {
@@ -252,6 +257,43 @@ func (e *XoloQuotaEnforcer) isZeroCostModel(ctx context.Context, req *genaiProxy
 	}
 
 	return llmModel.PromptCostPer1KTokens() == 0 && llmModel.CompletionCostPer1KTokens() == 0
+}
+
+// isSubscriptionModel checks if the requested model is backed by a subscription-billed provider.
+// If the model or provider cannot be resolved, it returns false (PAYG checks proceed as normal).
+func (e *XoloQuotaEnforcer) isSubscriptionModel(ctx context.Context, req *genaiProxy.ProxyRequest) bool {
+	var llmModel model.LLMModel
+
+	if modelID := ModelIDFromMeta(req.Metadata); modelID != "" {
+		m, err := e.providerStore.GetLLMModelByID(ctx, modelID)
+		if err != nil {
+			slog.DebugContext(ctx, "quota enforcer: could not load model by ID for subscription check", slog.Any("error", err), slog.String("modelID", string(modelID)))
+			return false
+		}
+		llmModel = m
+	} else {
+		orgID := OrgIDFromMeta(req.Metadata)
+		if orgID == "" {
+			return false
+		}
+		_, proxyName, err := parseQualifiedModelName(req.Model)
+		if err != nil {
+			return false
+		}
+		m, err := e.providerStore.GetLLMModelByProxyName(ctx, orgID, proxyName)
+		if err != nil {
+			slog.DebugContext(ctx, "quota enforcer: could not load model by proxy name for subscription check", slog.Any("error", err), slog.String("model", req.Model))
+			return false
+		}
+		llmModel = m
+	}
+
+	p, err := e.providerStore.GetProviderByID(ctx, llmModel.ProviderID())
+	if err != nil {
+		slog.DebugContext(ctx, "quota enforcer: could not load provider for subscription check", slog.Any("error", err), slog.String("providerID", string(llmModel.ProviderID())))
+		return false
+	}
+	return p.BillingMode() == model.BillingModeSubscription
 }
 
 var _ genaiProxy.PreRequestHook = &XoloQuotaEnforcer{}

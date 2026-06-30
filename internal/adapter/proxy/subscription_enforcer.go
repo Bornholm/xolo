@@ -21,6 +21,7 @@ const metaPlanReservations = "xolo.plan.reservations"
 // State is in-memory (not shared across replicas): the upstream 429 resync acts as the safety net.
 type XoloSubscriptionEnforcer struct {
 	providerStore port.ProviderStore
+	orgStore      port.OrgStore
 	state         *SubscriptionStateDetailed
 	evaluators    map[model.PlanConstraintKind]constraintEvaluator
 }
@@ -29,9 +30,11 @@ func NewXoloSubscriptionEnforcer(
 	providerStore port.ProviderStore,
 	usageStore port.UsageStore,
 	state *SubscriptionStateDetailed,
+	orgStore port.OrgStore,
 ) *XoloSubscriptionEnforcer {
 	return &XoloSubscriptionEnforcer{
 		providerStore: providerStore,
+		orgStore:      orgStore,
 		state:         state,
 		evaluators: map[model.PlanConstraintKind]constraintEvaluator{
 			model.ConstraintRollingWindow: &rollingWindowEvaluator{usageStore: usageStore},
@@ -65,7 +68,26 @@ func (e *XoloSubscriptionEnforcer) PreRequest(ctx context.Context, req *genaiPro
 		return nil, nil
 	}
 
-	scope := planScope{OrgID: orgID, ProviderID: p.ID()}
+	userID := model.UserID(req.UserID)
+
+	// Resolve org member count for per-user fair-share enforcement.
+	memberCount := 0
+	if userID != "" {
+		_, count, err := e.orgStore.ListOrgMembers(ctx, orgID, port.ListOrgMembersOptions{})
+		if err != nil {
+			slog.WarnContext(ctx, "subscription enforcer: could not list org members for fair-share, skipping user fair-share check",
+				slog.Any("error", err), slog.String("org", string(orgID)))
+		} else {
+			memberCount = int(count)
+		}
+	}
+
+	scope := planScope{
+		OrgID:       orgID,
+		ProviderID:  p.ID(),
+		UserID:      userID,
+		MemberCount: memberCount,
+	}
 
 	// Check cooldowns first (fast path, no DB).
 	for _, c := range plan.Constraints {

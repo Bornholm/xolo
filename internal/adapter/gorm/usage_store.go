@@ -265,4 +265,24 @@ func (s *Store) SumPlanUsageSince(ctx context.Context, orgID model.OrgID, provid
 	return row.Tokens, row.ProviderValue, nil
 }
 
+// SumUserPlanUsageSince implements port.UsageStore.
+func (s *Store) SumUserPlanUsageSince(ctx context.Context, userID model.UserID, orgID model.OrgID, providerID model.ProviderID, since time.Time) (tokens int64, providerValue int64, err error) {
+	var row struct {
+		Tokens        int64
+		ProviderValue int64
+	}
+
+	err = s.withRetry(ctx, false, func(ctx context.Context, db *gorm.DB) error {
+		return errors.WithStack(db.Model(&UsageRecord{}).
+			Select("COALESCE(SUM(total_tokens), 0) as tokens, COALESCE(SUM(provider_cost), 0) as provider_value").
+			Where("user_id = ? AND org_id = ? AND provider_id = ? AND created_at >= ? AND plan_covered = 1",
+				string(userID), string(orgID), string(providerID), since).
+			Scan(&row).Error)
+	}, sqlite3.BUSY, sqlite3.LOCKED)
+	if err != nil {
+		return 0, 0, err
+	}
+	return row.Tokens, row.ProviderValue, nil
+}
+
 var _ port.UsageStore = &Store{}
