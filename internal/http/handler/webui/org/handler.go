@@ -17,20 +17,21 @@ type pluginManagerIface interface {
 
 // Handler serves the org-admin section: /orgs/{orgSlug}/admin/
 type Handler struct {
-	mux                 *http.ServeMux
-	orgStore            port.OrgStore
-	roleStore           port.RoleStore
-	providerStore       port.ProviderStore
-	virtualModelStore   port.VirtualModelStore
-	usageStore          port.UsageStore
-	inviteStore         port.InviteStore
-	userStore           port.UserStore
-	applicationStore    port.ApplicationStore
-	quotaStore          port.QuotaStore
-	secretStore         port.SecretStore
-	secretKey           string
-	exchangeRateService *service.ExchangeRateService
-	pluginManager       pluginManagerIface
+	mux                  *http.ServeMux
+	orgStore             port.OrgStore
+	roleStore            port.RoleStore
+	providerStore        port.ProviderStore
+	virtualModelStore    port.VirtualModelStore
+	usageStore           port.UsageStore
+	inviteStore          port.InviteStore
+	userStore            port.UserStore
+	applicationStore     port.ApplicationStore
+	quotaStore           port.QuotaStore
+	secretStore          port.SecretStore
+	secretKey            string
+	exchangeRateService  *service.ExchangeRateService
+	pluginManager        pluginManagerIface
+	subscriptionMonitor  port.SubscriptionMonitor
 }
 
 // ServeHTTP implements http.Handler.
@@ -52,22 +53,24 @@ func NewHandler(
 	secretStore port.SecretStore,
 	secretKey string,
 	pluginManager pluginManagerIface,
+	subscriptionMonitor port.SubscriptionMonitor,
 ) *Handler {
 	h := &Handler{
-		mux:                 http.NewServeMux(),
-		orgStore:            orgStore,
-		roleStore:           roleStore,
-		providerStore:       providerStore,
-		virtualModelStore:   virtualModelStore,
-		usageStore:          usageStore,
-		inviteStore:         inviteStore,
-		userStore:           userStore,
-		applicationStore:    applicationStore,
-		quotaStore:          quotaStore,
-		secretStore:         secretStore,
-		secretKey:           secretKey,
-		exchangeRateService: exchangeRateService,
-		pluginManager:       pluginManager,
+		mux:                  http.NewServeMux(),
+		orgStore:             orgStore,
+		roleStore:            roleStore,
+		providerStore:        providerStore,
+		virtualModelStore:    virtualModelStore,
+		usageStore:           usageStore,
+		inviteStore:          inviteStore,
+		userStore:            userStore,
+		applicationStore:     applicationStore,
+		quotaStore:           quotaStore,
+		secretStore:          secretStore,
+		secretKey:            secretKey,
+		exchangeRateService:  exchangeRateService,
+		pluginManager:        pluginManager,
+		subscriptionMonitor:  subscriptionMonitor,
 	}
 
 	// assertPerm gates a route on a single RBAC permission resolved for the

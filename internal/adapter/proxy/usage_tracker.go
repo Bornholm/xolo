@@ -119,6 +119,8 @@ func (t *XoloUsageTracker) PostResponse(ctx context.Context, req *genaiProxy.Pro
 		costSource = model.CostSourceComputed
 	}
 
+	planCovered := p.BillingMode() == model.BillingModeSubscription
+
 	recordCost := providerCost
 	recordCurrency := providerCurrency
 
@@ -156,6 +158,8 @@ func (t *XoloUsageTracker) PostResponse(ctx context.Context, req *genaiProxy.Pro
 		costSource,
 		resolvedModel,
 	)
+	record.SetPlanCovered(planCovered)
+	record.SetProviderCost(providerCost)
 
 	if err := t.usageStore.RecordUsage(ctx, record); err != nil {
 		slog.ErrorContext(ctx, "usage tracker: could not record usage", slog.Any("error", errors.WithStack(err)))

@@ -107,6 +107,7 @@ func (h *Handler) loadModelUsages(ctx context.Context, userID model.UserID, memb
 			if err != nil {
 				slog.ErrorContext(ctx, "could not list models", slogx.Error(err), slog.String("orgID", string(m.OrgID())))
 			} else {
+				providerCache := make(map[model.ProviderID]model.Provider)
 				for _, llmModel := range models {
 					if !canUseOrg && !perms.HasModelAccess(string(llmModel.ID()), rbac.ModelKindLLM) {
 						continue
@@ -121,10 +122,20 @@ func (h *Handler) loadModelUsages(ctx context.Context, userID model.UserID, memb
 						slog.ErrorContext(ctx, "could not aggregate model usage", slogx.Error(err))
 						modelAgg = nil
 					}
+					providerID := llmModel.ProviderID()
+					if _, ok := providerCache[providerID]; !ok {
+						p, err := h.providerStore.GetProviderByID(ctx, providerID)
+						if err != nil {
+							slog.ErrorContext(ctx, "could not get provider", slogx.Error(err), slog.String("providerID", string(providerID)))
+						} else {
+							providerCache[providerID] = p
+						}
+					}
 					modelUsages = append(modelUsages, component.ModelUsage{
 						Model:     llmModel,
 						Org:       org,
 						Aggregate: modelAgg,
+						Provider:  providerCache[providerID],
 					})
 				}
 			}

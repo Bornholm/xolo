@@ -18,8 +18,10 @@ type Provider struct {
 	Active    int    `gorm:"default:1"`
 	Currency  string `gorm:"default:'USD'"`
 	CloudTier int    `gorm:"default:0"`
-	RetryConfig     JSONColumn[model.RetryConfig]     `gorm:"type:text"`
-	RateLimitConfig JSONColumn[model.RateLimitConfig] `gorm:"type:text"`
+	RetryConfig      JSONColumn[model.RetryConfig]      `gorm:"type:text"`
+	RateLimitConfig  JSONColumn[model.RateLimitConfig]  `gorm:"type:text"`
+	BillingMode      string                             `gorm:"default:'payg'"`
+	SubscriptionPlan JSONColumn[model.SubscriptionPlan] `gorm:"type:text"`
 
 	LLMModels []*LLMModel `gorm:"foreignKey:ProviderID;constraint:OnDelete:CASCADE"`
 }
@@ -39,23 +41,36 @@ func (w *wrappedProvider) Currency() string      { return w.p.Currency }
 func (w *wrappedProvider) CloudTier() int        { return w.p.CloudTier }
 func (w *wrappedProvider) CreatedAt() time.Time                 { return w.p.CreatedAt }
 func (w *wrappedProvider) UpdatedAt() time.Time                 { return w.p.UpdatedAt }
-func (w *wrappedProvider) RetryConfig() *model.RetryConfig         { return w.p.RetryConfig.Val }
-func (w *wrappedProvider) RateLimitConfig() *model.RateLimitConfig { return w.p.RateLimitConfig.Val }
+func (w *wrappedProvider) RetryConfig() *model.RetryConfig           { return w.p.RetryConfig.Val }
+func (w *wrappedProvider) RateLimitConfig() *model.RateLimitConfig   { return w.p.RateLimitConfig.Val }
+func (w *wrappedProvider) BillingMode() model.BillingMode {
+	if w.p.BillingMode == "" {
+		return model.BillingModePayg
+	}
+	return model.BillingMode(w.p.BillingMode)
+}
+func (w *wrappedProvider) SubscriptionPlan() *model.SubscriptionPlan { return w.p.SubscriptionPlan.Val }
 
 var _ model.Provider = &wrappedProvider{}
 
 func fromProvider(p model.Provider) *Provider {
+	bm := string(p.BillingMode())
+	if bm == "" {
+		bm = string(model.BillingModePayg)
+	}
 	return &Provider{
-		ID:              string(p.ID()),
-		OrgID:           string(p.OrgID()),
-		Name:            p.Name(),
-		Type:            p.Type(),
-		BaseURL:         p.BaseURL(),
-		APIKey:          p.APIKey(),
-		Active:          boolToInt(p.Active()),
-		Currency:        p.Currency(),
-		CloudTier:       p.CloudTier(),
-		RetryConfig:     JSONColumn[model.RetryConfig]{Val: p.RetryConfig()},
-		RateLimitConfig: JSONColumn[model.RateLimitConfig]{Val: p.RateLimitConfig()},
+		ID:               string(p.ID()),
+		OrgID:            string(p.OrgID()),
+		Name:             p.Name(),
+		Type:             p.Type(),
+		BaseURL:          p.BaseURL(),
+		APIKey:           p.APIKey(),
+		Active:           boolToInt(p.Active()),
+		Currency:         p.Currency(),
+		CloudTier:        p.CloudTier(),
+		RetryConfig:      JSONColumn[model.RetryConfig]{Val: p.RetryConfig()},
+		RateLimitConfig:  JSONColumn[model.RateLimitConfig]{Val: p.RateLimitConfig()},
+		BillingMode:      bm,
+		SubscriptionPlan: JSONColumn[model.SubscriptionPlan]{Val: p.SubscriptionPlan()},
 	}
 }

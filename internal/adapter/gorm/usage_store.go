@@ -91,6 +91,8 @@ func (s *Store) AggregateUsage(ctx context.Context, filter port.UsageFilter) (*p
 }
 
 // SumCostSince implements port.UsageStore.
+// Only PAYG (plan_covered=0) records are included so subscription usage does not
+// inflate monetary quotas.
 func (s *Store) SumCostSince(ctx context.Context, userID model.UserID, orgID model.OrgID, since time.Time) (int64, error) {
 	var total int64
 
@@ -98,7 +100,7 @@ func (s *Store) SumCostSince(ctx context.Context, userID model.UserID, orgID mod
 		var result struct{ Total int64 }
 		err := db.Model(&UsageRecord{}).
 			Select("COALESCE(SUM(cost), 0) as total").
-			Where("user_id = ? AND org_id = ? AND created_at >= ?", string(userID), string(orgID), since).
+			Where("user_id = ? AND org_id = ? AND created_at >= ? AND plan_covered = 0", string(userID), string(orgID), since).
 			Scan(&result).Error
 		total = result.Total
 		return errors.WithStack(err)
@@ -179,8 +181,18 @@ func applyUsageFilter(query *gorm.DB, filter port.UsageFilter) *gorm.DB {
 	if filter.OrgID != nil {
 		query = query.Where("org_id = ?", string(*filter.OrgID))
 	}
+	if filter.ProviderID != nil {
+		query = query.Where("provider_id = ?", string(*filter.ProviderID))
+	}
 	if filter.ModelID != nil {
 		query = query.Where("model_id = ?", string(*filter.ModelID))
+	}
+	if filter.PlanCovered != nil {
+		if *filter.PlanCovered {
+			query = query.Where("plan_covered = 1")
+		} else {
+			query = query.Where("plan_covered = 0")
+		}
 	}
 	if filter.AuthTokenID != nil {
 		query = query.Where("auth_token_id = ?", *filter.AuthTokenID)
@@ -201,6 +213,8 @@ func applyUsageFilter(query *gorm.DB, filter port.UsageFilter) *gorm.DB {
 }
 
 // SumCostSinceByCurrency implements port.UsageStore.
+// Only PAYG (plan_covered=0) records are included so subscription usage does not
+// inflate monetary quotas.
 func (s *Store) SumCostSinceByCurrency(ctx context.Context, userIDs []model.UserID, orgID model.OrgID, since time.Time) (map[string]int64, error) {
 	var rows []struct {
 		Currency string
@@ -210,7 +224,7 @@ func (s *Store) SumCostSinceByCurrency(ctx context.Context, userIDs []model.User
 	err := s.withRetry(ctx, false, func(ctx context.Context, db *gorm.DB) error {
 		query := db.Model(&UsageRecord{}).
 			Select("currency, COALESCE(SUM(cost), 0) as total").
-			Where("org_id = ? AND created_at >= ?", string(orgID), since)
+			Where("org_id = ? AND created_at >= ? AND plan_covered = 0", string(orgID), since)
 		if len(userIDs) > 0 {
 			ids := make([]string, len(userIDs))
 			for i, uid := range userIDs {
@@ -229,6 +243,26 @@ func (s *Store) SumCostSinceByCurrency(ctx context.Context, userIDs []model.User
 		result[r.Currency] = r.Total
 	}
 	return result, nil
+}
+
+// SumPlanUsageSince implements port.UsageStore.
+func (s *Store) SumPlanUsageSince(ctx context.Context, orgID model.OrgID, providerID model.ProviderID, since time.Time) (tokens int64, providerValue int64, err error) {
+	var row struct {
+		Tokens        int64
+		ProviderValue int64
+	}
+
+	err = s.withRetry(ctx, false, func(ctx context.Context, db *gorm.DB) error {
+		return errors.WithStack(db.Model(&UsageRecord{}).
+			Select("COALESCE(SUM(total_tokens), 0) as tokens, COALESCE(SUM(provider_cost), 0) as provider_value").
+			Where("org_id = ? AND provider_id = ? AND created_at >= ? AND plan_covered = 1",
+				string(orgID), string(providerID), since).
+			Scan(&row).Error)
+	}, sqlite3.BUSY, sqlite3.LOCKED)
+	if err != nil {
+		return 0, 0, err
+	}
+	return row.Tokens, row.ProviderValue, nil
 }
 
 var _ port.UsageStore = &Store{}

@@ -2,6 +2,7 @@ package org
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"reflect"
@@ -136,8 +137,16 @@ func (h *Handler) createProvider(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cloudTier, _ := strconv.Atoi(r.FormValue("cloud_tier"))
+	billingMode := model.BillingMode(r.FormValue("billing_mode"))
+	if billingMode != model.BillingModeSubscription {
+		billingMode = model.BillingModePayg
+	}
 	p := model.NewProvider(org.ID(), r.FormValue("name"), r.FormValue("provider_type"), strings.TrimSpace(r.FormValue("base_url")), encryptedKey, r.FormValue("currency"))
 	p.SetCloudTier(cloudTier)
+	p.SetBillingMode(billingMode)
+	if billingMode == model.BillingModeSubscription {
+		p.SetSubscriptionPlan(parseSubscriptionPlanFromForm(r))
+	}
 	if err := h.providerStore.CreateProvider(ctx, p); err != nil {
 		slog.ErrorContext(ctx, "could not create provider", slogx.Error(err))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -280,21 +289,31 @@ func (h *Handler) updateProvider(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cloudTier, _ := strconv.Atoi(r.FormValue("cloud_tier"))
+	billingMode := model.BillingMode(r.FormValue("billing_mode"))
+	if billingMode != model.BillingModeSubscription {
+		billingMode = model.BillingModePayg
+	}
+	var subscriptionPlan *model.SubscriptionPlan
+	if billingMode == model.BillingModeSubscription {
+		subscriptionPlan = parseSubscriptionPlanFromForm(r)
+	}
 
 	updated := &updatedProviderAdapter{
-		id:              existing.ID(),
-		orgID:           existing.OrgID(),
-		name:            r.FormValue("name"),
-		pType:           r.FormValue("provider_type"),
-		baseURL:         strings.TrimSpace(r.FormValue("base_url")),
-		apiKey:          apiKey,
-		active:          r.FormValue("active") == "on",
-		currency:        currency,
-		cloudTier:       cloudTier,
-		createdAt:       existing.CreatedAt(),
-		updatedAt:       time.Now(),
-		retryConfig:     retryConfig,
-		rateLimitConfig: rateLimitConfig,
+		id:               existing.ID(),
+		orgID:            existing.OrgID(),
+		name:             r.FormValue("name"),
+		pType:            r.FormValue("provider_type"),
+		baseURL:          strings.TrimSpace(r.FormValue("base_url")),
+		apiKey:           apiKey,
+		active:           r.FormValue("active") == "on",
+		currency:         currency,
+		cloudTier:        cloudTier,
+		createdAt:        existing.CreatedAt(),
+		updatedAt:        time.Now(),
+		retryConfig:      retryConfig,
+		rateLimitConfig:  rateLimitConfig,
+		billingMode:      billingMode,
+		subscriptionPlan: subscriptionPlan,
 	}
 
 	if err := h.providerStore.SaveProvider(ctx, updated); err != nil {
@@ -507,6 +526,67 @@ func parseActiveParamsField(v string) int64 {
 		return 0
 	}
 	return int64(f * 1e9)
+}
+
+// parseSubscriptionPlanFromForm reads the structured subscription plan fields
+// submitted by the SubscriptionPlanEditor component.
+func parseSubscriptionPlanFromForm(r *http.Request) *model.SubscriptionPlan {
+	label := strings.TrimSpace(r.FormValue("plan_label"))
+	countStr := r.FormValue("plan_constraint_count")
+	if countStr == "" {
+		return nil
+	}
+	count, _ := strconv.Atoi(countStr)
+	if count <= 0 && label == "" {
+		return nil
+	}
+
+	constraints := make([]model.PlanConstraint, 0, count)
+	for i := range count {
+		prefix := fmt.Sprintf("plan_c%d_", i)
+		kind := model.PlanConstraintKind(r.FormValue(prefix + "kind"))
+		if kind == "" {
+			continue
+		}
+		c := model.PlanConstraint{
+			Kind:  kind,
+			Label: strings.TrimSpace(r.FormValue(prefix + "label")),
+		}
+		switch kind {
+		case model.ConstraintRollingWindow:
+			if d, err := time.ParseDuration(r.FormValue(prefix + "duration")); err == nil && d > 0 {
+				c.Duration = model.PlanDuration(d)
+			}
+			if tb := parsePlanTokenBudget(r.FormValue(prefix + "token_budget")); tb != nil {
+				c.TokenBudget = tb
+			}
+			if vb := parseBudgetField(r.FormValue(prefix + "value_budget")); vb != nil {
+				c.ValueBudget = vb
+			}
+		case model.ConstraintConcurrency:
+			if mc, err := strconv.Atoi(r.FormValue(prefix + "max_concurrent")); err == nil && mc > 0 {
+				c.MaxConcurrent = &mc
+			}
+		}
+		constraints = append(constraints, c)
+	}
+
+	if label == "" && len(constraints) == 0 {
+		return nil
+	}
+	return &model.SubscriptionPlan{Label: label, Constraints: constraints}
+}
+
+func parsePlanTokenBudget(v string) *int64 {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return nil
+	}
+	n, err := strconv.ParseInt(v, 10, 64)
+	if err != nil || n <= 0 {
+		return nil
+	}
+	return &n
 }
 
 func parseCostField(v string) int64 {

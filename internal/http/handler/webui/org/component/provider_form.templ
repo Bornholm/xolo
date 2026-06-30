@@ -119,6 +119,32 @@ templ ProviderForm(vmodel ProviderFormVModel) {
 						}
 					}
 				</div>
+				// ── Billing mode ─────────────────────────────────────────────
+				<div class="space-y-2">
+					<label class="text-sm font-medium">Mode de facturation</label>
+					{{ currentBillingMode := model.BillingModePayg }}
+					if !vmodel.IsNew && vmodel.Provider != nil {
+						{{ currentBillingMode = vmodel.Provider.BillingMode() }}
+					}
+					@selectbox.SelectBox(selectbox.Props{ID: "billing_mode"}) {
+						@selectbox.Trigger(selectbox.TriggerProps{Name: "billing_mode", Disabled: readonly}) {
+							@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner un mode"})
+						}
+						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+							@selectbox.Group() {
+								@selectbox.Item(selectbox.ItemProps{Value: string(model.BillingModePayg), Selected: currentBillingMode == model.BillingModePayg}) {
+									Pay-as-you-go
+								}
+								@selectbox.Item(selectbox.ItemProps{Value: string(model.BillingModeSubscription), Selected: currentBillingMode == model.BillingModeSubscription}) {
+									Abonnement (Token Plan)
+								}
+							}
+						}
+					}
+				</div>
+				if !vmodel.IsNew && vmodel.Provider != nil && vmodel.Provider.BillingMode() == model.BillingModeSubscription {
+					@SubscriptionPlanEditor(vmodel.Provider.SubscriptionPlan(), readonly)
+				}
 				if !vmodel.IsNew && vmodel.Provider != nil {
 					<div class="flex items-center gap-2">
 						@checkbox.Checkbox(checkbox.Props{ID: "active", Name: "active", Checked: vmodel.Provider.Active(), Disabled: readonly})

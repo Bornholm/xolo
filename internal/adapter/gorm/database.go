@@ -103,6 +103,26 @@ func createGetDatabase(db *gorm.DB) func(ctx context.Context) (*gorm.DB, error) 
 					},
 				},
 				{
+					// Add subscription billing support: billing_mode + subscription_plan on
+					// providers, plan_covered + provider_cost on usage records.
+					ID: "202506290001",
+					Migrate: func(tx *gorm.DB) error {
+						return tx.AutoMigrate(&Provider{}, &UsageRecord{})
+					},
+					Rollback: func(tx *gorm.DB) error {
+						if err := tx.Migrator().DropColumn(&Provider{}, "billing_mode"); err != nil {
+							return err
+						}
+						if err := tx.Migrator().DropColumn(&Provider{}, "subscription_plan"); err != nil {
+							return err
+						}
+						if err := tx.Migrator().DropColumn(&UsageRecord{}, "plan_covered"); err != nil {
+							return err
+						}
+						return tx.Migrator().DropColumn(&UsageRecord{}, "provider_cost")
+					},
+				},
+				{
 					// Add cost_source column to usage_records to track whether the
 					// cost was reported by the provider or computed from the tariff.
 					ID: "202606290001",

@@ -41,13 +41,19 @@ type UsageRecord interface {
 	CachedTokens() int
 	CompletionTokens() int
 	TotalTokens() int
-	Cost() int64            // microcents, frozen at recording time
+	Cost() int64            // microcents, frozen at recording time (converted to org currency)
 	Currency() string       // currency code, e.g. USD, EUR — frozen from provider at recording time
 	CostSource() CostSource // whether Cost is provider-reported or computed from tariff
 	// ResolvedModelName is the actual model used when a virtual model was resolved.
 	// Empty if the requested model was not a virtual model.
 	ResolvedModelName() string
 	CreatedAt() time.Time
+	// PlanCovered indicates that this request was served by a subscription provider.
+	// Such records do not count toward monetary quotas.
+	PlanCovered() bool
+	// ProviderCost is the raw equivalent PAYG cost in the provider's own currency (microcents).
+	// Used to measure rolling-window value budgets on subscription plans.
+	ProviderCost() int64
 }
 
 type BaseUsageRecord struct {
@@ -68,6 +74,8 @@ type BaseUsageRecord struct {
 	currency          string
 	costSource        CostSource
 	createdAt         time.Time
+	planCovered       bool
+	providerCost      int64
 }
 
 func (r *BaseUsageRecord) ID() UsageRecordID            { return r.id }
@@ -88,7 +96,12 @@ func (r *BaseUsageRecord) CostSource() CostSource       { return r.costSource }
 func (r *BaseUsageRecord) ResolvedModelName() string    { return r.resolvedModelName }
 func (r *BaseUsageRecord) CreatedAt() time.Time         { return r.createdAt }
 
+func (r *BaseUsageRecord) PlanCovered() bool  { return r.planCovered }
+func (r *BaseUsageRecord) ProviderCost() int64 { return r.providerCost }
+
 func (r *BaseUsageRecord) SetResolvedModelName(v string) { r.resolvedModelName = v }
+func (r *BaseUsageRecord) SetPlanCovered(v bool)         { r.planCovered = v }
+func (r *BaseUsageRecord) SetProviderCost(v int64)       { r.providerCost = v }
 
 var _ UsageRecord = &BaseUsageRecord{}
 

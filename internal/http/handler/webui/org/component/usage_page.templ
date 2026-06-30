@@ -125,6 +125,8 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 			</div>
 			<!-- Org quota card -->
 			if vmodel.OrgQuota != nil {
+				<div class="space-y-3">
+				<h2 class="text-lg font-semibold">Budget Pay-as-you-go</h2>
 				{{
 					var budget *int64
 					var spent int64
@@ -201,7 +203,10 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 						</div>
 					}
 				}
+				</div>
 			}
+			<!-- Subscription providers plan usage -->
+			@SubscriptionUsageSection(vmodel.SubscriptionProviders)
 			<!-- Summary cards -->
 			if vmodel.Aggregate != nil {
 				<div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -460,16 +465,26 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 											</div>
 										}
 										@table.Cell() {
-											if dr.Converted {
-												<span
-													title={ common.FormatCost(dr.Record.Cost(), dr.Record.Currency()) }
-													class="cursor-help underline decoration-dotted"
-												>
+											<div class="flex items-center gap-1.5">
+												if dr.Converted {
+													<span
+														title={ common.FormatCost(dr.Record.Cost(), dr.Record.Currency()) }
+														class="cursor-help underline decoration-dotted"
+													>
+														{ common.FormatCost(dr.DisplayCost, dr.DisplayCurrency) }
+													</span>
+												} else {
 													{ common.FormatCost(dr.DisplayCost, dr.DisplayCurrency) }
-												</span>
-											} else {
-												{ common.FormatCost(dr.DisplayCost, dr.DisplayCurrency) }
-											}
+												}
+												if dr.Record.PlanCovered() {
+													<span
+														title="Requête couverte par un forfait abonnement"
+														class="cursor-help text-muted-foreground"
+													>
+														@icon.Receipt(icon.Props{Class: "h-3.5 w-3.5"})
+													</span>
+												}
+											</div>
 										}
 										@table.Cell() {
 											if dr.EnergyWh > 0 {

@@ -32,6 +32,7 @@ type Handler struct {
 	applicationStore    port.ApplicationStore
 	exchangeRateService *service.ExchangeRateService
 	pluginManager       pluginManagerIface
+	subscriptionMonitor port.SubscriptionMonitor
 }
 
 // ServeHTTP implements http.Handler.
@@ -56,6 +57,7 @@ func NewHandler(
 	secretStore port.SecretStore,
 	secretKey string,
 	pluginManager pluginManagerIface,
+	subscriptionMonitor port.SubscriptionMonitor,
 ) *Handler {
 	h := &Handler{
 		mux:                 http.NewServeMux(),
@@ -70,6 +72,7 @@ func NewHandler(
 		applicationStore:    applicationStore,
 		exchangeRateService: exchangeRateService,
 		pluginManager:       pluginManager,
+		subscriptionMonitor: subscriptionMonitor,
 	}
 
 	isActive := authz.Middleware(http.HandlerFunc(h.getInactiveUserPage), authz.Active())
@@ -82,7 +85,7 @@ func NewHandler(
 	mount(h.mux, "/models", isActive(hasModelAccess(http.HandlerFunc(h.getModelsPage))))
 	mount(h.mux, "/profile/", isActive(profile.NewHandler(userStore, orgStore, inviteStore, personalVMStore, secretStore, pluginManager)))
 	mount(h.mux, "/admin/", isActive(admin.NewHandler(userStore, orgStore, roleStore, taskRunner, exchangeRateService, pluginManager)))
-	mount(h.mux, "/orgs/", isActive(org.NewHandler(orgStore, roleStore, providerStore, virtualModelStore, usageStore, inviteStore, userStore, applicationStore, exchangeRateService, quotaStore, secretStore, secretKey, pluginManager)))
+	mount(h.mux, "/orgs/", isActive(org.NewHandler(orgStore, roleStore, providerStore, virtualModelStore, usageStore, inviteStore, userStore, applicationStore, exchangeRateService, quotaStore, secretStore, secretKey, pluginManager, subscriptionMonitor)))
 
 	// Public join flow — no isActive wrapper (unauthenticated users get a sign-in prompt)
 	h.mux.Handle("/join/", http.StripPrefix("/join", join.NewHandler(orgStore, roleStore, inviteStore)))

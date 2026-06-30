@@ -5,6 +5,7 @@ import (
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	orgcomponent "github.com/bornholm/xolo/internal/http/handler/webui/org/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
@@ -30,6 +31,7 @@ type ModelUsage struct {
 	Model     model.LLMModel
 	Org       model.Organization
 	Aggregate *port.UsageAggregate
+	Provider  model.Provider // nil for virtual models
 }
 
 type DisplayUsageRecord struct {
@@ -47,19 +49,20 @@ type DisplayUsageRecord struct {
 }
 
 type DashboardPageVModel struct {
-	AppLayoutVModel     common.AppLayoutVModel
-	OrgUsages           []OrgUsage
-	Aggregate           *port.UsageAggregate
-	Records             []DisplayUsageRecord
-	Orgs                map[model.OrgID]model.Organization
-	Range               string
-	Page                int
-	HasNext             bool
-	ChartPerDay         []ProfileChartDataPoint
-	ChartSharesPerModel []ChartShare
-	ChartPerProvider    []ProfileChartDataPoint
-	TotalEnergyWh       float64 // sum of midpoint estimates (0 if all unknown)
-	TotalCO2GramsMid    float64 // sum of CO₂ midpoints (world average, grams)
+	AppLayoutVModel       common.AppLayoutVModel
+	OrgUsages             []OrgUsage
+	Aggregate             *port.UsageAggregate
+	Records               []DisplayUsageRecord
+	Orgs                  map[model.OrgID]model.Organization
+	Range                 string
+	Page                  int
+	HasNext               bool
+	SubscriptionProviders []orgcomponent.SubscriptionProviderUsage
+	ChartPerDay           []ProfileChartDataPoint
+	ChartSharesPerModel   []ChartShare
+	ChartPerProvider      []ProfileChartDataPoint
+	TotalEnergyWh         float64 // sum of midpoint estimates (0 if all unknown)
+	TotalCO2GramsMid      float64 // sum of CO₂ midpoints (world average, grams)
 }
 
 // ChartShare represents a value's share of a total, as a percentage, with
@@ -130,6 +133,8 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 			</div>
 			<!-- Org quota cards -->
 			if len(vmodel.OrgUsages) > 0 {
+				<div class="space-y-3">
+				<h2 class="text-lg font-semibold">Budget Pay-as-you-go</h2>
 				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 					for _, ou := range vmodel.OrgUsages {
 						{{
@@ -210,7 +215,10 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 						}
 					}
 				</div>
+				</div>
 			}
+			<!-- Subscription providers plan usage -->
+			@orgcomponent.SubscriptionUsageSection(vmodel.SubscriptionProviders)
 			<!-- Summary cards -->
 			if vmodel.Aggregate != nil {
 				<div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -449,16 +457,26 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 											</div>
 										}
 										@table.Cell() {
-											if dr.Converted {
-												<span
-													title={ common.FormatCost(dr.Record.Cost(), dr.Record.Currency()) }
-													class="cursor-help underline decoration-dotted"
-												>
+											<div class="flex items-center gap-1.5">
+												if dr.Converted {
+													<span
+														title={ common.FormatCost(dr.Record.Cost(), dr.Record.Currency()) }
+														class="cursor-help underline decoration-dotted"
+													>
+														{ common.FormatCost(dr.DisplayCost, dr.DisplayCurrency) }
+													</span>
+												} else {
 													{ common.FormatCost(dr.DisplayCost, dr.DisplayCurrency) }
-												</span>
-											} else {
-												{ common.FormatCost(dr.DisplayCost, dr.DisplayCurrency) }
-											}
+												}
+												if dr.Record.PlanCovered() {
+													<span
+														title="Requête couverte par un forfait abonnement"
+														class="cursor-help text-muted-foreground"
+													>
+														@icon.Receipt(icon.Props{Class: "h-3.5 w-3.5"})
+													</span>
+												}
+											</div>
 										}
 										@table.Cell() {
 											if dr.EnergyWh > 0 {

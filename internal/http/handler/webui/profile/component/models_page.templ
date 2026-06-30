@@ -209,6 +209,15 @@ templ modelCard(mu ModelUsage) {
 							embeddings
 						}
 					}
+					if mu.Provider != nil && mu.Provider.BillingMode() == model.BillingModeSubscription {
+						@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
+							abonnement
+						}
+					} else if mu.Provider != nil {
+						@badge.Badge(badge.Props{Variant: badge.VariantOutline}) {
+							pay-as-you-go
+						}
+					}
 				</div>
 				<div class="text-xs text-muted-foreground mt-0.5 truncate">
 					if mu.Model.Description() != "" {

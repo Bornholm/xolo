@@ -198,7 +198,7 @@ func QuotaPage(vmodel QuotaPageVModel) templ.Component {
 							}()
 						}
 						ctx = templ.InitializeContext(ctx)
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "Bloque les nouvelles requêtes une fois le plafond atteint.")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "Bloque les nouvelles requêtes une fois le plafond atteint. S'applique uniquement aux fournisseurs en mode <strong>Pay-as-you-go</strong> ; les fournisseurs en mode abonnement disposent de leurs propres limites de plan.")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}

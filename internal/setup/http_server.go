@@ -146,6 +146,8 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		return nil, errors.Wrap(err, "could not create personal virtual model store from config")
 	}
 
+	subscriptionState := proxyAdapter.NewSubscriptionState()
+
 	orgModelRouter := proxyAdapter.NewOrgModelRouter(providerStore, orgStore, conf.SecretKey)
 
 	pipelineHookAdapter := proxyAdapter.NewPipelineHookAdapter(
@@ -169,7 +171,7 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		return nil, errors.Wrap(err, "could not create secret store from config")
 	}
 
-	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, roleStore, providerStore, virtualModelStore, personalVMStore, usageStore, inviteStore, applicationStore, quotaStore, quotaService, exchangeRateService, secretStore, conf.SecretKey, pluginManager)
+	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, roleStore, providerStore, virtualModelStore, personalVMStore, usageStore, inviteStore, applicationStore, quotaStore, quotaService, exchangeRateService, secretStore, conf.SecretKey, pluginManager, subscriptionState)
 
 	apiHandler := api.NewHandler(providerStore, orgStore, roleStore, virtualModelStore, personalVMStore, secretStore, exchangeRateService, pluginManager)
 
@@ -180,6 +182,7 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		proxy.WithHook(pipelineHookAdapter),
 		proxy.WithHook(orgModelRouter),
 		proxy.WithHook(proxyAdapter.NewXoloQuotaEnforcer(quotaService, quotaStore, usageStore, providerStore)),
+		proxy.WithHook(proxyAdapter.NewXoloSubscriptionEnforcer(providerStore, usageStore, subscriptionState)),
 		proxy.WithHook(proxyAdapter.NewXoloUsageTracker(usageStore, providerStore, orgStore, exchangeRateService)),
 	)
 

@@ -8,34 +8,38 @@ import (
 
 // updatedProviderAdapter is used when updating a provider.
 type updatedProviderAdapter struct {
-	id              model.ProviderID
-	orgID           model.OrgID
-	name            string
-	pType           string
-	baseURL         string
-	apiKey          string
-	active          bool
-	currency        string
-	cloudTier       int
-	createdAt       time.Time
-	updatedAt       time.Time
-	retryConfig     *model.RetryConfig
-	rateLimitConfig *model.RateLimitConfig
+	id               model.ProviderID
+	orgID            model.OrgID
+	name             string
+	pType            string
+	baseURL          string
+	apiKey           string
+	active           bool
+	currency         string
+	cloudTier        int
+	createdAt        time.Time
+	updatedAt        time.Time
+	retryConfig      *model.RetryConfig
+	rateLimitConfig  *model.RateLimitConfig
+	billingMode      model.BillingMode
+	subscriptionPlan *model.SubscriptionPlan
 }
 
-func (p *updatedProviderAdapter) ID() model.ProviderID                    { return p.id }
-func (p *updatedProviderAdapter) OrgID() model.OrgID                      { return p.orgID }
-func (p *updatedProviderAdapter) Name() string                            { return p.name }
-func (p *updatedProviderAdapter) Type() string                            { return p.pType }
-func (p *updatedProviderAdapter) BaseURL() string                         { return p.baseURL }
-func (p *updatedProviderAdapter) APIKey() string                          { return p.apiKey }
-func (p *updatedProviderAdapter) Active() bool                            { return p.active }
-func (p *updatedProviderAdapter) Currency() string                        { return p.currency }
-func (p *updatedProviderAdapter) CloudTier() int                          { return p.cloudTier }
-func (p *updatedProviderAdapter) CreatedAt() time.Time                    { return p.createdAt }
-func (p *updatedProviderAdapter) UpdatedAt() time.Time                    { return p.updatedAt }
-func (p *updatedProviderAdapter) RetryConfig() *model.RetryConfig         { return p.retryConfig }
-func (p *updatedProviderAdapter) RateLimitConfig() *model.RateLimitConfig { return p.rateLimitConfig }
+func (p *updatedProviderAdapter) ID() model.ProviderID                      { return p.id }
+func (p *updatedProviderAdapter) OrgID() model.OrgID                        { return p.orgID }
+func (p *updatedProviderAdapter) Name() string                              { return p.name }
+func (p *updatedProviderAdapter) Type() string                              { return p.pType }
+func (p *updatedProviderAdapter) BaseURL() string                           { return p.baseURL }
+func (p *updatedProviderAdapter) APIKey() string                            { return p.apiKey }
+func (p *updatedProviderAdapter) Active() bool                              { return p.active }
+func (p *updatedProviderAdapter) Currency() string                          { return p.currency }
+func (p *updatedProviderAdapter) CloudTier() int                            { return p.cloudTier }
+func (p *updatedProviderAdapter) CreatedAt() time.Time                      { return p.createdAt }
+func (p *updatedProviderAdapter) UpdatedAt() time.Time                      { return p.updatedAt }
+func (p *updatedProviderAdapter) RetryConfig() *model.RetryConfig           { return p.retryConfig }
+func (p *updatedProviderAdapter) RateLimitConfig() *model.RateLimitConfig   { return p.rateLimitConfig }
+func (p *updatedProviderAdapter) BillingMode() model.BillingMode            { return p.billingMode }
+func (p *updatedProviderAdapter) SubscriptionPlan() *model.SubscriptionPlan { return p.subscriptionPlan }
 
 var _ model.Provider = &updatedProviderAdapter{}
 

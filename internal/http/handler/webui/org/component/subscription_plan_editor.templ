@@ -1,0 +1,247 @@
+package component
+
+import (
+	"fmt"
+	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+)
+
+// ── Subscription Plan Editor ──────────────────────────────────────────────────
+
+// SubscriptionPlanEditor renders an editable subscription plan form section.
+// Form fields emitted:
+//   - plan_label
+//   - plan_constraint_count          (hidden, JS-managed)
+//   - plan_c{i}_kind                 ("rolling_window" | "concurrency")
+//   - plan_c{i}_label
+//   - plan_c{i}_duration             (Go duration string, e.g. "5h", "168h")
+//   - plan_c{i}_token_budget         (number of tokens, empty = no limit)
+//   - plan_c{i}_value_budget         (dollars, empty = no limit)
+//   - plan_c{i}_max_concurrent       (integer, empty = no limit)
+templ SubscriptionPlanEditor(plan *model.SubscriptionPlan, readonly bool) {
+	{{ constraints := []model.PlanConstraint(nil) }}
+	{{ planLabel := "" }}
+	if plan != nil {
+		{{ constraints = plan.Constraints }}
+		{{ planLabel = plan.Label }}
+	}
+	<div class="rounded-md border p-4 space-y-4">
+		<p class="text-sm font-semibold">Plan d'abonnement</p>
+		<div class="space-y-1">
+			<label class="text-xs font-medium text-muted-foreground">Nom du plan</label>
+			@input.Input(input.Props{Name: "plan_label", Value: planLabel, Placeholder: "ex : MiniMax Max, GLM Coding Pro…", Disabled: readonly})
+		</div>
+		<div class="space-y-1">
+			<p class="text-xs font-medium text-muted-foreground">Contraintes</p>
+			<div id="plan-constraints" class="space-y-3">
+				for i, c := range constraints {
+					@planConstraintRow(i, c, readonly)
+				}
+			</div>
+		</div>
+		<input type="hidden" id="plan-constraint-count" name="plan_constraint_count" value={ fmt.Sprintf("%d", len(constraints)) }/>
+		if !readonly {
+			@button.Button(button.Props{
+				Type:    "button",
+				Variant: button.VariantOutline,
+				Attributes: templ.Attributes{
+					"onclick": "addPlanConstraint()",
+					"class":   "w-full",
+				},
+			}) {
+				+ Ajouter une contrainte
+			}
+		}
+	</div>
+	// Template element for JS cloning (invisible, no initial display).
+	// planConstraintRow with idx -1 emits placeholder names (plan_c__I___kind, etc.).
+	if !readonly {
+		<template id="plan-constraint-tpl">
+			@planConstraintRow(-1, model.PlanConstraint{}, false)
+		</template>
+		<script>
+		(function () {
+			var INPUT_CLS = "flex h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs outline-none md:text-sm placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:opacity-50";
+			var SELECT_CLS = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs outline-none md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:opacity-50";
+
+			function reindex() {
+				var rows = document.querySelectorAll('#plan-constraints > [data-constraint-row]');
+				rows.forEach(function (row, i) {
+					row.querySelectorAll('[data-plan-name]').forEach(function (el) {
+						el.name = el.dataset.planName.replace(/{i}/g, i);
+					});
+					// Keep select in sync with hidden input
+					var kindSel = row.querySelector('select[data-plan-name]');
+					if (kindSel) {
+						updateKindFields(kindSel);
+					}
+				});
+				document.getElementById('plan-constraint-count').value = rows.length;
+			}
+
+			function updateKindFields(select) {
+				var row = select.closest('[data-constraint-row]');
+				var kind = select.value;
+				row.querySelectorAll('[data-kind-fields]').forEach(function (el) {
+					el.style.display = (kind && el.dataset.kindFields === kind) ? '' : 'none';
+				});
+			}
+
+			window.planConstraintKindChange = function (sel) { updateKindFields(sel); };
+
+			window.addPlanConstraint = function () {
+				var tpl = document.getElementById('plan-constraint-tpl');
+				var clone = tpl.content.cloneNode(true);
+				document.getElementById('plan-constraints').appendChild(clone);
+				reindex();
+			};
+
+			window.removePlanConstraint = function (btn) {
+				btn.closest('[data-constraint-row]').remove();
+				reindex();
+			};
+
+			// Initialise visibility for pre-rendered rows.
+			document.querySelectorAll('#plan-constraints > [data-constraint-row]').forEach(function (row) {
+				var sel = row.querySelector('select[data-plan-name]');
+				if (sel) updateKindFields(sel);
+			});
+		})();
+		</script>
+	}
+}
+
+// planConstraintRow renders one constraint entry.
+// idx = -1 → template row; names use placeholder "{i}" replaced by JS.
+templ planConstraintRow(idx int, c model.PlanConstraint, readonly bool) {
+	{{ idxKey := fmt.Sprintf("%d", idx) }}
+	if idx == -1 {
+		{{ idxKey = "{i}" }}
+	}
+	{{ kindName := "plan_c" + idxKey + "_kind" }}
+	{{ labelName := "plan_c" + idxKey + "_label" }}
+	{{ durationName := "plan_c" + idxKey + "_duration" }}
+	{{ tokenBudgetName := "plan_c" + idxKey + "_token_budget" }}
+	{{ valueBudgetName := "plan_c" + idxKey + "_value_budget" }}
+	{{ maxConcName := "plan_c" + idxKey + "_max_concurrent" }}
+	// Duration value: empty string when zero (template row or unset).
+	{{ durStr := "" }}
+	if c.Duration > 0 {
+		{{ durStr = c.Duration.Duration().String() }}
+	}
+	// Token budget: display as raw integer.
+	{{ tokenBudgetStr := "" }}
+	if c.TokenBudget != nil {
+		{{ tokenBudgetStr = fmt.Sprintf("%d", *c.TokenBudget) }}
+	}
+	// Value budget: display as dollars (microcents / 1_000_000).
+	{{ valueBudgetStr := "" }}
+	if c.ValueBudget != nil {
+		{{ valueBudgetStr = formatBudgetField(*c.ValueBudget) }}
+	}
+	// Max concurrent: display as integer.
+	{{ maxConcStr := "" }}
+	if c.MaxConcurrent != nil {
+		{{ maxConcStr = fmt.Sprintf("%d", *c.MaxConcurrent) }}
+	}
+	// rolling_window visible by default if kind matches (hidden for template row where kind is empty).
+	{{ showRolling := c.Kind == model.ConstraintRollingWindow }}
+	{{ showConcurrency := c.Kind == model.ConstraintConcurrency }}
+	<div data-constraint-row class="rounded-md border p-3 space-y-3 bg-muted/30">
+		// ── Header row: kind selector + delete button ─────────────────────
+		<div class="flex items-center gap-2">
+			<div class="flex-1 space-y-1">
+				<label class="text-xs font-medium text-muted-foreground">Type</label>
+				<select
+					name={ kindName }
+					data-plan-name={ "plan_c{i}_kind" }
+					onchange="planConstraintKindChange(this)"
+					class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:opacity-50"
+					disabled?={ readonly }
+				>
+					<option value="" if c.Kind == "" { selected }>— Sélectionner un type —</option>
+					<option value="rolling_window" if c.Kind == model.ConstraintRollingWindow { selected }>Fenêtre glissante (rolling window)</option>
+					<option value="concurrency" if c.Kind == model.ConstraintConcurrency { selected }>Concurrence max</option>
+				</select>
+			</div>
+			if !readonly {
+				<button
+					type="button"
+					onclick="removePlanConstraint(this)"
+					class="mt-5 inline-flex items-center justify-center h-9 w-9 rounded-md border border-input text-sm text-muted-foreground hover:text-destructive hover:border-destructive transition-colors"
+					title="Supprimer cette contrainte"
+				>✕</button>
+			}
+		</div>
+		// ── Label (all kinds) ──────────────────────────────────────────────
+		<div class="space-y-1">
+			<label class="text-xs font-medium text-muted-foreground">Libellé</label>
+			@input.Input(input.Props{
+				Name:        labelName,
+				Value:       c.Label,
+				Placeholder: "ex : 5h, weekly, concurrent…",
+				Disabled:    readonly,
+				Attributes:  templ.Attributes{"data-plan-name": "plan_c{i}_label"},
+			})
+		</div>
+		// ── Rolling window fields ──────────────────────────────────────────
+		<div
+			data-kind-fields="rolling_window"
+			class="space-y-3"
+			if !showRolling { style="display:none" }
+		>
+			<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+				<div class="space-y-1">
+					<label class="text-xs font-medium text-muted-foreground">Durée de la fenêtre</label>
+					<p class="text-xs text-muted-foreground/70">Format Go : <code>5h</code>, <code>168h</code>, <code>30m</code></p>
+					@input.Input(input.Props{
+						Name:        durationName,
+						Value:       durStr,
+						Placeholder: "ex : 5h",
+						Disabled:    readonly,
+						Attributes:  templ.Attributes{"data-plan-name": "plan_c{i}_duration"},
+					})
+				</div>
+				<div class="space-y-1">
+					<label class="text-xs font-medium text-muted-foreground">Budget tokens (vide = illimité)</label>
+					@input.Input(input.Props{
+						Name:        tokenBudgetName,
+						Type:        input.TypeNumber,
+						Value:       tokenBudgetStr,
+						Placeholder: "ex : 10000000",
+						Disabled:    readonly,
+						Attributes:  templ.Attributes{"data-plan-name": "plan_c{i}_token_budget", "min": "0"},
+					})
+				</div>
+				<div class="space-y-1">
+					<label class="text-xs font-medium text-muted-foreground">Budget valeur (devise du fournisseur, vide = illimité)</label>
+					@input.Input(input.Props{
+						Name:        valueBudgetName,
+						Type:        input.TypeNumber,
+						Value:       valueBudgetStr,
+						Placeholder: "ex : 20.00",
+						Disabled:    readonly,
+						Attributes:  templ.Attributes{"data-plan-name": "plan_c{i}_value_budget", "min": "0", "step": "any"},
+					})
+				</div>
+			</div>
+		</div>
+		// ── Concurrency fields ─────────────────────────────────────────────
+		<div
+			data-kind-fields="concurrency"
+			class="space-y-1"
+			if !showConcurrency { style="display:none" }
+		>
+			<label class="text-xs font-medium text-muted-foreground">Nombre max de requêtes simultanées</label>
+			@input.Input(input.Props{
+				Name:        maxConcName,
+				Type:        input.TypeNumber,
+				Value:       maxConcStr,
+				Placeholder: "ex : 4",
+				Disabled:    readonly,
+				Attributes:  templ.Attributes{"data-plan-name": "plan_c{i}_max_concurrent", "min": "1"},
+			})
+		</div>
+	</div>
+}

@@ -119,6 +119,25 @@ type ChartDataPoint = common.ChartDataPoint
 // an associated chart color (cycling through the design system's palette).
 type ChartShare = common.ChartShare
 
+// SubscriptionConstraintUsage holds runtime consumption data for one plan constraint.
+type SubscriptionConstraintUsage struct {
+	Constraint model.PlanConstraint
+	// rolling_window fields
+	TokensUsed  int64
+	ValueUsed   int64     // microcents, provider currency
+	WindowStart time.Time // = now - constraint.Duration
+	// concurrency fields
+	InFlight  int
+	Exhausted bool
+}
+
+// SubscriptionProviderUsage aggregates plan usage for one subscription provider.
+type SubscriptionProviderUsage struct {
+	Provider    model.Provider
+	Plan        model.SubscriptionPlan
+	Constraints []SubscriptionConstraintUsage
+}
+
 type OrgUsagePageVModel struct {
 	common.AppLayoutVModel
 	Org             model.Organization
@@ -134,6 +153,8 @@ type OrgUsagePageVModel struct {
 	Page            int
 	PageSize        int
 	HasNext         bool
+	// Subscription providers plan consumption
+	SubscriptionProviders []SubscriptionProviderUsage
 	// Chart/quota fields
 	OrgQuota            model.Quota // may be nil if no quota defined
 	DailyCost           int64       // today's org cost in org currency (microcents)

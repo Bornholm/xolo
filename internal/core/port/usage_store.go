@@ -11,13 +11,16 @@ type UsageStore interface {
 	RecordUsage(ctx context.Context, record model.UsageRecord) error
 	QueryUsage(ctx context.Context, filter UsageFilter) ([]model.UsageRecord, error)
 	AggregateUsage(ctx context.Context, filter UsageFilter) (*UsageAggregate, error)
-	// SumCostSince sums all costs for a user+org since the given time,
-	// regardless of the currency in which individual records were stored.
+	// SumCostSince sums all PAYG (plan_covered=false) costs for a user+org since the given time.
 	SumCostSince(ctx context.Context, userID model.UserID, orgID model.OrgID, since time.Time) (int64, error)
-	// SumCostSinceByCurrency returns the total cost per currency for an org
-	// (and optionally a subset of users) since the given time, so callers can
-	// convert each currency independently. When userIDs is empty, all users are included.
+	// SumCostSinceByCurrency returns the total PAYG (plan_covered=false) cost per currency for an
+	// org (and optionally a subset of users) since the given time. When userIDs is empty, all users
+	// are included.
 	SumCostSinceByCurrency(ctx context.Context, userIDs []model.UserID, orgID model.OrgID, since time.Time) (map[string]int64, error)
+	// SumPlanUsageSince aggregates subscription-covered (plan_covered=true) usage for a specific
+	// provider+org since the given time, returning total tokens and total provider-currency value
+	// (in microcents of provider currency). Used to enforce rolling-window budgets.
+	SumPlanUsageSince(ctx context.Context, orgID model.OrgID, providerID model.ProviderID, since time.Time) (tokens int64, providerValue int64, err error)
 }
 
 type UsageFilter struct {
@@ -27,9 +30,11 @@ type UsageFilter struct {
 	ApplicationIDs []model.ApplicationID
 	OrgID          *model.OrgID
 	ModelID        *model.LLMModelID
+	ProviderID     *model.ProviderID
 	AuthTokenID    *string
 	Currency       *string
 	ProxyModelName *string
+	PlanCovered    *bool
 	Since          *time.Time
 	Until          *time.Time
 	Limit          *int

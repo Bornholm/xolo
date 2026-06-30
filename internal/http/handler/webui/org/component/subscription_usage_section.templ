@@ -1,0 +1,179 @@
+package component
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+)
+
+// SubscriptionUsageSection renders plan consumption for each subscription provider.
+// Shown at the top of the usage page only when at least one subscription provider exists.
+templ SubscriptionUsageSection(providers []SubscriptionProviderUsage) {
+	if len(providers) > 0 {
+		<div class="space-y-3">
+			<h2 class="text-lg font-semibold">Abonnements</h2>
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+				for _, pu := range providers {
+					@subscriptionProviderCard(pu)
+				}
+			</div>
+		</div>
+	}
+}
+
+templ subscriptionProviderCard(pu SubscriptionProviderUsage) {
+	@card.Card() {
+		@card.Header() {
+			@card.Title() {
+				{ pu.Provider.Name() }
+			}
+			@card.Description() {
+				{ pu.Plan.Label }
+			}
+		}
+		@card.Content() {
+			<div class="space-y-4">
+				for _, cu := range pu.Constraints {
+					if cu.Constraint.Kind == model.ConstraintRollingWindow {
+						@rollingWindowConstraintRow(cu)
+					} else if cu.Constraint.Kind == model.ConstraintConcurrency {
+						@concurrencyConstraintRow(cu)
+					}
+				}
+				if len(pu.Constraints) == 0 {
+					<p class="text-xs text-muted-foreground">Aucune contrainte définie.</p>
+				}
+			</div>
+		}
+	}
+}
+
+templ rollingWindowConstraintRow(cu SubscriptionConstraintUsage) {
+	<div class="space-y-2">
+		<div class="flex items-center gap-2">
+			<span class="text-sm font-medium">{ cu.Constraint.Label }</span>
+			@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
+				Fenêtre glissante
+			}
+		</div>
+		// Token budget bar
+		if cu.Constraint.TokenBudget != nil && *cu.Constraint.TokenBudget > 0 {
+			{{ pctTokens := clampPct(cu.TokensUsed, *cu.Constraint.TokenBudget) }}
+			<div class="space-y-1">
+				<div class="flex justify-between text-xs text-muted-foreground">
+					<span>Tokens</span>
+					<span>{ formatLargeInt(cu.TokensUsed) } / { formatLargeInt(*cu.Constraint.TokenBudget) }</span>
+				</div>
+				@progressBar(pctTokens, pctTokens >= 90)
+			</div>
+		} else if cu.Constraint.TokenBudget == nil && cu.TokensUsed > 0 {
+			<p class="text-xs text-muted-foreground">{ formatLargeInt(cu.TokensUsed) } tokens consommés (pas de limite)</p>
+		}
+		// Value budget bar
+		if cu.Constraint.ValueBudget != nil && *cu.Constraint.ValueBudget > 0 {
+			{{ pctValue := clampPct(cu.ValueUsed, *cu.Constraint.ValueBudget) }}
+			<div class="space-y-1">
+				<div class="flex justify-between text-xs text-muted-foreground">
+					<span>Valeur</span>
+					<span>{ formatBudgetField(cu.ValueUsed) } / { formatBudgetField(*cu.Constraint.ValueBudget) }</span>
+				</div>
+				@progressBar(pctValue, pctValue >= 90)
+			</div>
+		}
+		// Window timing
+		if !cu.WindowStart.IsZero() {
+			<p class="text-xs text-muted-foreground">
+				Fenêtre depuis { cu.WindowStart.Format("02 Jan 15:04") } — reset dans { formatTimeUntilReset(cu.WindowStart, cu.Constraint.Duration.Duration()) }
+			</p>
+		}
+	</div>
+}
+
+templ concurrencyConstraintRow(cu SubscriptionConstraintUsage) {
+	<div class="space-y-2">
+		<div class="flex items-center gap-2">
+			<span class="text-sm font-medium">{ cu.Constraint.Label }</span>
+			@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
+				Concurrence
+			}
+			if cu.Exhausted {
+				@badge.Badge(badge.Props{Variant: badge.VariantDestructive}) {
+					Épuisé
+				}
+			}
+		</div>
+		if cu.Constraint.MaxConcurrent != nil {
+			{{ pctConc := clampPct(int64(cu.InFlight), int64(*cu.Constraint.MaxConcurrent)) }}
+			<div class="space-y-1">
+				<div class="flex justify-between text-xs text-muted-foreground">
+					<span>Requêtes simultanées</span>
+					<span>{ fmt.Sprintf("%d", cu.InFlight) } / { fmt.Sprintf("%d", *cu.Constraint.MaxConcurrent) }</span>
+				</div>
+				@progressBar(pctConc, cu.Exhausted)
+			</div>
+		} else {
+			<p class="text-xs text-muted-foreground">{ fmt.Sprintf("%d", cu.InFlight) } requêtes simultanées en cours</p>
+		}
+	</div>
+}
+
+// progressBar renders a simple CSS-width-based bar.
+// danger=true colours it red.
+templ progressBar(pct int, danger bool) {
+	{{ barClass := "bg-primary" }}
+	if danger {
+		{{ barClass = "bg-destructive" }}
+	}
+	<div class="w-full overflow-hidden rounded-full bg-secondary h-2.5">
+		<div
+			class={ "h-2.5 rounded-full transition-all " + barClass }
+			style={ fmt.Sprintf("width: %d%%", pct) }
+		></div>
+	</div>
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+func clampPct(used, total int64) int {
+	if total <= 0 {
+		return 0
+	}
+	pct := int(used * 100 / total)
+	if pct > 100 {
+		return 100
+	}
+	if pct < 0 {
+		return 0
+	}
+	return pct
+}
+
+func formatLargeInt(n int64) string {
+	if n >= 1_000_000_000 {
+		return fmt.Sprintf("%.1fG", float64(n)/1_000_000_000)
+	}
+	if n >= 1_000_000 {
+		return fmt.Sprintf("%.1fM", float64(n)/1_000_000)
+	}
+	if n >= 1_000 {
+		return fmt.Sprintf("%.1fK", float64(n)/1_000)
+	}
+	return fmt.Sprintf("%d", n)
+}
+
+func formatTimeUntilReset(windowStart time.Time, duration time.Duration) string {
+	resetAt := windowStart.Add(duration)
+	remaining := time.Until(resetAt)
+	if remaining <= 0 {
+		return "bientôt"
+	}
+	h := int(remaining.Hours())
+	m := int(remaining.Minutes()) % 60
+	if h > 0 {
+		return fmt.Sprintf("%dh%02d", h, m)
+	}
+	return fmt.Sprintf("%dm", m)
+}

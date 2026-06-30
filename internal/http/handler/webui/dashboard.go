@@ -18,6 +18,7 @@ import (
 	"github.com/bornholm/xolo/internal/estimator"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	orgcomponent "github.com/bornholm/xolo/internal/http/handler/webui/org/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/profile/component"
 )
 
@@ -310,6 +311,12 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Build subscription provider consumption for all the user's orgs.
+	var subscriptionProviders []orgcomponent.SubscriptionProviderUsage
+	for _, m := range memberships {
+		subscriptionProviders = append(subscriptionProviders, h.buildDashboardSubscriptionUsage(ctx, m.OrgID())...)
+	}
+
 	vmodel := component.DashboardPageVModel{
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
@@ -326,7 +333,8 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 				return common.AppFooterItems(vmodel)
 			},
 		},
-		OrgUsages:           orgUsages,
+		OrgUsages:             orgUsages,
+		SubscriptionProviders: subscriptionProviders,
 		Aggregate:           agg,
 		Records:             displayRecords,
 		Orgs:                orgs,
@@ -517,4 +525,66 @@ func (h *Handler) serveUserUsageCSV(w http.ResponseWriter, r *http.Request, user
 			rec.CreatedAt().Format("2006-01-02 15:04:05"),
 		})
 	}
+}
+
+// buildDashboardSubscriptionUsage mirrors the org handler's logic for one org.
+func (h *Handler) buildDashboardSubscriptionUsage(ctx context.Context, orgID model.OrgID) []orgcomponent.SubscriptionProviderUsage {
+	providers, err := h.providerStore.ListProviders(ctx, orgID)
+	if err != nil {
+		slog.WarnContext(ctx, "could not list providers for subscription usage", slogx.Error(err))
+		return nil
+	}
+
+	now := time.Now()
+	var result []orgcomponent.SubscriptionProviderUsage
+
+	for _, p := range providers {
+		if p.BillingMode() != model.BillingModeSubscription {
+			continue
+		}
+		plan := p.SubscriptionPlan()
+		if plan == nil {
+			continue
+		}
+
+		pu := orgcomponent.SubscriptionProviderUsage{
+			Provider:    p,
+			Plan:        *plan,
+			Constraints: make([]orgcomponent.SubscriptionConstraintUsage, 0, len(plan.Constraints)),
+		}
+
+		for _, c := range plan.Constraints {
+			cu := orgcomponent.SubscriptionConstraintUsage{Constraint: c}
+
+			switch c.Kind {
+			case model.ConstraintRollingWindow:
+				dur := c.Duration.Duration()
+				if dur > 0 {
+					since := now.Add(-dur)
+					cu.WindowStart = since
+					tokens, value, sumErr := h.usageStore.SumPlanUsageSince(ctx, orgID, p.ID(), since)
+					if sumErr != nil {
+						slog.WarnContext(ctx, "could not sum plan usage", slogx.Error(sumErr))
+					} else {
+						cu.TokensUsed = tokens
+						cu.ValueUsed = value
+					}
+				}
+
+			case model.ConstraintConcurrency:
+				if h.subscriptionMonitor != nil {
+					cu.InFlight = h.subscriptionMonitor.CurrentInFlight(orgID, p.ID())
+					if c.MaxConcurrent != nil {
+						cu.Exhausted = h.subscriptionMonitor.IsExhausted(orgID, p.ID(), c.Label)
+					}
+				}
+			}
+
+			pu.Constraints = append(pu.Constraints, cu)
+		}
+
+		result = append(result, pu)
+	}
+
+	return result
 }
