@@ -125,7 +125,16 @@ type SubscriptionConstraintUsage struct {
 	// rolling_window fields
 	TokensUsed  int64
 	ValueUsed   int64     // microcents, provider currency
-	WindowStart time.Time // = now - constraint.Duration
+	WindowStart time.Time // start of the current window (anchored or sliding)
+	// OldestUsage is the creation time of the oldest usage record still counted in
+	// the window (zero when the window is empty). For sliding windows, usage frees up
+	// progressively from OldestUsage + Duration onwards.
+	OldestUsage time.Time
+	// Anchored is true when the window is a fixed (tumbling) window aligned on a manual
+	// anchor, matching the upstream provider's real reset schedule.
+	Anchored bool
+	// ResetAt is the instant the current fixed window resets (zero for sliding windows).
+	ResetAt time.Time
 	// concurrency fields
 	InFlight  int
 	Exhausted bool
@@ -136,6 +145,9 @@ type SubscriptionProviderUsage struct {
 	Provider    model.Provider
 	Plan        model.SubscriptionPlan
 	Constraints []SubscriptionConstraintUsage
+	// PerUser is true when the figures represent the viewer's personal fair-share
+	// (usage and budgets divided by the org member count) rather than the org-wide total.
+	PerUser bool
 }
 
 type OrgUsagePageVModel struct {

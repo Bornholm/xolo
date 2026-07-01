@@ -28,10 +28,21 @@ templ subscriptionProviderCard(pu SubscriptionProviderUsage) {
 	@card.Card() {
 		@card.Header() {
 			@card.Title() {
-				{ pu.Provider.Name() }
+				<div class="flex items-center gap-2">
+					<span>{ pu.Provider.Name() }</span>
+					if pu.PerUser {
+						@badge.Badge(badge.Props{Variant: badge.VariantOutline}) {
+							Ma part
+						}
+					}
+				</div>
 			}
 			@card.Description() {
-				{ pu.Plan.Label }
+				if pu.PerUser {
+					{ pu.Plan.Label } — part personnelle (répartition équitable)
+				} else {
+					{ pu.Plan.Label }
+				}
 			}
 		}
 		@card.Content() {
@@ -55,8 +66,14 @@ templ rollingWindowConstraintRow(cu SubscriptionConstraintUsage) {
 	<div class="space-y-2">
 		<div class="flex items-center gap-2">
 			<span class="text-sm font-medium">{ cu.Constraint.Label }</span>
-			@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
-				Fenêtre glissante
+			if cu.Anchored {
+				@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
+					Fenêtre fixe
+				}
+			} else {
+				@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
+					Fenêtre glissante
+				}
 			}
 		</div>
 		// Token budget bar
@@ -65,7 +82,7 @@ templ rollingWindowConstraintRow(cu SubscriptionConstraintUsage) {
 			<div class="space-y-1">
 				<div class="flex justify-between text-xs text-muted-foreground">
 					<span>Tokens</span>
-					<span>{ formatLargeInt(cu.TokensUsed) } / { formatLargeInt(*cu.Constraint.TokenBudget) }</span>
+					<span>{ fmt.Sprintf("%d%%", pctTokens) }</span>
 				</div>
 				@progressBar(pctTokens, pctTokens >= 90)
 			</div>
@@ -78,15 +95,25 @@ templ rollingWindowConstraintRow(cu SubscriptionConstraintUsage) {
 			<div class="space-y-1">
 				<div class="flex justify-between text-xs text-muted-foreground">
 					<span>Valeur</span>
-					<span>{ formatBudgetField(cu.ValueUsed) } / { formatBudgetField(*cu.Constraint.ValueBudget) }</span>
+					<span>{ fmt.Sprintf("%d%%", pctValue) }</span>
 				</div>
 				@progressBar(pctValue, pctValue >= 90)
 			</div>
 		}
-		// Window timing
-		if !cu.WindowStart.IsZero() {
+		// Window timing. We always show a timezone-independent relative countdown.
+		if cu.Anchored && !cu.ResetAt.IsZero() {
+			// Fixed (tumbling) window aligned on the provider's real reset schedule.
 			<p class="text-xs text-muted-foreground">
-				Fenêtre depuis { cu.WindowStart.Format("02 Jan 15:04") } — reset dans { formatTimeUntilReset(cu.WindowStart, cu.Constraint.Duration.Duration()) }
+				Fenêtre fixe de { formatDurationLabel(cu.Constraint.Duration.Duration()) } — réinitialisation dans { formatUntil(cu.ResetAt) }
+			</p>
+		} else if !cu.OldestUsage.IsZero() {
+			// Sliding window: usage frees up progressively as the oldest records age out.
+			<p class="text-xs text-muted-foreground">
+				Fenêtre glissante de { formatDurationLabel(cu.Constraint.Duration.Duration()) } — se libère dans { formatTimeUntilReset(cu.OldestUsage, cu.Constraint.Duration.Duration()) }
+			</p>
+		} else {
+			<p class="text-xs text-muted-foreground">
+				Fenêtre glissante de { formatDurationLabel(cu.Constraint.Duration.Duration()) } — aucune consommation en cours
 			</p>
 		}
 	</div>
@@ -164,16 +191,45 @@ func formatLargeInt(n int64) string {
 	return fmt.Sprintf("%d", n)
 }
 
-func formatTimeUntilReset(windowStart time.Time, duration time.Duration) string {
-	resetAt := windowStart.Add(duration)
-	remaining := time.Until(resetAt)
+// formatRemaining renders a duration as a compact, timezone-independent countdown.
+func formatRemaining(remaining time.Duration) string {
 	if remaining <= 0 {
 		return "bientôt"
 	}
-	h := int(remaining.Hours())
+	d := int(remaining.Hours()) / 24
+	h := int(remaining.Hours()) % 24
 	m := int(remaining.Minutes()) % 60
+	if d > 0 {
+		return fmt.Sprintf("%dj%02dh", d, h)
+	}
 	if h > 0 {
 		return fmt.Sprintf("%dh%02d", h, m)
 	}
 	return fmt.Sprintf("%dm", m)
+}
+
+// formatUntil renders the countdown until the given instant.
+func formatUntil(t time.Time) string {
+	return formatRemaining(time.Until(t))
+}
+
+// formatTimeUntilReset returns the countdown until the oldest usage still counted in a
+// sliding window ages out (oldestUsage + duration).
+func formatTimeUntilReset(oldestUsage time.Time, duration time.Duration) string {
+	return formatRemaining(time.Until(oldestUsage.Add(duration)))
+}
+
+// formatDurationLabel renders a plan window duration in a compact human form
+// ("5h", "7j", "30m").
+func formatDurationLabel(d time.Duration) string {
+	switch {
+	case d%(24*time.Hour) == 0:
+		return fmt.Sprintf("%dj", int(d.Hours())/24)
+	case d%time.Hour == 0:
+		return fmt.Sprintf("%dh", int(d.Hours()))
+	case d%time.Minute == 0:
+		return fmt.Sprintf("%dm", int(d.Minutes()))
+	default:
+		return d.String()
+	}
 }

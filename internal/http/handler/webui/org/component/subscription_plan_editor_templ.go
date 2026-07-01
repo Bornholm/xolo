@@ -10,6 +10,8 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
@@ -24,6 +26,7 @@ import (
 //   - plan_c{i}_kind                 ("rolling_window" | "concurrency")
 //   - plan_c{i}_label
 //   - plan_c{i}_duration             (Go duration string, e.g. "5h", "168h")
+//   - plan_c{i}_reset_in             (time until next reset, e.g. "4h29m", "4d13h"; empty = sliding window)
 //   - plan_c{i}_token_budget         (number of tokens, empty = no limit)
 //   - plan_c{i}_value_budget         (dollars, empty = no limit)
 //   - plan_c{i}_max_concurrent       (integer, empty = no limit)
@@ -79,7 +82,7 @@ func SubscriptionPlanEditor(plan *model.SubscriptionPlan, readonly bool) templ.C
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", len(constraints)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/subscription_plan_editor.templ`, Line: 43, Col: 122}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/subscription_plan_editor.templ`, Line: 46, Col: 122}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -172,12 +175,17 @@ func planConstraintRow(idx int, c model.PlanConstraint, readonly bool) templ.Com
 		kindName := "plan_c" + idxKey + "_kind"
 		labelName := "plan_c" + idxKey + "_label"
 		durationName := "plan_c" + idxKey + "_duration"
+		resetInName := "plan_c" + idxKey + "_reset_in"
 		tokenBudgetName := "plan_c" + idxKey + "_token_budget"
 		valueBudgetName := "plan_c" + idxKey + "_value_budget"
 		maxConcName := "plan_c" + idxKey + "_max_concurrent"
 		durStr := ""
 		if c.Duration > 0 {
 			durStr = c.Duration.Duration().String()
+		}
+		resetInStr := ""
+		if c.IsAnchored() {
+			resetInStr = formatResetIn(time.Until(c.NextResetAt(time.Now())))
 		}
 		tokenBudgetStr := ""
 		if c.TokenBudget != nil {
@@ -200,7 +208,7 @@ func planConstraintRow(idx int, c model.PlanConstraint, readonly bool) templ.Com
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(kindName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/subscription_plan_editor.templ`, Line: 157, Col: 20}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/subscription_plan_editor.templ`, Line: 166, Col: 20}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -213,7 +221,7 @@ func planConstraintRow(idx int, c model.PlanConstraint, readonly bool) templ.Com
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs("plan_c{i}_kind")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/subscription_plan_editor.templ`, Line: 158, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/subscription_plan_editor.templ`, Line: 167, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -293,7 +301,7 @@ func planConstraintRow(idx int, c model.PlanConstraint, readonly bool) templ.Com
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "><div class=\"grid grid-cols-1 sm:grid-cols-3 gap-3\"><div class=\"space-y-1\"><label class=\"text-xs font-medium text-muted-foreground\">Durée de la fenêtre</label><p class=\"text-xs text-muted-foreground/70\">Format Go : <code>5h</code>, <code>168h</code>, <code>30m</code></p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "><div class=\"grid grid-cols-1 sm:grid-cols-2 gap-3\"><div class=\"space-y-1\"><label class=\"text-xs font-medium text-muted-foreground\">Durée de la fenêtre</label><p class=\"text-xs text-muted-foreground/70\">Format Go : <code>5h</code>, <code>168h</code>, <code>30m</code></p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -307,7 +315,21 @@ func planConstraintRow(idx int, c model.PlanConstraint, readonly bool) templ.Com
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</div><div class=\"space-y-1\"><label class=\"text-xs font-medium text-muted-foreground\">Budget tokens (vide = illimité)</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</div><div class=\"space-y-1\"><label class=\"text-xs font-medium text-muted-foreground\">Reset dans (optionnel)</label><p class=\"text-xs text-muted-foreground/70\">Copié de l'écran du fournisseur (ex : <code>4h29m</code>, <code>4d13h</code>). Vide = fenêtre glissante.</p>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = input.Input(input.Props{
+			Name:        resetInName,
+			Value:       resetInStr,
+			Placeholder: "ex : 4h29m",
+			Disabled:    readonly,
+			Attributes:  templ.Attributes{"data-plan-name": "plan_c{i}_reset_in"},
+		}).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</div></div><div class=\"grid grid-cols-1 sm:grid-cols-2 gap-3\"><div class=\"space-y-1\"><label class=\"text-xs font-medium text-muted-foreground\">Budget tokens (vide = illimité)</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -322,7 +344,7 @@ func planConstraintRow(idx int, c model.PlanConstraint, readonly bool) templ.Com
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</div><div class=\"space-y-1\"><label class=\"text-xs font-medium text-muted-foreground\">Budget valeur (devise du fournisseur, vide = illimité)</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</div><div class=\"space-y-1\"><label class=\"text-xs font-medium text-muted-foreground\">Budget valeur (devise du fournisseur, vide = illimité)</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -337,17 +359,17 @@ func planConstraintRow(idx int, c model.PlanConstraint, readonly bool) templ.Com
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</div></div></div><div data-kind-fields=\"concurrency\" class=\"space-y-1\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</div></div></div><div data-kind-fields=\"concurrency\" class=\"space-y-1\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if !showConcurrency {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, " style=\"display:none\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, " style=\"display:none\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "><label class=\"text-xs font-medium text-muted-foreground\">Nombre max de requêtes simultanées</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "><label class=\"text-xs font-medium text-muted-foreground\">Nombre max de requêtes simultanées</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -362,12 +384,32 @@ func planConstraintRow(idx int, c model.PlanConstraint, readonly bool) templ.Com
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		return nil
 	})
+}
+
+// formatResetIn renders a remaining duration in a compact, parseable form ("4d13h29m",
+// "4h29m", "42m") for pre-filling the "reset dans" field. Kept in sync with the
+// parseResetIn parser used on form submission.
+func formatResetIn(remaining time.Duration) string {
+	if remaining <= 0 {
+		return ""
+	}
+	days := int(remaining.Hours()) / 24
+	hours := int(remaining.Hours()) % 24
+	mins := int(remaining.Minutes()) % 60
+	switch {
+	case days > 0:
+		return fmt.Sprintf("%dd%dh%dm", days, hours, mins)
+	case hours > 0:
+		return fmt.Sprintf("%dh%dm", hours, mins)
+	default:
+		return fmt.Sprintf("%dm", mins)
+	}
 }
 
 var _ = templruntime.GeneratedTemplate

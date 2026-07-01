@@ -7,5 +7,6 @@ import "github.com/bornholm/xolo/internal/core/model"
 // Implemented by proxy.SubscriptionStateDetailed without code change.
 type SubscriptionMonitor interface {
 	CurrentInFlight(orgID model.OrgID, providerID model.ProviderID) int
+	CurrentUserInFlight(orgID model.OrgID, providerID model.ProviderID, userID model.UserID) int
 	IsExhausted(orgID model.OrgID, providerID model.ProviderID, label string) bool
 }

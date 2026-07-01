@@ -2,6 +2,8 @@ package component
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
@@ -16,6 +18,7 @@ import (
 //   - plan_c{i}_kind                 ("rolling_window" | "concurrency")
 //   - plan_c{i}_label
 //   - plan_c{i}_duration             (Go duration string, e.g. "5h", "168h")
+//   - plan_c{i}_reset_in             (time until next reset, e.g. "4h29m", "4d13h"; empty = sliding window)
 //   - plan_c{i}_token_budget         (number of tokens, empty = no limit)
 //   - plan_c{i}_value_budget         (dollars, empty = no limit)
 //   - plan_c{i}_max_concurrent       (integer, empty = no limit)
@@ -122,6 +125,7 @@ templ planConstraintRow(idx int, c model.PlanConstraint, readonly bool) {
 	{{ kindName := "plan_c" + idxKey + "_kind" }}
 	{{ labelName := "plan_c" + idxKey + "_label" }}
 	{{ durationName := "plan_c" + idxKey + "_duration" }}
+	{{ resetInName := "plan_c" + idxKey + "_reset_in" }}
 	{{ tokenBudgetName := "plan_c" + idxKey + "_token_budget" }}
 	{{ valueBudgetName := "plan_c" + idxKey + "_value_budget" }}
 	{{ maxConcName := "plan_c" + idxKey + "_max_concurrent" }}
@@ -129,6 +133,11 @@ templ planConstraintRow(idx int, c model.PlanConstraint, readonly bool) {
 	{{ durStr := "" }}
 	if c.Duration > 0 {
 		{{ durStr = c.Duration.Duration().String() }}
+	}
+	// Reset countdown value: rendered from the anchor so re-saving is idempotent.
+	{{ resetInStr := "" }}
+	if c.IsAnchored() {
+		{{ resetInStr = formatResetIn(time.Until(c.NextResetAt(time.Now()))) }}
 	}
 	// Token budget: display as raw integer.
 	{{ tokenBudgetStr := "" }}
@@ -191,7 +200,7 @@ templ planConstraintRow(idx int, c model.PlanConstraint, readonly bool) {
 			class="space-y-3"
 			if !showRolling { style="display:none" }
 		>
-			<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+			<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 				<div class="space-y-1">
 					<label class="text-xs font-medium text-muted-foreground">Durée de la fenêtre</label>
 					<p class="text-xs text-muted-foreground/70">Format Go : <code>5h</code>, <code>168h</code>, <code>30m</code></p>
@@ -203,6 +212,19 @@ templ planConstraintRow(idx int, c model.PlanConstraint, readonly bool) {
 						Attributes:  templ.Attributes{"data-plan-name": "plan_c{i}_duration"},
 					})
 				</div>
+				<div class="space-y-1">
+					<label class="text-xs font-medium text-muted-foreground">Reset dans (optionnel)</label>
+					<p class="text-xs text-muted-foreground/70">Copié de l'écran du fournisseur (ex : <code>4h29m</code>, <code>4d13h</code>). Vide = fenêtre glissante.</p>
+					@input.Input(input.Props{
+						Name:        resetInName,
+						Value:       resetInStr,
+						Placeholder: "ex : 4h29m",
+						Disabled:    readonly,
+						Attributes:  templ.Attributes{"data-plan-name": "plan_c{i}_reset_in"},
+					})
+				</div>
+			</div>
+			<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 				<div class="space-y-1">
 					<label class="text-xs font-medium text-muted-foreground">Budget tokens (vide = illimité)</label>
 					@input.Input(input.Props{
@@ -244,4 +266,24 @@ templ planConstraintRow(idx int, c model.PlanConstraint, readonly bool) {
 			})
 		</div>
 	</div>
+}
+
+// formatResetIn renders a remaining duration in a compact, parseable form ("4d13h29m",
+// "4h29m", "42m") for pre-filling the "reset dans" field. Kept in sync with the
+// parseResetIn parser used on form submission.
+func formatResetIn(remaining time.Duration) string {
+	if remaining <= 0 {
+		return ""
+	}
+	days := int(remaining.Hours()) / 24
+	hours := int(remaining.Hours()) % 24
+	mins := int(remaining.Minutes()) % 60
+	switch {
+	case days > 0:
+		return fmt.Sprintf("%dd%dh%dm", days, hours, mins)
+	case hours > 0:
+		return fmt.Sprintf("%dh%dm", hours, mins)
+	default:
+		return fmt.Sprintf("%dm", mins)
+	}
 }

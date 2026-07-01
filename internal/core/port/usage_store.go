@@ -24,6 +24,11 @@ type UsageStore interface {
 	// SumUserPlanUsageSince aggregates subscription-covered (plan_covered=true) usage for a specific
 	// user+provider+org since the given time. Used to enforce per-user fair-share rolling-window budgets.
 	SumUserPlanUsageSince(ctx context.Context, userID model.UserID, orgID model.OrgID, providerID model.ProviderID, since time.Time) (tokens int64, providerValue int64, err error)
+	// EarliestPlanUsageSince returns the creation time of the oldest subscription-covered
+	// (plan_covered=true) usage record for a provider+org still inside the rolling window
+	// starting at `since`. Used to display when the window will next free up. Returns a zero
+	// time when no such record exists.
+	EarliestPlanUsageSince(ctx context.Context, orgID model.OrgID, providerID model.ProviderID, since time.Time) (time.Time, error)
 }
 
 type UsageFilter struct {

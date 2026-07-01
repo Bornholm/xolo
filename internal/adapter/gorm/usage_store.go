@@ -285,4 +285,26 @@ func (s *Store) SumUserPlanUsageSince(ctx context.Context, userID model.UserID, 
 	return row.Tokens, row.ProviderValue, nil
 }
 
+// EarliestPlanUsageSince implements port.UsageStore.
+func (s *Store) EarliestPlanUsageSince(ctx context.Context, orgID model.OrgID, providerID model.ProviderID, since time.Time) (time.Time, error) {
+	var row struct {
+		Earliest *time.Time
+	}
+
+	err := s.withRetry(ctx, false, func(ctx context.Context, db *gorm.DB) error {
+		return errors.WithStack(db.Model(&UsageRecord{}).
+			Select("MIN(created_at) as earliest").
+			Where("org_id = ? AND provider_id = ? AND created_at >= ? AND plan_covered = 1",
+				string(orgID), string(providerID), since).
+			Scan(&row).Error)
+	}, sqlite3.BUSY, sqlite3.LOCKED)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if row.Earliest == nil {
+		return time.Time{}, nil
+	}
+	return *row.Earliest, nil
+}
+
 var _ port.UsageStore = &Store{}

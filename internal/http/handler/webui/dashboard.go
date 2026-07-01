@@ -311,10 +311,11 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Build subscription provider consumption for all the user's orgs.
+	// Build subscription provider consumption for all the user's orgs, scoped to the
+	// viewer's personal fair-share (usage and budgets divided by the org member count).
 	var subscriptionProviders []orgcomponent.SubscriptionProviderUsage
 	for _, m := range memberships {
-		subscriptionProviders = append(subscriptionProviders, h.buildDashboardSubscriptionUsage(ctx, m.OrgID())...)
+		subscriptionProviders = append(subscriptionProviders, h.buildDashboardSubscriptionUsage(ctx, m.OrgID(), user.ID())...)
 	}
 
 	vmodel := component.DashboardPageVModel{
@@ -527,12 +528,23 @@ func (h *Handler) serveUserUsageCSV(w http.ResponseWriter, r *http.Request, user
 	}
 }
 
-// buildDashboardSubscriptionUsage mirrors the org handler's logic for one org.
-func (h *Handler) buildDashboardSubscriptionUsage(ctx context.Context, orgID model.OrgID) []orgcomponent.SubscriptionProviderUsage {
+// buildDashboardSubscriptionUsage builds subscription plan consumption for one org,
+// scoped to a single user's personal fair-share: budgets and concurrency limits are
+// divided by the org member count, and usage figures reflect only this user. Window
+// timing (reset countdowns) is a window-level property and stays org-wide.
+func (h *Handler) buildDashboardSubscriptionUsage(ctx context.Context, orgID model.OrgID, userID model.UserID) []orgcomponent.SubscriptionProviderUsage {
 	providers, err := h.providerStore.ListProviders(ctx, orgID)
 	if err != nil {
 		slog.WarnContext(ctx, "could not list providers for subscription usage", slogx.Error(err))
 		return nil
+	}
+
+	// Member count for fair-share division (mirrors the subscription enforcer).
+	memberCount := int64(0)
+	if _, count, err := h.orgStore.ListOrgMembers(ctx, orgID, port.ListOrgMembersOptions{}); err != nil {
+		slog.WarnContext(ctx, "could not count org members for fair-share usage", slogx.Error(err))
+	} else {
+		memberCount = count
 	}
 
 	now := time.Now()
@@ -551,29 +563,39 @@ func (h *Handler) buildDashboardSubscriptionUsage(ctx context.Context, orgID mod
 			Provider:    p,
 			Plan:        *plan,
 			Constraints: make([]orgcomponent.SubscriptionConstraintUsage, 0, len(plan.Constraints)),
+			PerUser:     true,
 		}
 
 		for _, c := range plan.Constraints {
-			cu := orgcomponent.SubscriptionConstraintUsage{Constraint: c}
+			// Apply fair-share division to the constraint budgets shown as denominators.
+			cu := orgcomponent.SubscriptionConstraintUsage{Constraint: fairShareConstraint(c, memberCount)}
 
 			switch c.Kind {
 			case model.ConstraintRollingWindow:
 				dur := c.Duration.Duration()
 				if dur > 0 {
-					since := now.Add(-dur)
+					since := c.CurrentWindowStart(now)
 					cu.WindowStart = since
-					tokens, value, sumErr := h.usageStore.SumPlanUsageSince(ctx, orgID, p.ID(), since)
+					cu.Anchored = c.IsAnchored()
+					cu.ResetAt = c.NextResetAt(now)
+					tokens, value, sumErr := h.usageStore.SumUserPlanUsageSince(ctx, userID, orgID, p.ID(), since)
 					if sumErr != nil {
-						slog.WarnContext(ctx, "could not sum plan usage", slogx.Error(sumErr))
+						slog.WarnContext(ctx, "could not sum user plan usage", slogx.Error(sumErr))
 					} else {
 						cu.TokensUsed = tokens
 						cu.ValueUsed = value
+					}
+					// Window free-up hint is a window-level property → org-wide oldest record.
+					if oldest, oldestErr := h.usageStore.EarliestPlanUsageSince(ctx, orgID, p.ID(), since); oldestErr != nil {
+						slog.WarnContext(ctx, "could not get earliest plan usage", slogx.Error(oldestErr))
+					} else {
+						cu.OldestUsage = oldest
 					}
 				}
 
 			case model.ConstraintConcurrency:
 				if h.subscriptionMonitor != nil {
-					cu.InFlight = h.subscriptionMonitor.CurrentInFlight(orgID, p.ID())
+					cu.InFlight = h.subscriptionMonitor.CurrentUserInFlight(orgID, p.ID(), userID)
 					if c.MaxConcurrent != nil {
 						cu.Exhausted = h.subscriptionMonitor.IsExhausted(orgID, p.ID(), c.Label)
 					}
@@ -587,4 +609,26 @@ func (h *Handler) buildDashboardSubscriptionUsage(ctx context.Context, orgID mod
 	}
 
 	return result
+}
+
+// fairShareConstraint returns a copy of the constraint whose budgets (token, value,
+// concurrency) are divided by the member count, matching the per-user fair-share the
+// enforcer applies. When the member count is not positive, the constraint is unchanged.
+func fairShareConstraint(c model.PlanConstraint, memberCount int64) model.PlanConstraint {
+	if memberCount <= 1 {
+		return c
+	}
+	if c.TokenBudget != nil {
+		v := max(*c.TokenBudget/memberCount, 1)
+		c.TokenBudget = &v
+	}
+	if c.ValueBudget != nil {
+		v := max(*c.ValueBudget/memberCount, 1)
+		c.ValueBudget = &v
+	}
+	if c.MaxConcurrent != nil {
+		v := max(*c.MaxConcurrent/int(memberCount), 1)
+		c.MaxConcurrent = &v
+	}
+	return c
 }

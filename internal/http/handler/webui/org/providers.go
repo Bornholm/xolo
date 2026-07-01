@@ -563,6 +563,12 @@ func parseSubscriptionPlanFromForm(r *http.Request) *model.SubscriptionPlan {
 			if vb := parseBudgetField(r.FormValue(prefix + "value_budget")); vb != nil {
 				c.ValueBudget = vb
 			}
+			// A "reset dans" countdown turns the window into a fixed (tumbling) window
+			// aligned on the provider's real reset schedule. We convert it, relative to
+			// now, into an absolute anchor so the alignment survives restarts.
+			if anchor := computeWindowAnchor(r.FormValue(prefix+"reset_in"), c.Duration.Duration()); anchor != nil {
+				c.WindowAnchor = anchor
+			}
 		case model.ConstraintConcurrency:
 			if mc, err := strconv.Atoi(r.FormValue(prefix + "max_concurrent")); err == nil && mc > 0 {
 				c.MaxConcurrent = &mc
@@ -575,6 +581,60 @@ func parseSubscriptionPlanFromForm(r *http.Request) *model.SubscriptionPlan {
 		return nil
 	}
 	return &model.SubscriptionPlan{Label: label, Constraints: constraints}
+}
+
+// computeWindowAnchor turns a "reset dans" countdown (e.g. "4h29m", "4d13h") into an
+// absolute window anchor, relative to now. The anchor is the start of the window that
+// will reset at now+remaining. Returns nil when the field is empty/invalid or when the
+// window duration is unset (anchoring is meaningless without a period).
+func computeWindowAnchor(resetIn string, dur time.Duration) *time.Time {
+	if dur <= 0 {
+		return nil
+	}
+	remaining, ok := parseResetIn(resetIn)
+	if !ok {
+		return nil
+	}
+	// A valid countdown is at most one period; fold anything larger back into (0, dur].
+	if remaining > dur {
+		remaining = remaining % dur
+		if remaining == 0 {
+			remaining = dur
+		}
+	}
+	// nextReset = now + remaining ; current window start = nextReset - dur.
+	anchor := time.Now().Add(remaining).Add(-dur)
+	return &anchor
+}
+
+// parseResetIn parses a friendly countdown string. It accepts an optional leading day
+// component ("4d") followed by a standard Go duration ("13h", "29m", "13h29m"), so both
+// "4d13h" and "4h29m" are valid. Returns false when the string is empty or unparseable.
+func parseResetIn(s string) (time.Duration, bool) {
+	s = strings.ToLower(strings.TrimSpace(s))
+	if s == "" {
+		return 0, false
+	}
+	var total time.Duration
+	if i := strings.IndexByte(s, 'd'); i >= 0 {
+		n, err := strconv.Atoi(strings.TrimSpace(s[:i]))
+		if err != nil {
+			return 0, false
+		}
+		total += time.Duration(n) * 24 * time.Hour
+		s = strings.TrimSpace(s[i+1:])
+	}
+	if s != "" {
+		d, err := time.ParseDuration(s)
+		if err != nil {
+			return 0, false
+		}
+		total += d
+	}
+	if total <= 0 {
+		return 0, false
+	}
+	return total, true
 }
 
 func parsePlanTokenBudget(v string) *int64 {

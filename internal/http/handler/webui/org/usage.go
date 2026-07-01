@@ -693,14 +693,21 @@ func (h *Handler) buildSubscriptionProviderUsage(ctx context.Context, orgID mode
 			case model.ConstraintRollingWindow:
 				dur := c.Duration.Duration()
 				if dur > 0 {
-					since := now.Add(-dur)
+					since := c.CurrentWindowStart(now)
 					cu.WindowStart = since
+					cu.Anchored = c.IsAnchored()
+					cu.ResetAt = c.NextResetAt(now)
 					tokens, value, sumErr := h.usageStore.SumPlanUsageSince(ctx, orgID, p.ID(), since)
 					if sumErr != nil {
 						slog.WarnContext(ctx, "could not sum plan usage", slogx.Error(sumErr))
 					} else {
 						cu.TokensUsed = tokens
 						cu.ValueUsed = value
+					}
+					if oldest, oldestErr := h.usageStore.EarliestPlanUsageSince(ctx, orgID, p.ID(), since); oldestErr != nil {
+						slog.WarnContext(ctx, "could not get earliest plan usage", slogx.Error(oldestErr))
+					} else {
+						cu.OldestUsage = oldest
 					}
 				}
 

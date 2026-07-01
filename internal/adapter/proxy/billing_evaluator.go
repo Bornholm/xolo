@@ -85,7 +85,9 @@ func (e *rollingWindowEvaluator) Acquire(ctx context.Context, scope planScope, c
 		return noopReservation{}, nil, nil
 	}
 
-	since := time.Now().Add(-dur)
+	// Window start is aligned on the constraint's anchor (fixed/tumbling window matching the
+	// upstream provider's reset schedule) or falls back to a sliding window when unset.
+	since := c.CurrentWindowStart(time.Now())
 	tokens, providerValue, err := e.usageStore.SumPlanUsageSince(ctx, scope.OrgID, scope.ProviderID, since)
 	if err != nil {
 		return nil, nil, err
