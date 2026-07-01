@@ -8,9 +8,9 @@ import (
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/checkbox"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/form"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
+	switchcomp "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/switch"
 )
 
 // ── Settings Page ─────────────────────────────────────────────────────────────
@@ -49,12 +49,12 @@ templ OrgSettingsPage(vmodel OrgSettingsPageVModel) {
 								@form.Description() { Utilisée pour les quotas et l'affichage des coûts. }
 							</div>
 							<div class="space-y-2">
-								@form.ItemFlex() {
-									@checkbox.Checkbox(checkbox.Props{ID: "share_quota_equally", Name: "share_quota_equally", Checked: vmodel.Org.ShareQuotaEqually(), Disabled: readonly})
-									@form.Label(form.LabelProps{For: "share_quota_equally"}) {
-										Répartir le budget de l'organisation équitablement entre les membres
-									}
+							@form.ItemFlex() {
+								@switchcomp.Switch(switchcomp.Props{ID: "share_quota_equally", Name: "share_quota_equally", Checked: vmodel.Org.ShareQuotaEqually(), Disabled: readonly})
+								@form.Label(form.LabelProps{For: "share_quota_equally"}) {
+									Répartir le budget de l'organisation équitablement entre les membres
 								}
+							}
 								@form.Description() { S'applique aux membres sans quota individuel défini. }
 								if vmodel.MemberCount > 0 {
 									@form.Description() {

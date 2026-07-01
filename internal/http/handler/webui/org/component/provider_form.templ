@@ -8,10 +8,10 @@ import (
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/checkbox"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/form"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
+	switchcomp "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/switch"
 )
 
 // ── Provider Form ─────────────────────────────────────────────────────────────
@@ -155,7 +155,7 @@ templ ProviderForm(vmodel ProviderFormVModel) {
 						<div class="p-6 pt-0">
 							<div class="space-y-4 pt-4">
 								@form.ItemFlex() {
-									@checkbox.Checkbox(checkbox.Props{ID: "active", Name: "active", Checked: vmodel.Provider.Active(), Disabled: readonly})
+									@switchcomp.Switch(switchcomp.Props{ID: "active", Name: "active", Checked: vmodel.Provider.Active(), Disabled: readonly})
 									@form.Label(form.LabelProps{For: "active"}) {
 										Actif
 									}
@@ -174,7 +174,7 @@ templ ProviderForm(vmodel ProviderFormVModel) {
 								<div class="rounded-md border p-4 space-y-3">
 									{{ retryEnabled := retryCfg != nil && retryCfg.Enabled }}
 									@form.ItemFlex() {
-										@checkbox.Checkbox(checkbox.Props{ID: "retry_enabled", Name: "retry_enabled", Checked: retryEnabled, Disabled: readonly})
+										@switchcomp.Switch(switchcomp.Props{ID: "retry_enabled", Name: "retry_enabled", Checked: retryEnabled, Disabled: readonly})
 										@form.Label(form.LabelProps{For: "retry_enabled"}) {
 											Retry (nouvelle tentative)
 										}
@@ -223,7 +223,7 @@ templ ProviderForm(vmodel ProviderFormVModel) {
 								<div class="rounded-md border p-4 space-y-3">
 									{{ rlEnabled := rlCfg != nil && rlCfg.Enabled }}
 									@form.ItemFlex() {
-										@checkbox.Checkbox(checkbox.Props{ID: "rate_limit_enabled", Name: "rate_limit_enabled", Checked: rlEnabled, Disabled: readonly})
+										@switchcomp.Switch(switchcomp.Props{ID: "rate_limit_enabled", Name: "rate_limit_enabled", Checked: rlEnabled, Disabled: readonly})
 										@form.Label(form.LabelProps{For: "rate_limit_enabled"}) {
 											Rate limit (limitation de débit)
 										}

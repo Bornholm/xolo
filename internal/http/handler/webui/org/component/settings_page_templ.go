@@ -16,9 +16,9 @@ import (
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/checkbox"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/form"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
+	switchcomp "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/switch"
 )
 
 // ── Settings Page ─────────────────────────────────────────────────────────────
@@ -288,7 +288,7 @@ func OrgSettingsPage(vmodel OrgSettingsPageVModel) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = checkbox.Checkbox(checkbox.Props{ID: "share_quota_equally", Name: "share_quota_equally", Checked: vmodel.Org.ShareQuotaEqually(), Disabled: readonly}).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = switchcomp.Switch(switchcomp.Props{ID: "share_quota_equally", Name: "share_quota_equally", Checked: vmodel.Org.ShareQuotaEqually(), Disabled: readonly}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
