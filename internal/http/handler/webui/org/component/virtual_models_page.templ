@@ -2,10 +2,13 @@ package component
 
 import (
 	"strconv"
+
 	"github.com/bornholm/xolo/internal/core/rbac"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/form"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/textarea"
@@ -66,29 +69,39 @@ templ VirtualModelsPage(vmodel VirtualModelsPageVModel) {
 				</div>
 			</div>
 			if vmodel.Success == "created" {
-				<div class="bg-green-50 border border-green-200 text-green-800 px-4 py-2 rounded-md">
-					Modèle virtuel créé avec succès.
-				</div>
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					@alert.Description() {
+						Modèle virtuel créé avec succès.
+					}
+				}
 			}
 			if vmodel.Success == "updated" {
-				<div class="bg-green-50 border border-green-200 text-green-800 px-4 py-2 rounded-md">
-					Modèle virtuel mis à jour avec succès.
-				</div>
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					@alert.Description() {
+						Modèle virtuel mis à jour avec succès.
+					}
+				}
 			}
 			if vmodel.Success == "deleted" {
-				<div class="bg-green-50 border border-green-200 text-green-800 px-4 py-2 rounded-md">
-					Modèle virtuel supprimé avec succès.
-				</div>
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					@alert.Description() {
+						Modèle virtuel supprimé avec succès.
+					}
+				}
 			}
 			if vmodel.Error == "exists" {
-				<div class="bg-red-50 border border-red-200 text-red-800 px-4 py-2 rounded-md">
-					Un modèle virtuel avec ce nom existe déjà.
-				</div>
+				@alert.Alert(alert.Props{Variant: alert.VariantDestructive}) {
+					@alert.Description() {
+						Un modèle virtuel avec ce nom existe déjà.
+					}
+				}
 			}
 			if vmodel.Error == "create_failed" {
-				<div class="bg-red-50 border border-red-200 text-red-800 px-4 py-2 rounded-md">
-					Erreur lors de la création du modèle virtuel.
-				</div>
+				@alert.Alert(alert.Props{Variant: alert.VariantDestructive}) {
+					@alert.Description() {
+						Erreur lors de la création du modèle virtuel.
+					}
+				}
 			}
 			if len(vmodel.VirtualModels) == 0 {
 				<div class="rounded-lg border p-6 text-center text-muted-foreground">
@@ -187,37 +200,43 @@ templ VirtualModelFormPage(vmodel VirtualModelFormVModel) {
 				</div>
 			}
 			<form method="POST" action={ templ.SafeURL(action) } class="space-y-4">
-				<div class="space-y-2">
-					<label class="text-sm font-medium">Nom</label>
-					if vmodel.IsNew {
-						@input.Input(input.Props{
-							Name:        "name",
-							Placeholder: "ex: auto, fast, smart",
-							Attributes:  templ.Attributes{"required": true},
-						})
-						<p class="text-sm text-muted-foreground">Le nom sera utilisé comme suffixe du nom qualifié (ex: acme/auto)</p>
-					} else {
-						@input.Input(input.Props{
-							Name:     "name",
-							Value:    vmodel.Name,
-							Readonly: true,
-						})
-					}
-				</div>
-				<div class="space-y-2">
-					<label class="text-sm font-medium">Description</label>
-					@textarea.Textarea(textarea.Props{Name: "description", Rows: 3, Value: vmodel.Description})
-				</div>
-				<div class="flex gap-2">
-					@button.Button(button.Props{Type: button.TypeSubmit}) {
-						Enregistrer
-					}
-					@button.Button(button.Props{
-						Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models")),
-						Variant: button.VariantOutline,
-					}) {
-						Annuler
-					}
+				<div class="bg-card shadow-xs w-full border text-card-foreground rounded-lg">
+					<div class="p-6">
+						<div class="space-y-4 pt-4">
+							<div class="space-y-2">
+								@form.Label(form.LabelProps{}) { Nom }
+								if vmodel.IsNew {
+									@input.Input(input.Props{
+										Name:        "name",
+										Placeholder: "ex: auto, fast, smart",
+										Attributes:  templ.Attributes{"required": true},
+									})
+									@form.Description() { Le nom sera utilisé comme suffixe du nom qualifié (ex: acme/auto) }
+								} else {
+									@input.Input(input.Props{
+										Name:     "name",
+										Value:    vmodel.Name,
+										Readonly: true,
+									})
+								}
+							</div>
+							<div class="space-y-2">
+								@form.Label(form.LabelProps{}) { Description }
+								@textarea.Textarea(textarea.Props{Name: "description", Rows: 3, Value: vmodel.Description})
+							</div>
+						</div>
+					</div>
+					<div class="pt-0 flex items-center p-6">
+						@button.Button(button.Props{Type: button.TypeSubmit}) {
+							Enregistrer
+						}
+						@button.Button(button.Props{
+							Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models")),
+							Variant: button.VariantOutline,
+						}) {
+							Annuler
+						}
+					</div>
 				</div>
 			</form>
 		</div>

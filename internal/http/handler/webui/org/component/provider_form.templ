@@ -2,12 +2,14 @@ package component
 
 import (
 	"fmt"
+
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/rbac"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/checkbox"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/form"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
 )
@@ -32,237 +34,256 @@ templ ProviderForm(vmodel ProviderFormVModel) {
 				}
 			}
 			<form method="POST" action={ templ.SafeURL(action) } class="space-y-4">
-				<div class="space-y-2">
-					<label class="text-sm font-medium">Nom</label>
-					if !vmodel.IsNew && vmodel.Provider != nil {
-						@input.Input(input.Props{Name: "name", Value: vmodel.Provider.Name(), Disabled: readonly})
-					} else {
-						@input.Input(input.Props{Name: "name", Disabled: readonly})
-					}
-				</div>
-				<div class="space-y-2">
-					<label class="text-sm font-medium">Type</label>
-					@selectbox.SelectBox(selectbox.Props{ID: "provider_type"}) {
-						@selectbox.Trigger(selectbox.TriggerProps{Name: "provider_type", Disabled: readonly}) {
-							@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner un type"})
-						}
-						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
-							@selectbox.Group() {
-								for _, t := range []string{"openai", "mistral", "openrouter", "yzma"} {
-									@selectbox.Item(selectbox.ItemProps{Value: t, Selected: !vmodel.IsNew && vmodel.Provider != nil && vmodel.Provider.Type() == t}) {
-										{ t }
-									}
-								}
-							}
-						}
-					}
-				</div>
-				<div class="space-y-2">
-					<label class="text-sm font-medium">URL de base</label>
-					<p class="text-xs text-muted-foreground">
-						Exemples : <code>https://api.openai.com/v1</code>, <code>https://api.mistral.ai/v1</code>, <code>https://openrouter.ai/api/v1</code>
-					</p>
-					if !vmodel.IsNew && vmodel.Provider != nil {
-						@input.Input(input.Props{Name: "base_url", Value: vmodel.Provider.BaseURL(), Placeholder: "https://api.mistral.ai/v1", Disabled: readonly, Attributes: templ.Attributes{"required": "required"}})
-					} else {
-						@input.Input(input.Props{Name: "base_url", Placeholder: "https://api.mistral.ai/v1", Disabled: readonly, Attributes: templ.Attributes{"required": "required"}})
-					}
-				</div>
-				<div class="space-y-2">
-					if vmodel.IsNew {
-						<label class="text-sm font-medium">Clé API</label>
-					} else {
-						<label class="text-sm font-medium">Clé API (laisser vide pour conserver)</label>
-					}
-					@input.Input(input.Props{Name: "api_key", Type: "password", Placeholder: "sk-...", Disabled: readonly})
-				</div>
-				<div class="space-y-2">
-					<label class="text-sm font-medium">Devise</label>
-					@selectbox.SelectBox(selectbox.Props{ID: "provider_currency"}) {
-						@selectbox.Trigger(selectbox.TriggerProps{Name: "currency", Disabled: readonly}) {
-							@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner une devise"})
-						}
-						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
-							@selectbox.Group() {
-								for _, c := range model.SupportedCurrencies {
-									@selectbox.Item(selectbox.ItemProps{Value: c, Selected: !vmodel.IsNew && vmodel.Provider != nil && vmodel.Provider.Currency() == c}) {
-										{ c }
-									}
-								}
-							}
-						}
-					}
-				</div>
-				<div class="space-y-2">
-					<label class="text-sm font-medium">Niveau d'infrastructure (CloudTier)</label>
-					<p class="text-xs text-muted-foreground">Utilisé pour l'estimation de consommation énergétique.</p>
-					{{ currentTier := 0 }}
-					if !vmodel.IsNew && vmodel.Provider != nil {
-						{{ currentTier = vmodel.Provider.CloudTier() }}
-					}
-					@selectbox.SelectBox(selectbox.Props{ID: "cloud_tier"}) {
-						@selectbox.Trigger(selectbox.TriggerProps{Name: "cloud_tier", Disabled: readonly}) {
-							@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner un niveau"})
-						}
-						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
-							@selectbox.Group() {
-								@selectbox.Item(selectbox.ItemProps{Value: "0", Selected: currentTier == 0}) {
-									Hyperscaler (Google, Microsoft, OpenAI, Anthropic)
-								}
-								@selectbox.Item(selectbox.ItemProps{Value: "1", Selected: currentTier == 1}) {
-									Major Cloud (AWS, OVH, CoreWeave, Mistral)
-								}
-								@selectbox.Item(selectbox.ItemProps{Value: "2", Selected: currentTier == 2}) {
-									Small Provider
-								}
-							}
-						}
-					}
-				</div>
-				// ── Billing mode ─────────────────────────────────────────────
-				<div class="space-y-2">
-					<label class="text-sm font-medium">Mode de facturation</label>
-					{{ currentBillingMode := model.BillingModePayg }}
-					if !vmodel.IsNew && vmodel.Provider != nil {
-						{{ currentBillingMode = vmodel.Provider.BillingMode() }}
-					}
-					@selectbox.SelectBox(selectbox.Props{ID: "billing_mode"}) {
-						@selectbox.Trigger(selectbox.TriggerProps{Name: "billing_mode", Disabled: readonly}) {
-							@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner un mode"})
-						}
-						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
-							@selectbox.Group() {
-								@selectbox.Item(selectbox.ItemProps{Value: string(model.BillingModePayg), Selected: currentBillingMode == model.BillingModePayg}) {
-									Pay-as-you-go
-								}
-								@selectbox.Item(selectbox.ItemProps{Value: string(model.BillingModeSubscription), Selected: currentBillingMode == model.BillingModeSubscription}) {
-									Abonnement (Token Plan)
-								}
-							}
-						}
-					}
-				</div>
-				if !vmodel.IsNew && vmodel.Provider != nil && vmodel.Provider.BillingMode() == model.BillingModeSubscription {
-					@SubscriptionPlanEditor(vmodel.Provider.SubscriptionPlan(), readonly)
-				}
-				if !vmodel.IsNew && vmodel.Provider != nil {
-					<div class="flex items-center gap-2">
-						@checkbox.Checkbox(checkbox.Props{ID: "active", Name: "active", Checked: vmodel.Provider.Active(), Disabled: readonly})
-						<label for="active" class="text-sm font-medium">Actif</label>
-					</div>
-					@button.Button(button.Props{
-						Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()), "/test")),
-						Variant: button.VariantOutline,
-						Type:    "button",
-					}) {
-						Tester la connexion
-					}
-					// ── Retry ────────────────────────────────────────────────
-					{{ retryCfg := vmodel.Provider.RetryConfig() }}
-					<div class="rounded-md border p-4 space-y-3">
-						{{ retryEnabled := retryCfg != nil && retryCfg.Enabled }}
-						<div class="flex items-center gap-2">
-							@checkbox.Checkbox(checkbox.Props{ID: "retry_enabled", Name: "retry_enabled", Checked: retryEnabled, Disabled: readonly})
-							<label for="retry_enabled" class="text-sm font-semibold">Retry (nouvelle tentative)</label>
-						</div>
-						<div class="grid grid-cols-2 gap-3">
+				<div class="bg-card shadow-xs w-full border text-card-foreground rounded-lg">
+					<div class="p-6">
+						<div class="space-y-4 pt-4">
 							<div class="space-y-2">
-								<label class="text-sm font-medium">Nombre de tentatives</label>
-								if retryCfg != nil {
-									@input.Input(input.Props{Name: "retry_max_attempts", Type: "number", Value: fmt.Sprintf("%d", retryCfg.MaxAttempts), Placeholder: "3", Disabled: readonly, Attributes: templ.Attributes{"min": "1"}})
+								@form.Label(form.LabelProps{}) { Nom }
+								if !vmodel.IsNew && vmodel.Provider != nil {
+									@input.Input(input.Props{Name: "name", Value: vmodel.Provider.Name(), Disabled: readonly})
 								} else {
-									@input.Input(input.Props{Name: "retry_max_attempts", Type: "number", Placeholder: "3", Disabled: readonly, Attributes: templ.Attributes{"min": "1"}})
+									@input.Input(input.Props{Name: "name", Disabled: readonly})
 								}
 							</div>
 							<div class="space-y-2">
-								<label class="text-sm font-medium">Délai entre tentatives</label>
-								<div class="flex gap-2">
-									if retryCfg != nil {
-										@input.Input(input.Props{Name: "retry_delay_value", Type: "number", Value: durationValue(retryCfg.Delay), Placeholder: "1", Disabled: readonly, Attributes: templ.Attributes{"min": "1", "class": "flex-1"}})
-									} else {
-										@input.Input(input.Props{Name: "retry_delay_value", Type: "number", Placeholder: "1", Disabled: readonly, Attributes: templ.Attributes{"min": "1", "class": "flex-1"}})
+								@form.Label(form.LabelProps{}) { Type }
+								@selectbox.SelectBox(selectbox.Props{ID: "provider_type"}) {
+									@selectbox.Trigger(selectbox.TriggerProps{Name: "provider_type", Disabled: readonly}) {
+										@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner un type"})
 									}
-									@selectbox.SelectBox(selectbox.Props{ID: "retry_delay_unit", Class: "w-24"}) {
-										@selectbox.Trigger(selectbox.TriggerProps{Name: "retry_delay_unit", Disabled: readonly}) {
-											@selectbox.Value(selectbox.ValueProps{Placeholder: "Unité"})
-										}
-										@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
-											@selectbox.Group() {
-												@selectbox.Item(selectbox.ItemProps{Value: "ms", Selected: retryCfg != nil && durationUnit(retryCfg.Delay) == "ms"}) {
-													ms
-												}
-												@selectbox.Item(selectbox.ItemProps{Value: "s", Selected: retryCfg == nil || durationUnit(retryCfg.Delay) == "s"}) {
-													s
-												}
-												@selectbox.Item(selectbox.ItemProps{Value: "min", Selected: retryCfg != nil && durationUnit(retryCfg.Delay) == "min"}) {
-													min
+									@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+										@selectbox.Group() {
+											for _, t := range []string{"openai", "mistral", "openrouter", "yzma"} {
+												@selectbox.Item(selectbox.ItemProps{Value: t, Selected: !vmodel.IsNew && vmodel.Provider != nil && vmodel.Provider.Type() == t}) {
+													{ t }
 												}
 											}
 										}
 									}
-								</div>
+								}
 							</div>
-						</div>
-					</div>
-					// ── Rate limit ───────────────────────────────────────────
-					{{ rlCfg := vmodel.Provider.RateLimitConfig() }}
-					<div class="rounded-md border p-4 space-y-3">
-						{{ rlEnabled := rlCfg != nil && rlCfg.Enabled }}
-						<div class="flex items-center gap-2">
-							@checkbox.Checkbox(checkbox.Props{ID: "rate_limit_enabled", Name: "rate_limit_enabled", Checked: rlEnabled, Disabled: readonly})
-							<label for="rate_limit_enabled" class="text-sm font-semibold">Rate limit (limitation de débit)</label>
-						</div>
-						<div class="grid grid-cols-2 gap-3">
 							<div class="space-y-2">
-								<label class="text-sm font-medium">Intervalle minimum entre requêtes</label>
-								<div class="flex gap-2">
-									if rlCfg != nil {
-										@input.Input(input.Props{Name: "rate_limit_interval_value", Type: "number", Value: durationValue(rlCfg.Interval), Placeholder: "1", Disabled: readonly, Attributes: templ.Attributes{"min": "1", "class": "flex-1"}})
-									} else {
-										@input.Input(input.Props{Name: "rate_limit_interval_value", Type: "number", Placeholder: "1", Disabled: readonly, Attributes: templ.Attributes{"min": "1", "class": "flex-1"}})
+								@form.Label(form.LabelProps{}) { URL de base }
+								@form.Description() {
+									Exemples : <code>https://api.openai.com/v1</code>, <code>https://api.mistral.ai/v1</code>, <code>https://openrouter.ai/api/v1</code>
+								}
+								if !vmodel.IsNew && vmodel.Provider != nil {
+									@input.Input(input.Props{Name: "base_url", Value: vmodel.Provider.BaseURL(), Placeholder: "https://api.mistral.ai/v1", Disabled: readonly, Attributes: templ.Attributes{"required": "required"}})
+								} else {
+									@input.Input(input.Props{Name: "base_url", Placeholder: "https://api.mistral.ai/v1", Disabled: readonly, Attributes: templ.Attributes{"required": "required"}})
+								}
+							</div>
+							<div class="space-y-2">
+								if vmodel.IsNew {
+									@form.Label(form.LabelProps{}) { Clé API }
+								} else {
+									@form.Label(form.LabelProps{}) { Clé API (laisser vide pour conserver) }
+								}
+								@input.Input(input.Props{Name: "api_key", Type: "password", Placeholder: "sk-...", Disabled: readonly})
+							</div>
+							<div class="space-y-2">
+								@form.Label(form.LabelProps{}) { Devise }
+								@selectbox.SelectBox(selectbox.Props{ID: "provider_currency"}) {
+									@selectbox.Trigger(selectbox.TriggerProps{Name: "currency", Disabled: readonly}) {
+										@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner une devise"})
 									}
-									@selectbox.SelectBox(selectbox.Props{ID: "rate_limit_interval_unit", Class: "w-24"}) {
-										@selectbox.Trigger(selectbox.TriggerProps{Name: "rate_limit_interval_unit", Disabled: readonly}) {
-											@selectbox.Value(selectbox.ValueProps{Placeholder: "Unité"})
-										}
-										@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
-											@selectbox.Group() {
-												@selectbox.Item(selectbox.ItemProps{Value: "ms", Selected: rlCfg != nil && durationUnit(rlCfg.Interval) == "ms"}) {
-													ms
-												}
-												@selectbox.Item(selectbox.ItemProps{Value: "s", Selected: rlCfg == nil || durationUnit(rlCfg.Interval) == "s"}) {
-													s
-												}
-												@selectbox.Item(selectbox.ItemProps{Value: "min", Selected: rlCfg != nil && durationUnit(rlCfg.Interval) == "min"}) {
-													min
+									@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+										@selectbox.Group() {
+											for _, c := range model.SupportedCurrencies {
+												@selectbox.Item(selectbox.ItemProps{Value: c, Selected: !vmodel.IsNew && vmodel.Provider != nil && vmodel.Provider.Currency() == c}) {
+													{ c }
 												}
 											}
 										}
 									}
-								</div>
+								}
 							</div>
 							<div class="space-y-2">
-								<label class="text-sm font-medium">Capacité de burst (rafale max)</label>
-								if rlCfg != nil {
-									@input.Input(input.Props{Name: "rate_limit_max_burst", Type: "number", Value: fmt.Sprintf("%d", rlCfg.MaxBurst), Placeholder: "10", Disabled: readonly, Attributes: templ.Attributes{"min": "1"}})
-								} else {
-									@input.Input(input.Props{Name: "rate_limit_max_burst", Type: "number", Placeholder: "10", Disabled: readonly, Attributes: templ.Attributes{"min": "1"}})
+								@form.Label(form.LabelProps{}) { Niveau d'infrastructure (CloudTier) }
+								@form.Description() { Utilisé pour l'estimation de consommation énergétique. }
+								{{ currentTier := 0 }}
+								if !vmodel.IsNew && vmodel.Provider != nil {
+									{{ currentTier = vmodel.Provider.CloudTier() }}
+								}
+								@selectbox.SelectBox(selectbox.Props{ID: "cloud_tier"}) {
+									@selectbox.Trigger(selectbox.TriggerProps{Name: "cloud_tier", Disabled: readonly}) {
+										@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner un niveau"})
+									}
+									@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+										@selectbox.Group() {
+											@selectbox.Item(selectbox.ItemProps{Value: "0", Selected: currentTier == 0}) {
+												Hyperscaler (Google, Microsoft, OpenAI, Anthropic)
+											}
+											@selectbox.Item(selectbox.ItemProps{Value: "1", Selected: currentTier == 1}) {
+												Major Cloud (AWS, OVH, CoreWeave, Mistral)
+											}
+											@selectbox.Item(selectbox.ItemProps{Value: "2", Selected: currentTier == 2}) {
+												Small Provider
+											}
+										}
+									}
+								}
+							</div>
+							<div class="space-y-2">
+								@form.Label(form.LabelProps{}) { Mode de facturation }
+								{{ currentBillingMode := model.BillingModePayg }}
+								if !vmodel.IsNew && vmodel.Provider != nil {
+									{{ currentBillingMode = vmodel.Provider.BillingMode() }}
+								}
+								@selectbox.SelectBox(selectbox.Props{ID: "billing_mode"}) {
+									@selectbox.Trigger(selectbox.TriggerProps{Name: "billing_mode", Disabled: readonly}) {
+										@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner un mode"})
+									}
+									@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+										@selectbox.Group() {
+											@selectbox.Item(selectbox.ItemProps{Value: string(model.BillingModePayg), Selected: currentBillingMode == model.BillingModePayg}) {
+												Pay-as-you-go
+											}
+											@selectbox.Item(selectbox.ItemProps{Value: string(model.BillingModeSubscription), Selected: currentBillingMode == model.BillingModeSubscription}) {
+												Abonnement (Token Plan)
+											}
+										}
+									}
 								}
 							</div>
 						</div>
 					</div>
-				}
-				if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermProvidersWrite) {
-					@button.Button(button.Props{Type: "submit"}) {
-						Enregistrer
+					if !vmodel.IsNew && vmodel.Provider != nil && vmodel.Provider.BillingMode() == model.BillingModeSubscription {
+						@SubscriptionPlanEditor(vmodel.Provider.SubscriptionPlan(), readonly)
 					}
-				}
+					if !vmodel.IsNew && vmodel.Provider != nil {
+						<div class="p-6 pt-0">
+							<div class="space-y-4 pt-4">
+								@form.ItemFlex() {
+									@checkbox.Checkbox(checkbox.Props{ID: "active", Name: "active", Checked: vmodel.Provider.Active(), Disabled: readonly})
+									@form.Label(form.LabelProps{For: "active"}) {
+										Actif
+									}
+								}
+								<div class="flex gap-2">
+									@button.Button(button.Props{
+										Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()), "/test")),
+										Variant: button.VariantOutline,
+										Type:    button.TypeButton,
+									}) {
+										Tester la connexion
+									}
+								</div>
+								// ── Retry ────────────────────────────────────────────────
+								{{ retryCfg := vmodel.Provider.RetryConfig() }}
+								<div class="rounded-md border p-4 space-y-3">
+									{{ retryEnabled := retryCfg != nil && retryCfg.Enabled }}
+									@form.ItemFlex() {
+										@checkbox.Checkbox(checkbox.Props{ID: "retry_enabled", Name: "retry_enabled", Checked: retryEnabled, Disabled: readonly})
+										@form.Label(form.LabelProps{For: "retry_enabled"}) {
+											Retry (nouvelle tentative)
+										}
+									}
+									<div class="grid grid-cols-2 gap-3">
+										<div class="space-y-2">
+											@form.Label(form.LabelProps{}) { Nombre de tentatives }
+											if retryCfg != nil {
+												@input.Input(input.Props{Name: "retry_max_attempts", Type: "number", Value: fmt.Sprintf("%d", retryCfg.MaxAttempts), Placeholder: "3", Disabled: readonly, Attributes: templ.Attributes{"min": "1"}})
+											} else {
+												@input.Input(input.Props{Name: "retry_max_attempts", Type: "number", Placeholder: "3", Disabled: readonly, Attributes: templ.Attributes{"min": "1"}})
+											}
+										</div>
+										<div class="space-y-2">
+											@form.Label(form.LabelProps{}) { Délai entre tentatives }
+											<div class="flex gap-2">
+												if retryCfg != nil {
+													@input.Input(input.Props{Name: "retry_delay_value", Type: "number", Value: durationValue(retryCfg.Delay), Placeholder: "1", Disabled: readonly, Attributes: templ.Attributes{"min": "1", "class": "flex-1"}})
+												} else {
+													@input.Input(input.Props{Name: "retry_delay_value", Type: "number", Placeholder: "1", Disabled: readonly, Attributes: templ.Attributes{"min": "1", "class": "flex-1"}})
+												}
+												@selectbox.SelectBox(selectbox.Props{ID: "retry_delay_unit", Class: "w-24"}) {
+													@selectbox.Trigger(selectbox.TriggerProps{Name: "retry_delay_unit", Disabled: readonly}) {
+														@selectbox.Value(selectbox.ValueProps{Placeholder: "Unité"})
+													}
+													@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+														@selectbox.Group() {
+															@selectbox.Item(selectbox.ItemProps{Value: "ms", Selected: retryCfg != nil && durationUnit(retryCfg.Delay) == "ms"}) {
+																ms
+															}
+															@selectbox.Item(selectbox.ItemProps{Value: "s", Selected: retryCfg == nil || durationUnit(retryCfg.Delay) == "s"}) {
+																s
+															}
+															@selectbox.Item(selectbox.ItemProps{Value: "min", Selected: retryCfg != nil && durationUnit(retryCfg.Delay) == "min"}) {
+																min
+															}
+														}
+													}
+												}
+											</div>
+										</div>
+									</div>
+								</div>
+								// ── Rate limit ───────────────────────────────────────────
+								{{ rlCfg := vmodel.Provider.RateLimitConfig() }}
+								<div class="rounded-md border p-4 space-y-3">
+									{{ rlEnabled := rlCfg != nil && rlCfg.Enabled }}
+									@form.ItemFlex() {
+										@checkbox.Checkbox(checkbox.Props{ID: "rate_limit_enabled", Name: "rate_limit_enabled", Checked: rlEnabled, Disabled: readonly})
+										@form.Label(form.LabelProps{For: "rate_limit_enabled"}) {
+											Rate limit (limitation de débit)
+										}
+									}
+									<div class="grid grid-cols-2 gap-3">
+										<div class="space-y-2">
+											@form.Label(form.LabelProps{}) { Intervalle minimum entre requêtes }
+											<div class="flex gap-2">
+												if rlCfg != nil {
+													@input.Input(input.Props{Name: "rate_limit_interval_value", Type: "number", Value: durationValue(rlCfg.Interval), Placeholder: "1", Disabled: readonly, Attributes: templ.Attributes{"min": "1", "class": "flex-1"}})
+												} else {
+													@input.Input(input.Props{Name: "rate_limit_interval_value", Type: "number", Placeholder: "1", Disabled: readonly, Attributes: templ.Attributes{"min": "1", "class": "flex-1"}})
+												}
+												@selectbox.SelectBox(selectbox.Props{ID: "rate_limit_interval_unit", Class: "w-24"}) {
+													@selectbox.Trigger(selectbox.TriggerProps{Name: "rate_limit_interval_unit", Disabled: readonly}) {
+														@selectbox.Value(selectbox.ValueProps{Placeholder: "Unité"})
+													}
+													@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+														@selectbox.Group() {
+															@selectbox.Item(selectbox.ItemProps{Value: "ms", Selected: rlCfg != nil && durationUnit(rlCfg.Interval) == "ms"}) {
+																ms
+															}
+															@selectbox.Item(selectbox.ItemProps{Value: "s", Selected: rlCfg == nil || durationUnit(rlCfg.Interval) == "s"}) {
+																s
+															}
+															@selectbox.Item(selectbox.ItemProps{Value: "min", Selected: rlCfg != nil && durationUnit(rlCfg.Interval) == "min"}) {
+																min
+															}
+														}
+													}
+												}
+											</div>
+										</div>
+										<div class="space-y-2">
+											@form.Label(form.LabelProps{}) { Capacité de burst (rafale max) }
+											if rlCfg != nil {
+												@input.Input(input.Props{Name: "rate_limit_max_burst", Type: "number", Value: fmt.Sprintf("%d", rlCfg.MaxBurst), Placeholder: "10", Disabled: readonly, Attributes: templ.Attributes{"min": "1"}})
+											} else {
+												@input.Input(input.Props{Name: "rate_limit_max_burst", Type: "number", Placeholder: "10", Disabled: readonly, Attributes: templ.Attributes{"min": "1"}})
+											}
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					}
+					if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermProvidersWrite) {
+						<div class="pt-0 flex items-center p-6">
+							@button.Button(button.Props{Type: button.TypeSubmit}) {
+								Enregistrer
+							}
+						</div>
+					}
+				</div>
 			</form>
 			if !vmodel.IsNew && vmodel.Provider != nil {
 				@button.Button(button.Props{
 					Variant: button.VariantDestructive,
+					Type:    button.TypeButton,
 					Attributes: templ.Attributes{
-						"type":     "button",
 						"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/providers/", string(vmodel.Provider.ID()))),
 						"onclick":  "if(confirm('Supprimer ce fournisseur et tous ses modèles ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
 					},

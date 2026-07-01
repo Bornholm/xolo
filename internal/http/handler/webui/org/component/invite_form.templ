@@ -4,6 +4,7 @@ import (
 	"github.com/bornholm/xolo/internal/core/model"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/form"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
 )
@@ -14,43 +15,51 @@ templ InviteForm(vmodel InviteFormVModel) {
 		<div class="space-y-6">
 			<h1 class="text-2xl font-semibold">Créer une invitation</h1>
 			<form method="POST" action={ common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites")) } class="space-y-4">
-				<div class="space-y-2">
-					<label class="text-sm font-medium">Email de l'invité (optionnel)</label>
-					<p class="text-xs text-muted-foreground">Laisser vide pour un lien utilisable par n'importe qui.</p>
-					@input.Input(input.Props{Name: "invitee_email", Type: "email", Placeholder: "utilisateur@exemple.com"})
-				</div>
-				<div class="space-y-2">
-					<label class="text-sm font-medium">Rôle</label>
-					@selectbox.SelectBox(selectbox.Props{ID: "invite_role"}) {
-						@selectbox.Trigger(selectbox.TriggerProps{Name: "role"}) {
-							@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner un rôle"})
-						}
-						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
-							@selectbox.Group() {
-								for _, r := range vmodel.OrgRoles {
-									{{ label := r.Name() }}
-									if r.BuiltinKind() != "" {
-										{{ label = BuiltinRoleLabel(r.BuiltinKind()) }}
+				<div class="bg-card shadow-xs w-full border text-card-foreground rounded-lg">
+					<div class="p-6">
+						<div class="space-y-4 pt-4">
+							<div class="space-y-2">
+								@form.Label(form.LabelProps{}) { Email de l'invité (optionnel) }
+								@input.Input(input.Props{Name: "invitee_email", Type: "email", Placeholder: "utilisateur@exemple.com"})
+								@form.Description() { Laisser vide pour un lien utilisable par n'importe qui. }
+							</div>
+							<div class="space-y-2">
+								@form.Label(form.LabelProps{}) { Rôle }
+								@selectbox.SelectBox(selectbox.Props{ID: "invite_role"}) {
+									@selectbox.Trigger(selectbox.TriggerProps{Name: "role"}) {
+										@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner un rôle"})
 									}
-									@selectbox.Item(selectbox.ItemProps{Value: string(r.ID()), Selected: r.BuiltinKind() == model.BuiltinKindMember}) {
-										{ label }
+									@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+										@selectbox.Group() {
+											for _, r := range vmodel.OrgRoles {
+												{{ label := r.Name() }}
+												if r.BuiltinKind() != "" {
+													{{ label = BuiltinRoleLabel(r.BuiltinKind()) }}
+												}
+												@selectbox.Item(selectbox.ItemProps{Value: string(r.ID()), Selected: r.BuiltinKind() == model.BuiltinKindMember}) {
+													{ label }
+												}
+											}
+										}
 									}
 								}
-							}
+							</div>
+							<div class="space-y-2">
+								@form.Label(form.LabelProps{}) { Date d'expiration (optionnel) }
+								@input.Input(input.Props{Name: "expires_at", Type: "date"})
+							</div>
+							<div class="space-y-2">
+								@form.Label(form.LabelProps{}) { Nombre max d'utilisations (optionnel) }
+								@input.Input(input.Props{Name: "max_uses", Type: "number", Placeholder: "1"})
+							</div>
+						</div>
+					</div>
+					<div class="pt-0 flex items-center p-6">
+						@button.Button(button.Props{Type: button.TypeSubmit}) {
+							Créer le lien
 						}
-					}
+					</div>
 				</div>
-				<div class="space-y-2">
-					<label class="text-sm font-medium">Date d'expiration (optionnel)</label>
-					@input.Input(input.Props{Name: "expires_at", Type: "date"})
-				</div>
-				<div class="space-y-2">
-					<label class="text-sm font-medium">Nombre max d'utilisations (optionnel)</label>
-					@input.Input(input.Props{Name: "max_uses", Type: "number", Placeholder: "1"})
-				</div>
-				@button.Button(button.Props{Type: "submit"}) {
-					Créer le lien
-				}
 			</form>
 		</div>
 	}

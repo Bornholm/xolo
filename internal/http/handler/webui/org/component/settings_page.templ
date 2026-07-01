@@ -2,12 +2,14 @@ package component
 
 import (
 	"strconv"
+
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/rbac"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/checkbox"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/form"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
 )
 
@@ -25,52 +27,60 @@ templ OrgSettingsPage(vmodel OrgSettingsPageVModel) {
 				}
 			}
 			<form method="POST" action={ templ.SafeURL(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/settings"))) } class="space-y-4">
-				<div class="space-y-2">
-					<label class="text-sm font-medium">Devise préférée</label>
-					@selectbox.SelectBox(selectbox.Props{ID: "org_currency"}) {
-						@selectbox.Trigger(selectbox.TriggerProps{Name: "currency", Disabled: readonly}) {
-							@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner une devise"})
-						}
-						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
-							@selectbox.Group() {
-								for _, c := range model.SupportedCurrencies {
-									@selectbox.Item(selectbox.ItemProps{Value: c, Selected: vmodel.Org.Currency() == c}) {
-										{ c }
+				<div class="bg-card shadow-xs w-full border text-card-foreground rounded-lg">
+					<div class="p-6">
+						<div class="space-y-4 pt-4">
+							<div class="space-y-2">
+								@form.Label(form.LabelProps{}) { Devise préférée }
+								@selectbox.SelectBox(selectbox.Props{ID: "org_currency"}) {
+									@selectbox.Trigger(selectbox.TriggerProps{Name: "currency", Disabled: readonly}) {
+										@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner une devise"})
+									}
+									@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+										@selectbox.Group() {
+											for _, c := range model.SupportedCurrencies {
+												@selectbox.Item(selectbox.ItemProps{Value: c, Selected: vmodel.Org.Currency() == c}) {
+													{ c }
+												}
+											}
+										}
 									}
 								}
-							}
-						}
-					}
-					<p class="text-xs text-muted-foreground">Utilisée pour les quotas et l'affichage des coûts.</p>
-				</div>
-				<div class="space-y-2">
-					<div class="flex items-center space-x-2">
-						@checkbox.Checkbox(checkbox.Props{ID: "share_quota_equally", Name: "share_quota_equally", Checked: vmodel.Org.ShareQuotaEqually(), Disabled: readonly})
-						<label for="share_quota_equally" class="text-sm font-medium">
-							Répartir le budget de l'organisation équitablement entre les membres
-						</label>
+								@form.Description() { Utilisée pour les quotas et l'affichage des coûts. }
+							</div>
+							<div class="space-y-2">
+								@form.ItemFlex() {
+									@checkbox.Checkbox(checkbox.Props{ID: "share_quota_equally", Name: "share_quota_equally", Checked: vmodel.Org.ShareQuotaEqually(), Disabled: readonly})
+									@form.Label(form.LabelProps{For: "share_quota_equally"}) {
+										Répartir le budget de l'organisation équitablement entre les membres
+									}
+								}
+								@form.Description() { S'applique aux membres sans quota individuel défini. }
+								if vmodel.MemberCount > 0 {
+									@form.Description() {
+										Aperçu ({ strconv.Itoa(vmodel.MemberCount) } membres) :
+										if vmodel.SharedDailyBudget != nil {
+											{ " " }Journalier : { common.CurrencySymbol(vmodel.Org.Currency()) }{ formatBudgetField(*vmodel.SharedDailyBudget) }
+										}
+										if vmodel.SharedMonthlyBudget != nil {
+											{ " " }Mensuel : { common.CurrencySymbol(vmodel.Org.Currency()) }{ formatBudgetField(*vmodel.SharedMonthlyBudget) }
+										}
+										if vmodel.SharedYearlyBudget != nil {
+											{ " " }Annuel : { common.CurrencySymbol(vmodel.Org.Currency()) }{ formatBudgetField(*vmodel.SharedYearlyBudget) }
+										}
+									}
+								}
+							</div>
+						</div>
 					</div>
-					<p class="text-xs text-muted-foreground">S'applique aux membres sans quota individuel défini.</p>
-					if vmodel.MemberCount > 0 {
-						<div class="text-xs text-muted-foreground space-y-1">
-							<p>Aperçu ({ strconv.Itoa(vmodel.MemberCount) } membres) :</p>
-							if vmodel.SharedDailyBudget != nil {
-								<p>Journalier : { common.CurrencySymbol(vmodel.Org.Currency()) }{ formatBudgetField(*vmodel.SharedDailyBudget) }</p>
-							}
-							if vmodel.SharedMonthlyBudget != nil {
-								<p>Mensuel : { common.CurrencySymbol(vmodel.Org.Currency()) }{ formatBudgetField(*vmodel.SharedMonthlyBudget) }</p>
-							}
-							if vmodel.SharedYearlyBudget != nil {
-								<p>Annuel : { common.CurrencySymbol(vmodel.Org.Currency()) }{ formatBudgetField(*vmodel.SharedYearlyBudget) }</p>
+					if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermSettingsWrite) {
+						<div class="pt-0 flex items-center p-6">
+							@button.Button(button.Props{Type: button.TypeSubmit}) {
+								Enregistrer
 							}
 						</div>
 					}
 				</div>
-				if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermSettingsWrite) {
-					@button.Button(button.Props{Type: "submit"}) {
-						Enregistrer
-					}
-				}
 			</form>
 		</div>
 	}
