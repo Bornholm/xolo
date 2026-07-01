@@ -25,6 +25,7 @@ RUN apk add \
     ca-certificates \
     openssl \
     gcompat \
+    tzdata \
   && update-ca-certificates
 
 COPY --from=build /src/dist/xolo-server_linux_amd64_v1/xolo-server /usr/local/bin/xolo-server
