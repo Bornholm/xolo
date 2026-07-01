@@ -140,6 +140,11 @@ func (t *XoloUsageTracker) PostResponse(ctx context.Context, req *genaiProxy.Pro
 			recordCost = converted
 			recordCurrency = orgCurrency
 		}
+
+		// Display the org-facing model name (proxyName), not the raw name
+		// forwarded to the upstream provider (llmModel.RealModel()), which is
+		// what MetaResolvedModel carries after pipeline resolution.
+		resolvedModel = org.Slug() + "/" + llmModel.ProxyName()
 	}
 
 	record := model.NewUsageRecord(

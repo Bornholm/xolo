@@ -69,9 +69,10 @@ func (e *ModelExecutor) Forward(ctx context.Context, node model.PipelineNode, in
 				return nil, errors.Wrapf(err, "personal virtual model %q pipeline failed", proxyName)
 			}
 			return &ForwardResult{
-				ResolvedClient: sub.ResolvedClient,
-				ResolvedModel:  sub.ResolvedModel,
-				OutputValues:   map[string]interface{}{"response": ""},
+				ResolvedClient:  sub.ResolvedClient,
+				ResolvedModel:   sub.ResolvedModel,
+				ResolvedModelID: sub.ResolvedModelID,
+				OutputValues:    map[string]interface{}{"response": ""},
 			}, nil
 		}
 	}
@@ -97,9 +98,10 @@ func (e *ModelExecutor) Forward(ctx context.Context, node model.PipelineNode, in
 				return nil, errors.Wrapf(err, "virtual model %q pipeline failed", proxyName)
 			}
 			return &ForwardResult{
-				ResolvedClient: sub.ResolvedClient,
-				ResolvedModel:  sub.ResolvedModel,
-				OutputValues:   map[string]interface{}{"response": ""},
+				ResolvedClient:  sub.ResolvedClient,
+				ResolvedModel:   sub.ResolvedModel,
+				ResolvedModelID: sub.ResolvedModelID,
+				OutputValues:    map[string]interface{}{"response": ""},
 			}, nil
 		}
 	}
