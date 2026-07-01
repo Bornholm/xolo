@@ -98,7 +98,7 @@ func TestHandleDeleteVirtualModel_RejectsCrossOrgRequest(t *testing.T) {
 		},
 	}
 
-	h := api.NewHandler(nil, orgStore, &fakeRoleStore{}, vmStore, nil, nil, nil, nil)
+	h := api.NewHandler(nil, orgStore, &fakeRoleStore{}, vmStore, nil, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/orgs/org-a/virtual-models/"+string(victimVM.ID()), nil)
 	req.SetPathValue("orgSlug", "org-a")

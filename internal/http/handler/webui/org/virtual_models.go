@@ -290,11 +290,12 @@ func (h *Handler) getPipelineEditorPage(w http.ResponseWriter, r *http.Request) 
 	baseURL := httpCtx.BaseURL(ctx)
 	readonly := !common.HasPermission(ctx, org.ID(), rbac.PermVirtualModelsWrite)
 
-	vmodel := component.VirtualModelEditorVModel{
-		Org:      org,
-		VM:       vm,
-		APIBase:  baseURL.String(),
-		Readonly: readonly,
+	vmodel := component.PipelineEditorVModel{
+		OrgSlug:    org.Slug(),
+		EntityID:   string(vm.ID()),
+		EntityName: vm.Name(),
+		APIBase:    baseURL.String(),
+		Readonly:   readonly,
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:          user,
 			SelectedItem:  "org-" + orgSlug + "-virtual-models",
@@ -311,5 +312,5 @@ func (h *Handler) getPipelineEditorPage(w http.ResponseWriter, r *http.Request) 
 		},
 	}
 
-	templ.Handler(component.VirtualModelEditorPage(vmodel)).ServeHTTP(w, r)
+	templ.Handler(component.PipelineEditorPage(vmodel)).ServeHTTP(w, r)
 }

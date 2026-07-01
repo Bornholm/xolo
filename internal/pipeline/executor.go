@@ -31,6 +31,20 @@ type ExecutionContext struct {
 	VisitedVMs map[model.VirtualModelID]struct{}
 	// PersonalVMStore is used by ModelExecutor to resolve personal virtual models (~/name).
 	PersonalVMStore port.PersonalVirtualModelStore
+
+	// TargetModelName is the model name originally requested by the caller. It
+	// is resolved by "passthrough" model nodes (used in Middleware pipelines),
+	// once the middleware chain has been fully applied.
+	TargetModelName string
+	// ForcePassthrough makes every model node of the current graph behave as a
+	// passthrough node. It is set while executing a Middleware chain so the
+	// terminal always wraps the requested model (guaranteeing transparency and
+	// chaining), and is turned off again when descending into a virtual model.
+	ForcePassthrough bool
+	// PendingMiddlewares is the ordered (ascending priority) list of middlewares
+	// that still have to wrap the target model. A passthrough model node pops the
+	// next one and runs its graph; when empty, it resolves TargetModelName.
+	PendingMiddlewares []model.Middleware
 }
 
 // ForwardResult is the output of a node's Forward execution.

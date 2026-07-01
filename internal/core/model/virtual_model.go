@@ -37,6 +37,7 @@ type BaseVirtualModel struct {
 }
 
 func (m *BaseVirtualModel) ID() VirtualModelID    { return m.id }
+func (m *BaseVirtualModel) EntityID() string      { return string(m.id) }
 func (m *BaseVirtualModel) OrgID() OrgID          { return m.orgID }
 func (m *BaseVirtualModel) Name() string          { return m.name }
 func (m *BaseVirtualModel) Description() string   { return m.description }
@@ -48,7 +49,10 @@ func (m *BaseVirtualModel) SetDescription(v string)     { m.description = v }
 func (m *BaseVirtualModel) SetGraph(v *PipelineGraph)   { m.graph = v }
 func (m *BaseVirtualModel) SetUpdatedAt(v time.Time)    { m.updatedAt = v }
 
-var _ VirtualModel = &BaseVirtualModel{}
+var (
+	_ VirtualModel   = &BaseVirtualModel{}
+	_ PipelineEntity = &BaseVirtualModel{}
+)
 
 func NewVirtualModel(orgID OrgID, name, description string) *BaseVirtualModel {
 	now := time.Now()

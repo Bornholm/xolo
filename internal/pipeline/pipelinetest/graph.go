@@ -58,6 +58,18 @@ func (b *GraphBuilder) ModelWithProxy(id, proxyName string) *GraphBuilder {
 	return b
 }
 
+// ModelPassthrough adds a passthrough model node, which resolves the model
+// requested by the caller (ExecutionContext.TargetModelName) or the next pending
+// middleware. Used to test Middleware pipelines.
+func (b *GraphBuilder) ModelPassthrough(id string) *GraphBuilder {
+	b.nodes = append(b.nodes, model.PipelineNode{
+		ID:   id,
+		Type: model.NodeTypeModel,
+		Data: MustJSON(model.ModelNodeData{Passthrough: true}),
+	})
+	return b
+}
+
 // Value adds a value node holding a static typed value.
 func (b *GraphBuilder) Value(id, portType, value string) *GraphBuilder {
 	b.nodes = append(b.nodes, model.PipelineNode{

@@ -21,6 +21,9 @@ const (
 	PermVirtualModelsRead  Permission = "virtual-models:read"
 	PermVirtualModelsWrite Permission = "virtual-models:write"
 
+	PermMiddlewaresRead  Permission = "middlewares:read"
+	PermMiddlewaresWrite Permission = "middlewares:write"
+
 	PermQuotaRead  Permission = "quota:read"
 	PermQuotaWrite Permission = "quota:write"
 
@@ -56,6 +59,7 @@ var writeImplies = map[Permission]Permission{
 	PermRolesWrite:         PermRolesRead,
 	PermProvidersWrite:     PermProvidersRead,
 	PermVirtualModelsWrite: PermVirtualModelsRead,
+	PermMiddlewaresWrite:   PermMiddlewaresRead,
 	PermQuotaWrite:         PermQuotaRead,
 	PermInvitesWrite:       PermInvitesRead,
 	PermApplicationsWrite:  PermApplicationsRead,
@@ -109,6 +113,14 @@ func Catalog() []PermissionGroup {
 			Perms: []PermissionDef{
 				{PermVirtualModelsRead, "Consulter les modèles virtuels"},
 				{PermVirtualModelsWrite, "Gérer les modèles virtuels"},
+			},
+		},
+		{
+			Section: "middlewares",
+			Label:   "Middlewares",
+			Perms: []PermissionDef{
+				{PermMiddlewaresRead, "Consulter les middlewares"},
+				{PermMiddlewaresWrite, "Gérer les middlewares"},
 			},
 		},
 		{

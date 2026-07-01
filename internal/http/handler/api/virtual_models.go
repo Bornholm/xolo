@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -18,20 +19,32 @@ import (
 
 // ─── Request / response shapes ───────────────────────────────────────────────
 
-type virtualModelResponse struct {
-	ID          string              `json:"id"`
-	OrgID       string              `json:"orgId"`
-	Name        string              `json:"name"`
-	Description string              `json:"description"`
-	Graph       *model.PipelineGraph `json:"graph,omitempty"`
-	CreatedAt   string              `json:"createdAt"`
-	UpdatedAt   string              `json:"updatedAt"`
-}
+// The graph GET/PUT logic and JSON response shape are shared with middlewares
+// via pipeline_entity.go (pipelineResource, toEntityResponse).
 
 type virtualModelRequest struct {
 	Name        string               `json:"name"`
 	Description string               `json:"description"`
 	Graph       *model.PipelineGraph `json:"graph,omitempty"`
+}
+
+// vmResource adapts the virtual model store to the generic pipeline graph handlers.
+func (h *Handler) vmResource() pipelineResource {
+	return pipelineResource{
+		get: func(ctx context.Context, id string) (model.PipelineEntity, error) {
+			vm, err := h.virtualModelStore.GetVirtualModelByID(ctx, model.VirtualModelID(id))
+			if err != nil {
+				return nil, err
+			}
+			return vm.(model.PipelineEntity), nil
+		},
+		save: func(ctx context.Context, e model.PipelineEntity) error {
+			return h.virtualModelStore.SaveVirtualModel(ctx, e.(model.VirtualModel))
+		},
+		readPerm:  rbac.PermVirtualModelsRead,
+		writePerm: rbac.PermVirtualModelsWrite,
+		notFound:  "virtual model not found",
+	}
 }
 
 type nodeTypeDescriptor struct {
@@ -75,7 +88,7 @@ func (h *Handler) handleListVirtualModels(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	out := make([]virtualModelResponse, 0, len(vms))
+	out := make([]pipelineEntityResponse, 0, len(vms))
 	for _, vm := range vms {
 		out = append(out, toVMResponse(vm))
 	}
@@ -132,90 +145,13 @@ func (h *Handler) handleCreateVirtualModel(w http.ResponseWriter, r *http.Reques
 // ─── Get ──────────────────────────────────────────────────────────────────────
 
 func (h *Handler) handleGetVirtualModel(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	vmID := model.VirtualModelID(r.PathValue("vmID"))
-
-	vm, err := h.virtualModelStore.GetVirtualModelByID(ctx, vmID)
-	if err != nil {
-		if errors.Is(err, port.ErrNotFound) {
-			http.Error(w, "virtual model not found", http.StatusNotFound)
-			return
-		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-
-	if allowed, err := h.hasPermission(ctx, vm.OrgID(), rbac.PermVirtualModelsRead); err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	} else if !allowed {
-		http.Error(w, "virtual model not found", http.StatusNotFound)
-		return
-	}
-
-	writeJSON(w, http.StatusOK, toVMResponse(vm))
+	h.serveGetEntity(w, r, h.vmResource(), r.PathValue("vmID"))
 }
 
 // ─── Update ───────────────────────────────────────────────────────────────────
 
 func (h *Handler) handleUpdateVirtualModel(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	vmID := model.VirtualModelID(r.PathValue("vmID"))
-
-	vm, err := h.virtualModelStore.GetVirtualModelByID(ctx, vmID)
-	if err != nil {
-		if errors.Is(err, port.ErrNotFound) {
-			http.Error(w, "virtual model not found", http.StatusNotFound)
-			return
-		}
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-
-	if allowed, err := h.hasPermission(ctx, vm.OrgID(), rbac.PermVirtualModelsWrite); err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	} else if !allowed {
-		http.Error(w, "virtual model not found", http.StatusNotFound)
-		return
-	}
-
-	var req virtualModelRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	type mutable interface {
-		SetDescription(string)
-		SetGraph(*model.PipelineGraph)
-		SetUpdatedAt(time.Time)
-	}
-
-	m, ok := vm.(mutable)
-	if !ok {
-		http.Error(w, "internal error: cannot update this virtual model", http.StatusInternalServerError)
-		return
-	}
-
-	oldGraph := vm.Graph()
-
-	if req.Description != "" {
-		m.SetDescription(req.Description)
-	}
-	m.SetGraph(req.Graph)
-	m.SetUpdatedAt(time.Now())
-
-	if err := h.virtualModelStore.SaveVirtualModel(ctx, vm); err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-
-	if err := secretcleanup.PruneRemovedNodes(ctx, h.secretStore, oldGraph, req.Graph); err != nil {
-		slog.ErrorContext(ctx, "could not prune secrets for removed pipeline nodes", slog.Any("error", err))
-	}
-
-	writeJSON(w, http.StatusOK, toVMResponse(vm))
+	h.serveUpdateEntity(w, r, h.vmResource(), r.PathValue("vmID"))
 }
 
 // ─── Delete ───────────────────────────────────────────────────────────────────
@@ -447,16 +383,8 @@ func sanitizeFilename(name string) string {
 	return replacer.Replace(name)
 }
 
-func toVMResponse(vm model.VirtualModel) virtualModelResponse {
-	return virtualModelResponse{
-		ID:          string(vm.ID()),
-		OrgID:       string(vm.OrgID()),
-		Name:        vm.Name(),
-		Description: vm.Description(),
-		Graph:       vm.Graph(),
-		CreatedAt:   vm.CreatedAt().Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt:   vm.UpdatedAt().Format("2006-01-02T15:04:05Z07:00"),
-	}
+func toVMResponse(vm model.VirtualModel) pipelineEntityResponse {
+	return toEntityResponse(vm.(model.PipelineEntity))
 }
 
 

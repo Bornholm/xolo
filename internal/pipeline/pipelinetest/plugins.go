@@ -88,6 +88,16 @@ func ModifiedMessages(messagesJSON string) *PluginClient {
 	}
 }
 
+// RejectPreRequest builds a PluginClient whose PreRequest blocks the request
+// with the given reason (mimicking e.g. the time-restriction plugin).
+func RejectPreRequest(reason string) *PluginClient {
+	return &PluginClient{
+		PreRequestFunc: func(_ context.Context, _ *proto.PreRequestInput) (*proto.PreRequestOutput, error) {
+			return &proto.PreRequestOutput{Allowed: false, RejectionReason: reason}, nil
+		},
+	}
+}
+
 // PostResponseRewrite builds a PostResponseFunc that rewrites the response
 // content based on the node's opaque state.
 func PostResponseRewrite(fn func(state []byte, content string) string) func(ctx context.Context, in *proto.PostResponseInput) (*proto.PostResponseOutput, error) {

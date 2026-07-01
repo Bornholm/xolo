@@ -80,6 +80,12 @@ func OrgNavItems(org model.Organization, selectedItem string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
+		if common.HasPermission(ctx, orgID, rbac.PermMiddlewaresRead) {
+			templ_7745c5c3_Err = common.NavItem(icon.Layers, "Middlewares", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/admin/middlewares")), selectedItem == "org-"+slug+"-middlewares").Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
 		if common.HasPermission(ctx, orgID, rbac.PermApplicationsRead) {
 			templ_7745c5c3_Err = common.NavItem(icon.AppWindow, "Applications", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/admin/applications")), selectedItem == "org-"+slug+"-applications").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {

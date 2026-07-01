@@ -40,11 +40,47 @@ func NewModelExecutor(resolver ModelResolver, virtualModelStore port.VirtualMode
 }
 
 func (e *ModelExecutor) Forward(ctx context.Context, node model.PipelineNode, inputs map[string]interface{}, ec ExecutionContext) (*ForwardResult, error) {
+	// Passthrough model node (used by Middleware pipelines): instead of a fixed
+	// model, it wraps the next pending middleware in the chain, or — when the
+	// chain is exhausted — resolves the model the caller actually requested.
+	// In a middleware chain (ForcePassthrough), every model node is passthrough
+	// regardless of its stored flag.
+	if isPassthroughNode(node) || ec.ForcePassthrough {
+		if len(ec.PendingMiddlewares) > 0 {
+			next := ec.PendingMiddlewares[0]
+			if next.Graph() == nil {
+				return nil, errors.Errorf("middleware %q has no pipeline configured", next.Name())
+			}
+			childEC := ec
+			childEC.PendingMiddlewares = ec.PendingMiddlewares[1:]
+			sub, err := e.engine.RunForward(ctx, next.Graph(), childEC)
+			if err != nil {
+				return nil, errors.Wrapf(err, "middleware %q pipeline failed", next.Name())
+			}
+			return &ForwardResult{
+				ResolvedClient:  sub.ResolvedClient,
+				ResolvedModel:   sub.ResolvedModel,
+				ResolvedModelID: sub.ResolvedModelID,
+				OutputValues:    map[string]interface{}{"response": ""},
+			}, nil
+		}
+		if ec.TargetModelName == "" {
+			return nil, errors.New("passthrough model node: no target model in execution context")
+		}
+		return e.resolveByName(ctx, ec.TargetModelName, ec)
+	}
+
 	proxyName, err := resolveModelName(node, inputs)
 	if err != nil {
 		return nil, errors.Wrap(err, "model node: could not determine model name")
 	}
 
+	return e.resolveByName(ctx, proxyName, ec)
+}
+
+// resolveByName resolves a proxy model name to an llm.Client, recursing into
+// personal or org virtual models when the name matches one (with cycle detection).
+func (e *ModelExecutor) resolveByName(ctx context.Context, proxyName string, ec ExecutionContext) (*ForwardResult, error) {
 	orgID := model.OrgID(ec.OrgID)
 
 	// Personal virtual model (~/name) → recurse using the user's personal store.
@@ -63,6 +99,8 @@ func (e *ModelExecutor) Forward(ctx context.Context, node model.PipelineNode, in
 			childEC := ec
 			childEC.VisitedVMs = copyVisitedVMs(ec.VisitedVMs)
 			childEC.VisitedVMs[pvmKey] = struct{}{}
+			// Leaving the middleware chain: the VM resolves its own models.
+			childEC.ForcePassthrough = false
 
 			sub, err := e.engine.RunForward(ctx, pvm.Graph(), childEC)
 			if err != nil {
@@ -92,6 +130,8 @@ func (e *ModelExecutor) Forward(ctx context.Context, node model.PipelineNode, in
 			childEC := ec
 			childEC.VisitedVMs = copyVisitedVMs(ec.VisitedVMs)
 			childEC.VisitedVMs[vmID] = struct{}{}
+			// Leaving the middleware chain: the VM resolves its own models.
+			childEC.ForcePassthrough = false
 
 			sub, err := e.engine.RunForward(ctx, vm.Graph(), childEC)
 			if err != nil {
@@ -122,6 +162,19 @@ func (e *ModelExecutor) Forward(ctx context.Context, node model.PipelineNode, in
 
 func (e *ModelExecutor) Backward(ctx context.Context, node model.PipelineNode, state []byte, responseContent string, tokens *TokensUsed, hadError bool) (*BackwardResult, error) {
 	return noopBackward(ctx, node, state, responseContent, tokens, hadError)
+}
+
+// isPassthroughNode reports whether a model node resolves the caller's
+// requested model (ExecutionContext.TargetModelName) rather than a fixed one.
+func isPassthroughNode(node model.PipelineNode) bool {
+	if node.Data == nil {
+		return false
+	}
+	var d model.ModelNodeData
+	if err := json.Unmarshal(node.Data, &d); err != nil {
+		return false
+	}
+	return d.Passthrough
 }
 
 // resolveModelName returns the proxy model name from the "model_name" input

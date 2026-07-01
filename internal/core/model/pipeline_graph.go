@@ -85,8 +85,14 @@ type PluginNodeData struct {
 // ModelNodeData is the Data payload for NodeTypeModel.
 // ProxyName is the static model proxy name used when the model_name input port
 // is not connected. If the port is connected, the runtime value takes precedence.
+//
+// Passthrough marks the node as resolving the model that was actually requested
+// by the caller (ExecutionContext.TargetModelName) instead of a fixed proxy name.
+// It is used by Middleware pipelines, which wrap arbitrary target models
+// dynamically. When Passthrough is true, ProxyName is ignored.
 type ModelNodeData struct {
-	ProxyName string `json:"proxyName,omitempty"`
+	ProxyName   string `json:"proxyName,omitempty"`
+	Passthrough bool   `json:"passthrough,omitempty"`
 }
 
 // ValueNodeData is the Data payload for NodeTypeValue.

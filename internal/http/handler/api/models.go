@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/bornholm/go-x/slogx"
 	proxyAdapter "github.com/bornholm/xolo/internal/adapter/proxy"
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
@@ -14,30 +15,29 @@ import (
 	"github.com/bornholm/xolo/internal/core/service"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
-	"github.com/bornholm/go-x/slogx"
 )
 
 type openRouterModel struct {
-	ID                   string            `json:"id"`
-	Object              string            `json:"object"`
-	Created             int               `json:"created"`
-	OwnedBy             string            `json:"owned_by"`
-	Name                string            `json:"name"`
-	Description         string            `json:"description"`
-	ContextLength       *int              `json:"context_length,omitempty"`
-	Architecture       modelArchitecture `json:"architecture"`
-	DefaultParameters   *struct{}         `json:"default_parameters"`
-	Pricing             modelPricing      `json:"pricing"`
-	PerRequestLimits   *perRequestLimits `json:"per_request_limits,omitempty"`
-	SupportedParams    []string          `json:"supported_parameters"`
+	ID                string            `json:"id"`
+	Object            string            `json:"object"`
+	Created           int               `json:"created"`
+	OwnedBy           string            `json:"owned_by"`
+	Name              string            `json:"name"`
+	Description       string            `json:"description"`
+	ContextLength     *int              `json:"context_length,omitempty"`
+	Architecture      modelArchitecture `json:"architecture"`
+	DefaultParameters *struct{}         `json:"default_parameters"`
+	Pricing           modelPricing      `json:"pricing"`
+	PerRequestLimits  *perRequestLimits `json:"per_request_limits,omitempty"`
+	SupportedParams   []string          `json:"supported_parameters"`
 }
 
 type modelArchitecture struct {
 	InputModalities  []string `json:"input_modalities"`
 	OutputModalities []string `json:"output_modalities"`
-	Modality        string   `json:"modality"`
-	InstructType    *string `json:"instruct_type,omitempty"`
-	Tokenizer      *string `json:"tokenizer,omitempty"`
+	Modality         string   `json:"modality"`
+	InstructType     *string  `json:"instruct_type,omitempty"`
+	Tokenizer        *string  `json:"tokenizer,omitempty"`
 }
 
 type modelPricing struct {
@@ -61,19 +61,21 @@ type Handler struct {
 	roleStore           port.RoleStore
 	virtualModelStore   port.VirtualModelStore
 	personalVMStore     port.PersonalVirtualModelStore
+	middlewareStore     port.MiddlewareStore
 	secretStore         port.SecretStore
 	exchangeRateService *service.ExchangeRateService
 	pluginManager       pluginManagerIface
 	mux                 *http.ServeMux
 }
 
-func NewHandler(providerStore port.ProviderStore, orgStore port.OrgStore, roleStore port.RoleStore, virtualModelStore port.VirtualModelStore, personalVMStore port.PersonalVirtualModelStore, secretStore port.SecretStore, exchangeRateService *service.ExchangeRateService, pluginManager pluginManagerIface) *Handler {
+func NewHandler(providerStore port.ProviderStore, orgStore port.OrgStore, roleStore port.RoleStore, virtualModelStore port.VirtualModelStore, personalVMStore port.PersonalVirtualModelStore, middlewareStore port.MiddlewareStore, secretStore port.SecretStore, exchangeRateService *service.ExchangeRateService, pluginManager pluginManagerIface) *Handler {
 	h := &Handler{
 		providerStore:       providerStore,
 		orgStore:            orgStore,
 		roleStore:           roleStore,
 		virtualModelStore:   virtualModelStore,
 		personalVMStore:     personalVMStore,
+		middlewareStore:     middlewareStore,
 		secretStore:         secretStore,
 		exchangeRateService: exchangeRateService,
 		pluginManager:       pluginManager,
@@ -97,6 +99,13 @@ func NewHandler(providerStore port.ProviderStore, orgStore port.OrgStore, roleSt
 	h.mux.HandleFunc("PUT /api/orgs/{orgSlug}/virtual-models/{vmID}", h.handleUpdateVirtualModel)
 	h.mux.HandleFunc("DELETE /api/orgs/{orgSlug}/virtual-models/{vmID}", h.handleDeleteVirtualModel)
 	h.mux.HandleFunc("GET /api/orgs/{orgSlug}/pipeline-node-types", h.handlePipelineNodeTypes)
+	// Org middleware pipeline CRUD (shares the generic graph handlers)
+	h.mux.HandleFunc("GET /api/orgs/{orgSlug}/middlewares", h.handleListMiddlewares)
+	h.mux.HandleFunc("POST /api/orgs/{orgSlug}/middlewares", h.handleCreateMiddleware)
+	h.mux.HandleFunc("GET /api/orgs/{orgSlug}/middlewares/{mwID}", h.handleGetMiddleware)
+	h.mux.HandleFunc("PUT /api/orgs/{orgSlug}/middlewares/{mwID}", h.handleUpdateMiddleware)
+	h.mux.HandleFunc("PUT /api/orgs/{orgSlug}/middlewares/{mwID}/settings", h.handleUpdateMiddlewareSettings)
+	h.mux.HandleFunc("DELETE /api/orgs/{orgSlug}/middlewares/{mwID}", h.handleDeleteMiddleware)
 	// Personal virtual model pipeline CRUD
 	h.mux.HandleFunc("GET /api/personal-models", h.handleListPersonalVMs)
 	h.mux.HandleFunc("POST /api/personal-models", h.handleCreatePersonalVM)
@@ -262,84 +271,84 @@ func (h *Handler) personalVMToOpenRouterModel(pvm model.PersonalVirtualModel) op
 }
 
 func (h *Handler) llmModelToOpenRouterModel(orgSlug string, m model.LLMModel) openRouterModel {
-	 caps := m.Capabilities()
-	 inputModalities := []string{"text"}
-	 outputModalities := []string{"text"}
-	 modality := "text"
+	caps := m.Capabilities()
+	inputModalities := []string{"text"}
+	outputModalities := []string{"text"}
+	modality := "text"
 
-	 if caps.Vision {
-		 inputModalities = append(inputModalities, "image")
-	 }
-	 if caps.Embeddings {
-		 outputModalities = append(outputModalities, "embeddings")
-	 }
-	 if caps.Audio {
-		 outputModalities = append(outputModalities, "audio")
-	 }
+	if caps.Vision {
+		inputModalities = append(inputModalities, "image")
+	}
+	if caps.Embeddings {
+		outputModalities = append(outputModalities, "embeddings")
+	}
+	if caps.Audio {
+		outputModalities = append(outputModalities, "audio")
+	}
 
-	 supportedParams := []string{"max_tokens", "temperature", "top_p"}
-	 if caps.Tools {
-		 supportedParams = append(supportedParams, "tools", "tool_choice", "parallel_tool_calls")
-	 }
-	 if caps.Reasoning {
-		 supportedParams = append(supportedParams, "reasoning", "include_reasoning")
-	 }
+	supportedParams := []string{"max_tokens", "temperature", "top_p"}
+	if caps.Tools {
+		supportedParams = append(supportedParams, "tools", "tool_choice", "parallel_tool_calls")
+	}
+	if caps.Reasoning {
+		supportedParams = append(supportedParams, "reasoning", "include_reasoning")
+	}
 
-	 var contextLength *int
-	 if cw := m.ContextWindow(); cw > 0 {
-		 cl := int(cw)
-		 contextLength = &cl
-	 }
+	var contextLength *int
+	if cw := m.ContextWindow(); cw > 0 {
+		cl := int(cw)
+		contextLength = &cl
+	}
 
-	 pricing := modelPricing{
-		 Prompt:     float64(m.PromptCostPer1KTokens()) / 1_000_000,
-		 Completion: float64(m.CompletionCostPer1KTokens()) / 1_000_000,
-	 }
+	pricing := modelPricing{
+		Prompt:     float64(m.PromptCostPer1KTokens()) / 1_000_000,
+		Completion: float64(m.CompletionCostPer1KTokens()) / 1_000_000,
+	}
 
-	 var perLimits *perRequestLimits
-	 if tlc := m.TokenLimitConfig(); tlc != nil && tlc.MaxTokens > 0 {
-		 perLimits = &perRequestLimits{
-			 PromptTokens:     tlc.MaxTokens,
-			 CompletionTokens: tlc.MaxTokens,
-		 }
-	 }
+	var perLimits *perRequestLimits
+	if tlc := m.TokenLimitConfig(); tlc != nil && tlc.MaxTokens > 0 {
+		perLimits = &perRequestLimits{
+			PromptTokens:     tlc.MaxTokens,
+			CompletionTokens: tlc.MaxTokens,
+		}
+	}
 
-	 return openRouterModel{
-		 ID:                 orgSlug + "/" + m.ProxyName(),
-		 Object:             "model",
-		 Created:            int(m.CreatedAt().Unix()),
-		 OwnedBy:           "xolo",
-		 Name:              m.ProxyName(),
-		 Description:       m.Description(),
-		 ContextLength:     contextLength,
-		 Architecture: modelArchitecture{
-			 InputModalities:   inputModalities,
-			 OutputModalities: outputModalities,
-			 Modality:        modality,
-		 },
-		 DefaultParameters: nil,
-		 Pricing:        pricing,
-		 PerRequestLimits: perLimits,
-		 SupportedParams:  supportedParams,
-	 }
+	return openRouterModel{
+		ID:            orgSlug + "/" + m.ProxyName(),
+		Object:        "model",
+		Created:       int(m.CreatedAt().Unix()),
+		OwnedBy:       "xolo",
+		Name:          m.ProxyName(),
+		Description:   m.Description(),
+		ContextLength: contextLength,
+		Architecture: modelArchitecture{
+			InputModalities:  inputModalities,
+			OutputModalities: outputModalities,
+			Modality:         modality,
+		},
+		DefaultParameters: nil,
+		Pricing:           pricing,
+		PerRequestLimits:  perLimits,
+		SupportedParams:   supportedParams,
+	}
 }
 
 func (h *Handler) virtualModelToOpenRouterModel(orgSlug string, vm model.VirtualModel) openRouterModel {
 	return openRouterModel{
-		ID:            orgSlug + "/" + vm.Name(),
-		Object:        "model",
-		Created:      int(vm.CreatedAt().Unix()),
-		OwnedBy:      "xolo",
+		ID:          orgSlug + "/" + vm.Name(),
+		Object:      "model",
+		Created:     int(vm.CreatedAt().Unix()),
+		OwnedBy:     "xolo",
 		Name:        vm.Name(),
 		Description: vm.Description(),
 		Architecture: modelArchitecture{
 			InputModalities:  []string{"text"},
 			OutputModalities: []string{"text"},
-			Modality:        "text",
+			Modality:         "text",
 		},
 		DefaultParameters: nil,
 		Pricing:           modelPricing{Prompt: 0, Completion: 0},
-		SupportedParams:    []string{"max_tokens", "temperature", "top_p"},
+		SupportedParams:   []string{"max_tokens", "temperature", "top_p"},
 	}
 }
 

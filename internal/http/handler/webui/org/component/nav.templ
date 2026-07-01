@@ -31,6 +31,9 @@ templ OrgNavItems(org model.Organization, selectedItem string) {
 	if common.HasPermission(ctx, orgID, rbac.PermVirtualModelsRead) {
 		@common.NavItem(icon.BrainCircuit, "Modèles virtuels", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/admin/virtual-models")), selectedItem == "org-"+slug+"-virtual-models")
 	}
+	if common.HasPermission(ctx, orgID, rbac.PermMiddlewaresRead) {
+		@common.NavItem(icon.Layers, "Middlewares", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/admin/middlewares")), selectedItem == "org-"+slug+"-middlewares")
+	}
 	if common.HasPermission(ctx, orgID, rbac.PermApplicationsRead) {
 		@common.NavItem(icon.AppWindow, "Applications", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/admin/applications")), selectedItem == "org-"+slug+"-applications")
 	}

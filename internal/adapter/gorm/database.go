@@ -133,6 +133,17 @@ func createGetDatabase(db *gorm.DB) func(ctx context.Context) (*gorm.DB, error) 
 						return tx.Migrator().DropColumn(&UsageRecord{}, "cost_source")
 					},
 				},
+				{
+					// Add middlewares table (pipelines applied dynamically to
+					// an org's models).
+					ID: "202607010001",
+					Migrate: func(tx *gorm.DB) error {
+						return tx.AutoMigrate(&Middleware{})
+					},
+					Rollback: func(tx *gorm.DB) error {
+						return tx.Migrator().DropTable("middlewares")
+					},
+				},
 			})
 
 			m.InitSchema(func(tx *gorm.DB) error {
@@ -161,6 +172,8 @@ func createGetDatabase(db *gorm.DB) func(ctx context.Context) (*gorm.DB, error) 
 					&Provider{}, &LLMModel{},
 					// Virtual model store
 					&VirtualModel{},
+					// Middleware store
+					&Middleware{},
 					// Personal virtual model store
 					&PersonalVirtualModel{},
 					// Quota store

@@ -29,6 +29,7 @@ type Handler struct {
 	roleStore           port.RoleStore
 	providerStore       port.ProviderStore
 	virtualModelStore   port.VirtualModelStore
+	middlewareStore     port.MiddlewareStore
 	applicationStore    port.ApplicationStore
 	exchangeRateService *service.ExchangeRateService
 	pluginManager       pluginManagerIface
@@ -47,6 +48,7 @@ func NewHandler(
 	roleStore port.RoleStore,
 	providerStore port.ProviderStore,
 	virtualModelStore port.VirtualModelStore,
+	middlewareStore port.MiddlewareStore,
 	personalVMStore port.PersonalVirtualModelStore,
 	usageStore port.UsageStore,
 	inviteStore port.InviteStore,
@@ -69,6 +71,7 @@ func NewHandler(
 		roleStore:           roleStore,
 		providerStore:       providerStore,
 		virtualModelStore:   virtualModelStore,
+		middlewareStore:     middlewareStore,
 		applicationStore:    applicationStore,
 		exchangeRateService: exchangeRateService,
 		pluginManager:       pluginManager,
@@ -85,7 +88,7 @@ func NewHandler(
 	mount(h.mux, "/models", isActive(hasModelAccess(http.HandlerFunc(h.getModelsPage))))
 	mount(h.mux, "/profile/", isActive(profile.NewHandler(userStore, orgStore, inviteStore, personalVMStore, secretStore, pluginManager)))
 	mount(h.mux, "/admin/", isActive(admin.NewHandler(userStore, orgStore, roleStore, taskRunner, exchangeRateService, pluginManager)))
-	mount(h.mux, "/orgs/", isActive(org.NewHandler(orgStore, roleStore, providerStore, virtualModelStore, usageStore, inviteStore, userStore, applicationStore, exchangeRateService, quotaStore, secretStore, secretKey, pluginManager, subscriptionMonitor)))
+	mount(h.mux, "/orgs/", isActive(org.NewHandler(orgStore, roleStore, providerStore, virtualModelStore, middlewareStore, usageStore, inviteStore, userStore, applicationStore, exchangeRateService, quotaStore, secretStore, secretKey, pluginManager, subscriptionMonitor)))
 
 	// Public join flow — no isActive wrapper (unauthenticated users get a sign-in prompt)
 	h.mux.Handle("/join/", http.StripPrefix("/join", join.NewHandler(orgStore, roleStore, inviteStore)))

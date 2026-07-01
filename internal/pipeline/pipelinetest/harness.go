@@ -145,6 +145,18 @@ func WithRequestJSON(requestJSON string) ECOption {
 	return func(ec *pipeline.ExecutionContext) { ec.RequestJSON = requestJSON }
 }
 
+// WithTargetModel sets the model requested by the caller, resolved by
+// passthrough model nodes in Middleware pipelines.
+func WithTargetModel(name string) ECOption {
+	return func(ec *pipeline.ExecutionContext) { ec.TargetModelName = name }
+}
+
+// WithPendingMiddlewares sets the ordered list of middlewares still to apply,
+// consumed by passthrough model nodes.
+func WithPendingMiddlewares(mws ...model.Middleware) ECOption {
+	return func(ec *pipeline.ExecutionContext) { ec.PendingMiddlewares = mws }
+}
+
 // NewExecutionContext builds a pipeline.ExecutionContext with sensible
 // defaults (OrgID "test-org", empty VisitedVMs), applying opts on top.
 func NewExecutionContext(opts ...ECOption) pipeline.ExecutionContext {

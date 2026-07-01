@@ -30,6 +30,7 @@ type PipelineHookAdapter struct {
 	personalVMStore   port.PersonalVirtualModelStore
 	orgStore          port.OrgStore
 	providerStore     port.ProviderStore
+	middlewareStore   port.MiddlewareStore
 }
 
 // NewPipelineHookAdapter creates a PipelineHookAdapter and wires the pipeline engine.
@@ -39,6 +40,7 @@ func NewPipelineHookAdapter(
 	personalVMStore port.PersonalVirtualModelStore,
 	providerStore port.ProviderStore,
 	orgStore port.OrgStore,
+	middlewareStore port.MiddlewareStore,
 	orgModelRouter *OrgModelRouter,
 ) *PipelineHookAdapter {
 	reg := pipeline.NewRegistry()
@@ -57,6 +59,7 @@ func NewPipelineHookAdapter(
 		personalVMStore:   personalVMStore,
 		orgStore:          orgStore,
 		providerStore:     providerStore,
+		middlewareStore:   middlewareStore,
 	}
 }
 
@@ -68,6 +71,13 @@ func (a *PipelineHookAdapter) Priority() int { return 3 }
 // ForwardExecution in req.Metadata for ResolveModel to pick up.
 func (a *PipelineHookAdapter) PreRequest(ctx context.Context, req *genaiProxy.ProxyRequest) (*genaiProxy.HookResult, error) {
 	PopulateMetaFromContext(ctx, req.Metadata)
+
+	// Middlewares wrap the requested model (real or virtual) transparently. If
+	// any apply, they take over resolution before the standard virtual-model and
+	// OrgModelRouter paths.
+	if handled, result := a.applyMiddlewares(ctx, req); handled {
+		return result, nil
+	}
 
 	org, vm, lookupErr := a.lookupVirtualModel(ctx, req.Model)
 	if lookupErr != nil || vm == nil {
@@ -103,9 +113,17 @@ func (a *PipelineHookAdapter) PreRequest(ctx context.Context, req *genaiProxy.Pr
 
 	ec := a.buildEC(ctx, req, org, vm)
 	forwardExec, err := a.engine.RunForward(ctx, vm.Graph(), ec)
-	if err != nil {
+	return a.finishForwardExecution(ctx, req, ec, forwardExec, err), nil
+}
+
+// finishForwardExecution turns a pipeline forward-pass result (or error) into a
+// HookResult. On success it stashes the execution in req.Metadata for
+// ResolveModel and returns nil; on rejection/error it returns the corresponding
+// API response. Shared by the virtual-model and middleware paths.
+func (a *PipelineHookAdapter) finishForwardExecution(ctx context.Context, req *genaiProxy.ProxyRequest, ec pipeline.ExecutionContext, forwardExec *pipeline.ForwardExecution, runErr error) *genaiProxy.HookResult {
+	if runErr != nil {
 		var rejErr *pipeline.RejectionError
-		if errors.As(err, &rejErr) {
+		if errors.As(runErr, &rejErr) {
 			slog.InfoContext(ctx, "pipeline: request rejected by node",
 				slog.String("model", req.Model),
 				slog.String("reason", rejErr.Reason))
@@ -114,23 +132,23 @@ func (a *PipelineHookAdapter) PreRequest(ctx context.Context, req *genaiProxy.Pr
 					StatusCode: http.StatusForbidden,
 					Body:       map[string]any{"error": rejErr.Error()},
 				},
-			}, nil
+			}
 		}
 		// All pipeline errors are surfaced as API responses — never as Go errors,
 		// because the genai proxy's RunOnError swallows errors and continues silently.
 		slog.ErrorContext(ctx, "pipeline: forward pass failed",
 			slog.String("model", req.Model),
-			slog.Any("error", err))
+			slog.Any("error", runErr))
 		return &genaiProxy.HookResult{
 			Response: &genaiProxy.ProxyResponse{
 				StatusCode: http.StatusInternalServerError,
 				Body: map[string]any{"error": map[string]any{
 					"type":    "server_error",
-					"message": "Pipeline execution failed for \"" + req.Model + "\": " + err.Error(),
+					"message": "Pipeline execution failed for \"" + req.Model + "\": " + runErr.Error(),
 					"code":    "pipeline_error",
 				}},
 			},
-		}, nil
+		}
 	}
 
 	if forwardExec.ResolvedClient == nil {
@@ -145,7 +163,7 @@ func (a *PipelineHookAdapter) PreRequest(ctx context.Context, req *genaiProxy.Pr
 					"code":    "pipeline_no_terminal",
 				}},
 			},
-		}, nil
+		}
 	}
 
 	slog.DebugContext(ctx, "pipeline: forward pass succeeded",
@@ -166,7 +184,144 @@ func (a *PipelineHookAdapter) PreRequest(ctx context.Context, req *genaiProxy.Pr
 
 	// Store the execution result for ResolveModel.
 	req.Metadata[metaPipelineExecution] = forwardExec
-	return nil, nil
+	return nil
+}
+
+// applyMiddlewares checks whether any enabled middleware applies to the
+// requested model and, if so, runs the middleware chain (which wraps the target
+// model). It returns handled=true when it has taken responsibility for the
+// request — either by storing a pipeline execution (result=nil) or by producing
+// a rejection/error/forbidden response.
+func (a *PipelineHookAdapter) applyMiddlewares(ctx context.Context, req *genaiProxy.ProxyRequest) (bool, *genaiProxy.HookResult) {
+	if a.middlewareStore == nil {
+		return false, nil
+	}
+
+	orgSlug, localName, ok := splitQualifiedName(req.Model)
+	if !ok || orgSlug == "~" {
+		// Unqualified or personal models are out of scope for org middlewares.
+		return false, nil
+	}
+
+	org, err := a.orgStore.GetOrgBySlug(ctx, orgSlug)
+	if err != nil {
+		return false, nil //nolint:nilerr
+	}
+
+	mws, err := a.middlewareStore.ListEnabledMiddlewares(ctx, org.ID())
+	if err != nil || len(mws) == 0 {
+		return false, nil //nolint:nilerr
+	}
+
+	// Resolve the requested model's identity to match against middleware targets.
+	var ref model.ModelRef
+	var targetVM model.VirtualModel
+	if vm, vmErr := a.virtualModelStore.GetVirtualModelByName(ctx, org.ID(), localName); vmErr == nil && vm != nil {
+		ref = model.ModelRef{Kind: model.ModelRefKindVirtual, ID: string(vm.ID())}
+		targetVM = vm
+	} else if llmModel, llmErr := a.providerStore.GetLLMModelByProxyName(ctx, org.ID(), localName); llmErr == nil && llmModel != nil {
+		ref = model.ModelRef{Kind: model.ModelRefKindLLM, ID: string(llmModel.ID())}
+	} else {
+		// Unknown model — let the standard path emit the appropriate error.
+		return false, nil
+	}
+
+	applicable := applicableMiddlewares(mws, ref)
+	if len(applicable) == 0 {
+		return false, nil
+	}
+
+	// The middleware path bypasses OrgModelRouter's own RBAC, so enforce access
+	// to the target model here.
+	if forbidden := a.assertTargetAccess(ctx, req, org, ref, targetVM); forbidden != nil {
+		return true, forbidden
+	}
+
+	ec := a.buildMiddlewareEC(ctx, req, org)
+	ec.TargetModelName = req.Model
+	ec.PendingMiddlewares = applicable[1:]
+
+	forwardExec, err := a.engine.RunForward(ctx, applicable[0].Graph(), ec)
+	return true, a.finishForwardExecution(ctx, req, ec, forwardExec, err)
+}
+
+// applicableMiddlewares filters the (priority-ordered) middlewares down to those
+// that wrap the given model, skipping any without a configured pipeline.
+func applicableMiddlewares(mws []model.Middleware, ref model.ModelRef) []model.Middleware {
+	var out []model.Middleware
+	for _, mw := range mws {
+		if mw.Graph() == nil {
+			continue
+		}
+		if mw.AppliesToAll() || modelRefMatches(mw.Targets(), ref) {
+			out = append(out, mw)
+		}
+	}
+	return out
+}
+
+func modelRefMatches(targets []model.ModelRef, ref model.ModelRef) bool {
+	for _, t := range targets {
+		if t.Kind == ref.Kind && t.ID == ref.ID {
+			return true
+		}
+	}
+	return false
+}
+
+// assertTargetAccess enforces RBAC for the model wrapped by a middleware,
+// mirroring the checks OrgModelRouter/pipeline would otherwise perform.
+func (a *PipelineHookAdapter) assertTargetAccess(ctx context.Context, req *genaiProxy.ProxyRequest, org model.Organization, ref model.ModelRef, targetVM model.VirtualModel) *genaiProxy.HookResult {
+	if targetVM != nil {
+		return a.assertVirtualModelAccess(ctx, req, org, targetVM)
+	}
+
+	perms, err := httpCtx.ResolvePermissions(ctx, org.ID())
+	if err != nil {
+		slog.ErrorContext(ctx, "pipeline: could not resolve permissions", slog.Any("error", err))
+		return &genaiProxy.HookResult{
+			Response: &genaiProxy.ProxyResponse{
+				StatusCode: http.StatusInternalServerError,
+				Body: map[string]any{"error": map[string]any{
+					"type":    "server_error",
+					"message": "Could not resolve permissions.",
+					"code":    "permission_error",
+				}},
+			},
+		}
+	}
+
+	if perms.IsOwner() || perms.Has(rbac.PermModelUseOrg) || perms.HasModelAccess(ref.ID, rbac.ModelKindLLM) {
+		return nil
+	}
+	return virtualModelForbidden(req.Model)
+}
+
+// buildMiddlewareEC constructs the ExecutionContext for a middleware chain run.
+func (a *PipelineHookAdapter) buildMiddlewareEC(ctx context.Context, req *genaiProxy.ProxyRequest, org model.Organization) pipeline.ExecutionContext {
+	userID := ""
+	displayName := ""
+	if u := httpCtx.User(ctx); u != nil {
+		userID = string(u.ID())
+		displayName = u.DisplayName()
+	}
+
+	orgID := org.ID()
+	return pipeline.ExecutionContext{
+		OrgID:           string(orgID),
+		UserID:          userID,
+		DisplayName:     displayName,
+		TokenID:         AuthTokenIDFromMeta(req.Metadata),
+		MessagesJSON:    extractMessagesJSON(req.Body),
+		BodyJSON:        string(req.Body),
+		ProtoModels:     buildProtoModels(ctx, a.providerStore, orgID),
+		ProtoVMs:        buildProtoVMs(ctx, a.virtualModelStore, orgID),
+		VisitedVMs:      map[model.VirtualModelID]struct{}{},
+		PersonalVMStore: a.personalVMStore,
+		// Every model node in a middleware chain is a passthrough: it wraps the
+		// requested model, never a fixed one.
+		ForcePassthrough: true,
+	}
 }
 
 // ResolveModel returns the pre-resolved llm.Client from the pipeline execution.
@@ -363,11 +518,11 @@ type personalVMAdapter struct {
 
 func (a *personalVMAdapter) ID() model.VirtualModelID    { return model.VirtualModelID(a.pvm.ID()) }
 func (a *personalVMAdapter) OrgID() model.OrgID          { return "" }
-func (a *personalVMAdapter) Name() string                 { return a.pvm.Name() }
-func (a *personalVMAdapter) Description() string          { return a.pvm.Description() }
-func (a *personalVMAdapter) Graph() *model.PipelineGraph  { return a.pvm.Graph() }
-func (a *personalVMAdapter) CreatedAt() time.Time         { return a.pvm.CreatedAt() }
-func (a *personalVMAdapter) UpdatedAt() time.Time         { return a.pvm.UpdatedAt() }
+func (a *personalVMAdapter) Name() string                { return a.pvm.Name() }
+func (a *personalVMAdapter) Description() string         { return a.pvm.Description() }
+func (a *personalVMAdapter) Graph() *model.PipelineGraph { return a.pvm.Graph() }
+func (a *personalVMAdapter) CreatedAt() time.Time        { return a.pvm.CreatedAt() }
+func (a *personalVMAdapter) UpdatedAt() time.Time        { return a.pvm.UpdatedAt() }
 
 var _ model.VirtualModel = &personalVMAdapter{}
 
@@ -512,6 +667,6 @@ func buildProtoVMs(ctx context.Context, vs port.VirtualModelStore, orgID model.O
 }
 
 var (
-	_ genaiProxy.PreRequestHook = (*PipelineHookAdapter)(nil)
+	_ genaiProxy.PreRequestHook  = (*PipelineHookAdapter)(nil)
 	_ genaiProxy.ModelListerHook = (*PipelineHookAdapter)(nil)
 )

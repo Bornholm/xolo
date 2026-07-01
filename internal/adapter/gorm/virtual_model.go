@@ -23,6 +23,7 @@ type wrappedVirtualModel struct {
 }
 
 func (w *wrappedVirtualModel) ID() model.VirtualModelID { return model.VirtualModelID(w.m.ID) }
+func (w *wrappedVirtualModel) EntityID() string         { return w.m.ID }
 func (w *wrappedVirtualModel) OrgID() model.OrgID       { return model.OrgID(w.m.OrgID) }
 func (w *wrappedVirtualModel) Name() string             { return w.m.Name }
 func (w *wrappedVirtualModel) Description() string      { return w.m.Description }
@@ -59,7 +60,10 @@ func (w *wrappedVirtualModel) Graph() *model.PipelineGraph {
 	return &g
 }
 
-var _ model.VirtualModel = &wrappedVirtualModel{}
+var (
+	_ model.VirtualModel   = &wrappedVirtualModel{}
+	_ model.PipelineEntity = &wrappedVirtualModel{}
+)
 
 func fromVirtualModel(vm model.VirtualModel) *VirtualModel {
 	graphJSON := "{}"

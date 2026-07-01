@@ -146,6 +146,11 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		return nil, errors.Wrap(err, "could not create personal virtual model store from config")
 	}
 
+	middlewareStore, err := getMiddlewareStoreFromConfig(ctx, conf)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create middleware store from config")
+	}
+
 	subscriptionState := proxyAdapter.NewSubscriptionState()
 
 	orgModelRouter := proxyAdapter.NewOrgModelRouter(providerStore, orgStore, conf.SecretKey)
@@ -156,6 +161,7 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		personalVMStore,
 		providerStore,
 		orgStore,
+		middlewareStore,
 		orgModelRouter,
 	)
 
@@ -171,9 +177,9 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		return nil, errors.Wrap(err, "could not create secret store from config")
 	}
 
-	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, roleStore, providerStore, virtualModelStore, personalVMStore, usageStore, inviteStore, applicationStore, quotaStore, quotaService, exchangeRateService, secretStore, conf.SecretKey, pluginManager, subscriptionState)
+	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, roleStore, providerStore, virtualModelStore, middlewareStore, personalVMStore, usageStore, inviteStore, applicationStore, quotaStore, quotaService, exchangeRateService, secretStore, conf.SecretKey, pluginManager, subscriptionState)
 
-	apiHandler := api.NewHandler(providerStore, orgStore, roleStore, virtualModelStore, personalVMStore, secretStore, exchangeRateService, pluginManager)
+	apiHandler := api.NewHandler(providerStore, orgStore, roleStore, virtualModelStore, personalVMStore, middlewareStore, secretStore, exchangeRateService, pluginManager)
 
 	proxyServer := proxy.NewServer(
 		proxy.WithAuthExtractor(proxyAdapter.XoloAuthExtractor()),
@@ -216,6 +222,13 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		http.WithRoute("PUT /api/orgs/{orgSlug}/virtual-models/{vmID}", rateLimiter(apiAuthChain(apiHandler))),
 		http.WithRoute("DELETE /api/orgs/{orgSlug}/virtual-models/{vmID}", rateLimiter(apiAuthChain(apiHandler))),
 		http.WithRoute("GET /api/orgs/{orgSlug}/pipeline-node-types", rateLimiter(apiAuthChain(apiHandler))),
+
+		http.WithRoute("GET /api/orgs/{orgSlug}/middlewares", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("POST /api/orgs/{orgSlug}/middlewares", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("GET /api/orgs/{orgSlug}/middlewares/{mwID}", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("PUT /api/orgs/{orgSlug}/middlewares/{mwID}", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("PUT /api/orgs/{orgSlug}/middlewares/{mwID}/settings", rateLimiter(apiAuthChain(apiHandler))),
+		http.WithRoute("DELETE /api/orgs/{orgSlug}/middlewares/{mwID}", rateLimiter(apiAuthChain(apiHandler))),
 		// Personal virtual model pipeline API
 		http.WithRoute("GET /api/personal-models", rateLimiter(apiAuthChain(apiHandler))),
 		http.WithRoute("POST /api/personal-models", rateLimiter(apiAuthChain(apiHandler))),

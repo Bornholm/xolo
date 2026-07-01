@@ -17,21 +17,22 @@ type pluginManagerIface interface {
 
 // Handler serves the org-admin section: /orgs/{orgSlug}/admin/
 type Handler struct {
-	mux                  *http.ServeMux
-	orgStore             port.OrgStore
-	roleStore            port.RoleStore
-	providerStore        port.ProviderStore
-	virtualModelStore    port.VirtualModelStore
-	usageStore           port.UsageStore
-	inviteStore          port.InviteStore
-	userStore            port.UserStore
-	applicationStore     port.ApplicationStore
-	quotaStore           port.QuotaStore
-	secretStore          port.SecretStore
-	secretKey            string
-	exchangeRateService  *service.ExchangeRateService
-	pluginManager        pluginManagerIface
-	subscriptionMonitor  port.SubscriptionMonitor
+	mux                 *http.ServeMux
+	orgStore            port.OrgStore
+	roleStore           port.RoleStore
+	providerStore       port.ProviderStore
+	virtualModelStore   port.VirtualModelStore
+	middlewareStore     port.MiddlewareStore
+	usageStore          port.UsageStore
+	inviteStore         port.InviteStore
+	userStore           port.UserStore
+	applicationStore    port.ApplicationStore
+	quotaStore          port.QuotaStore
+	secretStore         port.SecretStore
+	secretKey           string
+	exchangeRateService *service.ExchangeRateService
+	pluginManager       pluginManagerIface
+	subscriptionMonitor port.SubscriptionMonitor
 }
 
 // ServeHTTP implements http.Handler.
@@ -44,6 +45,7 @@ func NewHandler(
 	roleStore port.RoleStore,
 	providerStore port.ProviderStore,
 	virtualModelStore port.VirtualModelStore,
+	middlewareStore port.MiddlewareStore,
 	usageStore port.UsageStore,
 	inviteStore port.InviteStore,
 	userStore port.UserStore,
@@ -56,21 +58,22 @@ func NewHandler(
 	subscriptionMonitor port.SubscriptionMonitor,
 ) *Handler {
 	h := &Handler{
-		mux:                  http.NewServeMux(),
-		orgStore:             orgStore,
-		roleStore:            roleStore,
-		providerStore:        providerStore,
-		virtualModelStore:    virtualModelStore,
-		usageStore:           usageStore,
-		inviteStore:          inviteStore,
-		userStore:            userStore,
-		applicationStore:     applicationStore,
-		quotaStore:           quotaStore,
-		secretStore:          secretStore,
-		secretKey:            secretKey,
-		exchangeRateService:  exchangeRateService,
-		pluginManager:        pluginManager,
-		subscriptionMonitor:  subscriptionMonitor,
+		mux:                 http.NewServeMux(),
+		orgStore:            orgStore,
+		roleStore:           roleStore,
+		providerStore:       providerStore,
+		virtualModelStore:   virtualModelStore,
+		middlewareStore:     middlewareStore,
+		usageStore:          usageStore,
+		inviteStore:         inviteStore,
+		userStore:           userStore,
+		applicationStore:    applicationStore,
+		quotaStore:          quotaStore,
+		secretStore:         secretStore,
+		secretKey:           secretKey,
+		exchangeRateService: exchangeRateService,
+		pluginManager:       pluginManager,
+		subscriptionMonitor: subscriptionMonitor,
 	}
 
 	// assertPerm gates a route on a single RBAC permission resolved for the
@@ -162,6 +165,14 @@ func NewHandler(
 	h.mux.Handle("POST /{orgSlug}/admin/virtual-models/{modelID}/edit", assertPerm(rbac.PermVirtualModelsWrite)(http.HandlerFunc(h.updateVirtualModel)))
 	h.mux.Handle("DELETE /{orgSlug}/admin/virtual-models/{modelID}", assertPerm(rbac.PermVirtualModelsWrite)(http.HandlerFunc(h.deleteVirtualModel)))
 	h.mux.Handle("GET /{orgSlug}/admin/virtual-models/{modelID}/pipeline", assertPerm(rbac.PermVirtualModelsRead)(http.HandlerFunc(h.getPipelineEditorPage)))
+
+	h.mux.Handle("GET /{orgSlug}/admin/middlewares", assertPerm(rbac.PermMiddlewaresRead)(http.HandlerFunc(h.getMiddlewaresPage)))
+	h.mux.Handle("GET /{orgSlug}/admin/middlewares/new", assertPerm(rbac.PermMiddlewaresWrite)(http.HandlerFunc(h.getNewMiddlewarePage)))
+	h.mux.Handle("POST /{orgSlug}/admin/middlewares", assertPerm(rbac.PermMiddlewaresWrite)(http.HandlerFunc(h.createMiddleware)))
+	h.mux.Handle("GET /{orgSlug}/admin/middlewares/{middlewareID}/edit", assertPerm(rbac.PermMiddlewaresRead)(http.HandlerFunc(h.getEditMiddlewarePage)))
+	h.mux.Handle("POST /{orgSlug}/admin/middlewares/{middlewareID}/edit", assertPerm(rbac.PermMiddlewaresWrite)(http.HandlerFunc(h.updateMiddleware)))
+	h.mux.Handle("DELETE /{orgSlug}/admin/middlewares/{middlewareID}", assertPerm(rbac.PermMiddlewaresWrite)(http.HandlerFunc(h.deleteMiddleware)))
+	h.mux.Handle("GET /{orgSlug}/admin/middlewares/{middlewareID}/pipeline", assertPerm(rbac.PermMiddlewaresRead)(http.HandlerFunc(h.getMiddlewarePipelineEditorPage)))
 
 	h.mux.Handle("GET /{orgSlug}/admin/applications", assertPerm(rbac.PermApplicationsRead)(http.HandlerFunc(h.getApplicationsPage)))
 	h.mux.Handle("GET /{orgSlug}/admin/applications/new", assertPerm(rbac.PermApplicationsWrite)(http.HandlerFunc(h.getNewApplicationPage)))

@@ -15,9 +15,31 @@ function vmId(): string | null {
   return root?.dataset.vmId ?? null
 }
 
-function isPersonalContext(): boolean {
+function contextType(): string {
   const root = document.getElementById('pipeline-editor-root')
-  return root?.dataset.contextType === 'personal'
+  return root?.dataset.contextType ?? ''
+}
+
+function isPersonalContext(): boolean {
+  return contextType() === 'personal'
+}
+
+function isMiddlewareContext(): boolean {
+  return contextType() === 'middleware'
+}
+
+// entityBase returns the REST base path of the pipeline-bearing entity being
+// edited (virtual model, personal virtual model or middleware).
+function entityBase(): string {
+  if (isPersonalContext()) return `/api/personal-models`
+  if (isMiddlewareContext()) return `/api/orgs/${orgSlug()}/middlewares`
+  return `/api/orgs/${orgSlug()}/virtual-models`
+}
+
+// nodeTypesBase returns the base path exposing the pipeline node-type catalog.
+function nodeTypesBase(): string {
+  if (isPersonalContext()) return `/api/personal-models/pipeline-node-types`
+  return `/api/orgs/${orgSlug()}/pipeline-node-types`
 }
 
 export function isReadonly(): boolean {
@@ -41,50 +63,29 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function fetchVirtualModel(id: string): Promise<VirtualModel> {
-  if (isPersonalContext()) {
-    return request(`/api/personal-models/${id}`)
-  }
-  return request(`/api/orgs/${orgSlug()}/virtual-models/${id}`)
+  return request(`${entityBase()}/${id}`)
 }
 
 export function updateVirtualModel(
   id: string,
   patch: { description?: string; graph?: PipelineGraph }
 ): Promise<VirtualModel> {
-  if (isPersonalContext()) {
-    return request(`/api/personal-models/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(patch),
-    })
-  }
-  return request(`/api/orgs/${orgSlug()}/virtual-models/${id}`, {
+  return request(`${entityBase()}/${id}`, {
     method: 'PUT',
     body: JSON.stringify(patch),
   })
 }
 
 export function fetchNodeTypes(): Promise<NodeTypeDescriptor[]> {
-  if (isPersonalContext()) {
-    return request(`/api/personal-models/pipeline-node-types`)
-  }
-  return request(`/api/orgs/${orgSlug()}/pipeline-node-types`)
+  return request(nodeTypesBase())
 }
 
 export function exportVirtualModelURL(id: string): string {
-  if (isPersonalContext()) {
-    return `${getBase()}/api/personal-models/${id}/export`
-  }
-  return `${getBase()}/api/orgs/${orgSlug()}/virtual-models/${id}/export`
+  return `${getBase()}${entityBase()}/${id}/export`
 }
 
 export function importVirtualModel(bundle: PipelineBundle): Promise<VirtualModel> {
-  if (isPersonalContext()) {
-    return request(`/api/personal-models/import`, {
-      method: 'POST',
-      body: JSON.stringify(bundle),
-    })
-  }
-  return request(`/api/orgs/${orgSlug()}/virtual-models/import`, {
+  return request(`${entityBase()}/import`, {
     method: 'POST',
     body: JSON.stringify(bundle),
   })
