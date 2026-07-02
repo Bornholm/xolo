@@ -19,10 +19,12 @@ import (
 )
 
 type OIDCDiscovery struct {
-	Issuer   string `json:"issuer"`
-	JWKSURI  string `json:"jwks_uri"`
-	AuthURL  string `json:"authorization_endpoint"`
-	TokenURL string `json:"token_endpoint"`
+	Issuer                string `json:"issuer"`
+	JWKSURI               string `json:"jwks_uri"`
+	AuthURL               string `json:"authorization_endpoint"`
+	TokenURL              string `json:"token_endpoint"`
+	UserInfoEndpoint      string `json:"userinfo_endpoint"`
+	IntrospectionEndpoint string `json:"introspection_endpoint"`
 }
 
 func getOIDCAuthnHandlerFromConfig(ctx context.Context, conf *config.Config) (*oidc.Handler, error) {
@@ -112,49 +114,36 @@ func getOIDCAuthnHandlerFromConfig(ctx context.Context, conf *config.Config) (*o
 
 		discoveryURL := string(conf.HTTP.Authn.Providers.Gitea.DiscoveryURL)
 
-		jwksURL, issuer, err := fetchOIDCDiscovery(ctx, discoveryURL)
-		if err == nil && jwksURL != "" {
+		discovery, err := fetchOIDCDiscovery(ctx, discoveryURL)
+		if err == nil && discovery != nil && discovery.JWKSURI != "" {
 			providersWithJWKS = append(providersWithJWKS, oidc.ProviderWithJWKS{
-				ID:      giteaProvider.Name(),
-				Label:   string(conf.HTTP.Authn.Providers.Gitea.Label),
-				Icon:    "gitlab",
-				Issuer:  issuer,
-				JWKSURL: jwksURL,
+				ID:               giteaProvider.Name(),
+				Label:            string(conf.HTTP.Authn.Providers.Gitea.Label),
+				Icon:             "gitlab",
+				Issuer:           discovery.Issuer,
+				JWKSURL:          discovery.JWKSURI,
+				IntrospectionURL: discovery.IntrospectionEndpoint,
+				UserInfoURL:      discovery.UserInfoEndpoint,
+				ClientID:         string(conf.HTTP.Authn.Providers.Gitea.Key),
+				ClientSecret:     string(conf.HTTP.Authn.Providers.Gitea.Secret),
 			})
 		}
 	}
 
-	if conf.HTTP.Authn.Providers.OIDC.Key != "" && conf.HTTP.Authn.Providers.OIDC.Secret != "" {
-		discoveryURL := string(conf.HTTP.Authn.Providers.OIDC.DiscoveryURL)
-		oidcProvider, err := openidConnect.New(
-			string(conf.HTTP.Authn.Providers.OIDC.Key),
-			string(conf.HTTP.Authn.Providers.OIDC.Secret),
-			fmt.Sprintf("%s/auth/oidc/providers/openid-connect/callback", conf.HTTP.BaseURL),
-			discoveryURL,
-			conf.HTTP.Authn.Providers.OIDC.Scopes...,
-		)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not configure oidc provider")
+	for _, np := range conf.HTTP.Authn.OIDCProviders {
+		if np.Key == "" || np.Secret == "" {
+			continue
 		}
 
-		gothProviders = append(gothProviders, oidcProvider)
+		gothProvider, provider, withJWKS, err := buildOIDCProvider(ctx, conf.HTTP.BaseURL, np)
+		if err != nil {
+			return nil, errors.Wrapf(err, "could not configure oidc provider %q", np.ID)
+		}
 
-		providers = append(providers, oidc.Provider{
-			ID:    oidcProvider.Name(),
-			Label: string(conf.HTTP.Authn.Providers.OIDC.Label),
-			Icon:  string(conf.HTTP.Authn.Providers.OIDC.Icon),
-		})
-
-		jwksURL, issuer, err := fetchOIDCDiscovery(ctx, discoveryURL)
-		if err == nil && jwksURL != "" {
-			providersWithJWKS = append(providersWithJWKS, oidc.ProviderWithJWKS{
-				ID:           oidcProvider.Name(),
-				Label:        string(conf.HTTP.Authn.Providers.OIDC.Label),
-				Icon:         string(conf.HTTP.Authn.Providers.OIDC.Icon),
-				DiscoveryURL: discoveryURL,
-				Issuer:       issuer,
-				JWKSURL:      jwksURL,
-			})
+		gothProviders = append(gothProviders, gothProvider)
+		providers = append(providers, provider)
+		if withJWKS != nil {
+			providersWithJWKS = append(providersWithJWKS, *withJWKS)
 		}
 	}
 
@@ -189,30 +178,79 @@ func getRandomBytes(n int) ([]byte, error) {
 	return data, nil
 }
 
-func fetchOIDCDiscovery(ctx context.Context, discoveryURL string) (jwksURL, issuer string, err error) {
+// buildOIDCProvider configures a single named OIDC provider: the goth provider
+// (for interactive login), its login-button descriptor, and — when discovery
+// succeeds — its JWKS/introspection/userinfo descriptor used by the oidctoken
+// and oauth2token authenticators. The provider ID is reused as the goth name so
+// it stays consistent across the interactive-login and API-token paths.
+func buildOIDCProvider(ctx context.Context, baseURL string, np config.NamedOIDCProvider) (goth.Provider, oidc.Provider, *oidc.ProviderWithJWKS, error) {
+	discoveryURL := string(np.DiscoveryURL)
+	callbackURL := fmt.Sprintf("%s/auth/oidc/providers/%s/callback", baseURL, np.ID)
+
+	gothProvider, err := openidConnect.NewNamed(
+		np.ID,
+		string(np.Key),
+		string(np.Secret),
+		callbackURL,
+		discoveryURL,
+		np.Scopes...,
+	)
+	if err != nil {
+		return nil, oidc.Provider{}, nil, errors.WithStack(err)
+	}
+
+	provider := oidc.Provider{
+		ID:    np.ID,
+		Label: np.Label,
+		Icon:  np.Icon,
+	}
+
+	var withJWKS *oidc.ProviderWithJWKS
+	discovery, err := fetchOIDCDiscovery(ctx, discoveryURL)
+	if err == nil && discovery != nil && discovery.JWKSURI != "" {
+		withJWKS = &oidc.ProviderWithJWKS{
+			ID:               np.ID,
+			Label:            np.Label,
+			Icon:             np.Icon,
+			DiscoveryURL:     discoveryURL,
+			Issuer:           discovery.Issuer,
+			JWKSURL:          discovery.JWKSURI,
+			IntrospectionURL: discovery.IntrospectionEndpoint,
+			UserInfoURL:      discovery.UserInfoEndpoint,
+			ClientID:         string(np.Key),
+			ClientSecret:     string(np.Secret),
+			RequiredScope:    np.RequiredScope,
+			RequiredAudience: np.RequiredAudience,
+		}
+	}
+
+	return gothProvider, provider, withJWKS, nil
+}
+
+func fetchOIDCDiscovery(ctx context.Context, discoveryURL string) (*OIDCDiscovery, error) {
 	if discoveryURL == "" {
-		return "", "", nil
+		return nil, nil
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, discoveryURL, nil)
 	if err != nil {
-		return "", "", errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", "", errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", "", errors.Errorf("discovery fetch failed with status %d", resp.StatusCode)
+		return nil, errors.Errorf("discovery fetch failed with status %d", resp.StatusCode)
 	}
 
 	var discovery OIDCDiscovery
 	if err := json.NewDecoder(resp.Body).Decode(&discovery); err != nil {
-		return "", "", errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
-	return discovery.JWKSURI, discovery.Issuer, nil
+	return &discovery, nil
 }
