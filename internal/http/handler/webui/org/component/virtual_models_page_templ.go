@@ -687,7 +687,7 @@ func VirtualModelFormPage(vmodel VirtualModelFormVModel) templ.Component {
 		action := common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models"))
 		if !vmodel.IsNew {
 			title = "Modifier le modèle virtuel"
-			action = common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", vmodel.Name, "/edit"))
+			action = common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vmodel.VirtualModel.ID()), "/edit"))
 		}
 		templ_7745c5c3_Var26 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context

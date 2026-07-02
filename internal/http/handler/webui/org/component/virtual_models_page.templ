@@ -189,7 +189,7 @@ templ VirtualModelFormPage(vmodel VirtualModelFormVModel) {
 	{{ action := common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models")) }}
 	if !vmodel.IsNew {
 		{{ title = "Modifier le modèle virtuel" }}
-		{{ action = common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", vmodel.Name, "/edit")) }}
+		{{ action = common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vmodel.VirtualModel.ID()), "/edit")) }}
 	}
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(title)) {
 		<div class="space-y-6">
