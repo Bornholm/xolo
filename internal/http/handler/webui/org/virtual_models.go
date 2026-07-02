@@ -214,7 +214,7 @@ func (h *Handler) updateVirtualModel(w http.ResponseWriter, r *http.Request) {
 	description := r.FormValue("description")
 
 	// We know the concrete type from GORM wrapper.
-	v, ok := vm.(*model.BaseVirtualModel)
+	v, ok := vm.(interface{ SetDescription(string) })
 	if !ok {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
