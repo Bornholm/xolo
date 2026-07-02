@@ -29,6 +29,15 @@ func Middleware(userStore port.UserStore, activeByDefault bool, defaultAdmins ..
 					user = model.NewUser(authnUser.Provider, authnUser.Subject, authnUser.Email, authnUser.DisplayName, activeByDefault, authz.RoleUser)
 
 					if err := userStore.SaveUser(ctx, user); err != nil {
+						if errors.Is(err, port.ErrAlreadyExists) {
+							common.HandleError(w, r, common.NewError(
+								err.Error(),
+								"Un compte existe déjà avec cette adresse email. Contactez un administrateur pour faire fusionner vos comptes.",
+								http.StatusConflict,
+							))
+							return
+						}
+
 						common.HandleError(w, r, err)
 						return
 					}
@@ -67,6 +76,15 @@ func Middleware(userStore port.UserStore, activeByDefault bool, defaultAdmins ..
 				}
 
 				if err := userStore.SaveUser(ctx, updatable); err != nil {
+					if errors.Is(err, port.ErrAlreadyExists) {
+						common.HandleError(w, r, common.NewError(
+							err.Error(),
+							"Un compte existe déjà avec cette adresse email. Contactez un administrateur pour faire fusionner vos comptes.",
+							http.StatusConflict,
+						))
+						return
+					}
+
 					common.HandleError(w, r, err)
 					return
 				}

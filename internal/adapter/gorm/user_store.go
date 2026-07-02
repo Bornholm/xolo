@@ -2,6 +2,7 @@ package gorm
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/bornholm/xolo/internal/core/model"
@@ -90,6 +91,11 @@ func (s *Store) SaveUser(ctx context.Context, user model.User) error {
 			Columns:   []clause.Column{{Name: "id"}},
 			UpdateAll: true,
 		}).Omit("Roles", "Preferences").Create(gormUser).Error; err != nil {
+			var sqliteErr *sqlite3.Error
+			if errors.As(err, &sqliteErr) && sqliteErr.Code() == sqlite3.CONSTRAINT && strings.Contains(sqliteErr.Error(), "users.email") {
+				return errors.Wrapf(port.ErrAlreadyExists, "email %q is already used by another user", gormUser.Email)
+			}
+
 			return errors.WithStack(err)
 		}
 
