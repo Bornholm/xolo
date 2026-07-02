@@ -176,6 +176,118 @@ func TestMiddleware_ForcePassthroughOverridesFixedModel(t *testing.T) {
 	}
 }
 
+// A middleware wrapping a virtual model must not swallow the message
+// modifications performed *inside* that VM's pipeline (e.g. pseudonymization):
+// the modified messages have to reach the top-level FinalMessagesJSON so they
+// are sent to the provider. Regression test for nested-pipeline forward state.
+func TestMiddleware_PreservesWrappedVMMessageModifications(t *testing.T) {
+	const modified = `[{"role":"system","content":"anon"},{"role":"user","content":"REDACTED"}]`
+
+	plugins := pipelinetest.NewPluginProvider().
+		Register("pseudonymizer", pipelinetest.PreRequestDescriptor("pseudonymizer"),
+			pipelinetest.ModifiedMessages(modified))
+
+	resolver := pipelinetest.NewModelResolver().WithResponse("org/gpt4", "ok")
+
+	// Virtual model "anon" pseudonymizes then forwards to a real model.
+	innerGraph := pipelinetest.NewGraph().
+		Generator("gen").
+		Plugin("pseudo", "pseudonymizer").
+		ModelWithProxy("mdl", "org/gpt4").
+		Sink("sink").
+		Edge("gen", "request", "pseudo", "request").
+		Edge("pseudo", "request", "mdl", "request").
+		Edge("mdl", "response", "sink", "response").
+		Build()
+
+	anonVM := model.NewVirtualModel("test-org", "anon", "")
+	anonVM.SetGraph(innerGraph)
+
+	// Middleware chain: a passthrough graph wrapping the requested model.
+	mwGraph := pipelinetest.NewGraph().
+		Generator("gen").
+		ModelPassthrough("mdl").
+		Sink("sink").
+		Edge("gen", "request", "mdl", "request").
+		Edge("mdl", "response", "sink", "response").
+		Build()
+
+	h := pipelinetest.New(
+		pipelinetest.WithPlugins(plugins),
+		pipelinetest.WithModelResolver(resolver),
+		pipelinetest.WithVirtualModelStore(pipelinetest.NewVirtualModelStore(anonVM)),
+	)
+
+	ec := pipelinetest.NewExecutionContext(
+		pipelinetest.WithTargetModel("test-org/anon"),
+		pipelinetest.WithMessagesJSON(`[{"role":"user","content":"jean.dupont@example.com"}]`),
+	)
+	ec.ForcePassthrough = true
+
+	exec, err := h.Engine().RunForward(context.Background(), mwGraph, ec)
+	if err != nil {
+		t.Fatalf("RunForward failed: %v", err)
+	}
+	if exec.FinalMessagesJSON != modified {
+		t.Errorf("wrapped VM message modification lost: FinalMessagesJSON = %q, want %q", exec.FinalMessagesJSON, modified)
+	}
+}
+
+// A middleware wrapping a virtual model must also run that VM's backward
+// (post-response) pass — e.g. de-pseudonymization of the response. Regression
+// test for nested-pipeline backward state (spliced ExecutedNodes).
+func TestMiddleware_PreservesWrappedVMBackwardPass(t *testing.T) {
+	pseudo := pipelinetest.JSONPreRequestWithState(func(_ map[string]any) (map[string]any, []byte) {
+		return nil, []byte("state")
+	})
+	pseudo.PostResponseFunc = pipelinetest.PostResponseRewrite(func(_ []byte, content string) string {
+		return strings.ReplaceAll(content, "Person_A", "John")
+	})
+
+	plugins := pipelinetest.NewPluginProvider().
+		Register("pseudonymizer", pipelinetest.PrePostDescriptor("pseudonymizer"), pseudo)
+
+	resolver := pipelinetest.NewModelResolver().WithResponse("org/gpt4", "Person_A est arrivé")
+
+	innerGraph := pipelinetest.NewGraph().
+		Generator("gen").
+		Plugin("pseudo", "pseudonymizer").
+		ModelWithProxy("mdl", "org/gpt4").
+		Sink("sink").
+		Edge("gen", "request", "pseudo", "request").
+		Edge("pseudo", "request", "mdl", "request").
+		Edge("mdl", "response", "sink", "response").
+		Build()
+
+	anonVM := model.NewVirtualModel("test-org", "anon", "")
+	anonVM.SetGraph(innerGraph)
+
+	mwGraph := pipelinetest.NewGraph().
+		Generator("gen").
+		ModelPassthrough("mdl").
+		Sink("sink").
+		Edge("gen", "request", "mdl", "request").
+		Edge("mdl", "response", "sink", "response").
+		Build()
+
+	h := pipelinetest.New(
+		pipelinetest.WithPlugins(plugins),
+		pipelinetest.WithModelResolver(resolver),
+		pipelinetest.WithVirtualModelStore(pipelinetest.NewVirtualModelStore(anonVM)),
+	)
+
+	ec := pipelinetest.NewExecutionContext(pipelinetest.WithTargetModel("test-org/anon"))
+	ec.ForcePassthrough = true
+
+	result, err := h.Run(context.Background(), mwGraph, ec)
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+	if result.FinalContent != "John est arrivé" {
+		t.Errorf("wrapped VM backward pass did not run: FinalContent = %q, want %q", result.FinalContent, "John est arrivé")
+	}
+}
+
 // Without a target model, a passthrough node errors out clearly.
 func TestMiddleware_PassthroughNoTarget(t *testing.T) {
 	graph := pipelinetest.NewGraph().

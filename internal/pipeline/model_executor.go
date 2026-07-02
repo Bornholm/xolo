@@ -57,12 +57,7 @@ func (e *ModelExecutor) Forward(ctx context.Context, node model.PipelineNode, in
 			if err != nil {
 				return nil, errors.Wrapf(err, "middleware %q pipeline failed", next.Name())
 			}
-			return &ForwardResult{
-				ResolvedClient:  sub.ResolvedClient,
-				ResolvedModel:   sub.ResolvedModel,
-				ResolvedModelID: sub.ResolvedModelID,
-				OutputValues:    map[string]interface{}{"response": ""},
-			}, nil
+			return nestedForwardResult(sub), nil
 		}
 		if ec.TargetModelName == "" {
 			return nil, errors.New("passthrough model node: no target model in execution context")
@@ -106,12 +101,7 @@ func (e *ModelExecutor) resolveByName(ctx context.Context, proxyName string, ec 
 			if err != nil {
 				return nil, errors.Wrapf(err, "personal virtual model %q pipeline failed", proxyName)
 			}
-			return &ForwardResult{
-				ResolvedClient:  sub.ResolvedClient,
-				ResolvedModel:   sub.ResolvedModel,
-				ResolvedModelID: sub.ResolvedModelID,
-				OutputValues:    map[string]interface{}{"response": ""},
-			}, nil
+			return nestedForwardResult(sub), nil
 		}
 	}
 
@@ -137,12 +127,7 @@ func (e *ModelExecutor) resolveByName(ctx context.Context, proxyName string, ec 
 			if err != nil {
 				return nil, errors.Wrapf(err, "virtual model %q pipeline failed", proxyName)
 			}
-			return &ForwardResult{
-				ResolvedClient:  sub.ResolvedClient,
-				ResolvedModel:   sub.ResolvedModel,
-				ResolvedModelID: sub.ResolvedModelID,
-				OutputValues:    map[string]interface{}{"response": ""},
-			}, nil
+			return nestedForwardResult(sub), nil
 		}
 	}
 
@@ -162,6 +147,28 @@ func (e *ModelExecutor) resolveByName(ctx context.Context, proxyName string, ec 
 
 func (e *ModelExecutor) Backward(ctx context.Context, node model.PipelineNode, state []byte, responseContent string, tokens *TokensUsed, hadError bool) (*BackwardResult, error) {
 	return noopBackward(ctx, node, state, responseContent, tokens, hadError)
+}
+
+// nestedForwardResult builds the ForwardResult a model node returns when it
+// resolved its client by recursing into a nested pipeline (virtual model or
+// middleware chain). Beyond the resolved client, it propagates the nested run's
+// message modifications (via the "messages_json" output, so the parent engine
+// picks them up as the running messages) and its executed nodes (so their
+// backward/post-response pass runs as part of the parent execution). Without
+// this, message-modifying plugins (e.g. pseudonymization) buried in a wrapped
+// virtual model would be silently dropped.
+func nestedForwardResult(sub *ForwardExecution) *ForwardResult {
+	out := map[string]interface{}{"response": ""}
+	if sub.FinalMessagesJSON != "" {
+		out["messages_json"] = sub.FinalMessagesJSON
+	}
+	return &ForwardResult{
+		ResolvedClient:      sub.ResolvedClient,
+		ResolvedModel:       sub.ResolvedModel,
+		ResolvedModelID:     sub.ResolvedModelID,
+		OutputValues:        out,
+		NestedExecutedNodes: sub.ExecutedNodes,
+	}
 }
 
 // isPassthroughNode reports whether a model node resolves the caller's

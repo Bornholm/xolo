@@ -72,6 +72,10 @@ type ForwardResult struct {
 	// reach the API client). Applied by the engine once the terminal model
 	// node has resolved a client.
 	ClientDecorator func(llm.Client) llm.Client
+	// NestedExecutedNodes carries the ExecutedNodes of a nested pipeline run
+	// (virtual-model recursion or middleware chaining). The engine splices them
+	// into the parent execution so their backward (post-response) pass runs.
+	NestedExecutedNodes []ExecutedNode
 }
 
 // BackwardResult is the output of a node's Backward execution.

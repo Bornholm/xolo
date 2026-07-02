@@ -83,7 +83,13 @@ func (e *Engine) RunForward(ctx context.Context, graph *model.PipelineGraph, ec 
 		}
 
 		inputs := vc.ResolveInputs(graph, node.ID)
-		result, err := exec.Forward(ctx, *node, inputs, ec)
+		// Expose the messages as they stand entering this node (after any
+		// upstream modification) so nodes that recurse into nested pipelines
+		// (model nodes resolving a virtual model / middleware chain) seed the
+		// child with the already-modified messages rather than the originals.
+		nodeEC := ec
+		nodeEC.MessagesJSON = currentMessagesJSON
+		result, err := exec.Forward(ctx, *node, inputs, nodeEC)
 		if err != nil {
 			return nil, errors.Wrapf(err, "node %s (%s) forward failed", node.ID, node.Type)
 		}
@@ -92,6 +98,9 @@ func (e *Engine) RunForward(ctx context.Context, graph *model.PipelineGraph, ec 
 			return nil, &RejectionError{Reason: result.RejectionReason}
 		}
 
+		// Splice the executed nodes of any nested pipeline before this node's own
+		// entry, so the backward pass covers them (in reverse) too.
+		executed = append(executed, result.NestedExecutedNodes...)
 		executed = append(executed, ExecutedNode{Node: *node, NodeState: result.NodeState})
 
 		// Store output values in the value context.
