@@ -199,6 +199,12 @@ func buildOIDCProvider(ctx context.Context, baseURL string, np config.NamedOIDCP
 		return nil, oidc.Provider{}, nil, errors.WithStack(err)
 	}
 
+	// openidConnect.NewNamed mangles the given name (e.g. "openid-connect"
+	// becomes "openid-connect-oidc"), but the callback URL and login links built
+	// above use np.ID verbatim. Force the goth provider name back to np.ID so it
+	// stays resolvable at /auth/oidc/providers/{np.ID}.
+	gothProvider.SetName(np.ID)
+
 	provider := oidc.Provider{
 		ID:    np.ID,
 		Label: np.Label,
