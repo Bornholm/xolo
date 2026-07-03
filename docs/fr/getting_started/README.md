@@ -17,7 +17,7 @@ Plusieurs onglets se présentent :
 
 - [Membres](./membre/membre.md) : Permet la gestion des rôles utilisateur, envoyer les invitations pour intégrer l'organisation.
 - Rôles : Gestion des roles de la plateforme
-- Fournisseurs :
+- [Fournisseurs](./fournisseurs/fournisseurs.md) :
   - gestion des fournisseurs de modèle (Openrouter, Anthropic, Mistral, etc)
   - gestion des modèles (pour les rendres accesible via la passerelle/plateform)
 - [Invitation](./invitation/invitation.md) : Permet la création de lien d'invitation (permet aux utilisateurs de rejoindre l'organisation)
