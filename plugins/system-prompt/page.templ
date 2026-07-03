@@ -1,0 +1,75 @@
+package main
+
+import (
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/label"
+)
+
+templ page(pd uiPageData) {
+	<!DOCTYPE html>
+	<html class="dark">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<base href={ pd.BasePath }/>
+			<link rel="stylesheet" href="/assets/templui.css"/>
+		</head>
+		<body class="bg-background text-foreground min-h-screen p-4 space-y-4">
+			<h1 class="text-lg font-semibold">System Prompt</h1>
+			<p class="text-sm text-muted-foreground">
+				Injecte un prompt système fixe dans les messages de requête LLM.
+				Le prompt sera ajouté avant les autres messages.
+			</p>
+
+			if pd.Success {
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					@alert.Description() { Configuration sauvegardée avec succès. }
+				}
+			}
+
+			<form method="POST" action="api/config" class="space-y-6">
+				@card.Card() {
+					@card.Header() {
+						@card.Title() { Prompt système }
+					}
+					@card.Content() {
+						<div class="space-y-2">
+							@label.Label(label.Props{}) {
+								Contenu du prompt (sera envoyé comme message système)
+							}
+							<textarea
+								id="system_prompt"
+								name="system_prompt"
+								rows="10"
+								class="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm font-mono shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+								placeholder="Tu es un assistant utile et concis..."
+							>{ pd.Config.SystemPrompt }</textarea>
+							<div class="flex items-center gap-2 mt-2">
+								<input
+									type="checkbox"
+									name="append"
+									id="append"
+									value="true"
+									if pd.Config.Append {
+										checked
+									}
+								/>
+								<label for="append" class="text-sm cursor-pointer">
+									Ajouter au prompt système existant (si présent)
+								</label>
+							</div>
+						</div>
+					}
+				}
+
+				<div class="flex justify-end">
+					@button.Button(button.Props{Type: button.TypeSubmit}) {
+						Sauvegarder
+					}
+				</div>
+			</form>
+		</body>
+	</html>
+}
