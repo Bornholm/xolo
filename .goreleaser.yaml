@@ -85,6 +85,16 @@ builds:
     ldflags:
       - -w -s
 
+  - id: xolo-plugin-system-prompt
+    targets: [go_first_class]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    dir: ./plugins/system-prompt
+    binary: xolo-plugin-system-prompt
+    flags:
+      - -trimpath
+    ldflags:
+      - -w -s
+
 checksum:
   name_template: "checksums.txt"
 snapshot:
@@ -110,6 +120,7 @@ dockers:
       - xolo-plugin-script-processor
       - xolo-plugin-pseudonymizer
       - xolo-plugin-mcp-bridge
+      - xolo-plugin-system-prompt
     use: docker
     dockerfile: misc/docker/xolo-server.Dockerfile
     image_templates:
