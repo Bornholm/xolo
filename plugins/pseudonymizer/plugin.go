@@ -8,12 +8,15 @@ import (
 	"maps"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	goanon "github.com/bornholm/go-anon"
 	"github.com/bornholm/go-anon/pkg/anonymizer"
 	"github.com/bornholm/go-anon/pkg/modelstore"
+	"github.com/bornholm/xolo/pkg/pluginsdk"
 	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
 )
 
@@ -25,6 +28,62 @@ type Plugin struct {
 	store      *modelstore.Store
 	anons      map[string]*anonymizer.Anonymizer
 	lastCfgKey string
+
+	hostMu     sync.Mutex
+	hostClient pluginsdk.HostClient
+}
+
+// SetHostClient implémente pluginsdk.HostClientSetter : le runtime l'appelle une
+// fois la connexion au XoloHostService établie (dans Initialize).
+func (p *Plugin) SetHostClient(c pluginsdk.HostClient) {
+	p.hostMu.Lock()
+	defer p.hostMu.Unlock()
+	p.hostClient = c
+}
+
+func (p *Plugin) getHostClient() pluginsdk.HostClient {
+	p.hostMu.Lock()
+	defer p.hostMu.Unlock()
+	return p.hostClient
+}
+
+// emitEvent émet un événement de façon non bloquante (l'appel gRPC vers l'hôte
+// ne doit pas ralentir le traitement de la requête).
+func (p *Plugin) emitEvent(evt pluginsdk.Event) {
+	hc := p.getHostClient()
+	if hc == nil {
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := hc.EmitEvent(ctx, evt); err != nil {
+			slog.Warn("pseudonymizer: could not emit event", slog.Any("error", err))
+		}
+	}()
+}
+
+// summarizeEntities compte les entités détectées par type à partir des
+// placeholders "[TYPE_N]" du mapping d'anonymisation.
+func summarizeEntities(mapping map[string]string) (int, string) {
+	counts := map[string]int{}
+	for placeholder := range mapping {
+		name := strings.Trim(placeholder, "[]")
+		if idx := strings.LastIndex(name, "_"); idx > 0 {
+			name = name[:idx]
+		}
+		counts[name]++
+	}
+	keys := make([]string, 0, len(counts))
+	for k := range counts {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		parts = append(parts, fmt.Sprintf("%s:%d", k, counts[k]))
+	}
+	return len(mapping), strings.Join(parts, ",")
 }
 
 func newPlugin() *Plugin {
@@ -223,6 +282,25 @@ func (p *Plugin) PreRequest(ctx context.Context, in *proto.PreRequestInput) (*pr
 		slog.Int("entities", len(session.Mapping)),
 		slog.Int("removed_attachments", len(removedParts)),
 	)
+
+	// Emit an event whenever sensitive data was detected (and pseudonymized) or
+	// a non-anonymizable attachment had to be removed.
+	if len(session.Mapping) > 0 || len(removedParts) > 0 {
+		total, types := summarizeEntities(session.Mapping)
+		p.emitEvent(pluginsdk.Event{
+			PluginName: "pseudonymizer",
+			OrgID:      in.GetCtx().GetOrgId(),
+			UserID:     in.GetCtx().GetUserId(),
+			Type:       "sensitive-data.detected",
+			Severity:   "warning",
+			Message:    fmt.Sprintf("Données sensibles détectées et pseudonymisées (%d entité(s))", total),
+			Attributes: map[string]string{
+				"entities":            strconv.Itoa(total),
+				"types":               types,
+				"removed_attachments": strconv.Itoa(len(removedParts)),
+			},
+		})
+	}
 
 	return &proto.PreRequestOutput{
 		Allowed:              true,

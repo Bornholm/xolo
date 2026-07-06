@@ -29,11 +29,7 @@ func (h *Handler) getOrgQuotaPage(w http.ResponseWriter, r *http.Request) {
 
 	nav, footer := orgAdminNav(org)
 
-	quotaStore, ok := h.orgStore.(port.QuotaStore)
-	if !ok {
-		http.Error(w, "Quota store not available", http.StatusInternalServerError)
-		return
-	}
+	quotaStore := h.quotaStore
 
 	existing, _ := quotaStore.GetQuota(ctx, model.QuotaScopeOrg, string(org.ID()))
 
@@ -95,11 +91,7 @@ func (h *Handler) saveOrgQuota(w http.ResponseWriter, r *http.Request) {
 	monthly := parseBudgetField(r.FormValue("monthly_budget"))
 	yearly := parseBudgetField(r.FormValue("yearly_budget"))
 
-	quotaStore, ok := h.orgStore.(port.QuotaStore)
-	if !ok {
-		http.Error(w, "Quota store not available", http.StatusInternalServerError)
-		return
-	}
+	quotaStore := h.quotaStore
 
 	quota := model.NewQuota(model.QuotaScopeOrg, string(org.ID()), currency, daily, monthly, yearly)
 	if err := quotaStore.SetQuota(ctx, quota); err != nil {
@@ -135,11 +127,7 @@ func (h *Handler) getMemberQuotaPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	quotaStore, ok := h.orgStore.(port.QuotaStore)
-	if !ok {
-		http.Error(w, "Quota store not available", http.StatusInternalServerError)
-		return
-	}
+	quotaStore := h.quotaStore
 
 	existing, _ := quotaStore.GetQuota(ctx, model.QuotaScopeUser, string(membership.UserID()))
 
@@ -216,11 +204,7 @@ func (h *Handler) saveMemberQuota(w http.ResponseWriter, r *http.Request) {
 	monthly := parseBudgetField(r.FormValue("monthly_budget"))
 	yearly := parseBudgetField(r.FormValue("yearly_budget"))
 
-	quotaStore, ok := h.orgStore.(port.QuotaStore)
-	if !ok {
-		http.Error(w, "Quota store not available", http.StatusInternalServerError)
-		return
-	}
+	quotaStore := h.quotaStore
 
 	quota := model.NewQuota(model.QuotaScopeUser, string(membership.UserID()), currency, daily, monthly, yearly)
 	if err := quotaStore.SetQuota(ctx, quota); err != nil {

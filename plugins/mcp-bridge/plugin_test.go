@@ -40,6 +40,8 @@ func (c *fakeHostClient) DeleteSecret(_ context.Context, _, _, nodeID, key strin
 	return nil
 }
 
+func (c *fakeHostClient) EmitEvent(_ context.Context, _ pluginsdk.Event) error { return nil }
+
 var _ pluginsdk.HostClient = (*fakeHostClient)(nil)
 
 type echoInput struct {

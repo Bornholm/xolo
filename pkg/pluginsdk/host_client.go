@@ -21,6 +21,22 @@ type HostClient interface {
 	SetSecret(ctx context.Context, orgID, pluginName, nodeID, key, value string) error
 	// DeleteSecret removes the value stored for (orgID, pluginName, nodeID, key).
 	DeleteSecret(ctx context.Context, orgID, pluginName, nodeID, key string) error
+	// EmitEvent records an event in Xolo's event system. The host forces the
+	// event source to the plugin name and namespaces the type under
+	// "plugin.<name>.". orgID/userID may be empty for platform-global events.
+	EmitEvent(ctx context.Context, event Event) error
+}
+
+// Event is a plugin-emitted event. Severity should be one of "info", "warning"
+// or "error" (defaults to "info").
+type Event struct {
+	PluginName string
+	OrgID      string
+	UserID     string
+	Type       string
+	Severity   string
+	Message    string
+	Attributes map[string]string
 }
 
 // grpcHostClient implements HostClient over gRPC.
@@ -89,6 +105,22 @@ func (c *grpcHostClient) SetSecret(ctx context.Context, orgID, pluginName, nodeI
 	})
 	if err != nil {
 		return fmt.Errorf("SetSecret gRPC: %w", err)
+	}
+	return nil
+}
+
+func (c *grpcHostClient) EmitEvent(ctx context.Context, event Event) error {
+	_, err := c.client.EmitEvent(ctx, &proto.EmitEventRequest{
+		PluginName: event.PluginName,
+		OrgId:      event.OrgID,
+		UserId:     event.UserID,
+		Type:       event.Type,
+		Severity:   event.Severity,
+		Message:    event.Message,
+		Attributes: event.Attributes,
+	})
+	if err != nil {
+		return fmt.Errorf("EmitEvent gRPC: %w", err)
 	}
 	return nil
 }

@@ -426,6 +426,9 @@
   .mr-3 {
     margin-right: calc(var(--spacing) * 3);
   }
+  .-mb-px {
+    margin-bottom: -1px;
+  }
   .mb-1 {
     margin-bottom: var(--spacing);
   }
@@ -1081,6 +1084,10 @@
     border-bottom-style: var(--tw-border-style);
     border-bottom-width: 0px;
   }
+  .border-b-2 {
+    border-bottom-style: var(--tw-border-style);
+    border-bottom-width: 2px;
+  }
   .border-l {
     border-left-style: var(--tw-border-style);
     border-left-width: 1px;
@@ -1367,6 +1374,9 @@
   }
   .text-\[0\.8rem\] {
     font-size: 0.8rem;
+  }
+  .text-\[10px\] {
+    font-size: 10px;
   }
   .leading-none {
     --tw-leading: 1;

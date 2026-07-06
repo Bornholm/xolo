@@ -310,10 +310,8 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 
 	// Fetch org quota for budget pie charts
 	var orgQuota model.Quota
-	if quotaStore, ok := h.orgStore.(port.QuotaStore); ok {
-		if q, err := quotaStore.GetQuota(ctx, model.QuotaScopeOrg, string(orgID)); err == nil && q != nil {
-			orgQuota = q
-		}
+	if q, err := h.quotaStore.GetQuota(ctx, model.QuotaScopeOrg, string(orgID)); err == nil && q != nil {
+		orgQuota = q
 	}
 
 	// Compute daily/monthly/yearly spending for quota pie charts

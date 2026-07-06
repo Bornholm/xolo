@@ -33,6 +33,12 @@ type Handler struct {
 	exchangeRateService *service.ExchangeRateService
 	pluginManager       pluginManagerIface
 	subscriptionMonitor port.SubscriptionMonitor
+	eventStore          port.EventStore
+	alertStore          port.AlertStore
+	alertIncidentStore  port.AlertIncidentStore
+	eventSettingsStore  port.EventSettingsStore
+	eventsMaxPerOrg     int
+	eventsDefaultPerOrg int
 }
 
 // ServeHTTP implements http.Handler.
@@ -56,6 +62,12 @@ func NewHandler(
 	secretKey string,
 	pluginManager pluginManagerIface,
 	subscriptionMonitor port.SubscriptionMonitor,
+	eventStore port.EventStore,
+	alertStore port.AlertStore,
+	alertIncidentStore port.AlertIncidentStore,
+	eventSettingsStore port.EventSettingsStore,
+	eventsMaxPerOrg int,
+	eventsDefaultPerOrg int,
 ) *Handler {
 	h := &Handler{
 		mux:                 http.NewServeMux(),
@@ -74,6 +86,12 @@ func NewHandler(
 		exchangeRateService: exchangeRateService,
 		pluginManager:       pluginManager,
 		subscriptionMonitor: subscriptionMonitor,
+		eventStore:          eventStore,
+		alertStore:          alertStore,
+		alertIncidentStore:  alertIncidentStore,
+		eventSettingsStore:  eventSettingsStore,
+		eventsMaxPerOrg:     eventsMaxPerOrg,
+		eventsDefaultPerOrg: eventsDefaultPerOrg,
 	}
 
 	// assertPerm gates a route on a single RBAC permission resolved for the
@@ -87,6 +105,21 @@ func NewHandler(
 						http.Error(w, "Forbidden", http.StatusForbidden)
 					}),
 					h.hasPermission(orgSlug, perm),
+				)(next).ServeHTTP(w, r)
+			})
+		}
+	}
+
+	// assertAnyPerm gates a route on holding at least one of the given permissions.
+	assertAnyPerm := func(perms ...rbac.Permission) func(http.Handler) http.Handler {
+		return func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				orgSlug := r.PathValue("orgSlug")
+				authz.Middleware(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						http.Error(w, "Forbidden", http.StatusForbidden)
+					}),
+					h.hasAnyPermission(orgSlug, perms...),
 				)(next).ServeHTTP(w, r)
 			})
 		}
@@ -186,8 +219,20 @@ func NewHandler(
 	// Plugin HTTP UI proxy — tied to virtual model / pipeline administration.
 	h.mux.Handle("/{orgSlug}/plugins/{pluginName}/ui/{uiPath...}", assertPerm(rbac.PermVirtualModelsWrite)(http.HandlerFunc(h.servePluginUI)))
 
-	// Org member routes
-	_ = assertOrgMember
+	// Events explorer — accessible to any org member (own events by default).
+	h.mux.Handle("GET /{orgSlug}/events", assertOrgMember(http.HandlerFunc(h.getEventsExplorerPage)))
+
+	// Alerts & incidents — accessible with either org-wide (events:write) or
+	// personal (events:alerts:own) alert permission; per-alert authorization is
+	// enforced in the handlers based on scope and ownership.
+	alertsPerm := assertAnyPerm(rbac.PermEventsWrite, rbac.PermEventsAlertsOwn)
+	h.mux.Handle("GET /{orgSlug}/events/alerts", alertsPerm(http.HandlerFunc(h.getAlertsPage)))
+	h.mux.Handle("GET /{orgSlug}/events/alerts/new", alertsPerm(http.HandlerFunc(h.getNewAlertPage)))
+	h.mux.Handle("POST /{orgSlug}/events/alerts", alertsPerm(http.HandlerFunc(h.createAlert)))
+	h.mux.Handle("GET /{orgSlug}/events/alerts/{alertID}/edit", alertsPerm(http.HandlerFunc(h.getEditAlertPage)))
+	h.mux.Handle("POST /{orgSlug}/events/alerts/{alertID}/edit", alertsPerm(http.HandlerFunc(h.updateAlert)))
+	h.mux.Handle("POST /{orgSlug}/events/alerts/{alertID}/delete", alertsPerm(http.HandlerFunc(h.deleteAlert)))
+	h.mux.Handle("GET /{orgSlug}/events/incidents", alertsPerm(http.HandlerFunc(h.getIncidentsPage)))
 
 	return h
 }

@@ -15,7 +15,12 @@ func getBridgeMiddlewareFromConfig(ctx context.Context, conf *config.Config) (fu
 		return nil, errors.WithStack(err)
 	}
 
-	bridgeMiddleware := bridge.Middleware(userStore, conf.HTTP.Authn.ActiveByDefault, conf.HTTP.Authn.DefaultAdmins...)
+	emitter, err := getEventEmitterFromConfig(ctx, conf)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	bridgeMiddleware := bridge.Middleware(userStore, emitter, conf.HTTP.Authn.ActiveByDefault, conf.HTTP.Authn.DefaultAdmins...)
 
 	return bridgeMiddleware, nil
 }

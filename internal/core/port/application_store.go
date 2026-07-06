@@ -14,6 +14,7 @@ type ApplicationStore interface {
 	DeleteApplication(ctx context.Context, appID model.ApplicationID) error
 
 	FindApplicationAuthToken(ctx context.Context, token string) (model.AuthToken, error)
+	GetApplicationAuthToken(ctx context.Context, tokenID model.AuthTokenID) (model.AuthToken, error)
 	GetApplicationAuthTokens(ctx context.Context, appID model.ApplicationID) ([]model.AuthToken, error)
 	CreateApplicationAuthToken(ctx context.Context, token model.AuthToken) error
 	DeleteApplicationAuthToken(ctx context.Context, tokenID model.AuthTokenID) error

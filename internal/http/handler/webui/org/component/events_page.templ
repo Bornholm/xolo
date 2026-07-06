@@ -1,0 +1,156 @@
+package component
+
+import (
+	"strconv"
+
+	"github.com/bornholm/xolo/internal/core/model"
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
+)
+
+templ EventsExplorerPage(vmodel EventsExplorerVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Événements — "+vmodel.Org.Name())) {
+		{{ base := common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/events")) }}
+		<div class="space-y-6">
+			<h1 class="text-2xl font-semibold">Événements</h1>
+			@EventsTabs(vmodel.Org, "events", vmodel.View)
+			<p class="text-sm text-muted-foreground">
+				Interrogez les événements de la plateforme et des plugins avec une syntaxe inspirée de LogQL, par
+				exemple <code class="bg-muted px-1 rounded">{ `{type="auth.login.failed"} |~ "timeout"` }</code>.
+			</p>
+			if vmodel.CanReadAll {
+				<div class="flex gap-2">
+					@scopeLink(base, vmodel.Query, EventScopeMine, vmodel.Scope, vmodel.View, "Mes événements")
+					@scopeLink(base, vmodel.Query, EventScopeAll, vmodel.Scope, vmodel.View, "Tous")
+					@scopeLink(base, vmodel.Query, EventScopeGlobal, vmodel.Scope, vmodel.View, "Globaux")
+				</div>
+			}
+			<form method="GET" action={ templ.SafeURL(base) } class="flex gap-2 items-end">
+				<input type="hidden" name="scope" value={ vmodel.Scope }/>
+				if vmodel.View != "" {
+					<input type="hidden" name="view" value={ vmodel.View }/>
+				}
+				<div class="flex-1">
+					@input.Input(input.Props{
+						Name:        "query",
+						Value:       vmodel.Query,
+						Placeholder: `{type="proxy.request"} | model="gpt-4o"`,
+					})
+				</div>
+				@button.Button(button.Props{Type: button.TypeSubmit}) {
+					Rechercher
+				}
+			</form>
+			if vmodel.Error != "" {
+				@alert.Alert(alert.Props{Variant: alert.VariantDestructive}) {
+					@alert.Description() {
+						{ vmodel.Error }
+					}
+				}
+			}
+			<div class="bg-card shadow-xs w-full border text-card-foreground rounded-lg">
+				@table.Table() {
+					@table.Header() {
+						@table.Row() {
+							@table.Head() { Date }
+							@table.Head() { Sévérité }
+							@table.Head() { Type }
+							@table.Head() { Source }
+							@table.Head() { Utilisateur }
+							@table.Head() { Message }
+						}
+					}
+					@table.Body() {
+						if len(vmodel.Events) == 0 {
+							@table.Row() {
+								@table.Cell(table.CellProps{Attributes: templ.Attributes{"colspan": "6"}}) {
+									<span class="text-muted-foreground">Aucun événement.</span>
+								}
+							}
+						}
+						for _, e := range vmodel.Events {
+							@eventRow(e)
+						}
+					}
+				}
+			</div>
+			if vmodel.HasPrev || vmodel.HasNext {
+				<div class="flex items-center justify-between text-sm">
+					if vmodel.HasPrev {
+						@button.Button(button.Props{Variant: button.VariantOutline, Href: explorerHref(base, vmodel.Scope, vmodel.Query, vmodel.Page-1, vmodel.View)}) {
+							Précédent
+						}
+					} else {
+						<span></span>
+					}
+					<span class="text-muted-foreground">Page { strconv.Itoa(vmodel.Page) }</span>
+					if vmodel.HasNext {
+						@button.Button(button.Props{Variant: button.VariantOutline, Href: explorerHref(base, vmodel.Scope, vmodel.Query, vmodel.Page+1, vmodel.View)}) {
+							Suivant
+						}
+					} else {
+						<span></span>
+					}
+				</div>
+			}
+		</div>
+	}
+}
+
+templ scopeLink(base, query, scope, current, view, label string) {
+	<a href={ templ.SafeURL(explorerHref(base, scope, query, 1, view)) }>
+		if scope == current {
+			@badge.Badge(badge.Props{Variant: badge.VariantDefault}) {
+				{ label }
+			}
+		} else {
+			@badge.Badge(badge.Props{Variant: badge.VariantOutline}) {
+				{ label }
+			}
+		}
+	</a>
+}
+
+templ eventRow(e model.Event) {
+	@table.Row() {
+		@table.Cell(table.CellProps{Class: "whitespace-nowrap text-xs text-muted-foreground"}) {
+			{ formatEventTime(e.CreatedAt()) }
+		}
+		@table.Cell() {
+			@badge.Badge(badge.Props{Variant: severityBadgeVariant(e.Severity())}) {
+				{ string(e.Severity()) }
+			}
+		}
+		@table.Cell(table.CellProps{Class: "font-mono text-xs"}) {
+			{ e.Type() }
+		}
+		@table.Cell(table.CellProps{Class: "text-xs"}) {
+			{ e.Source() }
+		}
+		@table.Cell(table.CellProps{Class: "text-xs"}) {
+			if e.UserID() != "" {
+				{ string(e.UserID()) }
+			} else {
+				<span class="text-muted-foreground">global</span>
+			}
+		}
+		@table.Cell() {
+			<div class="space-y-1">
+				<div>{ e.Message() }</div>
+				if len(e.Attributes()) > 0 {
+					<div class="flex flex-wrap gap-1">
+						for _, a := range sortedAttrs(e.Attributes()) {
+							@badge.Badge(badge.Props{Variant: badge.VariantOutline, Class: "font-mono text-[10px]"}) {
+								{ a.Key }={ a.Value }
+							}
+						}
+					</div>
+				}
+			</div>
+		}
+	}
+}

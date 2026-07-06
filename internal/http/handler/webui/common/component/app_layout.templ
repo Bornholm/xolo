@@ -13,6 +13,7 @@ import (
 
 templ AppNavigationItems(vmodel AppLayoutVModel) {
 	@NavItem(icon.ChartColumn, "Usage", string(BaseURL(ctx, WithPath("/usage"))), vmodel.SelectedItem == "usage")
+	@NavItem(icon.Bell, "Événements", string(BaseURL(ctx, WithPath("/events"))), vmodel.SelectedItem == "events")
 	if CanAccessModelsPage(ctx) {
 		@NavItem(icon.BrainCircuit, "Modèles d'org.", string(BaseURL(ctx, WithPath("/models"))), vmodel.SelectedItem == "models")
 	}

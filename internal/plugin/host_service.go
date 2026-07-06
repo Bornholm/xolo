@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"sync"
 
 	"github.com/bornholm/xolo/internal/core/model"
@@ -27,6 +28,7 @@ type XoloHostService struct {
 	providerStore     port.ProviderStore
 	virtualModelStore port.VirtualModelStore
 	secretStore       port.SecretStore
+	eventEmitter      port.EventEmitter
 	secretKey         string
 	mu                sync.RWMutex
 	configs           map[string]string // key: orgID+":"+pluginName → JSON
@@ -37,12 +39,14 @@ func NewXoloHostService(
 	providerStore port.ProviderStore,
 	virtualModelStore port.VirtualModelStore,
 	secretStore port.SecretStore,
+	eventEmitter port.EventEmitter,
 	secretKey string,
 ) *XoloHostService {
 	return &XoloHostService{
 		providerStore:     providerStore,
 		virtualModelStore: virtualModelStore,
 		secretStore:       secretStore,
+		eventEmitter:      eventEmitter,
 		secretKey:         secretKey,
 		configs:           make(map[string]string),
 	}
@@ -164,6 +168,46 @@ func (s *XoloHostService) SetSecret(ctx context.Context, req *proto.SetSecretReq
 		return nil, status.Errorf(codes.Internal, "set secret: %v", err)
 	}
 	return &proto.SetSecretResponse{}, nil
+}
+
+// EmitEvent records an event emitted by a plugin. The source is forced to the
+// plugin name and the type is namespaced under "plugin.<name>." so a plugin can
+// never impersonate a platform event.
+func (s *XoloHostService) EmitEvent(ctx context.Context, req *proto.EmitEventRequest) (*proto.EmitEventResponse, error) {
+	if s.eventEmitter == nil {
+		return &proto.EmitEventResponse{}, nil
+	}
+
+	pluginName := req.PluginName
+	if pluginName == "" {
+		pluginName = "plugin"
+	}
+
+	eventType := req.Type
+	prefix := "plugin." + pluginName + "."
+	if !strings.HasPrefix(eventType, prefix) {
+		eventType = prefix + eventType
+	}
+
+	severity := model.EventSeverity(req.Severity)
+	switch severity {
+	case model.SeverityInfo, model.SeverityWarning, model.SeverityError:
+	default:
+		severity = model.SeverityInfo
+	}
+
+	opts := []model.EventOption{
+		model.WithEventOrg(model.OrgID(req.OrgId)),
+		model.WithEventSeverity(severity),
+		model.WithEventMessage(req.Message),
+		model.WithEventAttributes(req.Attributes),
+	}
+	if req.UserId != "" {
+		opts = append(opts, model.WithEventUser(model.UserID(req.UserId)))
+	}
+
+	s.eventEmitter.Emit(ctx, model.NewEvent(pluginName, eventType, opts...))
+	return &proto.EmitEventResponse{}, nil
 }
 
 // DeleteSecret removes the secret for (orgID, pluginName, nodeID, key).

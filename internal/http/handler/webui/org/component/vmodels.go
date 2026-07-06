@@ -97,6 +97,10 @@ type OrgSettingsPageVModel struct {
 	SharedDailyBudget   *int64 // microcents, nil si org n'a pas ce budget
 	SharedMonthlyBudget *int64
 	SharedYearlyBudget  *int64
+	// Rétention des événements (ring buffer).
+	EventsMaxOverride *int // nil = utilise la valeur par défaut globale
+	EventsDefault     int  // valeur par défaut globale
+	EventsGlobalCap   int  // plafond global (borne supérieure)
 }
 
 type OrgDisplayUsageRecord struct {

@@ -3,6 +3,7 @@ package setup
 import (
 	"context"
 
+	eventsAdapter "github.com/bornholm/xolo/internal/adapter/events"
 	"github.com/bornholm/xolo/internal/config"
 	"github.com/bornholm/xolo/internal/core/port"
 	"github.com/pkg/errors"
@@ -13,5 +14,11 @@ var getRoleStoreFromConfig = createFromConfigOnce(func(ctx context.Context, conf
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	return store, nil
+	emitter, err := getEventEmitterFromConfig(ctx, conf)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	// The raw gorm store also implements OrgStore.GetMembership, used to resolve
+	// the org/user for membership-role changes.
+	return eventsAdapter.NewRoleStore(store, emitter, store), nil
 })

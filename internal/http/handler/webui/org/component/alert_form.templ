@@ -1,0 +1,123 @@
+package component
+
+import (
+	"github.com/bornholm/xolo/internal/core/model"
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/form"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
+	switchcomp "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/switch"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/textarea"
+)
+
+var alertComparators = []struct {
+	Value string
+	Label string
+}{
+	{string(model.ComparatorGT), "> (strictement supérieur)"},
+	{string(model.ComparatorGTE), ">= (supérieur ou égal)"},
+	{string(model.ComparatorLT), "< (strictement inférieur)"},
+	{string(model.ComparatorLTE), "<= (inférieur ou égal)"},
+	{string(model.ComparatorEQ), "== (égal)"},
+}
+
+templ AlertFormPage(vmodel AlertFormVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Alerte — "+vmodel.Org.Name()), common.WithScripts(common.Script{Name: "selectbox", Component: selectbox.Script()})) {
+		{{ slug := vmodel.Org.Slug() }}
+		{{ action := viewedPath(common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/events/alerts")), vmodel.View) }}
+		if !vmodel.IsNew && vmodel.Alert != nil {
+			{{ action = viewedPath(common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/events/alerts/", string(vmodel.Alert.ID()), "/edit")), vmodel.View) }}
+		}
+		<div class="space-y-6 max-w-2xl">
+			<h1 class="text-2xl font-semibold">
+				if vmodel.IsNew {
+					Nouvelle alerte
+				} else {
+					Modifier l'alerte
+				}
+			</h1>
+			if vmodel.Error != "" {
+				@alert.Alert(alert.Props{Variant: alert.VariantDestructive}) {
+					@alert.Description() {
+						{ vmodel.Error }
+					}
+				}
+			}
+			@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+				@alert.Description() {
+					if vmodel.Scope == model.AlertScopePersonal {
+						Portée : <strong>personnelle</strong> — cette alerte n'évalue que vos propres événements.
+					} else {
+						Portée : <strong>organisation</strong> — cette alerte évalue les événements de toute l'organisation.
+					}
+				}
+			}
+			<form method="POST" action={ templ.SafeURL(action) } class="space-y-4">
+				<div class="bg-card shadow-xs w-full border text-card-foreground rounded-lg p-6 space-y-4">
+					<div class="space-y-2">
+						@form.Label(form.LabelProps{For: "name"}) { Nom }
+						@input.Input(input.Props{ID: "name", Name: "name", Value: vmodel.FormName, Attributes: templ.Attributes{"required": "required"}})
+					</div>
+					<div class="space-y-2">
+						@form.Label(form.LabelProps{For: "description"}) { Description }
+						@textarea.Textarea(textarea.Props{ID: "description", Name: "description", Value: vmodel.FormDescription, Rows: 2})
+					</div>
+					<div class="space-y-2">
+						@form.Label(form.LabelProps{For: "query"}) { Requête (eventql) }
+						@input.Input(input.Props{ID: "query", Name: "query", Value: vmodel.FormQuery, Placeholder: `{type="auth.login.failed"}`})
+						@form.Description() { Syntaxe inspirée de LogQL. Vide = tous les événements. }
+					</div>
+					<div class="grid grid-cols-2 gap-4">
+						<div class="space-y-2">
+							@form.Label(form.LabelProps{For: "window"}) { Fenêtre }
+							@input.Input(input.Props{ID: "window", Name: "window", Value: vmodel.FormWindow, Placeholder: "5m", Attributes: templ.Attributes{"required": "required"}})
+							@form.Description() { Ex : 5m, 1h, 24h. }
+						</div>
+						<div class="space-y-2">
+							@form.Label(form.LabelProps{For: "for"}) { Durée « pending » }
+							@input.Input(input.Props{ID: "for", Name: "for", Value: vmodel.FormFor, Placeholder: "0s"})
+							@form.Description() { Délai avant passage en « firing ». }
+						</div>
+					</div>
+					<div class="grid grid-cols-2 gap-4">
+						<div class="space-y-2">
+							@form.Label(form.LabelProps{}) { Comparateur }
+							@selectbox.SelectBox(selectbox.Props{ID: "comparator_box"}) {
+								@selectbox.Trigger(selectbox.TriggerProps{Name: "comparator"}) {
+									@selectbox.Value(selectbox.ValueProps{Placeholder: "Comparateur"})
+								}
+								@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+									@selectbox.Group() {
+										for _, c := range alertComparators {
+											@selectbox.Item(selectbox.ItemProps{Value: c.Value, Selected: vmodel.FormComparator == c.Value}) {
+												{ c.Label }
+											}
+										}
+									}
+								}
+							}
+						</div>
+						<div class="space-y-2">
+							@form.Label(form.LabelProps{For: "threshold"}) { Seuil }
+							@input.Input(input.Props{ID: "threshold", Name: "threshold", Type: input.TypeNumber, Value: vmodel.FormThreshold, Placeholder: "5", Attributes: templ.Attributes{"required": "required", "step": "any"}})
+						</div>
+					</div>
+					@form.ItemFlex() {
+						@switchcomp.Switch(switchcomp.Props{ID: "enabled", Name: "enabled", Checked: vmodel.FormEnabled})
+						@form.Label(form.LabelProps{For: "enabled"}) { Alerte activée }
+					}
+				</div>
+				<div class="flex gap-2">
+					@button.Button(button.Props{Type: button.TypeSubmit}) {
+						Enregistrer
+					}
+					@button.Button(button.Props{Variant: button.VariantOutline, Href: viewedPath(common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/events/alerts")), vmodel.View)}) {
+						Annuler
+					}
+				</div>
+			</form>
+		</div>
+	}
+}

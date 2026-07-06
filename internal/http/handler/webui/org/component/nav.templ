@@ -7,12 +7,37 @@ import (
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 )
 
+// EventsTabs renders the in-page sub-navigation shared by the events explorer,
+// alerts and incidents pages. Alerts/Incidents tabs appear only for users who
+// can manage alerts (org-wide or personal).
+templ EventsTabs(org model.Organization, current, view string) {
+	{{ slug := org.Slug() }}
+	{{ orgID := org.ID() }}
+	{{ canAlerts := common.HasPermission(ctx, orgID, rbac.PermEventsWrite) || common.HasPermission(ctx, orgID, rbac.PermEventsAlertsOwn) }}
+	<div class="flex gap-4 border-b text-sm">
+		@eventsTab(viewedPath(common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/events")), view), "Événements", current == "events")
+		if canAlerts {
+			@eventsTab(viewedPath(common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/events/alerts")), view), "Alertes", current == "alerts")
+			@eventsTab(viewedPath(common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/events/incidents")), view), "Incidents", current == "incidents")
+		}
+	</div>
+}
+
+templ eventsTab(href, label string, active bool) {
+	if active {
+		<a href={ templ.SafeURL(href) } class="pb-2 -mb-px border-b-2 border-primary font-medium">{ label }</a>
+	} else {
+		<a href={ templ.SafeURL(href) } class="pb-2 -mb-px text-muted-foreground hover:text-foreground">{ label }</a>
+	}
+}
+
 // OrgNavItems returns org-admin navigation items for the sidebar, filtered by
 // the current user's permissions within the organisation.
 templ OrgNavItems(org model.Organization, selectedItem string) {
 	{{ slug := org.Slug() }}
 	{{ orgID := org.ID() }}
 	@common.NavItem(icon.ChartColumn, "Usage", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/usage")), selectedItem == "org-"+slug+"-usage")
+	@common.NavItem(icon.Bell, "Événements", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/events")), selectedItem == "org-"+slug+"-events")
 	if common.HasPermission(ctx, orgID, rbac.PermQuotaRead) {
 		@common.NavItem(icon.PiggyBank, "Budget", common.BaseURLString(ctx, common.WithPath("/orgs/", slug, "/admin/quota")), selectedItem == "org-"+slug+"-quota")
 	}

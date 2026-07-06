@@ -180,6 +180,26 @@ func (s *Store) FindApplicationAuthToken(ctx context.Context, token string) (mod
 	return &wrappedApplicationAuthToken{&authToken}, nil
 }
 
+// GetApplicationAuthToken implements port.ApplicationStore.
+func (s *Store) GetApplicationAuthToken(ctx context.Context, tokenID model.AuthTokenID) (model.AuthToken, error) {
+	var authToken AuthToken
+
+	err := s.withRetry(ctx, false, func(ctx context.Context, db *gorm.DB) error {
+		if err := db.Preload("Application").First(&authToken, "id = ?", string(tokenID)).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errors.WithStack(port.ErrNotFound)
+			}
+			return errors.WithStack(err)
+		}
+		return nil
+	}, sqlite3.LOCKED, sqlite3.BUSY)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &wrappedApplicationAuthToken{&authToken}, nil
+}
+
 // GetApplicationAuthTokens implements port.ApplicationStore.
 func (s *Store) GetApplicationAuthTokens(ctx context.Context, appID model.ApplicationID) ([]model.AuthToken, error) {
 	var authTokens []*AuthToken

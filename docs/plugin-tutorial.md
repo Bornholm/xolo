@@ -413,11 +413,130 @@ func (p *Plugin) Initialize(ctx context.Context, req *proto.InitializeRequest) (
 
 Available host methods:
 
-| Method       | Description                                     |
-| ------------ | ----------------------------------------------- |
-| `GetConfig`  | Retrieve the org's saved config for this plugin |
-| `SaveConfig` | Persist configuration changes                   |
-| `ListModels` | Query available models in the organisation      |
+| Method         | Description                                          |
+| -------------- | ---------------------------------------------------- |
+| `GetConfig`    | Retrieve the org's saved config for this plugin      |
+| `SaveConfig`   | Persist configuration changes                        |
+| `ListModels`   | Query available models in the organisation           |
+| `GetSecret`    | Read a per-node encrypted secret                     |
+| `SetSecret`    | Store a per-node encrypted secret                    |
+| `DeleteSecret` | Remove a per-node encrypted secret                   |
+| `EmitEvent`    | Record an event in Xolo's event system (see below)   |
+
+## Emitting Events
+
+Plugins can push events into Xolo's [event system](./eventql-syntax.md) so their
+activity shows up in the events explorer and can trigger alerts — for example a
+_sensitive-data detected_ event from `pseudonymizer`, or a _request blocked_
+event from `time-restriction`.
+
+### Getting a HostClient
+
+The SDK exposes a friendly `pluginsdk.HostClient` interface (rather than the raw
+gRPC client). To receive one inside your plugin's gRPC methods (e.g.
+`PreRequest`), implement `pluginsdk.HostClientSetter`; the runtime calls
+`SetHostClient` once, during `Initialize`, after the broker connection to the
+host service is established:
+
+```go
+type Plugin struct {
+    proto.UnimplementedXoloPluginServer
+
+    hostMu     sync.Mutex
+    hostClient pluginsdk.HostClient
+}
+
+// SetHostClient implements pluginsdk.HostClientSetter.
+func (p *Plugin) SetHostClient(c pluginsdk.HostClient) {
+    p.hostMu.Lock()
+    defer p.hostMu.Unlock()
+    p.hostClient = c
+}
+
+func (p *Plugin) getHostClient() pluginsdk.HostClient {
+    p.hostMu.Lock()
+    defer p.hostMu.Unlock()
+    return p.hostClient
+}
+```
+
+> This works out of the box with `ServeWithUI`. The same `HostClient` is also
+> injected into the HTTP UI request context, retrievable with
+> `pluginsdk.HostClientFromContext(ctx)`.
+
+### Emitting an event
+
+```go
+func (p *Plugin) emitEvent(evt pluginsdk.Event) {
+    hc := p.getHostClient()
+    if hc == nil {
+        return // host not connected (e.g. running standalone in tests)
+    }
+    // Emit off the request path: a synchronous gRPC round-trip must never slow
+    // down request processing.
+    go func() {
+        ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+        defer cancel()
+        if err := hc.EmitEvent(ctx, evt); err != nil {
+            slog.Warn("could not emit event", slog.Any("error", err))
+        }
+    }()
+}
+
+func (p *Plugin) PreRequest(ctx context.Context, in *proto.PreRequestInput) (*proto.PreRequestOutput, error) {
+    // …when something noteworthy happens:
+    p.emitEvent(pluginsdk.Event{
+        PluginName: "my-plugin",
+        OrgID:      in.GetCtx().GetOrgId(),  // may be empty for platform-global events
+        UserID:     in.GetCtx().GetUserId(), // may be empty when not tied to a user
+        Type:       "something.happened",
+        Severity:   "warning",              // "info" (default) | "warning" | "error"
+        Message:    "Human-readable summary",
+        Attributes: map[string]string{
+            "count": "3",
+            "kind":  "example",
+        },
+    })
+    return &proto.PreRequestOutput{Allowed: true}, nil
+}
+```
+
+### `pluginsdk.Event` fields
+
+| Field        | Description                                                                    |
+| ------------ | ------------------------------------------------------------------------------ |
+| `PluginName` | Your plugin's name. Used to derive the event source and type namespace.        |
+| `OrgID`      | Organisation the event belongs to; empty = platform-global event.              |
+| `UserID`     | User the event concerns; empty = not tied to a user.                           |
+| `Type`       | Short dotted type, e.g. `sensitive-data.detected`.                             |
+| `Severity`   | `info` (default), `warning`, or `error`.                                       |
+| `Message`    | Human-readable message (queryable with line filters `\|=`, `\|~`).             |
+| `Attributes` | Free key/value pairs, queryable with attribute filters (`\| key="value"`).     |
+
+### Source and type namespacing
+
+The host is authoritative and rewrites two fields so a plugin can never
+impersonate a platform event:
+
+- The event **source** is forced to your plugin name (`PluginName`).
+- The **type** is namespaced under `plugin.<PluginName>.`. Emitting
+  `sensitive-data.detected` from `pseudonymizer` is stored as
+  `plugin.pseudonymizer.sensitive-data.detected`.
+
+Query them from the events explorer with [eventql](./eventql-syntax.md):
+
+```
+{source="pseudonymizer"}
+{type="plugin.time-restriction.request.blocked"}
+{type=~"plugin\\..*"}          # every plugin-emitted event
+```
+
+Or alert on them, e.g. `count(1h) > 0` over
+`{type="plugin.pseudonymizer.sensitive-data.detected"}`.
+
+> **Testing.** `getHostClient` returns `nil` when no host is connected, so
+> `emitEvent` becomes a no-op — plugins remain runnable in unit tests without a
+> host. Fakes can implement `HostClient` (including a no-op `EmitEvent`).
 
 ## Built-in Plugins
 

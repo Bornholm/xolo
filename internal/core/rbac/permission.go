@@ -38,6 +38,12 @@ const (
 
 	PermUsageRead Permission = "usage:read"
 
+	// Events. Viewing one's own events requires no permission; these gate access
+	// to broader event visibility and alert management.
+	PermEventsReadAll  Permission = "events:read:all"   // global + other users' events
+	PermEventsWrite    Permission = "events:write"      // manage org-wide alerts
+	PermEventsAlertsOwn Permission = "events:alerts:own" // create/manage personal alerts on own events
+
 	// Model usage (enforced at the proxy).
 	PermModelUseOrg     Permission = "model:use:org"
 	PermModelUseVirtual Permission = "model:use:virtual"
@@ -64,6 +70,7 @@ var writeImplies = map[Permission]Permission{
 	PermInvitesWrite:       PermInvitesRead,
 	PermApplicationsWrite:  PermApplicationsRead,
 	PermSettingsWrite:      PermSettingsRead,
+	PermEventsWrite:        PermEventsReadAll,
 }
 
 // PermissionDef describes a single permission for display in the UI.
@@ -163,6 +170,15 @@ func Catalog() []PermissionGroup {
 			},
 		},
 		{
+			Section: "events",
+			Label:   "Événements & alertes",
+			Perms: []PermissionDef{
+				{PermEventsReadAll, "Consulter les événements globaux et des autres utilisateurs"},
+				{PermEventsWrite, "Gérer les alertes de l'organisation"},
+				{PermEventsAlertsOwn, "Créer des alertes sur ses propres événements"},
+			},
+		},
+		{
 			Section: "models",
 			Label:   "Usage des modèles",
 			Perms: []PermissionDef{
@@ -202,7 +218,7 @@ func IsKnown(code string) bool {
 // decide whether to surface the organization admin navigation to a member.
 func IsAdminPermission(code Permission) bool {
 	switch code {
-	case PermUsageRead, PermModelUseOrg, PermModelUseVirtual, PermPersonalVMCreate:
+	case PermUsageRead, PermModelUseOrg, PermModelUseVirtual, PermPersonalVMCreate, PermEventsAlertsOwn:
 		return false
 	}
 	return IsKnown(string(code))

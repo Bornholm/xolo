@@ -31,7 +31,12 @@ func getPluginManagerFromConfig(ctx context.Context, conf *config.Config) (*plug
 			pluginManagerErr = err
 			return
 		}
-		mgr := plugin.NewManager(conf.Plugins.Dir, conf.Plugins.MemLimit, conf.Plugins.RestartCooldown, providerStore, virtualModelStore, secretStore, conf.SecretKey)
+		eventEmitter, err := getEventEmitterFromConfig(ctx, conf)
+		if err != nil {
+			pluginManagerErr = err
+			return
+		}
+		mgr := plugin.NewManager(conf.Plugins.Dir, conf.Plugins.MemLimit, conf.Plugins.RestartCooldown, providerStore, virtualModelStore, secretStore, eventEmitter, conf.SecretKey)
 		if err := mgr.Start(ctx); err != nil {
 			pluginManagerErr = err
 			return

@@ -1,0 +1,73 @@
+package component
+
+import (
+	"strconv"
+
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
+)
+
+templ IncidentsPage(vmodel IncidentsPageVModel) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Incidents — "+vmodel.Org.Name())) {
+		<div class="space-y-6">
+			<h1 class="text-2xl font-semibold">Incidents</h1>
+			@EventsTabs(vmodel.Org, "incidents", vmodel.View)
+			<p class="text-sm text-muted-foreground">
+				Historique des déclenchements d'alertes. Les événements ayant contribué à un incident sont épinglés et
+				conservés au-delà de la fenêtre glissante.
+			</p>
+			if len(vmodel.Incidents) == 0 {
+				<p class="text-muted-foreground">Aucun incident.</p>
+			}
+			for _, view := range vmodel.Incidents {
+				@incidentCard(view)
+			}
+		</div>
+	}
+}
+
+templ incidentCard(view IncidentView) {
+	<div class="bg-card shadow-xs w-full border text-card-foreground rounded-lg p-6 space-y-3">
+		<div class="flex items-center justify-between">
+			<div class="space-y-1">
+				<div class="font-medium">
+					if view.Alert != nil {
+						{ view.Alert.Name() }
+					} else {
+						<span class="text-muted-foreground">Alerte supprimée</span>
+					}
+				</div>
+				<div class="text-xs text-muted-foreground">
+					Déclenché le { formatEventTime(view.Incident.StartedAt()) }
+					if view.Incident.ResolvedAt() != nil {
+						· résolu le { formatOptionalTime(view.Incident.ResolvedAt()) }
+					}
+				</div>
+			</div>
+			<div class="flex items-center gap-2">
+				<span class="text-xs text-muted-foreground">pic { strconv.FormatFloat(view.Incident.PeakValue(), 'f', -1, 64) }</span>
+				if view.Incident.Status() == "firing" {
+					@badge.Badge(badge.Props{Variant: badge.VariantDestructive}) { firing }
+				} else {
+					@badge.Badge(badge.Props{Variant: badge.VariantOutline}) { resolved }
+				}
+			</div>
+		</div>
+		if len(view.Events) > 0 {
+			<details class="text-sm">
+				<summary class="cursor-pointer text-muted-foreground">
+					{ strconv.Itoa(len(view.Events)) } événement(s) épinglé(s)
+				</summary>
+				<div class="mt-2 space-y-1">
+					for _, e := range view.Events {
+						<div class="flex gap-2 items-center text-xs">
+							<span class="text-muted-foreground whitespace-nowrap">{ formatEventTime(e.CreatedAt()) }</span>
+							<span class="font-mono">{ e.Type() }</span>
+							<span>{ e.Message() }</span>
+						</div>
+					}
+				</div>
+			</details>
+		}
+	</div>
+}

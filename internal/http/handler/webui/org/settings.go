@@ -3,6 +3,7 @@ package org
 import (
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/a-h/templ"
 	"github.com/bornholm/go-x/slogx"
@@ -26,9 +27,19 @@ func (h *Handler) getSettingsPage(w http.ResponseWriter, r *http.Request) {
 
 	nav, footer := orgAdminNav(org)
 
+	var eventsOverride *int
+	if h.eventSettingsStore != nil {
+		if override, err := h.eventSettingsStore.GetMaxEvents(ctx, org.ID()); err == nil {
+			eventsOverride = override
+		}
+	}
+
 	vmodel := component.OrgSettingsPageVModel{
-		Org:     org,
-		Success: r.URL.Query().Get("success"),
+		Org:               org,
+		Success:           r.URL.Query().Get("success"),
+		EventsMaxOverride: eventsOverride,
+		EventsDefault:     h.eventsDefaultPerOrg,
+		EventsGlobalCap:   h.eventsMaxPerOrg,
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:          user,
 			SelectedItem:  "org-" + orgSlug + "-settings",
@@ -99,6 +110,22 @@ func (h *Handler) saveSettings(w http.ResponseWriter, r *http.Request) {
 		slog.ErrorContext(ctx, "could not save org settings", slogx.Error(err))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
+	}
+
+	// Events retention override: empty clears the override (uses the default).
+	if h.eventSettingsStore != nil {
+		var override *int
+		if raw := r.FormValue("events_max"); raw != "" {
+			if n, convErr := strconv.Atoi(raw); convErr == nil && n > 0 {
+				if h.eventsMaxPerOrg > 0 && n > h.eventsMaxPerOrg {
+					n = h.eventsMaxPerOrg
+				}
+				override = &n
+			}
+		}
+		if err := h.eventSettingsStore.SetMaxEvents(ctx, org.ID(), override); err != nil {
+			slog.ErrorContext(ctx, "could not save events retention", slogx.Error(err))
+		}
 	}
 
 	http.Redirect(w, r, "/orgs/"+orgSlug+"/admin/settings?success=saved", http.StatusSeeOther)

@@ -188,7 +188,40 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		return nil, errors.Wrap(err, "could not create secret store from config")
 	}
 
-	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, roleStore, providerStore, virtualModelStore, middlewareStore, personalVMStore, usageStore, inviteStore, applicationStore, quotaStore, quotaService, exchangeRateService, secretStore, conf.SecretKey, pluginManager, subscriptionState)
+	eventEmitter, err := getEventEmitterFromConfig(ctx, conf)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create event emitter from config")
+	}
+
+	eventStore, err := getEventStoreFromConfig(ctx, conf)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create event store from config")
+	}
+
+	alertStore, err := getAlertStoreFromConfig(ctx, conf)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create alert store from config")
+	}
+
+	alertIncidentStore, err := getAlertIncidentStoreFromConfig(ctx, conf)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create alert incident store from config")
+	}
+
+	eventSettingsStore, err := getEventSettingsStoreFromConfig(ctx, conf)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create event settings store from config")
+	}
+
+	if _, err := getAlertEvaluatorFromConfig(ctx, conf); err != nil {
+		return nil, errors.Wrap(err, "could not start alert evaluator from config")
+	}
+
+	if _, err := getEventPurgerFromConfig(ctx, conf); err != nil {
+		return nil, errors.Wrap(err, "could not start event purger from config")
+	}
+
+	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, roleStore, providerStore, virtualModelStore, middlewareStore, personalVMStore, usageStore, inviteStore, applicationStore, quotaStore, quotaService, exchangeRateService, secretStore, conf.SecretKey, pluginManager, subscriptionState, eventStore, alertStore, alertIncidentStore, eventSettingsStore, conf.Events.MaxPerOrg, conf.Events.DefaultPerOrg)
 
 	apiHandler := api.NewHandler(providerStore, orgStore, roleStore, virtualModelStore, personalVMStore, middlewareStore, secretStore, exchangeRateService, pluginManager)
 
@@ -201,6 +234,7 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		proxy.WithHook(proxyAdapter.NewXoloQuotaEnforcer(quotaService, quotaStore, usageStore, providerStore)),
 		proxy.WithHook(proxyAdapter.NewXoloSubscriptionEnforcer(providerStore, usageStore, subscriptionState, orgStore)),
 		proxy.WithHook(proxyAdapter.NewXoloUsageTracker(usageStore, providerStore, orgStore, exchangeRateService)),
+		proxy.WithHook(proxyAdapter.NewXoloEventEmitterHook(eventEmitter)),
 	)
 
 	apiAuthChain := func(h gohttp.Handler) gohttp.Handler {

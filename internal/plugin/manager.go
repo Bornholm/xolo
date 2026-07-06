@@ -52,6 +52,7 @@ func NewManager(
 	providerStore port.ProviderStore,
 	virtualModelStore port.VirtualModelStore,
 	secretStore port.SecretStore,
+	eventEmitter port.EventEmitter,
 	secretKey string,
 ) *Manager {
 	return &Manager{
@@ -60,7 +61,7 @@ func NewManager(
 		restartCooldown:   restartCooldown,
 		providerStore:     providerStore,
 		virtualModelStore: virtualModelStore,
-		hostService:       NewXoloHostService(providerStore, virtualModelStore, secretStore, secretKey),
+		hostService:       NewXoloHostService(providerStore, virtualModelStore, secretStore, eventEmitter, secretKey),
 	}
 }
 

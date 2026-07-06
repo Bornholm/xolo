@@ -38,6 +38,38 @@ func (h *Handler) hasPermission(orgSlug string, perm rbac.Permission) authz.Asse
 	}
 }
 
+// hasAnyPermission returns an authz.AssertFunc that passes when the user holds
+// at least one of the given permissions within the org.
+func (h *Handler) hasAnyPermission(orgSlug string, perms ...rbac.Permission) authz.AssertFunc {
+	return func(ctx context.Context, user model.User) (bool, error) {
+		if user == nil {
+			return false, nil
+		}
+		if slices.Contains(user.Roles(), authz.RoleAdmin) {
+			return true, nil
+		}
+
+		org, err := h.orgStore.GetOrgBySlug(ctx, orgSlug)
+		if err != nil {
+			return false, errors.WithStack(err)
+		}
+
+		set, err := h.roleStore.ResolveEffectivePermissions(ctx, user.ID(), org.ID())
+		if err != nil {
+			return false, errors.WithStack(err)
+		}
+		if set.IsOwner() {
+			return true, nil
+		}
+		for _, perm := range perms {
+			if set.Has(perm) {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+}
+
 // hasOrgMembership returns an authz.AssertFunc checking whether the user is any member of the org.
 func (h *Handler) hasOrgMembership(orgSlug string) authz.AssertFunc {
 	return func(ctx context.Context, user model.User) (bool, error) {

@@ -20,7 +20,19 @@ service XoloHostService {
   rpc GetSecret(GetSecretRequest) returns (GetSecretResponse);
   rpc SetSecret(SetSecretRequest) returns (SetSecretResponse);
   rpc DeleteSecret(DeleteSecretRequest) returns (DeleteSecretResponse);
+  rpc EmitEvent(EmitEventRequest) returns (EmitEventResponse);
 }
+
+message EmitEventRequest {
+  string plugin_name = 1;
+  string org_id = 2;
+  string user_id = 3;
+  string type = 4;
+  string severity = 5;
+  string message = 6;
+  map<string, string> attributes = 7;
+}
+message EmitEventResponse {}
 
 message ListModelsForOrgRequest {
   string org_id = 1;

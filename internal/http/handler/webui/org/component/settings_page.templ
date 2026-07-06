@@ -9,9 +9,19 @@ import (
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/form"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
 	switchcomp "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/switch"
 )
+
+// eventsMaxValue renders the current per-org retention override as a string
+// (empty when the org uses the global default).
+func eventsMaxValue(vmodel OrgSettingsPageVModel) string {
+	if vmodel.EventsMaxOverride == nil {
+		return ""
+	}
+	return strconv.Itoa(*vmodel.EventsMaxOverride)
+}
 
 // ── Settings Page ─────────────────────────────────────────────────────────────
 templ OrgSettingsPage(vmodel OrgSettingsPageVModel) {
@@ -49,12 +59,12 @@ templ OrgSettingsPage(vmodel OrgSettingsPageVModel) {
 								@form.Description() { Utilisée pour les quotas et l'affichage des coûts. }
 							</div>
 							<div class="space-y-2">
-							@form.ItemFlex() {
-								@switchcomp.Switch(switchcomp.Props{ID: "share_quota_equally", Name: "share_quota_equally", Checked: vmodel.Org.ShareQuotaEqually(), Disabled: readonly})
-								@form.Label(form.LabelProps{For: "share_quota_equally"}) {
-									Répartir le budget de l'organisation équitablement entre les membres
+								@form.ItemFlex() {
+									@switchcomp.Switch(switchcomp.Props{ID: "share_quota_equally", Name: "share_quota_equally", Checked: vmodel.Org.ShareQuotaEqually(), Disabled: readonly})
+									@form.Label(form.LabelProps{For: "share_quota_equally"}) {
+										Répartir le budget de l'organisation équitablement entre les membres
+									}
 								}
-							}
 								@form.Description() { S'applique aux membres sans quota individuel défini. }
 								if vmodel.MemberCount > 0 {
 									@form.Description() {
@@ -69,6 +79,20 @@ templ OrgSettingsPage(vmodel OrgSettingsPageVModel) {
 											{ " " }Annuel : { common.CurrencySymbol(vmodel.Org.Currency()) }{ formatBudgetField(*vmodel.SharedYearlyBudget) }
 										}
 									}
+								}
+							</div>
+							<div class="space-y-2">
+								@form.Label(form.LabelProps{For: "events_max"}) { Rétention des événements (nombre max conservé) }
+								@input.Input(input.Props{
+									ID:          "events_max",
+									Name:        "events_max",
+									Type:        input.TypeNumber,
+									Value:       eventsMaxValue(vmodel),
+									Placeholder: strconv.Itoa(vmodel.EventsDefault),
+									Disabled:    readonly,
+								})
+								@form.Description() {
+									Événements non épinglés conservés (fenêtre glissante). Vide = valeur par défaut ({ strconv.Itoa(vmodel.EventsDefault) }). Plafond global : { strconv.Itoa(vmodel.EventsGlobalCap) }.
 								}
 							</div>
 						</div>

@@ -1,6 +1,7 @@
 package bridge
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"slices"
@@ -13,7 +14,20 @@ import (
 	"github.com/bornholm/xolo/internal/http/middleware/authz"
 )
 
-func Middleware(userStore port.UserStore, activeByDefault bool, defaultAdmins ...string) func(http.Handler) http.Handler {
+func Middleware(userStore port.UserStore, emitter port.EventEmitter, activeByDefault bool, defaultAdmins ...string) func(http.Handler) http.Handler {
+	emitLoginFailed := func(ctx context.Context, authnUser *authn.User, reason string) {
+		if emitter == nil || authnUser == nil {
+			return
+		}
+		emitter.Emit(ctx, model.NewEvent(model.EventSourcePlatform, model.EventTypeAuthLoginFailed,
+			model.WithEventSeverity(model.SeverityWarning),
+			model.WithEventMessage("Échec de connexion: "+reason),
+			model.WithEventAttribute("email", authnUser.Email),
+			model.WithEventAttribute("provider", authnUser.Provider),
+			model.WithEventAttribute("reason", reason),
+		))
+	}
+
 	return func(h http.Handler) http.Handler {
 		var fn http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -30,6 +44,7 @@ func Middleware(userStore port.UserStore, activeByDefault bool, defaultAdmins ..
 
 					if err := userStore.SaveUser(ctx, user); err != nil {
 						if errors.Is(err, port.ErrAlreadyExists) {
+							emitLoginFailed(ctx, authnUser, "un compte existe déjà avec cette adresse email")
 							common.HandleError(w, r, common.NewError(
 								err.Error(),
 								"Un compte existe déjà avec cette adresse email. Contactez un administrateur pour faire fusionner vos comptes.",

@@ -144,6 +144,30 @@ func createGetDatabase(db *gorm.DB) func(ctx context.Context) (*gorm.DB, error) 
 						return tx.Migrator().DropTable("middlewares")
 					},
 				},
+				{
+					// Add the event system: events (ring buffer), alerts (ruler
+					// rules), alert incidents and per-org event settings.
+					ID: "202607050001",
+					Migrate: func(tx *gorm.DB) error {
+						return tx.AutoMigrate(&Event{}, &Alert{}, &AlertIncident{}, &EventSettings{})
+					},
+					Rollback: func(tx *gorm.DB) error {
+						return tx.Migrator().DropTable("events", "alerts", "alert_incidents", "event_settings")
+					},
+				},
+				{
+					// Add alert scope (org vs personal). Existing alerts default to org.
+					ID: "202607050002",
+					Migrate: func(tx *gorm.DB) error {
+						if err := tx.AutoMigrate(&Alert{}); err != nil {
+							return errors.WithStack(err)
+						}
+						return errors.WithStack(tx.Exec("UPDATE alerts SET scope = 'org' WHERE scope IS NULL OR scope = ''").Error)
+					},
+					Rollback: func(tx *gorm.DB) error {
+						return tx.Migrator().DropColumn(&Alert{}, "scope")
+					},
+				},
 			})
 
 			m.InitSchema(func(tx *gorm.DB) error {
@@ -186,6 +210,8 @@ func createGetDatabase(db *gorm.DB) func(ctx context.Context) (*gorm.DB, error) 
 					&ExchangeRate{},
 					// Plugin node secrets
 					&PluginNodeSecret{},
+					// Event system
+					&Event{}, &Alert{}, &AlertIncident{}, &EventSettings{},
 				)
 				if err != nil {
 					return errors.WithStack(err)
