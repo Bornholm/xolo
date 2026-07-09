@@ -1,26 +1,53 @@
-# Getting started
-
-## Présentation
+# Bienvenue dans Xolo
 
 ![Accueil](accueil.png)
 
-Plusieurs onglets se présentent :
+Xolo est une passerelle LLM souveraine pour l'entreprise. Elle vous permet de contrôler, surveiller et sécuriser l'accès aux modèles de langage au sein de votre organisation.
 
-- Usage : réunit toutes les informations de la plateformes:
-  - le quota
-  - le nombre de token utilisé
-  - le nombre de requete
-  - le coùt que celà représente
-    TODO RAJOUTER LE RESTE
-- Événements: affiche les différents événement de la plateforme
-- [Budget](./budget/budget.md) : Permet de gérer les quotas(journalier, mensuel, annuel)
-- [Membres](./membre/membre.md) : Permet la gestion des rôles utilisateur, envoyer les invitations pour intégrer l'organisation.
-- Rôles : Gestion des roles de la plateforme
-- [Invitation](./invitation/invitation.md) : Permet la création de lien d'invitation (permet aux utilisateurs de rejoindre l'organisation)
-- [Fournisseurs](./fournisseurs/fournisseurs.md) :
-  - gestion des fournisseurs de modèle (Openrouter, Anthropic, Mistral, etc)
-  - gestion des modèles (pour les rendres accesible via la passerelle/plateform)
-- [Modèle virtuels](./virtual_model/virtual_model.md) : Permet la création de modèle "customisable", utiliser un modele existant et brancher des plugins (anonymisation, prompt_system), pour qu'il se comporte à la fin comme n'importe quel modele
-- Middlewares : Permet l'ajout de traitements faites par la plateforme (contrôle horaire, filtrage, garde-fous…) appliqués dynamiquement aux modèles de l'organisation.
-- Applications : Permet de paraméter des applications pour l'utilisation de la passerelle (exemple: OpenWebUi)
-- Paramètres : Permet la gestion de la devise utilisé par l'organisation ainsi que la répartition du budget (définit les quotas)
+---
+
+## Menu de navigation
+
+Le menu latéral de l'organisation propose les sections suivantes :
+
+### Section Usage
+
+| Élément         | Description                                                                                     |
+| --------------- | ----------------------------------------------------------------------------------------------- |
+| **Utilisation** | Tableau de bord récapitulatif : quota utilisé, nombre de tokens, nombre de requêtes, coût total |
+| **Événements**  | Historique des différents événements de la plateforme (requêtes, erreurs, alertes)              |
+
+### Section Administration
+
+| Tutoriel                                                 | Description                                                                                    |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| **[Budget](./budget/budget.md)**                         | Gestion des budgets (journalier, mensuel, annuel) pour contrôler les dépenses                  |
+| **[Membres](./membre/membre.md)**                        | Gestion des rôles utilisateurs et des invitations                                              |
+| **Rôles**                                                | Création et configuration des rôles et permissions                                             |
+| **[Invitations](./invitation/invitation.md)**            | Création de liens d'invitation pour intégrer des utilisateurs                                  |
+| **[Fournisseurs](./fournisseurs/fournisseurs.md)**       | Gestion des fournisseurs LLM et de leurs modèles                                               |
+| **[Modèles virtuels](./virtual_model/virtual_model.md)** | Création de modèles personnalisés avec plugins (anonymisation, prompts système)                |
+| **[Middlewares](./middleware/middleware_ia.md)**         | Ajout de traitements dynamiques (contrôle horaire, filtrage, garde-fous) appliqués aux modèles |
+| **Applications**                                         | Configuration d'applications pour l'utilisation de la passerelle (exemple : OpenWebUI)         |
+| **Paramètres**                                           | Gestion de la devise de l'organisation et du partage équitable du budget                       |
+
+---
+
+## Tutoriels disponibles
+
+| Tutoriel                                             | Niveau | Description                                    |
+| ---------------------------------------------------- | ------ | ---------------------------------------------- |
+| [Budget](./budget/budget.md)                         | Admin  | Définir des limites de dépenses                |
+| [Membres](./membre/membre.md)                        | Admin  | Gérer les utilisateurs et leurs rôles          |
+| [Invitations](./invitation/invitation.md)            | Admin  | Créer des liens d'invitation                   |
+| [Fournisseurs](./fournisseurs/fournisseurs.md)       | Admin  | Connecter des services LLM                     |
+| [Modèles virtuels](./virtual_model/virtual_model.md) | Admin  | Créer des modèles personnalisés                |
+| [Middlewares](./middleware/middleware_ia.md)         | Admin  | Ajouter des traitements dynamiques aux modèles |
+
+---
+
+## Prochaines étapes
+
+1. **[Invitations](./invitation/invitation.md)** — Invitez vos premiers utilisateurs
+2. **[Fournisseurs](./fournisseurs/fournisseurs.md)** — Connectez vos services LLM préférés
+3. **[Budget](./budget/budget.md)** — Définissez vos limites de dépenses
