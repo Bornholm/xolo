@@ -62,7 +62,7 @@ Voici comment configurer le plugin `system-prompt` pour ajouter un prompt systè
 9. Cliquez sur `Valeur`
    ![Valeur](./screenshots/image11.png)
 10. Saisissez le nom du modèle sous-jacent à utiliser
-    ![modele](./screenshots/12.png)
+    ![modele](./screenshots/image12.png)
 11. Votre modèle virtuel est maintenant configuré avec le pipeline complet
     ![modele](./screenshots/image13.png)
 
