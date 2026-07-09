@@ -181,6 +181,9 @@ type OrgUsagePageVModel struct {
 	ChartSharesPerModel []ChartShare
 	ChartPerUser        []ChartDataPoint
 	ChartPerProvider    []ChartDataPoint
+	// Consommation (en tokens) des requêtes couvertes par un abonnement, par utilisateur.
+	// Séparé des graphiques de coût car le forfait est un coût fixe, pas marginal.
+	ChartSubTokensPerUser []ChartDataPoint
 	// Energy estimation
 	TotalEnergyWh    float64 // sum of midpoint estimates (0 if all unknown)
 	TotalCO2GramsMid float64 // sum of CO₂ midpoints (world average, grams)

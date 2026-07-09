@@ -301,11 +301,11 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 				</div>
 			}
 			<!-- Charts: cost per day, model breakdown, per user, per provider -->
-			if len(vmodel.ChartPerDay) > 0 || len(vmodel.ChartSharesPerModel) > 0 || len(vmodel.ChartPerUser) > 0 || len(vmodel.ChartPerProvider) > 0 {
+			if len(vmodel.ChartPerDay) > 0 || len(vmodel.ChartSharesPerModel) > 0 || len(vmodel.ChartPerUser) > 0 || len(vmodel.ChartPerProvider) > 0 || len(vmodel.ChartSubTokensPerUser) > 0 {
 				{{ trueVal := true }}
-				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+				<div class="grid grid-cols-1 md:grid-cols-6 gap-4">
 					if len(vmodel.ChartPerDay) > 0 {
-						@card.Card() {
+						@card.Card(card.Props{Class: "md:col-span-3"}) {
 							@card.Header() {
 								@card.Title() {
 									Coût par jour
@@ -333,7 +333,7 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 						}
 					}
 					if len(vmodel.ChartSharesPerModel) > 0 {
-						@card.Card() {
+						@card.Card(card.Props{Class: "md:col-span-3"}) {
 							@card.Header() {
 								@card.Title() {
 									Répartition par modèle
@@ -354,10 +354,13 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 						}
 					}
 					if len(vmodel.ChartPerUser) > 0 {
-						@card.Card() {
+						@card.Card(card.Props{Class: "md:col-span-2"}) {
 							@card.Header() {
 								@card.Title() {
 									Coût par utilisateur
+								}
+								@card.Description() {
+									Coûts à l'usage uniquement — hors abonnements
 								}
 							}
 							@card.Content() {
@@ -382,7 +385,7 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 						}
 					}
 					if len(vmodel.ChartPerProvider) > 0 {
-						@card.Card() {
+						@card.Card(card.Props{Class: "md:col-span-2"}) {
 							@card.Header() {
 								@card.Title() {
 									Coût par fournisseur
@@ -403,6 +406,37 @@ templ OrgUsagePage(vmodel OrgUsagePageVModel) {
 											Label:           vmodel.Currency,
 											Data:            common.ChartValues(vmodel.ChartPerProvider),
 											BackgroundColor: "rgba(168,85,247,0.8)",
+										}},
+									},
+								})
+							}
+						}
+					}
+					if len(vmodel.ChartSubTokensPerUser) > 0 {
+						@card.Card(card.Props{Class: "md:col-span-2"}) {
+							@card.Header() {
+								@card.Title() {
+									Consommation abonnement par utilisateur
+								}
+								@card.Description() {
+									Tokens consommés sur les fournisseurs en forfait (coût fixe, non refacturable)
+								}
+							}
+							@card.Content() {
+								@chart.Chart(chart.Props{
+									Variant:     chart.VariantBar,
+									ShowXLabels: true,
+									ShowYLabels: true,
+									ShowYGrid:   true,
+									ShowLegend:  false,
+									BeginAtZero: &trueVal,
+									Class:       "h-64",
+									Data: chart.Data{
+										Labels: common.ChartLabels(vmodel.ChartSubTokensPerUser),
+										Datasets: []chart.Dataset{{
+											Label:           "tokens",
+											Data:            common.ChartValues(vmodel.ChartSubTokensPerUser),
+											BackgroundColor: "rgba(20,184,166,0.8)",
 										}},
 									},
 								})

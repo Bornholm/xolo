@@ -338,7 +338,24 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 	perUser := make(map[string]int64)
 	perDay := make(map[string]int64)
 	perProvider := make(map[model.ProviderID]int64)
+	// Consommation en tokens des requêtes couvertes par un abonnement, par utilisateur.
+	subTokensPerUser := make(map[string]int64)
 	for _, rec := range chartRecords {
+		uid := rec.UserID()
+		userName := string(uid)
+		if u, ok := users[uid]; ok {
+			userName = u.DisplayName()
+		}
+
+		// Les requêtes couvertes par un abonnement ont un coût forfaitaire fixe : leur coût
+		// par token est une estimation fictive qui gonflerait artificiellement les graphiques
+		// de coût (cf. cartes de coût total qui excluent déjà plan_covered). On les
+		// comptabilise à part, en volume de tokens consommés.
+		if rec.PlanCovered() {
+			subTokensPerUser[userName] += int64(rec.TotalTokens())
+			continue
+		}
+
 		cost := rec.Cost()
 		if orgCurrency != rec.Currency() {
 			if converted, convErr := h.exchangeRateService.Convert(ctx, cost, rec.Currency(), orgCurrency); convErr == nil {
@@ -351,11 +368,6 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 			effectiveModel = rec.ResolvedModelName()
 		}
 		perModel[effectiveModel] += cost
-		uid := rec.UserID()
-		userName := string(uid)
-		if u, ok := users[uid]; ok {
-			userName = u.DisplayName()
-		}
 		perUser[userName] += cost
 		perDay[rec.CreatedAt().Format("2006-01-02")] += cost
 	}
@@ -374,31 +386,32 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 	subscriptionProviders := h.buildSubscriptionProviderUsage(ctx, orgID)
 
 	vmodel := component.OrgUsagePageVModel{
-		Org:                 org,
-		Aggregate:           agg,
-		Records:             records,
-		Users:               users,
-		Members:             members,
-		OwnerFilter:         ownerFilter,
-		Applications:        applications,
-		ApplicationsMap:     applicationsMap,
-		Since:               since,
-		Range:               rangeParam,
-		Page:                page,
-		PageSize:            usagePageSize,
+		Org:                   org,
+		Aggregate:             agg,
+		Records:               records,
+		Users:                 users,
+		Members:               members,
+		OwnerFilter:           ownerFilter,
+		Applications:          applications,
+		ApplicationsMap:       applicationsMap,
+		Since:                 since,
+		Range:                 rangeParam,
+		Page:                  page,
+		PageSize:              usagePageSize,
 		HasNext:               hasNext,
 		SubscriptionProviders: subscriptionProviders,
-		OrgQuota:            orgQuota,
-		DailyCost:           dailyCost,
-		MonthlyCost:         monthlyCost,
-		YearlyCost:          yearlyCost,
-		Currency:            orgCurrency,
-		ChartPerDay:         chartByDate(perDay),
-		ChartSharesPerModel: common.ChartShares(common.TopNChartDataPoints(chartByValue(perModel), 5)),
-		ChartPerUser:        chartByValue(perUser),
-		ChartPerProvider:    chartByProvider(perProvider, providerNames),
-		TotalEnergyWh:       totalEnergyWh,
-		TotalCO2GramsMid:    totalCO2GramsMid,
+		OrgQuota:              orgQuota,
+		DailyCost:             dailyCost,
+		MonthlyCost:           monthlyCost,
+		YearlyCost:            yearlyCost,
+		Currency:              orgCurrency,
+		ChartPerDay:           chartByDate(perDay),
+		ChartSharesPerModel:   common.ChartShares(common.TopNChartDataPoints(chartByValue(perModel), 5)),
+		ChartPerUser:          chartByValue(perUser),
+		ChartPerProvider:      chartByProvider(perProvider, providerNames),
+		ChartSubTokensPerUser: chartTokensByValue(subTokensPerUser),
+		TotalEnergyWh:         totalEnergyWh,
+		TotalCO2GramsMid:      totalCO2GramsMid,
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:          user,
 			SelectedItem:  "org-" + orgSlug + "-usage",
@@ -471,6 +484,17 @@ func chartByValue(m map[string]int64) []component.ChartDataPoint {
 	pts := make([]component.ChartDataPoint, 0, len(m))
 	for label, cost := range m {
 		pts = append(pts, component.ChartDataPoint{Label: label, Value: float64(cost) / 1_000_000})
+	}
+	sort.Slice(pts, func(i, j int) bool { return pts[i].Value > pts[j].Value })
+	return pts
+}
+
+// chartTokensByValue builds chart points from a per-label token count. Unlike chartByValue,
+// values are raw token counts (not divided into a currency amount).
+func chartTokensByValue(m map[string]int64) []component.ChartDataPoint {
+	pts := make([]component.ChartDataPoint, 0, len(m))
+	for label, tokens := range m {
+		pts = append(pts, component.ChartDataPoint{Label: label, Value: float64(tokens)})
 	}
 	sort.Slice(pts, func(i, j int) bool { return pts[i].Value > pts[j].Value })
 	return pts
@@ -569,6 +593,15 @@ func (h *Handler) serveOrgUsageCSV(w http.ResponseWriter, r *http.Request, org m
 	modelCache := make(map[model.LLMModelID]model.LLMModel)
 	providerCache := make(map[model.ProviderID]model.Provider)
 	for _, rec := range records {
+		// Cache the provider by the record's provider id directly, so the name is available
+		// even for records without a resolved model.
+		if pid := rec.ProviderID(); pid != "" {
+			if _, ok := providerCache[pid]; !ok {
+				if p, err := h.providerStore.GetProviderByID(ctx, pid); err == nil {
+					providerCache[pid] = p
+				}
+			}
+		}
 		mid := rec.ModelID()
 		if mid == "" {
 			continue
@@ -596,7 +629,7 @@ func (h *Handler) serveOrgUsageCSV(w http.ResponseWriter, r *http.Request, org m
 	writer := csv.NewWriter(w)
 	defer writer.Flush()
 
-	writer.Write([]string{"Utilisateur", "Type", "Modèle", "Tokens prompt", "Tokens cache", "Tokens completion", "Coût", "Devise", "Énergie (Wh)", "CO₂ (g)", "Date"})
+	writer.Write([]string{"Utilisateur", "Type", "Modèle", "Fournisseur", "Tokens prompt", "Tokens cache", "Tokens completion", "Coût", "Devise", "Énergie (Wh)", "CO₂ (g)", "Date"})
 
 	for _, rec := range records {
 		var ownerName string
@@ -618,6 +651,13 @@ func (h *Handler) serveOrgUsageCSV(w http.ResponseWriter, r *http.Request, org m
 		modelName := rec.ProxyModelName()
 		if rec.ResolvedModelName() != "" && rec.ResolvedModelName() != rec.ProxyModelName() {
 			modelName = rec.ProxyModelName() + " → " + rec.ResolvedModelName()
+		}
+
+		providerName := ""
+		if p, ok := providerCache[rec.ProviderID()]; ok {
+			providerName = p.Name()
+		} else if rec.ProviderID() != "" {
+			providerName = string(rec.ProviderID())
 		}
 
 		var energyWh, co2Grams float64
@@ -645,6 +685,7 @@ func (h *Handler) serveOrgUsageCSV(w http.ResponseWriter, r *http.Request, org m
 			ownerName,
 			ownerType,
 			modelName,
+			providerName,
 			strconv.Itoa(rec.PromptTokens()),
 			strconv.Itoa(rec.CachedTokens()),
 			strconv.Itoa(rec.CompletionTokens()),
