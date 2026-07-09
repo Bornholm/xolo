@@ -23,7 +23,7 @@ Le menu latéral de l'organisation propose les sections suivantes :
 |----------|-------------|
 | **[Budget](./budget/budget.md)** | Gestion des budgets (journalier, mensuel, annuel) pour contrôler les dépenses |
 | **[Membres](./membre/membre.md)** | Gestion des rôles utilisateurs et des invitations |
-| **Rôles** | Création et configuration des rôles et permissions |
+| **[Rôles](./roles/roles.md)** | Création et configuration des rôles et permissions |
 | **[Invitations](./invitation/invitation.md)** | Création de liens d'invitation pour intégrer des utilisateurs |
 | **[Fournisseurs](./fournisseurs/fournisseurs.md)** | Gestion des fournisseurs LLM et de leurs modèles |
 | **[Modèles virtuels](./virtual_model/virtual_model.md)** | Création de modèles personnalisés avec plugins (anonymisation, prompts système) |
@@ -39,6 +39,7 @@ Le menu latéral de l'organisation propose les sections suivantes :
 |----------|--------|-------------|
 | [Budget](./budget/budget.md) | Admin | Définir des limites de dépenses |
 | [Membres](./membre/membre.md) | Admin | Gérer les utilisateurs et leurs rôles |
+| [Rôles](./roles/roles.md) | Admin | Configurer les rôles et permissions |
 | [Invitations](./invitation/invitation.md) | Admin | Créer des liens d'invitation |
 | [Fournisseurs](./fournisseurs/fournisseurs.md) | Admin | Connecter des services LLM |
 | [Modèles virtuels](./virtual_model/virtual_model.md) | Admin | Créer des modèles personnalisés |
