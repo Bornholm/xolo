@@ -27,7 +27,7 @@ Le menu latéral de l'organisation propose les sections suivantes :
 | **[Invitations](./invitation/invitation.md)**            | Création de liens d'invitation pour intégrer des utilisateurs                                  |
 | **[Fournisseurs](./fournisseurs/fournisseurs.md)**       | Gestion des fournisseurs LLM et de leurs modèles                                               |
 | **[Modèles virtuels](./virtual_model/virtual_model.md)** | Création de modèles personnalisés avec plugins (anonymisation, prompts système)                |
-| **[Middlewares](./middleware/middleware_ia.md)**         | Ajout de traitements dynamiques (contrôle horaire, filtrage, garde-fous) appliqués aux modèles |
+| **[Middlewares](./middleware/middleware.md)**            | Ajout de traitements dynamiques (contrôle horaire, filtrage, garde-fous) appliqués aux modèles |
 | **Applications**                                         | Configuration d'applications pour l'utilisation de la passerelle (exemple : OpenWebUI)         |
 | **Paramètres**                                           | Gestion de la devise de l'organisation et du partage équitable du budget                       |
 
@@ -42,7 +42,7 @@ Le menu latéral de l'organisation propose les sections suivantes :
 | [Invitations](./invitation/invitation.md)            | Admin  | Créer des liens d'invitation                   |
 | [Fournisseurs](./fournisseurs/fournisseurs.md)       | Admin  | Connecter des services LLM                     |
 | [Modèles virtuels](./virtual_model/virtual_model.md) | Admin  | Créer des modèles personnalisés                |
-| [Middlewares](./middleware/middleware_ia.md)         | Admin  | Ajouter des traitements dynamiques aux modèles |
+| [Middlewares](./middleware/middleware.md)            | Admin  | Ajouter des traitements dynamiques aux modèles |
 
 ---
 
