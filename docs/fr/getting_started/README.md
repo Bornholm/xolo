@@ -28,8 +28,8 @@ Le menu latéral de l'organisation propose les sections suivantes :
 | **[Fournisseurs](./fournisseurs/fournisseurs.md)** | Gestion des fournisseurs LLM et de leurs modèles |
 | **[Modèles virtuels](./virtual_model/virtual_model.md)** | Création de modèles personnalisés avec plugins (anonymisation, prompts système) |
 | **[Middlewares](./middleware/middleware.md)** | Ajout de traitements dynamiques (contrôle horaire, filtrage, garde-fous) appliqués aux modèles |
-| **Applications** | Configuration d'applications pour l'utilisation de la passerelle (exemple : OpenWebUI) |
-| **Paramètres** | Gestion de la devise de l'organisation et du partage équitable du budget |
+| **[Applications](./application/application.md)** | Configuration d'applications pour l'utilisation de la passerelle (exemple : OpenWebUI) |
+| **[Paramètres](./parametres/parametre.md)** | Gestion de la devise de l'organisation et du partage équitable du budget |
 
 ---
 
@@ -45,11 +45,26 @@ Le menu latéral de l'organisation propose les sections suivantes :
 | [Modèles virtuels](./virtual_model/virtual_model.md) | Admin | Créer des modèles personnalisés |
 | [Middlewares](./middleware/middleware.md) | Admin | Ajouter des traitements dynamiques aux modèles |
 | [Événements](./evenements/evenement.md) | Admin | Consulter les logs et configurer des alertes |
+| [Applications](./application/application.md) | Admin | Intégrer Xolo avec des outils (OpenWebUI) |
 
 ---
 
 ## Prochaines étapes
 
 1. **[Invitations](./invitation/invitation.md)** — Invitez vos premiers utilisateurs
-2. **[Fournisseurs](./fournisseurs/fournisseurs.md)** — Connectez vos services LLM préférés
-3. **[Budget](./budget/budget.md)** — Définissez vos limites de dépenses
+2. **[Rôles](./roles/roles.md)** — Définissez les permissions pour votre équipe
+3. **[Fournisseurs](./fournisseurs/fournisseurs.md)** — Connectez vos services LLM préférés
+4. **[Budget](./budget/budget.md)** — Définissez vos limites de dépenses
+
+---
+
+## Pour aller plus loin
+
+Une fois les bases maîtrisées, explorez ces fonctionnalités avancées :
+
+| Tutoriel | Description |
+|----------|-------------|
+| **[Modèles virtuels](./virtual_model/virtual_model.md)** | Créez des modèles personnalisés avec des pipelines de traitement |
+| **[Middlewares](./middleware/middleware.md)** | Ajoutez des contrôles dynamiques à vos modèles |
+| **[Événements](./evenements/evenement.md)** | Configurez des alertes et surveillez l'activité |
+| [Applications](./application/application.md) | Intégrez Xolo avec vos outils (OpenWebUI, etc.) |
