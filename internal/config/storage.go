@@ -9,7 +9,8 @@ type Storage struct {
 type Database struct {
 	DSN   string `env:"DSN,expand" envDefault:"data.sqlite"`
 	Cache struct {
-		Users StoreCache `envPrefix:"USERS_"`
+		Users     StoreCache `envPrefix:"USERS_"`
+		Providers StoreCache `envPrefix:"PROVIDERS_"`
 	} `envPrefix:"CACHE_"`
 }
 

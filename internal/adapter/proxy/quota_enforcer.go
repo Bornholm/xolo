@@ -50,14 +50,20 @@ func (e *XoloQuotaEnforcer) PreRequest(ctx context.Context, req *genaiProxy.Prox
 		return nil, nil
 	}
 
-	// ── Skip quota check if model has zero cost ────────────────────────────────
-	if e.isZeroCostModel(ctx, req) {
-		return nil, nil
-	}
+	// Resolve the model (and its provider) once and reuse it for both skip checks
+	// below, instead of looking each up independently. On the hot path these reads
+	// are served by the provider store cache.
+	llmModel, provider := e.resolveModelAndProvider(ctx, req)
+	if llmModel != nil {
+		// ── Skip quota check if model has zero cost ──────────────────────────────
+		if llmModel.PromptCostPer1KTokens() == 0 && llmModel.CompletionCostPer1KTokens() == 0 {
+			return nil, nil
+		}
 
-	// ── Skip quota check if model is subscription-billed (governed by subscription_enforcer) ──
-	if e.isSubscriptionModel(ctx, req) {
-		return nil, nil
+		// ── Skip quota check if model is subscription-billed (governed by subscription_enforcer) ──
+		if provider != nil && provider.BillingMode() == model.BillingModeSubscription {
+			return nil, nil
+		}
 	}
 
 	// ── Per-user quota check (effective = min of user quota and org quota) ──────
@@ -225,75 +231,45 @@ func formatMicrocents(v int64, currency string) string {
 	return fmt.Sprintf("%.2f%s", float64(v)/1_000_000, symbol)
 }
 
-// isZeroCostModel checks if the requested model has zero prompt and completion cost.
-// If the model cannot be resolved or costs are unavailable, it returns false to be safe.
-// At PreRequest time ResolveModel has not yet run, so MetaModelID is not set;
-// we fall back to a direct lookup by proxy name + orgID.
-func (e *XoloQuotaEnforcer) isZeroCostModel(ctx context.Context, req *genaiProxy.ProxyRequest) bool {
+// resolveModelAndProvider resolves the requested LLM model and its provider for
+// the pre-request skip checks (zero-cost, subscription). At PreRequest time
+// ResolveModel has not yet run, so MetaModelID is usually unset and we fall back
+// to a lookup by proxy name + orgID. A nil model means "could not resolve" — the
+// caller then proceeds with the normal PAYG quota checks. The provider may be nil
+// even when the model resolved (e.g. transient load error); callers must guard.
+func (e *XoloQuotaEnforcer) resolveModelAndProvider(ctx context.Context, req *genaiProxy.ProxyRequest) (model.LLMModel, model.Provider) {
 	var llmModel model.LLMModel
 
 	if modelID := ModelIDFromMeta(req.Metadata); modelID != "" {
 		m, err := e.providerStore.GetLLMModelByID(ctx, modelID)
 		if err != nil {
-			slog.DebugContext(ctx, "quota enforcer: could not load model by ID for zero-cost check", slog.Any("error", err), slog.String("modelID", string(modelID)))
-			return false
+			slog.DebugContext(ctx, "quota enforcer: could not load model by ID", slog.Any("error", err), slog.String("modelID", string(modelID)))
+			return nil, nil
 		}
 		llmModel = m
 	} else {
 		orgID := OrgIDFromMeta(req.Metadata)
 		if orgID == "" {
-			return false
+			return nil, nil
 		}
 		_, proxyName, err := parseQualifiedModelName(req.Model)
 		if err != nil {
-			return false
+			return nil, nil
 		}
 		m, err := e.providerStore.GetLLMModelByProxyName(ctx, orgID, proxyName)
 		if err != nil {
-			slog.DebugContext(ctx, "quota enforcer: could not load model by proxy name for zero-cost check", slog.Any("error", err), slog.String("model", req.Model))
-			return false
-		}
-		llmModel = m
-	}
-
-	return llmModel.PromptCostPer1KTokens() == 0 && llmModel.CompletionCostPer1KTokens() == 0
-}
-
-// isSubscriptionModel checks if the requested model is backed by a subscription-billed provider.
-// If the model or provider cannot be resolved, it returns false (PAYG checks proceed as normal).
-func (e *XoloQuotaEnforcer) isSubscriptionModel(ctx context.Context, req *genaiProxy.ProxyRequest) bool {
-	var llmModel model.LLMModel
-
-	if modelID := ModelIDFromMeta(req.Metadata); modelID != "" {
-		m, err := e.providerStore.GetLLMModelByID(ctx, modelID)
-		if err != nil {
-			slog.DebugContext(ctx, "quota enforcer: could not load model by ID for subscription check", slog.Any("error", err), slog.String("modelID", string(modelID)))
-			return false
-		}
-		llmModel = m
-	} else {
-		orgID := OrgIDFromMeta(req.Metadata)
-		if orgID == "" {
-			return false
-		}
-		_, proxyName, err := parseQualifiedModelName(req.Model)
-		if err != nil {
-			return false
-		}
-		m, err := e.providerStore.GetLLMModelByProxyName(ctx, orgID, proxyName)
-		if err != nil {
-			slog.DebugContext(ctx, "quota enforcer: could not load model by proxy name for subscription check", slog.Any("error", err), slog.String("model", req.Model))
-			return false
+			slog.DebugContext(ctx, "quota enforcer: could not load model by proxy name", slog.Any("error", err), slog.String("model", req.Model))
+			return nil, nil
 		}
 		llmModel = m
 	}
 
 	p, err := e.providerStore.GetProviderByID(ctx, llmModel.ProviderID())
 	if err != nil {
-		slog.DebugContext(ctx, "quota enforcer: could not load provider for subscription check", slog.Any("error", err), slog.String("providerID", string(llmModel.ProviderID())))
-		return false
+		slog.DebugContext(ctx, "quota enforcer: could not load provider", slog.Any("error", err), slog.String("providerID", string(llmModel.ProviderID())))
+		return llmModel, nil
 	}
-	return p.BillingMode() == model.BillingModeSubscription
+	return llmModel, p
 }
 
 var _ genaiProxy.PreRequestHook = &XoloQuotaEnforcer{}
