@@ -2,9 +2,12 @@ package proxy
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"reflect"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/bornholm/genai/llm"
 	"github.com/bornholm/genai/llm/provider"
@@ -17,6 +20,7 @@ import (
 	"github.com/bornholm/xolo/internal/core/rbac"
 	"github.com/bornholm/xolo/internal/crypto"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/pkg/errors"
 
 	_ "github.com/bornholm/genai/llm/provider/mistral"
@@ -32,6 +36,19 @@ type OrgModelRouter struct {
 	providerStore port.ProviderStore
 	orgStore      port.OrgStore
 	secretKey     string
+
+	// clients caches the wrapped LLM clients per model so that stateful
+	// wrappers (rate limiters, token buckets) are shared across requests
+	// instead of being recreated — and thus reset — on every call.
+	clientsMu sync.Mutex
+	clients   *expirable.LRU[model.LLMModelID, *cachedClient]
+}
+
+// cachedClient associates a built client with a fingerprint of the model and
+// provider configuration it was built from; a stale fingerprint triggers a rebuild.
+type cachedClient struct {
+	client      llm.Client
+	fingerprint string
 }
 
 func NewOrgModelRouter(providerStore port.ProviderStore, orgStore port.OrgStore, secretKey string) *OrgModelRouter {
@@ -39,6 +56,7 @@ func NewOrgModelRouter(providerStore port.ProviderStore, orgStore port.OrgStore,
 		providerStore: providerStore,
 		orgStore:      orgStore,
 		secretKey:     secretKey,
+		clients:       expirable.NewLRU[model.LLMModelID, *cachedClient](256, nil, time.Hour),
 	}
 }
 
@@ -99,20 +117,42 @@ func (r *OrgModelRouter) ResolveModel(ctx context.Context, req *genaiProxy.Proxy
 	// Store model ID in metadata for UsageTracker
 	req.Metadata[MetaModelID] = string(llmModel.ID())
 
-	p, err := r.providerStore.GetProviderByID(ctx, llmModel.ProviderID())
+	client, err := r.clientForModel(ctx, llmModel)
 	if err != nil {
 		return nil, "", errors.WithStack(err)
 	}
 
+	return client, llmModel.RealModel(), nil
+}
+
+// clientForModel returns the wrapped LLM client for the given model, building
+// it on first use and caching it afterwards. The cache entry is invalidated
+// whenever the model or its provider is updated (fingerprint mismatch) so that
+// configuration changes are picked up without restarting the server.
+func (r *OrgModelRouter) clientForModel(ctx context.Context, llmModel model.LLMModel) (llm.Client, error) {
+	p, err := r.providerStore.GetProviderByID(ctx, llmModel.ProviderID())
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
 	if !p.Active() {
-		return nil, "", errors.Errorf("provider '%s' is not active", p.Name())
+		return nil, errors.Errorf("provider '%s' is not active", p.Name())
+	}
+
+	fingerprint := fmt.Sprintf("%d/%d", llmModel.UpdatedAt().UnixNano(), p.UpdatedAt().UnixNano())
+
+	r.clientsMu.Lock()
+	defer r.clientsMu.Unlock()
+
+	if cached, ok := r.clients.Get(llmModel.ID()); ok && cached.fingerprint == fingerprint {
+		return cached.client, nil
 	}
 
 	// Decrypt the API key
 	decryptedKey, err := crypto.Decrypt(r.secretKey, p.APIKey())
 	if err != nil {
 		slog.ErrorContext(ctx, "could not decrypt provider API key", slog.Any("error", err))
-		return nil, "", errors.New("provider configuration error")
+		return nil, errors.New("provider configuration error")
 	}
 
 	providerOpts := []provider.OptionFunc{
@@ -124,7 +164,7 @@ func (r *OrgModelRouter) ResolveModel(ctx context.Context, req *genaiProxy.Proxy
 
 	client, err := provider.Create(ctx, providerOpts...)
 	if err != nil {
-		return nil, "", errors.Wrapf(err, "could not create LLM client for provider '%s'", p.Name())
+		return nil, errors.Wrapf(err, "could not create LLM client for provider '%s'", p.Name())
 	}
 
 	// Token limit (innermost — applied first, closest to the provider).
@@ -136,9 +176,15 @@ func (r *OrgModelRouter) ResolveModel(ctx context.Context, req *genaiProxy.Proxy
 		)
 	}
 
-	// Rate limit wraps token limit: token-bucket (minInterval between requests, burst = MaxBurst).
+	// Rate limit wraps token limit: token-bucket (minInterval between requests,
+	// burst = MaxBurst). The provider limit applies to both chat and embeddings;
+	// without WithEmbeddingsLimit the embeddings limiter would silently default
+	// to 1 req/s with burst 1.
 	if cfg := p.RateLimitConfig(); cfg != nil && cfg.Enabled {
-		client = llmratelimit.NewClient(client, llmratelimit.WithChatLimit(cfg.Interval, cfg.MaxBurst))
+		client = llmratelimit.NewClient(client,
+			llmratelimit.WithChatLimit(cfg.Interval, cfg.MaxBurst),
+			llmratelimit.WithEmbeddingsLimit(cfg.Interval, cfg.MaxBurst),
+		)
 	}
 
 	// Retry wraps everything (outermost): each retry attempt goes through
@@ -147,7 +193,9 @@ func (r *OrgModelRouter) ResolveModel(ctx context.Context, req *genaiProxy.Proxy
 		client = llmretry.NewClient(client, cfg.Delay, cfg.MaxAttempts)
 	}
 
-	return client, llmModel.RealModel(), nil
+	r.clients.Add(llmModel.ID(), &cachedClient{client: client, fingerprint: fingerprint})
+
+	return client, nil
 }
 
 // ListModels implements proxy.ModelListerHook.
@@ -214,40 +262,9 @@ func (r *OrgModelRouter) ResolveRealModel(ctx context.Context, orgID model.OrgID
 		return nil, "", "", errors.WithStack(err)
 	}
 
-	p, err := r.providerStore.GetProviderByID(ctx, llmModel.ProviderID())
+	client, err := r.clientForModel(ctx, llmModel)
 	if err != nil {
 		return nil, "", "", errors.WithStack(err)
-	}
-	if !p.Active() {
-		return nil, "", "", errors.Errorf("provider '%s' is not active", p.Name())
-	}
-
-	decryptedKey, err := crypto.Decrypt(r.secretKey, p.APIKey())
-	if err != nil {
-		slog.ErrorContext(ctx, "could not decrypt provider API key", slog.Any("error", err))
-		return nil, "", "", errors.New("provider configuration error")
-	}
-
-	providerOpts := []provider.OptionFunc{
-		withDynamicChatCompletion(provider.Name(p.Type()), p.BaseURL(), decryptedKey, llmModel.RealModel()),
-	}
-	if llmModel.Capabilities().Embeddings {
-		providerOpts = append(providerOpts, withDynamicEmbeddings(provider.Name(p.Type()), p.BaseURL(), decryptedKey, llmModel.RealModel()))
-	}
-
-	client, err := provider.Create(ctx, providerOpts...)
-	if err != nil {
-		return nil, "", "", errors.Wrapf(err, "could not create LLM client for provider '%s'", p.Name())
-	}
-
-	if cfg := llmModel.TokenLimitConfig(); cfg != nil && cfg.Enabled {
-		client = tokenlimit.NewClient(client, tokenlimit.WithChatCompletionLimit(cfg.MaxTokens, cfg.Interval))
-	}
-	if cfg := p.RateLimitConfig(); cfg != nil && cfg.Enabled {
-		client = llmratelimit.NewClient(client, llmratelimit.WithChatLimit(cfg.Interval, cfg.MaxBurst))
-	}
-	if cfg := p.RetryConfig(); cfg != nil && cfg.Enabled {
-		client = llmretry.NewClient(client, cfg.Delay, cfg.MaxAttempts)
 	}
 
 	return client, llmModel.RealModel(), llmModel.ID(), nil

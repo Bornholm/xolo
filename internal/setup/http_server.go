@@ -249,8 +249,12 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		http.WithMount("/auth/oidc/", rateLimiter(oidcAuthn)),
 		http.WithMount("/auth/token/", rateLimiter(tokenAuthn)),
 		http.WithMount("/metrics/", rateLimiter(authChain(metrics.NewHandler()))),
-		http.WithMount("/api/v1/", rateLimiter(apiAuthChain(proxyServer))),
-		http.WithRoute("GET /api/v1/models", rateLimiter(apiAuthChain(apiHandler))),
+		// LLM proxy traffic is intentionally NOT behind the per-IP rate limiter:
+		// requests are authenticated and already regulated by quotas, budgets and
+		// per-provider rate limits. The per-IP limiter (1 req/s by default) would
+		// otherwise reject concurrent embeddings/chat traffic with 429s.
+		http.WithMount("/api/v1/", apiAuthChain(proxyServer)),
+		http.WithRoute("GET /api/v1/models", apiAuthChain(apiHandler)),
 		http.WithRoute("GET /api/models-dev/lookup", rateLimiter(apiAuthChain(apiHandler))),
 		http.WithRoute("GET /api/exchange-rate", rateLimiter(apiAuthChain(apiHandler))),
 		// Plugin UI config sync
