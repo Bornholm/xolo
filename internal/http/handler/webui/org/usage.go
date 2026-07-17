@@ -198,64 +198,94 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 	// Cache key for energy totals (includes user and app filter for uniqueness)
 	energyCacheKey := fmt.Sprintf("org-usage:%s:%d:%v:%v", orgID, since.Unix(), userIDs, appIDs)
 
-	// Fetch all records for chart aggregation and energy totals
-	chartRecords, _ := h.usageStore.QueryUsage(ctx, port.UsageFilter{
+	// Filter matching the whole selected period, used by every chart aggregation.
+	chartFilter := port.UsageFilter{
 		OrgID:          &orgID,
 		Since:          &since,
 		UserIDs:        userIDs,
 		ApplicationIDs: appIDs,
-	})
+	}
 
-	// Pre-load models and providers for energy estimation (deduplicated) from chartRecords
-	modelCache := make(map[model.LLMModelID]model.LLMModel)
-	providerCache := make(map[model.ProviderID]model.Provider)
-	for _, rec := range chartRecords {
+	// Build the model/provider caches for the *paginated* records only (bounded by the
+	// page size, served by the provider store cache). Used for the per-row energy column.
+	pageModelCache := make(map[model.LLMModelID]model.LLMModel)
+	pageProviderCache := make(map[model.ProviderID]model.Provider)
+	for _, rec := range rawRecords {
 		mid := rec.ModelID()
 		if mid == "" {
 			continue
 		}
-		if _, ok := modelCache[mid]; ok {
+		if _, ok := pageModelCache[mid]; ok {
 			continue
 		}
 		m, err := h.providerStore.GetLLMModelByID(ctx, mid)
 		if err != nil {
 			continue
 		}
-		modelCache[mid] = m
+		pageModelCache[mid] = m
 		pid := m.ProviderID()
-		if _, ok := providerCache[pid]; !ok {
-			p, err := h.providerStore.GetProviderByID(ctx, pid)
-			if err == nil {
-				providerCache[pid] = p
+		if _, ok := pageProviderCache[pid]; !ok {
+			if p, err := h.providerStore.GetProviderByID(ctx, pid); err == nil {
+				pageProviderCache[pid] = p
 			}
 		}
 	}
 
-	// Calculate energy totals (from cache or fresh computation)
+	// Cost charts are aggregated in SQL (GROUP BY) instead of loading every record of the
+	// period into memory. All records belong to this org so each sub-total is converted
+	// from its stored currency to the org currency.
+	convertToOrg := func(rows []port.DimensionCost) map[string]int64 {
+		out := make(map[string]int64, len(rows))
+		for _, row := range rows {
+			cost := row.Cost
+			if row.Currency != orgCurrency {
+				if converted, convErr := h.exchangeRateService.Convert(ctx, row.Cost, row.Currency, orgCurrency); convErr == nil {
+					cost = converted
+				}
+			}
+			out[row.Key] += cost
+		}
+		return out
+	}
+
+	perModel := convertToOrg(h.aggregateCostRows(ctx, chartFilter, port.UsageDimensionModel))
+	perDay := convertToOrg(h.aggregateCostRows(ctx, chartFilter, port.UsageDimensionDay))
+
+	// Per-user cost, keyed by display name (two ids sharing a name merge, as before).
+	perUser := make(map[string]int64)
+	for key, cost := range convertToOrg(h.aggregateCostRows(ctx, chartFilter, port.UsageDimensionUser)) {
+		perUser[h.usageUserLabel(ctx, model.UserID(key), userMap)] += cost
+	}
+
+	// Per-provider cost, keyed by provider id.
+	perProvider := make(map[model.ProviderID]int64)
+	for key, cost := range convertToOrg(h.aggregateCostRows(ctx, chartFilter, port.UsageDimensionProvider)) {
+		perProvider[model.ProviderID(key)] += cost
+	}
+
+	// Consommation en tokens des requêtes couvertes par un abonnement, par utilisateur.
+	// Les requêtes couvertes par un abonnement ont un coût forfaitaire fixe : leur coût
+	// par token est une estimation fictive qui gonflerait artificiellement les graphiques
+	// de coût (les cartes de coût total et les agrégations ci-dessus excluent déjà
+	// plan_covered). On les comptabilise à part, en volume de tokens consommés.
+	subTokensPerUser := make(map[string]int64)
+	if planRows, err := h.usageStore.AggregatePlanTokensByUser(ctx, chartFilter); err != nil {
+		slog.WarnContext(ctx, "could not aggregate plan tokens by user", slogx.Error(err))
+	} else {
+		for _, row := range planRows {
+			subTokensPerUser[h.usageUserLabel(ctx, row.UserID, userMap)] += row.Tokens
+		}
+	}
+
+	// Energy is non-linear per request and cannot be aggregated in SQL, so it is the only
+	// figure that still needs the full record set — and only when its (short-TTL) cache
+	// misses. On the common path (cache hit) no unbounded scan happens.
 	var totalEnergyWh, totalCO2GramsMid float64
 	if cached, ok := cache.EnergyEstimateCache.Get(energyCacheKey); ok {
 		totalEnergyWh = cached.TotalEnergyWh
 		totalCO2GramsMid = cached.TotalCO2GramsMid
 	} else {
-		for _, rec := range chartRecords {
-			if m, ok := modelCache[rec.ModelID()]; ok && m.ActiveParams() > 0 {
-				tier := estimator.TierHyperscaler
-				if p, ok := providerCache[m.ProviderID()]; ok {
-					tier = estimator.CloudTier(p.CloudTier())
-				}
-				est := estimator.NewCloudEstimator(tier).EstimateFromParams(
-					float64(m.ActiveParams()),
-					estimator.InferenceRequest{
-						InputTokens:  int(rec.PromptTokens()),
-						OutputTokens: int(rec.CompletionTokens()),
-					},
-					m.TokensPerSecLow(),
-					m.TokensPerSecHigh(),
-				)
-				totalEnergyWh += est.Mid.TotalWh
-				totalCO2GramsMid += est.Mid.Equivalences.CO2Grams
-			}
-		}
+		totalEnergyWh, totalCO2GramsMid = h.computeEnergyTotals(ctx, chartFilter)
 		cache.EnergyEstimateCache.Add(energyCacheKey, cache.EnergyTotals{
 			TotalEnergyWh:    totalEnergyWh,
 			TotalCO2GramsMid: totalCO2GramsMid,
@@ -284,9 +314,9 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		// Energy estimation
-		if m, ok := modelCache[rec.ModelID()]; ok && m.ActiveParams() > 0 {
+		if m, ok := pageModelCache[rec.ModelID()]; ok && m.ActiveParams() > 0 {
 			tier := estimator.TierHyperscaler
-			if p, ok := providerCache[m.ProviderID()]; ok {
+			if p, ok := pageProviderCache[m.ProviderID()]; ok {
 				tier = estimator.CloudTier(p.CloudTier())
 			}
 			est := estimator.NewCloudEstimator(tier).EstimateFromParams(
@@ -319,58 +349,6 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 	dailyCost := h.sumConvertedCost(ctx, nil, orgID, startOfPeriod("day", now), orgCurrency)
 	monthlyCost := h.sumConvertedCost(ctx, nil, orgID, startOfPeriod("month", now), orgCurrency)
 	yearlyCost := h.sumConvertedCost(ctx, nil, orgID, startOfPeriod("year", now), orgCurrency)
-
-	// Also load users referenced by chart records that may not be in the paged set
-	for _, rec := range chartRecords {
-		uid := rec.UserID()
-		if _, ok := users[uid]; ok {
-			continue
-		}
-		u, err := h.userStore.GetUserByID(ctx, uid)
-		if err != nil {
-			continue
-		}
-		users[uid] = u
-	}
-
-	// Build per-model, per-user, per-day, per-provider aggregates (cost in org currency)
-	perModel := make(map[string]int64)
-	perUser := make(map[string]int64)
-	perDay := make(map[string]int64)
-	perProvider := make(map[model.ProviderID]int64)
-	// Consommation en tokens des requêtes couvertes par un abonnement, par utilisateur.
-	subTokensPerUser := make(map[string]int64)
-	for _, rec := range chartRecords {
-		uid := rec.UserID()
-		userName := string(uid)
-		if u, ok := users[uid]; ok {
-			userName = u.DisplayName()
-		}
-
-		// Les requêtes couvertes par un abonnement ont un coût forfaitaire fixe : leur coût
-		// par token est une estimation fictive qui gonflerait artificiellement les graphiques
-		// de coût (cf. cartes de coût total qui excluent déjà plan_covered). On les
-		// comptabilise à part, en volume de tokens consommés.
-		if rec.PlanCovered() {
-			subTokensPerUser[userName] += int64(rec.TotalTokens())
-			continue
-		}
-
-		cost := rec.Cost()
-		if orgCurrency != rec.Currency() {
-			if converted, convErr := h.exchangeRateService.Convert(ctx, cost, rec.Currency(), orgCurrency); convErr == nil {
-				cost = converted
-			}
-		}
-		perProvider[rec.ProviderID()] += cost
-		effectiveModel := rec.ProxyModelName()
-		if rec.ResolvedModelName() != "" {
-			effectiveModel = rec.ResolvedModelName()
-		}
-		perModel[effectiveModel] += cost
-		perUser[userName] += cost
-		perDay[rec.CreatedAt().Format("2006-01-02")] += cost
-	}
 
 	// Build provider name map for chart labels
 	providerNames := make(map[model.ProviderID]string)
@@ -430,6 +408,85 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 }
 
 func intPtr(n int) *int { return &n }
+
+// aggregateCostRows fetches the PAYG cost sub-totals for a dimension, logging and
+// returning nil on error so a failed chart never blocks the whole page.
+func (h *Handler) aggregateCostRows(ctx context.Context, filter port.UsageFilter, dim port.UsageDimension) []port.DimensionCost {
+	rows, err := h.usageStore.AggregateCostByDimension(ctx, filter, dim)
+	if err != nil {
+		slog.WarnContext(ctx, "could not aggregate usage cost", slog.String("dimension", string(dim)), slogx.Error(err))
+		return nil
+	}
+	return rows
+}
+
+// usageUserLabel resolves a user id to a display name, preferring the already-loaded
+// org members map and falling back to a (cached) store lookup, then to the raw id.
+func (h *Handler) usageUserLabel(ctx context.Context, uid model.UserID, userMap map[model.UserID]model.User) string {
+	if u, ok := userMap[uid]; ok && u != nil {
+		return u.DisplayName()
+	}
+	if u, err := h.userStore.GetUserByID(ctx, uid); err == nil {
+		return u.DisplayName()
+	}
+	return string(uid)
+}
+
+// computeEnergyTotals iterates every record in the period to sum the (non-linear)
+// energy estimate — the one figure that cannot be aggregated in SQL. Providers and
+// models are resolved through the provider store cache.
+func (h *Handler) computeEnergyTotals(ctx context.Context, filter port.UsageFilter) (totalEnergyWh, totalCO2GramsMid float64) {
+	records, err := h.usageStore.QueryUsage(ctx, filter)
+	if err != nil {
+		slog.WarnContext(ctx, "could not query usage records for energy totals", slogx.Error(err))
+		return 0, 0
+	}
+	modelCache := make(map[model.LLMModelID]model.LLMModel)
+	providerCache := make(map[model.ProviderID]model.Provider)
+	for _, rec := range records {
+		mid := rec.ModelID()
+		if mid == "" {
+			continue
+		}
+		m, ok := modelCache[mid]
+		if !ok {
+			loaded, err := h.providerStore.GetLLMModelByID(ctx, mid)
+			if err != nil {
+				continue
+			}
+			m = loaded
+			modelCache[mid] = m
+		}
+		if m.ActiveParams() <= 0 {
+			continue
+		}
+		tier := estimator.TierHyperscaler
+		pid := m.ProviderID()
+		p, ok := providerCache[pid]
+		if !ok {
+			if loaded, err := h.providerStore.GetProviderByID(ctx, pid); err == nil {
+				p = loaded
+				providerCache[pid] = loaded
+				ok = true
+			}
+		}
+		if ok {
+			tier = estimator.CloudTier(p.CloudTier())
+		}
+		est := estimator.NewCloudEstimator(tier).EstimateFromParams(
+			float64(m.ActiveParams()),
+			estimator.InferenceRequest{
+				InputTokens:  int(rec.PromptTokens()),
+				OutputTokens: int(rec.CompletionTokens()),
+			},
+			m.TokensPerSecLow(),
+			m.TokensPerSecHigh(),
+		)
+		totalEnergyWh += est.Mid.TotalWh
+		totalCO2GramsMid += est.Mid.Equivalences.CO2Grams
+	}
+	return totalEnergyWh, totalCO2GramsMid
+}
 
 func rangeToSince(r string) time.Time {
 	now := time.Now()

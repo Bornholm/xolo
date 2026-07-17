@@ -29,6 +29,46 @@ type UsageStore interface {
 	// starting at `since`. Used to display when the window will next free up. Returns a zero
 	// time when no such record exists.
 	EarliestPlanUsageSince(ctx context.Context, orgID model.OrgID, providerID model.ProviderID, since time.Time) (time.Time, error)
+	// AggregateCostByDimension returns PAYG (plan_covered=false) cost sub-totals grouped by
+	// the given dimension, the record's org and currency, honoring the filter. It lets the
+	// usage/dashboard charts bucket costs in SQL instead of loading every record into memory.
+	// The org and currency are returned so callers can convert each sub-total to a display
+	// currency exactly as a per-record loop would.
+	AggregateCostByDimension(ctx context.Context, filter UsageFilter, dimension UsageDimension) ([]DimensionCost, error)
+	// AggregatePlanTokensByUser returns subscription-covered (plan_covered=true) token
+	// sub-totals grouped by user, honoring the filter.
+	AggregatePlanTokensByUser(ctx context.Context, filter UsageFilter) ([]UserTokenUsage, error)
+}
+
+// UsageDimension identifies a grouping axis for AggregateCostByDimension.
+type UsageDimension string
+
+const (
+	// UsageDimensionDay groups by calendar day (server-local) of the record.
+	UsageDimensionDay UsageDimension = "day"
+	// UsageDimensionModel groups by effective model name (resolved name when set,
+	// otherwise the proxy model name).
+	UsageDimensionModel UsageDimension = "model"
+	// UsageDimensionUser groups by user id.
+	UsageDimensionUser UsageDimension = "user"
+	// UsageDimensionProvider groups by provider id.
+	UsageDimensionProvider UsageDimension = "provider"
+)
+
+// DimensionCost is a PAYG cost sub-total for one value of a grouping dimension,
+// scoped to a single org and currency. Callers convert Cost from Currency to the
+// display currency of OrgID.
+type DimensionCost struct {
+	Key      string
+	OrgID    model.OrgID
+	Currency string
+	Cost     int64
+}
+
+// UserTokenUsage is a token count aggregated for a single user.
+type UserTokenUsage struct {
+	UserID model.UserID
+	Tokens int64
 }
 
 type UsageFilter struct {

@@ -168,6 +168,21 @@ func createGetDatabase(db *gorm.DB) func(ctx context.Context) (*gorm.DB, error) 
 						return tx.Migrator().DropColumn(&Alert{}, "scope")
 					},
 				},
+				{
+					// Add composite (org_id, created_at) and (user_id, org_id, created_at)
+					// indexes on usage_records to back the time-ranged cost aggregations
+					// (quota SumCostSince on the hot path, usage/dashboard chart GROUP BYs).
+					ID: "202607170001",
+					Migrate: func(tx *gorm.DB) error {
+						return errors.WithStack(tx.AutoMigrate(&UsageRecord{}))
+					},
+					Rollback: func(tx *gorm.DB) error {
+						if err := tx.Migrator().DropIndex(&UsageRecord{}, "idx_usage_org_created"); err != nil {
+							return errors.WithStack(err)
+						}
+						return errors.WithStack(tx.Migrator().DropIndex(&UsageRecord{}, "idx_usage_user_org_created"))
+					},
+				},
 			})
 
 			m.InitSchema(func(tx *gorm.DB) error {

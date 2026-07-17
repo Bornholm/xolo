@@ -161,62 +161,86 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 	// Cache key for energy totals
 	energyCacheKey := fmt.Sprintf("dashboard:%s:%d", userID, since.Unix())
 
-	// Fetch all records for chart aggregation and energy totals
-	chartRecords, _ := h.usageStore.QueryUsage(ctx, port.UsageFilter{
+	// Filter matching the whole selected period, used by every chart aggregation.
+	chartFilter := port.UsageFilter{
 		UserID: &userID,
 		Since:  &since,
-	})
+	}
 
-	// Pre-load models and providers for energy estimation (deduplicated) from chartRecords
-	modelCache := make(map[model.LLMModelID]model.LLMModel)
-	providerCache := make(map[model.ProviderID]model.Provider)
-	for _, rec := range chartRecords {
+	// Build the model/provider caches for the *paginated* records only (bounded by the
+	// page size, served by the provider store cache). Used for the per-row energy column.
+	pageModelCache := make(map[model.LLMModelID]model.LLMModel)
+	pageProviderCache := make(map[model.ProviderID]model.Provider)
+	for _, rec := range records {
 		mid := rec.ModelID()
 		if mid == "" {
 			continue
 		}
-		if _, ok := modelCache[mid]; ok {
+		if _, ok := pageModelCache[mid]; ok {
 			continue
 		}
 		m, err := h.providerStore.GetLLMModelByID(ctx, mid)
 		if err != nil {
 			continue
 		}
-		modelCache[mid] = m
+		pageModelCache[mid] = m
 		pid := m.ProviderID()
-		if _, ok := providerCache[pid]; !ok {
-			p, err := h.providerStore.GetProviderByID(ctx, pid)
-			if err == nil {
-				providerCache[pid] = p
+		if _, ok := pageProviderCache[pid]; !ok {
+			if p, err := h.providerStore.GetProviderByID(ctx, pid); err == nil {
+				pageProviderCache[pid] = p
 			}
 		}
 	}
 
-	// Calculate energy totals (from cache or fresh computation)
+	// Cost charts are aggregated in SQL (GROUP BY) instead of loading every record of the
+	// period into memory. Records may span several orgs, so each sub-total is converted
+	// from its stored currency to *its own org's* currency, matching the previous per-record
+	// behavior.
+	convertPerOrg := func(rows []port.DimensionCost) map[string]int64 {
+		out := make(map[string]int64, len(rows))
+		for _, row := range rows {
+			cost := row.Cost
+			target := model.DefaultCurrency
+			if org, ok := orgs[row.OrgID]; ok && org.Currency() != "" {
+				target = org.Currency()
+			}
+			if row.Currency != target {
+				if converted, convErr := h.exchangeRateService.Convert(ctx, row.Cost, row.Currency, target); convErr == nil {
+					cost = converted
+				}
+			}
+			out[row.Key] += cost
+		}
+		return out
+	}
+
+	perModel := convertPerOrg(h.aggregateCostRows(ctx, chartFilter, port.UsageDimensionModel))
+	perDay := convertPerOrg(h.aggregateCostRows(ctx, chartFilter, port.UsageDimensionDay))
+
+	perProvider := make(map[model.ProviderID]int64)
+	for key, cost := range convertPerOrg(h.aggregateCostRows(ctx, chartFilter, port.UsageDimensionProvider)) {
+		perProvider[model.ProviderID(key)] += cost
+	}
+
+	// Build provider name map for chart labels
+	providerNames := make(map[model.ProviderID]string)
+	for pid := range perProvider {
+		if p, err := h.providerStore.GetProviderByID(ctx, pid); err == nil {
+			providerNames[pid] = p.Name()
+		} else {
+			providerNames[pid] = string(pid)
+		}
+	}
+
+	// Energy is non-linear per request and cannot be aggregated in SQL, so it is the only
+	// figure that still needs the full record set — and only when its (short-TTL) cache
+	// misses. On the common path (cache hit) no unbounded scan happens.
 	var totalEnergyWh, totalCO2GramsMid float64
 	if cached, ok := cache.EnergyEstimateCache.Get(energyCacheKey); ok {
 		totalEnergyWh = cached.TotalEnergyWh
 		totalCO2GramsMid = cached.TotalCO2GramsMid
 	} else {
-		for _, rec := range chartRecords {
-			if m, ok := modelCache[rec.ModelID()]; ok && m.ActiveParams() > 0 {
-				tier := estimator.TierHyperscaler
-				if p, ok := providerCache[m.ProviderID()]; ok {
-					tier = estimator.CloudTier(p.CloudTier())
-				}
-				est := estimator.NewCloudEstimator(tier).EstimateFromParams(
-					float64(m.ActiveParams()),
-					estimator.InferenceRequest{
-						InputTokens:  int(rec.PromptTokens()),
-						OutputTokens: int(rec.CompletionTokens()),
-					},
-					m.TokensPerSecLow(),
-					m.TokensPerSecHigh(),
-				)
-				totalEnergyWh += est.Mid.TotalWh
-				totalCO2GramsMid += est.Mid.Equivalences.CO2Grams
-			}
-		}
+		totalEnergyWh, totalCO2GramsMid = h.computeEnergyTotals(ctx, chartFilter)
 		cache.EnergyEstimateCache.Add(energyCacheKey, cache.EnergyTotals{
 			TotalEnergyWh:    totalEnergyWh,
 			TotalCO2GramsMid: totalCO2GramsMid,
@@ -251,9 +275,9 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		// Energy estimation
-		if m, ok := modelCache[rec.ModelID()]; ok && m.ActiveParams() > 0 {
+		if m, ok := pageModelCache[rec.ModelID()]; ok && m.ActiveParams() > 0 {
 			tier := estimator.TierHyperscaler
-			if p, ok := providerCache[m.ProviderID()]; ok {
+			if p, ok := pageProviderCache[m.ProviderID()]; ok {
 				tier = estimator.CloudTier(p.CloudTier())
 			}
 			est := estimator.NewCloudEstimator(tier).EstimateFromParams(
@@ -273,42 +297,6 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 			dr.CO2GramsMax = est.Mid.Equivalences.CO2GramsMax
 		}
 		displayRecords = append(displayRecords, dr)
-	}
-
-	// Aggregate per-day, per-model, and per-provider (cost converted to org currency when possible)
-	perDay := make(map[string]int64)
-	perModel := make(map[string]int64)
-	perProvider := make(map[model.ProviderID]int64)
-	for _, rec := range chartRecords {
-		cost := rec.Cost()
-		if org, ok := orgs[rec.OrgID()]; ok {
-			orgCurrency := org.Currency()
-			if orgCurrency == "" {
-				orgCurrency = model.DefaultCurrency
-			}
-			if orgCurrency != rec.Currency() {
-				if conv, convErr := h.exchangeRateService.Convert(ctx, cost, rec.Currency(), orgCurrency); convErr == nil {
-					cost = conv
-				}
-			}
-		}
-		perProvider[rec.ProviderID()] += cost
-		perDay[rec.CreatedAt().Format("2006-01-02")] += cost
-		effectiveModel := rec.ProxyModelName()
-		if rec.ResolvedModelName() != "" {
-			effectiveModel = rec.ResolvedModelName()
-		}
-		perModel[effectiveModel] += cost
-	}
-
-	// Build provider name map for chart labels
-	providerNames := make(map[model.ProviderID]string)
-	for pid := range perProvider {
-		if p, err := h.providerStore.GetProviderByID(ctx, pid); err == nil {
-			providerNames[pid] = p.Name()
-		} else {
-			providerNames[pid] = string(pid)
-		}
 	}
 
 	// Build subscription provider consumption for all the user's orgs, scoped to the
@@ -371,6 +359,73 @@ func dashboardRangeToSince(r string) time.Time {
 }
 
 func intPtr(n int) *int { return &n }
+
+// aggregateCostRows fetches the PAYG cost sub-totals for a dimension, logging and
+// returning nil on error so a failed chart never blocks the whole page.
+func (h *Handler) aggregateCostRows(ctx context.Context, filter port.UsageFilter, dim port.UsageDimension) []port.DimensionCost {
+	rows, err := h.usageStore.AggregateCostByDimension(ctx, filter, dim)
+	if err != nil {
+		slog.WarnContext(ctx, "could not aggregate usage cost", slog.String("dimension", string(dim)), slogx.Error(err))
+		return nil
+	}
+	return rows
+}
+
+// computeEnergyTotals iterates every record in the period to sum the (non-linear)
+// energy estimate — the one figure that cannot be aggregated in SQL. Providers and
+// models are resolved through the provider store cache.
+func (h *Handler) computeEnergyTotals(ctx context.Context, filter port.UsageFilter) (totalEnergyWh, totalCO2GramsMid float64) {
+	records, err := h.usageStore.QueryUsage(ctx, filter)
+	if err != nil {
+		slog.WarnContext(ctx, "could not query usage records for energy totals", slogx.Error(err))
+		return 0, 0
+	}
+	modelCache := make(map[model.LLMModelID]model.LLMModel)
+	providerCache := make(map[model.ProviderID]model.Provider)
+	for _, rec := range records {
+		mid := rec.ModelID()
+		if mid == "" {
+			continue
+		}
+		m, ok := modelCache[mid]
+		if !ok {
+			loaded, err := h.providerStore.GetLLMModelByID(ctx, mid)
+			if err != nil {
+				continue
+			}
+			m = loaded
+			modelCache[mid] = m
+		}
+		if m.ActiveParams() <= 0 {
+			continue
+		}
+		tier := estimator.TierHyperscaler
+		pid := m.ProviderID()
+		p, ok := providerCache[pid]
+		if !ok {
+			if loaded, err := h.providerStore.GetProviderByID(ctx, pid); err == nil {
+				p = loaded
+				providerCache[pid] = loaded
+				ok = true
+			}
+		}
+		if ok {
+			tier = estimator.CloudTier(p.CloudTier())
+		}
+		est := estimator.NewCloudEstimator(tier).EstimateFromParams(
+			float64(m.ActiveParams()),
+			estimator.InferenceRequest{
+				InputTokens:  int(rec.PromptTokens()),
+				OutputTokens: int(rec.CompletionTokens()),
+			},
+			m.TokensPerSecLow(),
+			m.TokensPerSecHigh(),
+		)
+		totalEnergyWh += est.Mid.TotalWh
+		totalCO2GramsMid += est.Mid.Equivalences.CO2Grams
+	}
+	return totalEnergyWh, totalCO2GramsMid
+}
 
 func dashChartByValue(m map[string]int64) []component.ProfileChartDataPoint {
 	pts := make([]component.ProfileChartDataPoint, 0, len(m))

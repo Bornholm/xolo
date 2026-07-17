@@ -285,6 +285,92 @@ func (s *Store) SumUserPlanUsageSince(ctx context.Context, userID model.UserID, 
 	return row.Tokens, row.ProviderValue, nil
 }
 
+// dimensionGroupExpr returns the SQL expression to GROUP BY for a usage dimension.
+func dimensionGroupExpr(d port.UsageDimension) (string, error) {
+	switch d {
+	case port.UsageDimensionDay:
+		// 'localtime' buckets on the server's local calendar day, matching the
+		// time.Time formatting used elsewhere. Only affects which day a record
+		// near midnight lands in; never the summed totals.
+		return "date(created_at, 'localtime')", nil
+	case port.UsageDimensionModel:
+		return "COALESCE(NULLIF(resolved_model_name, ''), proxy_model_name)", nil
+	case port.UsageDimensionUser:
+		return "user_id", nil
+	case port.UsageDimensionProvider:
+		return "provider_id", nil
+	default:
+		return "", errors.Errorf("unsupported usage dimension %q", d)
+	}
+}
+
+// AggregateCostByDimension implements port.UsageStore.
+func (s *Store) AggregateCostByDimension(ctx context.Context, filter port.UsageFilter, dimension port.UsageDimension) ([]port.DimensionCost, error) {
+	groupExpr, err := dimensionGroupExpr(dimension)
+	if err != nil {
+		return nil, err
+	}
+
+	var rows []struct {
+		GroupKey string
+		OrgID    string
+		Currency string
+		Cost     int64
+	}
+
+	err = s.withRetry(ctx, false, func(ctx context.Context, db *gorm.DB) error {
+		query := db.Model(&UsageRecord{}).
+			Select(groupExpr + " as group_key, org_id as org_id, currency as currency, COALESCE(SUM(cost), 0) as cost").
+			Where("plan_covered = 0")
+		query = applyUsageFilter(query, filter)
+		query = query.Group(groupExpr).Group("org_id").Group("currency")
+		return errors.WithStack(query.Scan(&rows).Error)
+	}, sqlite3.BUSY, sqlite3.LOCKED)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]port.DimensionCost, 0, len(rows))
+	for _, r := range rows {
+		result = append(result, port.DimensionCost{
+			Key:      r.GroupKey,
+			OrgID:    model.OrgID(r.OrgID),
+			Currency: r.Currency,
+			Cost:     r.Cost,
+		})
+	}
+	return result, nil
+}
+
+// AggregatePlanTokensByUser implements port.UsageStore.
+func (s *Store) AggregatePlanTokensByUser(ctx context.Context, filter port.UsageFilter) ([]port.UserTokenUsage, error) {
+	var rows []struct {
+		UserID string
+		Tokens int64
+	}
+
+	err := s.withRetry(ctx, false, func(ctx context.Context, db *gorm.DB) error {
+		query := db.Model(&UsageRecord{}).
+			Select("user_id as user_id, COALESCE(SUM(total_tokens), 0) as tokens").
+			Where("plan_covered = 1")
+		query = applyUsageFilter(query, filter)
+		query = query.Group("user_id")
+		return errors.WithStack(query.Scan(&rows).Error)
+	}, sqlite3.BUSY, sqlite3.LOCKED)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]port.UserTokenUsage, 0, len(rows))
+	for _, r := range rows {
+		result = append(result, port.UserTokenUsage{
+			UserID: model.UserID(r.UserID),
+			Tokens: r.Tokens,
+		})
+	}
+	return result, nil
+}
+
 // EarliestPlanUsageSince implements port.UsageStore.
 func (s *Store) EarliestPlanUsageSince(ctx context.Context, orgID model.OrgID, providerID model.ProviderID, since time.Time) (time.Time, error) {
 	var row struct {
