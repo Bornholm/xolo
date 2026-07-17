@@ -93,6 +93,13 @@ func (h *Handler) getUserFromToken(ctx context.Context, token string) (*authn.Us
 		return nil, errors.WithStack(err)
 	}
 
+	// A deactivated user must not be able to authenticate, even with a token that
+	// has not yet expired. Surface it as ErrNotFound so callers follow the same
+	// "invalid token" path as an unknown token.
+	if !user.Active() {
+		return nil, errors.WithStack(port.ErrNotFound)
+	}
+
 	return &authn.User{
 		Email:       user.Email(),
 		Provider:    user.Provider(),

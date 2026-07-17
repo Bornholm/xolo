@@ -13,6 +13,7 @@ import (
 	"github.com/bornholm/xolo/internal/http/handler/webui/common"
 	pipelineAssets "github.com/bornholm/xolo/internal/http/handler/webui/pipeline"
 	"github.com/bornholm/xolo/internal/http/middleware/authn"
+	"github.com/bornholm/xolo/internal/http/middleware/authz"
 	membershipsMiddleware "github.com/bornholm/xolo/internal/http/middleware/memberships"
 	"github.com/bornholm/xolo/internal/http/middleware/ratelimit"
 	"github.com/pkg/errors"
@@ -237,8 +238,19 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 		proxy.WithHook(proxyAdapter.NewXoloEventEmitterHook(eventEmitter)),
 	)
 
+	// apiActiveCheck rejects authenticated-but-deactivated users on every API
+	// surface. The webui enforces this per-route via authz.Active(); the LLM proxy
+	// path did not, letting a deactivated account keep spending through a still-valid
+	// API token or an existing browser session.
+	apiActiveCheck := authz.Middleware(
+		gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+			gohttp.Error(w, gohttp.StatusText(gohttp.StatusForbidden), gohttp.StatusForbidden)
+		}),
+		authz.Active(),
+	)
+
 	apiAuthChain := func(h gohttp.Handler) gohttp.Handler {
-		return apiAuthnMiddleware(bridgeMiddleware(withMemberships(h)))
+		return apiAuthnMiddleware(bridgeMiddleware(apiActiveCheck(withMemberships(h))))
 	}
 
 	options := []http.OptionFunc{
