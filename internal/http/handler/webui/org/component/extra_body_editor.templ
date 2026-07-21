@@ -1,0 +1,118 @@
+package component
+
+import (
+	"fmt"
+
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+)
+
+// ── Extra Body Editor ─────────────────────────────────────────────────────────
+
+// ExtraBodyEditor renders an editable key/value list for a model's extra_body.
+// Each entry is injected verbatim into the outgoing request body. Values are
+// typed by inference on submission (see parseExtraBodyFromForm): "true"/"false"
+// become booleans, numeric strings become numbers, everything else stays a
+// string.
+//
+// Form fields emitted:
+//   - extra_body_count            (hidden, JS-managed)
+//   - extra_body_k{i}_key
+//   - extra_body_k{i}_value
+templ ExtraBodyEditor(rows []ExtraBodyRow, readonly bool) {
+	<div class="space-y-3">
+		<div id="extra-body-rows" class="space-y-2">
+			for i, row := range rows {
+				@extraBodyRow(i, row, readonly)
+			}
+		</div>
+		<input type="hidden" id="extra-body-count" name="extra_body_count" value={ fmt.Sprintf("%d", len(rows)) }/>
+		if !readonly {
+			@button.Button(button.Props{
+				Type:    "button",
+				Variant: button.VariantOutline,
+				Attributes: templ.Attributes{
+					"onclick": "addExtraBodyRow()",
+					"class":   "w-full",
+				},
+			}) {
+				+ Ajouter un champ
+			}
+		}
+	</div>
+	// Template element for JS cloning. extraBodyRow with idx -1 emits
+	// placeholder names (extra_body_k{i}_key, …) that reindex() rewrites.
+	if !readonly {
+		<template id="extra-body-tpl">
+			@extraBodyRow(-1, ExtraBodyRow{}, false)
+		</template>
+		<script>
+		(function () {
+			function reindex() {
+				var rows = document.querySelectorAll('#extra-body-rows > [data-eb-row]');
+				rows.forEach(function (row, i) {
+					row.querySelectorAll('[data-eb-name]').forEach(function (el) {
+						el.name = el.dataset.ebName.replace(/{i}/g, i);
+					});
+				});
+				document.getElementById('extra-body-count').value = rows.length;
+			}
+
+			window.addExtraBodyRow = function () {
+				var tpl = document.getElementById('extra-body-tpl');
+				document.getElementById('extra-body-rows').appendChild(tpl.content.cloneNode(true));
+				reindex();
+			};
+
+			window.removeExtraBodyRow = function (btn) {
+				btn.closest('[data-eb-row]').remove();
+				reindex();
+			};
+		})();
+		</script>
+	}
+}
+
+// extraBodyRow renders one key/value entry.
+// idx = -1 → template row; names use placeholder "{i}" replaced by JS.
+templ extraBodyRow(idx int, row ExtraBodyRow, readonly bool) {
+	{{ idxKey := fmt.Sprintf("%d", idx) }}
+	if idx == -1 {
+		{{ idxKey = "{i}" }}
+	}
+	{{ keyName := "extra_body_k" + idxKey + "_key" }}
+	{{ valName := "extra_body_k" + idxKey + "_value" }}
+	<div data-eb-row class="flex items-start gap-2">
+		<div class="flex-1">
+			@input.Input(input.Props{
+				Name:        keyName,
+				Value:       row.Key,
+				Placeholder: "clé (ex : reasoning_split)",
+				Disabled:    readonly,
+				Attributes:  templ.Attributes{"data-eb-name": "extra_body_k{i}_key"},
+			})
+		</div>
+		<div class="flex-1">
+			@input.Input(input.Props{
+				Name:        valName,
+				Value:       row.Value,
+				Placeholder: "valeur (ex : true, 40, auto)",
+				Disabled:    readonly,
+				Attributes:  templ.Attributes{"data-eb-name": "extra_body_k{i}_value"},
+			})
+		</div>
+		if !readonly {
+			@button.Button(button.Props{
+				Type:    "button",
+				Variant: button.VariantOutline,
+				Size:    button.SizeIcon,
+				Attributes: templ.Attributes{
+					"onclick": "removeExtraBodyRow(this)",
+					"title":   "Supprimer ce champ",
+				},
+			}) {
+				✕
+			}
+		}
+	</div>
+}

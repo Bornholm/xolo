@@ -1,7 +1,10 @@
 package component
 
 import (
+	"encoding/json"
 	"fmt"
+	"math"
+	"sort"
 	"strconv"
 	"time"
 
@@ -42,6 +45,67 @@ func fmtInt(v int64) string {
 func formatCostField(v int64) string {
 	// v is microcents/1K tokens; return dollars per 1M tokens for the form field
 	return fmt.Sprintf("%.6f", float64(v)/1_000)
+}
+
+// ExtraBodyRow is a single key/value entry of a model's ExtraBody, rendered as a
+// row in the extra-body editor.
+type ExtraBodyRow struct {
+	Key   string
+	Value string
+}
+
+// extraBodyRows flattens a model's ExtraBody map into sorted key/value rows for
+// pre-filling the editor. Values are rendered back to the textual form the
+// editor expects (see extraBodyValueString): booleans as "true"/"false",
+// whole numbers without a trailing ".0", everything else verbatim.
+func extraBodyRows(m model.LLMModel) []ExtraBodyRow {
+	if m == nil {
+		return nil
+	}
+	eb := m.ExtraBody()
+	if len(eb) == 0 {
+		return nil
+	}
+	keys := make([]string, 0, len(eb))
+	for k := range eb {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	rows := make([]ExtraBodyRow, 0, len(eb))
+	for _, k := range keys {
+		rows = append(rows, ExtraBodyRow{Key: k, Value: extraBodyValueString(eb[k])})
+	}
+	return rows
+}
+
+// extraBodyValueString renders a decoded extra-body value as the text a user
+// would type. It mirrors the type inference done on submission so that a
+// save → reload round-trip is stable.
+func extraBodyValueString(v any) string {
+	switch t := v.(type) {
+	case bool:
+		if t {
+			return "true"
+		}
+		return "false"
+	case float64:
+		if t == math.Trunc(t) && !math.IsInf(t, 0) {
+			return strconv.FormatInt(int64(t), 10)
+		}
+		return strconv.FormatFloat(t, 'f', -1, 64)
+	case json.Number:
+		return t.String()
+	case string:
+		return t
+	default:
+		// Non-scalar values (nested objects/arrays) cannot be edited as plain
+		// key/value; surface them as compact JSON so they remain visible.
+		b, err := json.Marshal(v)
+		if err != nil {
+			return ""
+		}
+		return string(b)
+	}
 }
 
 // formatActiveParamsBillions converts raw param count to billions for display in the form.

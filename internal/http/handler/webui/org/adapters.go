@@ -64,6 +64,7 @@ type updatedLLMModelAdapter struct {
 	createdAt                 time.Time
 	updatedAt                 time.Time
 	tokenLimitConfig          *model.TokenLimitConfig
+	extraBody                 map[string]any
 }
 
 func (m *updatedLLMModelAdapter) ID() model.LLMModelID         { return m.id }
@@ -94,6 +95,7 @@ func (m *updatedLLMModelAdapter) UpdatedAt() time.Time                  { return
 func (m *updatedLLMModelAdapter) TokenLimitConfig() *model.TokenLimitConfig {
 	return m.tokenLimitConfig
 }
-func (m *updatedLLMModelAdapter) IsVirtual() bool { return false }
+func (m *updatedLLMModelAdapter) ExtraBody() map[string]any { return m.extraBody }
+func (m *updatedLLMModelAdapter) IsVirtual() bool           { return false }
 
 var _ model.LLMModel = &updatedLLMModelAdapter{}

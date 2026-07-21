@@ -333,6 +333,24 @@ templ ModelForm(vmodel ModelFormVModel) {
 						</div>
 					</div>
 				}
+				<!-- Card Corps additionnel (extra_body) -->
+				<div class="bg-card shadow-xs w-full border text-card-foreground rounded-lg">
+					<div class="p-6 space-y-4">
+						<h3 class="text-sm font-semibold uppercase text-muted-foreground">
+							<div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+								@icon.Braces(icon.Props{Class: "h-4 w-4 text-primary"})
+								Corps additionnel
+							</div>
+						</h3>
+						<div class="space-y-2">
+							@form.Label(form.LabelProps{}) { Champs injectés (extra_body) }
+							@ExtraBodyEditor(extraBodyRows(vmodel.Model), readonly)
+							@form.Description() {
+								Paires clé/valeur injectées telles quelles dans le corps de chaque requête envoyée à ce modèle (paramètres spécifiques au fournisseur, ex. <code>reasoning_split</code> = <code>true</code> pour MiniMax M3). Le type est déduit de la valeur : <code>true</code>/<code>false</code> → booléen, un nombre → numérique, sinon texte.
+							}
+						</div>
+					</div>
+				</div>
 				<!-- Boutons -->
 				<div class="flex justify-end gap-2">
 					if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermProvidersWrite) {

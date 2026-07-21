@@ -49,6 +49,10 @@ type LLMModel interface {
 	CreatedAt() time.Time
 	UpdatedAt() time.Time
 	TokenLimitConfig() *TokenLimitConfig
+	// ExtraBody holds arbitrary key/values injected verbatim into every request
+	// targeting this model (e.g. provider-specific flags like "reasoning_split").
+	// Returns nil when none are configured.
+	ExtraBody() map[string]any
 	// IsVirtual returns true if this is a virtual model (not associated with a provider).
 	IsVirtual() bool
 }
@@ -73,6 +77,7 @@ type BaseLLMModel struct {
 	createdAt                 time.Time
 	updatedAt                 time.Time
 	tokenLimitConfig          *TokenLimitConfig
+	extraBody                 map[string]any
 }
 
 func (m *BaseLLMModel) ID() LLMModelID                      { return m.id }
@@ -96,6 +101,7 @@ func (m *BaseLLMModel) Capabilities() ModelCapabilities     { return m.capabilit
 func (m *BaseLLMModel) CreatedAt() time.Time                { return m.createdAt }
 func (m *BaseLLMModel) UpdatedAt() time.Time                { return m.updatedAt }
 func (m *BaseLLMModel) TokenLimitConfig() *TokenLimitConfig { return m.tokenLimitConfig }
+func (m *BaseLLMModel) ExtraBody() map[string]any           { return m.extraBody }
 
 func (m *BaseLLMModel) ActiveParams() int64       { return m.activeParams }
 func (m *BaseLLMModel) TokensPerSecLow() float64  { return m.tokensPerSecLow }
@@ -107,6 +113,7 @@ func (m *BaseLLMModel) SetContextWindow(v int64)                { m.contextWindo
 func (m *BaseLLMModel) SetOutputWindow(v int64)                 { m.outputWindow = v }
 func (m *BaseLLMModel) SetCapabilities(c ModelCapabilities)     { m.capabilities = c }
 func (m *BaseLLMModel) SetTokenLimitConfig(c *TokenLimitConfig) { m.tokenLimitConfig = c }
+func (m *BaseLLMModel) SetExtraBody(v map[string]any)           { m.extraBody = v }
 func (m *BaseLLMModel) SetActiveParams(v int64)                 { m.activeParams = v }
 func (m *BaseLLMModel) SetTokensPerSecLow(v float64)            { m.tokensPerSecLow = v }
 func (m *BaseLLMModel) SetTokensPerSecHigh(v float64)           { m.tokensPerSecHigh = v }

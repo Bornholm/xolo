@@ -659,6 +659,54 @@ func parseCostField(v string) int64 {
 	return int64(f * 1_000)
 }
 
+// parseExtraBodyFromForm reads the key/value rows emitted by the ExtraBodyEditor
+// component (extra_body_count + extra_body_k{i}_key / _value) into a map.
+// Rows with an empty key are skipped. Values are typed by inference (see
+// coerceExtraBodyValue). Returns (nil, nil) when no usable row is present.
+func parseExtraBodyFromForm(r *http.Request) (map[string]any, error) {
+	count, _ := strconv.Atoi(r.FormValue("extra_body_count"))
+	if count <= 0 {
+		return nil, nil
+	}
+	extra := make(map[string]any, count)
+	for i := range count {
+		prefix := fmt.Sprintf("extra_body_k%d_", i)
+		key := strings.TrimSpace(r.FormValue(prefix + "key"))
+		if key == "" {
+			continue
+		}
+		if _, exists := extra[key]; exists {
+			return nil, errors.Errorf("clé « %s » en double", key)
+		}
+		extra[key] = coerceExtraBodyValue(r.FormValue(prefix + "value"))
+	}
+	if len(extra) == 0 {
+		return nil, nil
+	}
+	return extra, nil
+}
+
+// coerceExtraBodyValue infers a typed value from the textual form input:
+// "true"/"false" (case-insensitive) become booleans, an integer or float string
+// becomes a number, everything else stays a string. This keeps the editor
+// key/value-only while still sending correctly typed JSON to the provider.
+func coerceExtraBodyValue(raw string) any {
+	v := strings.TrimSpace(raw)
+	switch strings.ToLower(v) {
+	case "true":
+		return true
+	case "false":
+		return false
+	}
+	if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+		return n
+	}
+	if f, err := strconv.ParseFloat(v, 64); err == nil {
+		return f
+	}
+	return v
+}
+
 // parseDurationField reads a (value, unit) pair from the form and returns a time.Duration.
 // value must be a positive integer; unit must be "ms", "s", or "min" (default: "s").
 // Returns 0, nil if the value field is empty or absent.
@@ -737,6 +785,14 @@ func (h *Handler) createModel(w http.ResponseWriter, r *http.Request) {
 		Audio:      r.FormValue("cap_audio") == "on",
 		Embeddings: r.FormValue("cap_embeddings") == "on",
 	})
+
+	extraBody, err := parseExtraBodyFromForm(r)
+	if err != nil {
+		h.renderModelFormError(w, r, ctx, user, orgSlug, org, p, nil, true,
+			"Corps additionnel (extra_body) : "+err.Error())
+		return
+	}
+	m.SetExtraBody(extraBody)
 
 	if err := h.providerStore.CreateLLMModel(ctx, m); err != nil {
 		slog.ErrorContext(ctx, "could not create model", slogx.Error(err))
@@ -867,6 +923,13 @@ func (h *Handler) updateModel(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	extraBody, err := parseExtraBodyFromForm(r)
+	if err != nil {
+		h.renderModelFormError(w, r, ctx, user, orgSlug, org, p, existing, false,
+			"Corps additionnel (extra_body) : "+err.Error())
+		return
+	}
+
 	updated := &updatedLLMModelAdapter{
 		id:                          existing.ID(),
 		providerID:                  existing.ProviderID(),
@@ -893,6 +956,7 @@ func (h *Handler) updateModel(w http.ResponseWriter, r *http.Request) {
 		createdAt:        existing.CreatedAt(),
 		updatedAt:        time.Now(),
 		tokenLimitConfig: tokenLimitConfig,
+		extraBody:        extraBody,
 	}
 
 	if err := h.providerStore.SaveLLMModel(ctx, updated); err != nil {

@@ -183,6 +183,17 @@ func createGetDatabase(db *gorm.DB) func(ctx context.Context) (*gorm.DB, error) 
 						return errors.WithStack(tx.Migrator().DropIndex(&UsageRecord{}, "idx_usage_user_org_created"))
 					},
 				},
+				{
+					// Add extra_body column to llm_models: arbitrary provider-specific
+					// key/values injected verbatim into every request targeting the model.
+					ID: "202607210001",
+					Migrate: func(tx *gorm.DB) error {
+						return errors.WithStack(tx.AutoMigrate(&LLMModel{}))
+					},
+					Rollback: func(tx *gorm.DB) error {
+						return errors.WithStack(tx.Migrator().DropColumn(&LLMModel{}, "extra_body"))
+					},
+				},
 			})
 
 			m.InitSchema(func(tx *gorm.DB) error {

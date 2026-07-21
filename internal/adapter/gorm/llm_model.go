@@ -30,6 +30,7 @@ type LLMModel struct {
 	CapAudio                  int                                `gorm:"default:0"`
 	CapEmbeddings             int                                `gorm:"default:0"`
 	TokenLimitConfig          JSONColumn[model.TokenLimitConfig] `gorm:"type:text"`
+	ExtraBody                 JSONColumn[map[string]any]         `gorm:"type:text"`
 }
 
 type wrappedLLMModel struct {
@@ -68,12 +69,22 @@ func (w *wrappedLLMModel) Capabilities() model.ModelCapabilities {
 func (w *wrappedLLMModel) CreatedAt() time.Time                      { return w.m.CreatedAt }
 func (w *wrappedLLMModel) UpdatedAt() time.Time                      { return w.m.UpdatedAt }
 func (w *wrappedLLMModel) TokenLimitConfig() *model.TokenLimitConfig { return w.m.TokenLimitConfig.Val }
+func (w *wrappedLLMModel) ExtraBody() map[string]any {
+	if w.m.ExtraBody.Val == nil {
+		return nil
+	}
+	return *w.m.ExtraBody.Val
+}
 func (w *wrappedLLMModel) IsVirtual() bool                           { return w.m.ProviderID == "" }
 
 var _ model.LLMModel = &wrappedLLMModel{}
 
 func fromLLMModel(m model.LLMModel) *LLMModel {
 	caps := m.Capabilities()
+	var extraBody *map[string]any
+	if eb := m.ExtraBody(); len(eb) > 0 {
+		extraBody = &eb
+	}
 	return &LLMModel{
 		ID:                        string(m.ID()),
 		ProviderID:                string(m.ProviderID()),
@@ -96,5 +107,6 @@ func fromLLMModel(m model.LLMModel) *LLMModel {
 		CapAudio:                  boolToInt(caps.Audio),
 		CapEmbeddings:             boolToInt(caps.Embeddings),
 		TokenLimitConfig:          JSONColumn[model.TokenLimitConfig]{Val: m.TokenLimitConfig()},
+		ExtraBody:                 JSONColumn[map[string]any]{Val: extraBody},
 	}
 }

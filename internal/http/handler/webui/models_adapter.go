@@ -34,6 +34,7 @@ func (v *virtualModelAsLLMModel) Capabilities() model.ModelCapabilities {
 func (v *virtualModelAsLLMModel) CreatedAt() time.Time                      { return v.vm.CreatedAt() }
 func (v *virtualModelAsLLMModel) UpdatedAt() time.Time                      { return v.vm.UpdatedAt() }
 func (v *virtualModelAsLLMModel) TokenLimitConfig() *model.TokenLimitConfig { return nil }
+func (v *virtualModelAsLLMModel) ExtraBody() map[string]any                 { return nil }
 func (v *virtualModelAsLLMModel) IsVirtual() bool                           { return true }
 
 var _ model.LLMModel = &virtualModelAsLLMModel{}

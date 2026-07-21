@@ -167,6 +167,11 @@ func (r *OrgModelRouter) clientForModel(ctx context.Context, llmModel model.LLMM
 		return nil, errors.Wrapf(err, "could not create LLM client for provider '%s'", p.Name())
 	}
 
+	// Inject the model's configured extra body fields (e.g. provider-specific
+	// flags) into every request. Wrapped closest to the provider so the fields
+	// are always present regardless of the resilience wrappers layered on top.
+	client = newExtraFieldsClient(client, llmModel.ExtraBody())
+
 	// Token limit (innermost — applied first, closest to the provider).
 	// Always pass WithChatCompletionLimit explicitly to avoid the 500k TPM
 	// silent default from tokenlimit.NewClient called bare.
