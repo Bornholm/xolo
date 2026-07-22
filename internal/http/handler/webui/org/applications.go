@@ -1,6 +1,7 @@
 package org
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -43,10 +44,22 @@ func (h *Handler) getApplicationsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	appRoles := make(map[model.ApplicationID][]model.Role, len(apps))
+	for _, app := range apps {
+		roles, err := h.roleStore.ListApplicationRoles(ctx, app.ID())
+		if err != nil {
+			slog.ErrorContext(ctx, "could not list application roles", slogx.Error(err))
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		appRoles[app.ID()] = roles
+	}
+
 	vmodel := component.ApplicationsPageVModel{
-		Org:     org,
-		Apps:    apps,
-		Success: r.URL.Query().Get("success"),
+		Org:      org,
+		Apps:     apps,
+		AppRoles: appRoles,
+		Success:  r.URL.Query().Get("success"),
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:          user,
 			SelectedItem:  "org-" + orgSlug + "-applications",
@@ -81,9 +94,27 @@ func (h *Handler) getNewApplicationPage(w http.ResponseWriter, r *http.Request) 
 
 	nav, footer := orgAdminNav(org)
 
+	orgRoles, err := h.roleStore.ListOrgRoles(ctx, org.ID())
+	if err != nil {
+		slog.ErrorContext(ctx, "could not list org roles", slogx.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	// Pre-select the builtin "member" role: it carries the model usage
+	// permissions an application needs to call the proxy at all.
+	assigned := map[model.RoleID]bool{}
+	for _, role := range orgRoles {
+		if role.BuiltinKind() == model.BuiltinKindMember {
+			assigned[role.ID()] = true
+		}
+	}
+
 	vmodel := component.ApplicationFormVModel{
-		Org:   org,
-		IsNew: true,
+		Org:             org,
+		OrgRoles:        orgRoles,
+		AssignedRoleIDs: assigned,
+		IsNew:           true,
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:          user,
 			SelectedItem:  "org-" + orgSlug + "-applications",
@@ -129,6 +160,13 @@ func (h *Handler) createApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	selected, err := h.selectedOrgRoleIDs(ctx, org.ID(), r.Form["roles"])
+	if err != nil {
+		slog.ErrorContext(ctx, "could not resolve selected roles", slogx.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
 	app := model.NewApplication(org.ID(), name, description, true)
 	if err := h.applicationStore.CreateApplication(ctx, app); err != nil {
 		slog.ErrorContext(ctx, "could not create application", slogx.Error(err))
@@ -136,7 +174,38 @@ func (h *Handler) createApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := h.roleStore.SetApplicationRoles(ctx, app.ID(), selected); err != nil {
+		slog.ErrorContext(ctx, "could not set application roles", slogx.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
 	http.Redirect(w, r, "/orgs/"+orgSlug+"/admin/applications?success=created", http.StatusSeeOther)
+}
+
+// selectedOrgRoleIDs keeps only the submitted role IDs that actually belong to
+// the organization, so a forged form can never grant a role from another org.
+func (h *Handler) selectedOrgRoleIDs(ctx context.Context, orgID model.OrgID, raw []string) ([]model.RoleID, error) {
+	orgRoles, err := h.roleStore.ListOrgRoles(ctx, orgID)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	valid := make(map[model.RoleID]struct{}, len(orgRoles))
+	for _, role := range orgRoles {
+		valid[role.ID()] = struct{}{}
+	}
+
+	var selected []model.RoleID
+	for _, id := range raw {
+		roleID := model.RoleID(id)
+		if _, ok := valid[roleID]; !ok {
+			continue
+		}
+		selected = append(selected, roleID)
+	}
+
+	return selected, nil
 }
 
 func (h *Handler) getEditApplicationPage(w http.ResponseWriter, r *http.Request) {
@@ -174,11 +243,32 @@ func (h *Handler) getEditApplicationPage(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	orgRoles, err := h.roleStore.ListOrgRoles(ctx, org.ID())
+	if err != nil {
+		slog.ErrorContext(ctx, "could not list org roles", slogx.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	appRoles, err := h.roleStore.ListApplicationRoles(ctx, app.ID())
+	if err != nil {
+		slog.ErrorContext(ctx, "could not list application roles", slogx.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	assigned := make(map[model.RoleID]bool, len(appRoles))
+	for _, role := range appRoles {
+		assigned[role.ID()] = true
+	}
+
 	vmodel := component.ApplicationFormVModel{
-		Org:    org,
-		App:    app,
-		Tokens: tokens,
-		IsNew:  false,
+		Org:             org,
+		App:             app,
+		Tokens:          tokens,
+		OrgRoles:        orgRoles,
+		AssignedRoleIDs: assigned,
+		IsNew:           false,
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:          user,
 			SelectedItem:  "org-" + orgSlug + "-applications",
@@ -221,6 +311,13 @@ func (h *Handler) updateApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	selected, err := h.selectedOrgRoleIDs(ctx, app.OrgID(), r.Form["roles"])
+	if err != nil {
+		slog.ErrorContext(ctx, "could not resolve selected roles", slogx.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
 	updated := model.UpdateApplication(app,
 		model.WithApplicationName(name),
 		model.WithApplicationDescription(description),
@@ -229,6 +326,12 @@ func (h *Handler) updateApplication(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.applicationStore.UpdateApplication(ctx, updated); err != nil {
 		slog.ErrorContext(ctx, "could not update application", slogx.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	if err := h.roleStore.SetApplicationRoles(ctx, app.ID(), selected); err != nil {
+		slog.ErrorContext(ctx, "could not set application roles", slogx.Error(err))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}

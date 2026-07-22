@@ -146,6 +146,12 @@ func (s *Store) DeleteApplication(ctx context.Context, appID model.ApplicationID
 			return errors.WithStack(port.ErrNotFound)
 		}
 
+		// Role assignments are not covered by a FK constraint, so drop them here
+		// to avoid leaving grants behind that a recycled ID could inherit.
+		if err := db.Where("application_id = ?", string(appID)).Delete(&ApplicationRole{}).Error; err != nil {
+			return errors.WithStack(err)
+		}
+
 		return nil
 	}, sqlite3.LOCKED, sqlite3.BUSY)
 	if err != nil {

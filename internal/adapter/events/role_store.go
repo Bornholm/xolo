@@ -8,11 +8,12 @@ import (
 	"github.com/bornholm/xolo/internal/core/port"
 )
 
-// membershipResolver resolves the org and user a membership belongs to. It lets
-// the role decorator attribute membership-role changes (a cross-aggregate
-// operation) to the right organization and user.
-type membershipResolver interface {
+// principalResolver resolves the org a membership or an application belongs to.
+// It lets the role decorator attribute role-assignment changes (a cross-aggregate
+// operation) to the right organization and principal.
+type principalResolver interface {
 	GetMembership(ctx context.Context, id model.MembershipID) (model.Membership, error)
+	GetApplication(ctx context.Context, id model.ApplicationID) (model.Application, error)
 }
 
 // RoleStore decorates a port.RoleStore, emitting events on custom role
@@ -20,12 +21,12 @@ type membershipResolver interface {
 // never produce events.
 type RoleStore struct {
 	port.RoleStore
-	emitter     port.EventEmitter
-	memberships membershipResolver
+	emitter    port.EventEmitter
+	principals principalResolver
 }
 
-func NewRoleStore(backend port.RoleStore, emitter port.EventEmitter, memberships membershipResolver) *RoleStore {
-	return &RoleStore{RoleStore: backend, emitter: emitter, memberships: memberships}
+func NewRoleStore(backend port.RoleStore, emitter port.EventEmitter, principals principalResolver) *RoleStore {
+	return &RoleStore{RoleStore: backend, emitter: emitter, principals: principals}
 }
 
 func (s *RoleStore) CreateRole(ctx context.Context, role model.Role) error {
@@ -80,8 +81,8 @@ func (s *RoleStore) SetMembershipRoles(ctx context.Context, membershipID model.M
 	}
 	orgID := model.OrgID("")
 	userID := model.UserID("")
-	if s.memberships != nil {
-		if m, err := s.memberships.GetMembership(ctx, membershipID); err == nil && m != nil {
+	if s.principals != nil {
+		if m, err := s.principals.GetMembership(ctx, membershipID); err == nil && m != nil {
 			orgID = m.OrgID()
 			userID = m.UserID()
 		}
@@ -92,6 +93,31 @@ func (s *RoleStore) SetMembershipRoles(ctx context.Context, membershipID model.M
 			"membership_id":  string(membershipID),
 			"member_user_id": string(userID),
 			"role_count":     strconv.Itoa(len(roleIDs)),
+		})
+	return nil
+}
+
+func (s *RoleStore) SetApplicationRoles(ctx context.Context, appID model.ApplicationID, roleIDs []model.RoleID) error {
+	if err := s.RoleStore.SetApplicationRoles(ctx, appID, roleIDs); err != nil {
+		return err
+	}
+	orgID := model.OrgID("")
+	name := ""
+	if s.principals != nil {
+		if app, err := s.principals.GetApplication(ctx, appID); err == nil && app != nil {
+			orgID = app.OrgID()
+			name = app.Name()
+		}
+	}
+	msg := "Rôles d'application modifiés"
+	if name != "" {
+		msg += " : " + name
+	}
+	emit(ctx, s.emitter, orgID, model.SeverityInfo, model.EventTypeApplicationUpdated, msg,
+		map[string]string{
+			"application_id":   string(appID),
+			"application_name": name,
+			"role_count":       strconv.Itoa(len(roleIDs)),
 		})
 	return nil
 }

@@ -112,6 +112,9 @@ func (s *Store) DeleteRole(ctx context.Context, id model.RoleID) error {
 		if err := db.Where("role_id = ?", string(id)).Delete(&MembershipRole{}).Error; err != nil {
 			return errors.WithStack(err)
 		}
+		if err := db.Where("role_id = ?", string(id)).Delete(&ApplicationRole{}).Error; err != nil {
+			return errors.WithStack(err)
+		}
 		return errors.WithStack(db.Delete(&Role{}, "id = ?", string(id)).Error)
 	}, sqlite3.BUSY, sqlite3.LOCKED)
 }
@@ -142,6 +145,44 @@ func (s *Store) ListMembershipRoles(ctx context.Context, membershipID model.Memb
 		return errors.WithStack(db.Preload("Permissions").Preload("ModelGrants").
 			Joins("JOIN membership_roles mr ON mr.role_id = roles.id").
 			Where("mr.membership_id = ?", string(membershipID)).
+			Find(&roles).Error)
+	}, sqlite3.BUSY, sqlite3.LOCKED)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]model.Role, 0, len(roles))
+	for _, r := range roles {
+		result = append(result, &wrappedRole{r})
+	}
+	return result, nil
+}
+
+// SetApplicationRoles implements port.RoleStore. It replaces the full set of
+// roles assigned to an application.
+func (s *Store) SetApplicationRoles(ctx context.Context, appID model.ApplicationID, roleIDs []model.RoleID) error {
+	return s.withRetry(ctx, true, func(ctx context.Context, db *gorm.DB) error {
+		if err := db.Where("application_id = ?", string(appID)).Delete(&ApplicationRole{}).Error; err != nil {
+			return errors.WithStack(err)
+		}
+		for _, roleID := range roleIDs {
+			if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&ApplicationRole{
+				ApplicationID: string(appID),
+				RoleID:        string(roleID),
+			}).Error; err != nil {
+				return errors.WithStack(err)
+			}
+		}
+		return nil
+	}, sqlite3.BUSY, sqlite3.LOCKED)
+}
+
+// ListApplicationRoles implements port.RoleStore.
+func (s *Store) ListApplicationRoles(ctx context.Context, appID model.ApplicationID) ([]model.Role, error) {
+	var roles []*Role
+	err := s.withRetry(ctx, false, func(ctx context.Context, db *gorm.DB) error {
+		return errors.WithStack(db.Preload("Permissions").Preload("ModelGrants").
+			Joins("JOIN application_roles ar ON ar.role_id = roles.id").
+			Where("ar.application_id = ?", string(appID)).
 			Find(&roles).Error)
 	}, sqlite3.BUSY, sqlite3.LOCKED)
 	if err != nil {
@@ -199,11 +240,48 @@ func (s *Store) ResolveEffectivePermissions(ctx context.Context, userID model.Us
 		return rbac.PermissionSet{}, err
 	}
 
+	return permissionSetFromRoles(roles), nil
+}
+
+// ResolveApplicationPermissions implements port.RoleStore. It returns the union
+// of the permissions of all roles assigned to the application. The application
+// must belong to orgID: a token scoped to another organization resolves to an
+// empty set, never to the application's own permissions.
+func (s *Store) ResolveApplicationPermissions(ctx context.Context, appID model.ApplicationID, orgID model.OrgID) (rbac.PermissionSet, error) {
+	var roles []*Role
+	err := s.withRetry(ctx, false, func(ctx context.Context, db *gorm.DB) error {
+		var app Application
+		if err := db.Where("id = ? AND org_id = ?", string(appID), string(orgID)).First(&app).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil // unknown application, or not scoped to this org: no permissions
+			}
+			return errors.WithStack(err)
+		}
+		if !app.Active {
+			return nil // deactivated application: no permissions
+		}
+		// Only roles owned by the same organization are honoured, so a role that
+		// was moved or mis-assigned can never widen the application's scope.
+		return errors.WithStack(db.Preload("Permissions").Preload("ModelGrants").
+			Joins("JOIN application_roles ar ON ar.role_id = roles.id").
+			Where("ar.application_id = ? AND roles.org_id = ?", string(appID), string(orgID)).
+			Find(&roles).Error)
+	}, sqlite3.BUSY, sqlite3.LOCKED)
+	if err != nil {
+		return rbac.PermissionSet{}, err
+	}
+
+	return permissionSetFromRoles(roles), nil
+}
+
+// permissionSetFromRoles unions the permissions and model grants of the given
+// roles. A builtin owner role short-circuits to the all-access set.
+func permissionSetFromRoles(roles []*Role) rbac.PermissionSet {
 	var codes []string
 	var grants []rbac.ModelGrant
 	for _, r := range roles {
 		if r.BuiltinKind == model.BuiltinKindOwner {
-			return rbac.OwnerPermissionSet(), nil
+			return rbac.OwnerPermissionSet()
 		}
 		for _, p := range r.Permissions {
 			codes = append(codes, p.Code)
@@ -212,7 +290,7 @@ func (s *Store) ResolveEffectivePermissions(ctx context.Context, userID model.Us
 			grants = append(grants, rbac.ModelGrant{ModelID: g.ModelID, Kind: g.ModelKind})
 		}
 	}
-	return rbac.NewPermissionSet(codes, grants), nil
+	return rbac.NewPermissionSet(codes, grants)
 }
 
 type builtinRoleSpec struct {

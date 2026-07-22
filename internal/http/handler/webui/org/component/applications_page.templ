@@ -10,23 +10,39 @@ import (
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/checkbox"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/label"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
 )
 
 type ApplicationsPageVModel struct {
 	common.AppLayoutVModel
-	Org     model.Organization
-	Apps    []model.Application
-	Success string
+	Org      model.Organization
+	Apps     []model.Application
+	AppRoles map[model.ApplicationID][]model.Role
+	Success  string
 }
 
 type ApplicationFormVModel struct {
 	common.AppLayoutVModel
-	Org    model.Organization
-	App    model.Application
-	Tokens []model.AuthToken
-	IsNew  bool
-	Error  string
+	Org             model.Organization
+	App             model.Application
+	Tokens          []model.AuthToken
+	OrgRoles        []model.Role
+	AssignedRoleIDs map[model.RoleID]bool
+	IsNew           bool
+	Error           string
+}
+
+// HasAssignedRole reports whether at least one role is assigned. An application
+// without roles resolves to an empty permission set and every API call it makes
+// is rejected, so the form warns about it explicitly.
+func (v ApplicationFormVModel) HasAssignedRole() bool {
+	for _, assigned := range v.AssignedRoleIDs {
+		if assigned {
+			return true
+		}
+	}
+	return false
 }
 
 templ ApplicationsPage(vmodel ApplicationsPageVModel) {
@@ -56,6 +72,7 @@ templ ApplicationsPage(vmodel ApplicationsPageVModel) {
 							@table.Header() {
 								@table.Head() { Nom }
 								@table.Head() { Description }
+								@table.Head() { Rôles }
 								@table.Head() { Statut }
 								@table.Head() { Créé le }
 								@table.Head() { Actions }
@@ -65,6 +82,17 @@ templ ApplicationsPage(vmodel ApplicationsPageVModel) {
 									@table.Row() {
 										@table.Cell() { { app.Name() } }
 										@table.Cell() { { app.Description() } }
+										@table.Cell() {
+											if len(vmodel.AppRoles[app.ID()]) == 0 {
+												@badge.Badge(badge.Props{Variant: badge.VariantDestructive}) { Aucun rôle }
+											} else {
+												<div class="flex flex-wrap gap-1">
+													for _, role := range vmodel.AppRoles[app.ID()] {
+														@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) { { role.Name() } }
+													}
+												</div>
+											}
+										}
 										@table.Cell() {
 											if app.Active() {
 												@badge.Badge(badge.Props{Variant: badge.VariantDefault}) { Actif }
@@ -133,6 +161,47 @@ templ ApplicationForm(vmodel ApplicationFormVModel) {
 									<label for="active" class="text-sm font-medium">Active</label>
 								</div>
 							}
+							<div class="space-y-3 pt-2 border-t">
+								<div class="space-y-1 pt-4">
+									<label class="text-sm font-medium">Rôles</label>
+									<p class="text-sm text-muted-foreground">
+										Les rôles déterminent les modèles et les sections d'administration
+										accessibles aux jetons de cette application.
+									</p>
+								</div>
+								if len(vmodel.OrgRoles) == 0 {
+									<p class="text-sm text-muted-foreground">Aucun rôle défini dans cette organisation.</p>
+								} else {
+									if !vmodel.HasAssignedRole() {
+										@alert.Alert(alert.Props{Variant: alert.VariantDestructive}) {
+											@alert.Description() {
+												Sans rôle, cette application ne peut accéder à aucun modèle : ses appels API sont rejetés.
+											}
+										}
+									}
+									<div class="space-y-3">
+										for _, role := range vmodel.OrgRoles {
+											<div class="flex items-start gap-3">
+												@checkbox.Checkbox(checkbox.Props{
+													ID:       "role-" + string(role.ID()),
+													Name:     "roles",
+													Value:    string(role.ID()),
+													Checked:  vmodel.AssignedRoleIDs[role.ID()],
+													Disabled: readonly,
+												})
+												<div class="grid gap-0.5 leading-none">
+													@label.Label(label.Props{For: "role-" + string(role.ID())}) {
+														{ role.Name() }
+													}
+													if role.Description() != "" {
+														<p class="text-xs text-muted-foreground">{ role.Description() }</p>
+													}
+												</div>
+											</div>
+										}
+									</div>
+								}
+							</div>
 						</div>
 					}
 					@card.Footer() {

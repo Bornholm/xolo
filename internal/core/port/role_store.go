@@ -21,7 +21,13 @@ type RoleStore interface {
 	SetMembershipRoles(ctx context.Context, membershipID model.MembershipID, roleIDs []model.RoleID) error
 	ListMembershipRoles(ctx context.Context, membershipID model.MembershipID) ([]model.Role, error)
 
+	// Application assignments. An application is an org principal in its own
+	// right: it holds roles directly rather than through a membership.
+	SetApplicationRoles(ctx context.Context, appID model.ApplicationID, roleIDs []model.RoleID) error
+	ListApplicationRoles(ctx context.Context, appID model.ApplicationID) ([]model.Role, error)
+
 	// Builtin roles & resolution
 	EnsureBuiltinRoles(ctx context.Context, orgID model.OrgID) error
 	ResolveEffectivePermissions(ctx context.Context, userID model.UserID, orgID model.OrgID) (rbac.PermissionSet, error)
+	ResolveApplicationPermissions(ctx context.Context, appID model.ApplicationID, orgID model.OrgID) (rbac.PermissionSet, error)
 }

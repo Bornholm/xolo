@@ -41,6 +41,16 @@ type MembershipRole struct {
 	CreatedAt    time.Time
 }
 
+// ApplicationRole is the join table between applications and roles. It is the
+// application counterpart of MembershipRole: applications authenticate with
+// their own tokens and are not members of the org, so their permissions are
+// resolved from this table instead.
+type ApplicationRole struct {
+	ApplicationID string `gorm:"primaryKey"`
+	RoleID        string `gorm:"primaryKey"`
+	CreatedAt     time.Time
+}
+
 type wrappedRole struct {
 	r *Role
 }

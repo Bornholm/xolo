@@ -133,6 +133,147 @@ func TestRoleStore_CustomRoleAndModelGrant(t *testing.T) {
 	}
 }
 
+// Applications hold roles directly instead of going through a membership, so
+// permission resolution has to reach them through the application join table.
+func TestRoleStore_ApplicationRoleResolution(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+
+	org := model.NewOrganization("acme", "Acme", "")
+	if err := store.CreateOrg(ctx, org); err != nil {
+		t.Fatalf("CreateOrg: %v", err)
+	}
+	if err := store.EnsureBuiltinRoles(ctx, org.ID()); err != nil {
+		t.Fatalf("EnsureBuiltinRoles: %v", err)
+	}
+
+	roles, err := store.ListOrgRoles(ctx, org.ID())
+	if err != nil {
+		t.Fatalf("ListOrgRoles: %v", err)
+	}
+	var ownerID, memberID model.RoleID
+	for _, r := range roles {
+		switch r.BuiltinKind() {
+		case model.BuiltinKindOwner:
+			ownerID = r.ID()
+		case model.BuiltinKindMember:
+			memberID = r.ID()
+		}
+	}
+
+	app := model.NewApplication(org.ID(), "CI", "Pipeline", true)
+	if err := store.CreateApplication(ctx, app); err != nil {
+		t.Fatalf("CreateApplication: %v", err)
+	}
+
+	// No role assigned: an empty set, which is what rejects proxy calls.
+	perms, err := store.ResolveApplicationPermissions(ctx, app.ID(), org.ID())
+	if err != nil {
+		t.Fatalf("ResolveApplicationPermissions: %v", err)
+	}
+	if perms.IsOwner() || perms.Has(rbac.PermModelUseOrg) {
+		t.Error("application without roles should hold no permission")
+	}
+
+	if err := store.SetApplicationRoles(ctx, app.ID(), []model.RoleID{memberID}); err != nil {
+		t.Fatalf("SetApplicationRoles: %v", err)
+	}
+
+	assigned, err := store.ListApplicationRoles(ctx, app.ID())
+	if err != nil {
+		t.Fatalf("ListApplicationRoles: %v", err)
+	}
+	if len(assigned) != 1 || assigned[0].ID() != memberID {
+		t.Fatalf("expected the member role to be assigned, got %d role(s)", len(assigned))
+	}
+
+	perms, err = store.ResolveApplicationPermissions(ctx, app.ID(), org.ID())
+	if err != nil {
+		t.Fatalf("ResolveApplicationPermissions: %v", err)
+	}
+	if !perms.Has(rbac.PermModelUseOrg) {
+		t.Error("application with the member role should have model:use:org")
+	}
+	if perms.Has(rbac.PermMembersWrite) {
+		t.Error("application with the member role should not have members:write")
+	}
+
+	// A token scoped to another org must not resolve to the app's permissions.
+	other := model.NewOrganization("other", "Other", "")
+	if err := store.CreateOrg(ctx, other); err != nil {
+		t.Fatalf("CreateOrg other: %v", err)
+	}
+	perms, err = store.ResolveApplicationPermissions(ctx, app.ID(), other.ID())
+	if err != nil {
+		t.Fatalf("ResolveApplicationPermissions other org: %v", err)
+	}
+	if perms.IsOwner() || perms.Has(rbac.PermModelUseOrg) {
+		t.Error("application must hold no permission outside its own org")
+	}
+
+	// The owner role grants the same bypass as it does for members.
+	if err := store.SetApplicationRoles(ctx, app.ID(), []model.RoleID{ownerID}); err != nil {
+		t.Fatalf("SetApplicationRoles owner: %v", err)
+	}
+	perms, err = store.ResolveApplicationPermissions(ctx, app.ID(), org.ID())
+	if err != nil {
+		t.Fatalf("ResolveApplicationPermissions owner: %v", err)
+	}
+	if !perms.IsOwner() {
+		t.Error("expected owner bypass")
+	}
+
+	// A deactivated application keeps its roles but resolves to nothing.
+	if err := store.UpdateApplication(ctx, model.UpdateApplication(app, model.WithApplicationActive(false))); err != nil {
+		t.Fatalf("UpdateApplication: %v", err)
+	}
+	perms, err = store.ResolveApplicationPermissions(ctx, app.ID(), org.ID())
+	if err != nil {
+		t.Fatalf("ResolveApplicationPermissions inactive: %v", err)
+	}
+	if perms.IsOwner() {
+		t.Error("deactivated application should hold no permission")
+	}
+}
+
+// Deleting a role must drop its application assignments, not just its
+// membership ones.
+func TestRoleStore_DeleteRoleClearsApplicationAssignment(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+
+	org := model.NewOrganization("acme", "Acme", "")
+	if err := store.CreateOrg(ctx, org); err != nil {
+		t.Fatalf("CreateOrg: %v", err)
+	}
+
+	role := model.NewRole(org.ID(), "Lecteur", "")
+	role.SetPermissions([]string{string(rbac.PermUsageRead)})
+	if err := store.CreateRole(ctx, role); err != nil {
+		t.Fatalf("CreateRole: %v", err)
+	}
+
+	app := model.NewApplication(org.ID(), "CI", "", true)
+	if err := store.CreateApplication(ctx, app); err != nil {
+		t.Fatalf("CreateApplication: %v", err)
+	}
+	if err := store.SetApplicationRoles(ctx, app.ID(), []model.RoleID{role.ID()}); err != nil {
+		t.Fatalf("SetApplicationRoles: %v", err)
+	}
+
+	if err := store.DeleteRole(ctx, role.ID()); err != nil {
+		t.Fatalf("DeleteRole: %v", err)
+	}
+
+	assigned, err := store.ListApplicationRoles(ctx, app.ID())
+	if err != nil {
+		t.Fatalf("ListApplicationRoles: %v", err)
+	}
+	if len(assigned) != 0 {
+		t.Errorf("expected no assignment left after role deletion, got %d", len(assigned))
+	}
+}
+
 func TestRoleStore_BuiltinRoleNotDeletable(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()

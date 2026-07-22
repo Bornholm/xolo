@@ -46,9 +46,18 @@ func XoloAuthExtractor() func(r *http.Request) (string, error) {
 				orgID = string(memberships[0].OrgID())
 				slog.Debug("XoloAuthExtractor: org from membership", "orgID", orgID)
 			}
-			slog.Debug("XoloAuthExtractor: using httpx.User", "userID", user.ID(), "orgID", orgID)
+			// An application authenticates through a shadow user whose subject is
+			// the ApplicationID; surface it so usage is attributed to the
+			// application and not only to its shadow user.
+			applicationID := ""
+			if user.Provider() == model.ApplicationProvider {
+				applicationID = user.Subject()
+			}
+
+			slog.Debug("XoloAuthExtractor: using httpx.User", "userID", user.ID(), "orgID", orgID, "applicationID", applicationID)
 			newCtx := context.WithValue(ctx, contextKeyAuthTokenID, authTokenID)
 			newCtx = context.WithValue(newCtx, contextKeyOrgID, orgID)
+			newCtx = context.WithValue(newCtx, contextKeyApplicationID, applicationID)
 			newCtx = context.WithValue(newCtx, contextKeyAlreadyExtracted, true)
 			*r = *r.WithContext(newCtx)
 			return string(user.ID()), nil

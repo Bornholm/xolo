@@ -7,6 +7,7 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/bornholm/go-x/slogx"
+	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/port"
 	"github.com/bornholm/xolo/internal/http/handler/webui/common"
 	"github.com/bornholm/xolo/internal/http/middleware/authn"
@@ -75,8 +76,11 @@ func (h *Handler) getUserFromToken(ctx context.Context, token string) (*authn.Us
 		if !app.Active() {
 			return nil, errors.WithStack(port.ErrNotFound)
 		}
+		// Provider/Subject are what permission resolution keys off to map the
+		// request back to the application and its org roles — see
+		// memberships.newPermissionResolver.
 		return &authn.User{
-			Provider:    "application",
+			Provider:    model.ApplicationProvider,
 			Subject:     string(app.ID()),
 			DisplayName: app.Name(),
 			OrgID:       string(authToken.OrgID()),

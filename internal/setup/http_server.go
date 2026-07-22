@@ -224,7 +224,7 @@ func NewHTTPServerFromConfig(ctx context.Context, conf *config.Config) (*http.Se
 
 	webuiHandler := webui.NewHandler(taskRunner, userStore, orgStore, roleStore, providerStore, virtualModelStore, middlewareStore, personalVMStore, usageStore, inviteStore, applicationStore, quotaStore, quotaService, exchangeRateService, secretStore, conf.SecretKey, pluginManager, subscriptionState, eventStore, alertStore, alertIncidentStore, eventSettingsStore, conf.Events.MaxPerOrg, conf.Events.DefaultPerOrg)
 
-	apiHandler := api.NewHandler(providerStore, orgStore, roleStore, virtualModelStore, personalVMStore, middlewareStore, secretStore, exchangeRateService, pluginManager)
+	apiHandler := api.NewHandler(providerStore, orgStore, virtualModelStore, personalVMStore, middlewareStore, secretStore, exchangeRateService, pluginManager)
 
 	proxyServer := proxy.NewServer(
 		proxy.WithAuthExtractor(proxyAdapter.XoloAuthExtractor()),

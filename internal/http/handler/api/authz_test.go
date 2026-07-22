@@ -13,13 +13,10 @@ import (
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
 )
 
-// fakeRoleStore embeds the interface (nil); it resolves to an empty permission
-// set so the cross-org access test denies the attacker.
-type fakeRoleStore struct {
-	port.RoleStore
-}
-
-func (s *fakeRoleStore) ResolveEffectivePermissions(ctx context.Context, userID model.UserID, orgID model.OrgID) (rbac.PermissionSet, error) {
+// emptyPermissionResolver stands in for the resolver installed by the
+// memberships middleware, resolving every org to an empty permission set so the
+// cross-org access test denies the attacker.
+func emptyPermissionResolver(ctx context.Context, orgID model.OrgID) (rbac.PermissionSet, error) {
 	return rbac.NewPermissionSet(nil, nil), nil
 }
 
@@ -98,12 +95,14 @@ func TestHandleDeleteVirtualModel_RejectsCrossOrgRequest(t *testing.T) {
 		},
 	}
 
-	h := api.NewHandler(nil, orgStore, &fakeRoleStore{}, vmStore, nil, nil, nil, nil, nil)
+	h := api.NewHandler(nil, orgStore, vmStore, nil, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/orgs/org-a/virtual-models/"+string(victimVM.ID()), nil)
 	req.SetPathValue("orgSlug", "org-a")
 	req.SetPathValue("vmID", string(victimVM.ID()))
-	req = req.WithContext(httpCtx.SetUser(req.Context(), attacker))
+	ctx := httpCtx.SetUser(req.Context(), attacker)
+	ctx = httpCtx.SetPermissionResolver(ctx, emptyPermissionResolver)
+	req = req.WithContext(ctx)
 
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)

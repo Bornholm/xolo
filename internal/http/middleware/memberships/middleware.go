@@ -45,8 +45,17 @@ func Middleware(orgStore port.OrgStore, roleStore port.RoleStore) func(http.Hand
 // newPermissionResolver builds a per-request, memoized resolver of effective
 // permissions for the given user. A global admin always resolves to an owner
 // permission set, bypassing org-level role resolution.
+//
+// Applications authenticate through a shadow user whose provider is
+// [model.ApplicationProvider] and whose subject is the ApplicationID. They are
+// org principals without a membership, so their permissions are resolved from
+// the roles assigned to the application itself.
 func newPermissionResolver(roleStore port.RoleStore, user model.User) httpCtx.PermissionResolverFunc {
-	isGlobalAdmin := slices.Contains(user.Roles(), authz.RoleAdmin)
+	isApplication := user.Provider() == model.ApplicationProvider
+	// An application must never inherit the global admin bypass: its shadow user
+	// is a platform-level artefact, not an operator account.
+	isGlobalAdmin := !isApplication && slices.Contains(user.Roles(), authz.RoleAdmin)
+	appID := model.ApplicationID(user.Subject())
 
 	var mu sync.Mutex
 	cache := map[model.OrgID]rbac.PermissionSet{}
@@ -63,7 +72,15 @@ func newPermissionResolver(roleStore port.RoleStore, user model.User) httpCtx.Pe
 			return set, nil
 		}
 
-		set, err := roleStore.ResolveEffectivePermissions(ctx, user.ID(), orgID)
+		var (
+			set rbac.PermissionSet
+			err error
+		)
+		if isApplication {
+			set, err = roleStore.ResolveApplicationPermissions(ctx, appID, orgID)
+		} else {
+			set, err = roleStore.ResolveEffectivePermissions(ctx, user.ID(), orgID)
+		}
 		if err != nil {
 			return rbac.PermissionSet{}, err
 		}

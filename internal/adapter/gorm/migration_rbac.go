@@ -79,6 +79,22 @@ func migrateLegacyMembershipRoles(tx *gorm.DB) error {
 	return nil
 }
 
+// backfillApplicationBuiltinRoles assigns the builtin "member" role to every
+// application that holds no role yet. Applications predate the application/role
+// join table: without an assignment their permission set resolves empty and
+// every call they make through the proxy is rejected. Idempotent.
+func backfillApplicationBuiltinRoles(tx *gorm.DB) error {
+	return errors.WithStack(tx.Exec(`
+		INSERT INTO application_roles (application_id, role_id, created_at)
+		SELECT a.id, r.id, CURRENT_TIMESTAMP
+		FROM applications a
+		JOIN roles r ON r.org_id = a.org_id AND r.builtin_kind = ?
+		WHERE NOT EXISTS (
+			SELECT 1 FROM application_roles ar WHERE ar.application_id = a.id
+		)
+	`, model.BuiltinKindMember).Error)
+}
+
 func legacyRoleToBuiltinKind(role string) string {
 	switch role {
 	case model.RoleOrgOwner:

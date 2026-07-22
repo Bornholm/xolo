@@ -12,6 +12,12 @@ func NewApplicationID() ApplicationID {
 	return ApplicationID(xid.New().String())
 }
 
+// ApplicationProvider is the identity provider name used for the shadow user
+// backing an application's auth tokens. Its subject is the ApplicationID, which
+// is how permission resolution maps a request back to the application and its
+// org roles.
+const ApplicationProvider = "application"
+
 type Application interface {
 	WithID[ApplicationID]
 

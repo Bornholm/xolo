@@ -194,6 +194,23 @@ func createGetDatabase(db *gorm.DB) func(ctx context.Context) (*gorm.DB, error) 
 						return errors.WithStack(tx.Migrator().DropColumn(&LLMModel{}, "extra_body"))
 					},
 				},
+				{
+					// Applications become org principals holding roles directly.
+					// Until now they had no membership, so permission resolution
+					// returned an empty set and every proxy call was rejected:
+					// backfill the builtin "member" role so existing applications
+					// keep working across the upgrade.
+					ID: "202607220001",
+					Migrate: func(tx *gorm.DB) error {
+						if err := tx.AutoMigrate(&ApplicationRole{}); err != nil {
+							return errors.WithStack(err)
+						}
+						return backfillApplicationBuiltinRoles(tx)
+					},
+					Rollback: func(tx *gorm.DB) error {
+						return errors.WithStack(tx.Migrator().DropTable("application_roles"))
+					},
+				},
 			})
 
 			m.InitSchema(func(tx *gorm.DB) error {
@@ -217,7 +234,7 @@ func createGetDatabase(db *gorm.DB) func(ctx context.Context) (*gorm.DB, error) 
 					// Org store
 					&Organization{}, &Membership{}, &Application{},
 					// RBAC store
-					&Role{}, &RolePermission{}, &RoleModel{}, &MembershipRole{},
+					&Role{}, &RolePermission{}, &RoleModel{}, &MembershipRole{}, &ApplicationRole{},
 					// Provider store
 					&Provider{}, &LLMModel{},
 					// Virtual model store

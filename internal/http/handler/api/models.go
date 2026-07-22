@@ -58,7 +58,6 @@ type pluginManagerIface interface {
 type Handler struct {
 	providerStore       port.ProviderStore
 	orgStore            port.OrgStore
-	roleStore           port.RoleStore
 	virtualModelStore   port.VirtualModelStore
 	personalVMStore     port.PersonalVirtualModelStore
 	middlewareStore     port.MiddlewareStore
@@ -68,11 +67,12 @@ type Handler struct {
 	mux                 *http.ServeMux
 }
 
-func NewHandler(providerStore port.ProviderStore, orgStore port.OrgStore, roleStore port.RoleStore, virtualModelStore port.VirtualModelStore, personalVMStore port.PersonalVirtualModelStore, middlewareStore port.MiddlewareStore, secretStore port.SecretStore, exchangeRateService *service.ExchangeRateService, pluginManager pluginManagerIface) *Handler {
+// Permission checks resolve through the request context (see authz.go), so the
+// handler does not need a RoleStore of its own.
+func NewHandler(providerStore port.ProviderStore, orgStore port.OrgStore, virtualModelStore port.VirtualModelStore, personalVMStore port.PersonalVirtualModelStore, middlewareStore port.MiddlewareStore, secretStore port.SecretStore, exchangeRateService *service.ExchangeRateService, pluginManager pluginManagerIface) *Handler {
 	h := &Handler{
 		providerStore:       providerStore,
 		orgStore:            orgStore,
-		roleStore:           roleStore,
 		virtualModelStore:   virtualModelStore,
 		personalVMStore:     personalVMStore,
 		middlewareStore:     middlewareStore,
