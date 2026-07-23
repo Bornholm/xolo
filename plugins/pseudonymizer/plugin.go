@@ -27,6 +27,8 @@ type Plugin struct {
 	mu         sync.Mutex
 	store      *modelstore.Store
 	anons      map[string]*anonymizer.Anonymizer
+	detector   goanon.LanguageDetector
+	candidates []string
 	lastCfgKey string
 
 	hostMu     sync.Mutex
@@ -119,12 +121,6 @@ func (p *Plugin) PreRequest(ctx context.Context, in *proto.PreRequestInput) (*pr
 		return &proto.PreRequestOutput{Allowed: true}, nil
 	}
 
-	anon, err := p.getAnonymizer(ctx, cfg)
-	if err != nil {
-		slog.WarnContext(ctx, "pseudonymizer: failed to initialize anonymizer, passing through", slog.Any("error", err))
-		return &proto.PreRequestOutput{Allowed: true}, nil
-	}
-
 	// Resolve request body: prefer from input port, fall back to Model (full request body JSON).
 	requestJSON := ""
 	if in.InputsJson != "" {
@@ -167,9 +163,19 @@ func (p *Plugin) PreRequest(ctx context.Context, in *proto.PreRequestInput) (*pr
 		return &proto.PreRequestOutput{Allowed: true}, nil
 	}
 
+	// Resolve the language of the conversation (explicit config or automatic
+	// detection on the raw, not-yet-anonymized text) and get the matching
+	// anonymizer.
+	language, anon, err := p.resolveAnonymizer(ctx, cfg, messages)
+	if err != nil {
+		slog.WarnContext(ctx, "pseudonymizer: failed to initialize anonymizer, passing through", slog.Any("error", err))
+		return &proto.PreRequestOutput{Allowed: true}, nil
+	}
+
 	slog.DebugContext(ctx, "pseudonymizer: anonymizing messages",
 		slog.Int("count", len(messages)),
-		slog.String("language", cfg.Language),
+		slog.String("language", language),
+		slog.Bool("language_auto", cfg.Language == LanguageAuto),
 		slog.String("strategy", cfg.Strategy),
 	)
 
@@ -246,7 +252,7 @@ func (p *Plugin) PreRequest(ctx context.Context, in *proto.PreRequestInput) (*pr
 
 	// Inject an instruction asking the LLM to keep placeholder tokens verbatim,
 	// so they can be deanonymized in the response.
-	filtered = injectPlaceholderInstruction(filtered, session.Mapping, cfg)
+	filtered = injectPlaceholderInstruction(filtered, session.Mapping, cfg, language)
 
 	// Serialize anonymized+filtered messages.
 	modifiedMessagesJSON, err := json.Marshal(filtered)
@@ -298,6 +304,7 @@ func (p *Plugin) PreRequest(ctx context.Context, in *proto.PreRequestInput) (*pr
 				"entities":            strconv.Itoa(total),
 				"types":               types,
 				"removed_attachments": strconv.Itoa(len(removedParts)),
+				"language":            language,
 			},
 		})
 	}
@@ -338,10 +345,11 @@ func (p *Plugin) PostResponse(_ context.Context, in *proto.PostResponseInput) (*
 // injectPlaceholderInstruction prepends an instruction to the conversation's
 // system message (or inserts a new one) telling the LLM to keep the
 // pseudonymization placeholder tokens verbatim, so they can be restored in
-// PostResponse. Returns messages unchanged if there is nothing to instruct
-// about (no entities anonymized, or the strategy doesn't produce stable
-// reusable tokens).
-func injectPlaceholderInstruction(messages []map[string]any, mapping map[string]string, cfg Config) []map[string]any {
+// PostResponse. The instruction is written in language, the language resolved
+// for the conversation. Returns messages unchanged if there is nothing to
+// instruct about (no entities anonymized, or the strategy doesn't produce
+// stable reusable tokens).
+func injectPlaceholderInstruction(messages []map[string]any, mapping map[string]string, cfg Config, language string) []map[string]any {
 	if !cfg.InjectInstruction || len(mapping) == 0 {
 		return messages
 	}
@@ -350,7 +358,7 @@ func injectPlaceholderInstruction(messages []map[string]any, mapping map[string]
 		return messages
 	}
 
-	instruction := buildInstructionText(mapping, cfg.Language)
+	instruction := buildInstructionText(mapping, language)
 
 	for i, msg := range messages {
 		role, _ := msg["role"].(string)
@@ -383,12 +391,22 @@ func buildInstructionText(mapping map[string]string, language string) string {
 	sort.Strings(placeholders)
 	examples := strings.Join(placeholders, ", ")
 
-	if language == "en" {
+	switch language {
+	case "en":
 		return fmt.Sprintf(
 			"IMPORTANT: some personal or sensitive information in this conversation has been replaced "+
 				"by placeholder tokens such as %s. These tokens will be automatically restored after your "+
 				"reply. You MUST reproduce these tokens exactly as written (same brackets, same case, same "+
 				"numbering), without translating, modifying, merging, splitting, or inventing new ones.",
+			examples,
+		)
+	case "es":
+		return fmt.Sprintf(
+			"IMPORTANTE: algunas informaciones personales o sensibles de esta conversación han sido "+
+				"reemplazadas por marcadores como %s. Estos marcadores se restaurarán automáticamente "+
+				"después de tu respuesta. DEBES reproducirlos exactamente tal cual (mismos corchetes, "+
+				"mismas mayúsculas, misma numeración), sin traducirlos, modificarlos, fusionarlos, "+
+				"dividirlos ni inventar otros nuevos.",
 			examples,
 		)
 	}
@@ -475,41 +493,124 @@ func deanonymize(text string, mapping map[string]string) string {
 
 // getAnonymizer returns (creating if needed) the Anonymizer for cfg.Language.
 // Thread-safe; recreates the store and anonymizers when config changes.
-func (p *Plugin) getAnonymizer(ctx context.Context, cfg Config) (*anonymizer.Anonymizer, error) {
+func (p *Plugin) getAnonymizer(ctx context.Context, cfg Config, language string) (*anonymizer.Anonymizer, error) {
+	if _, err := p.ensureStore(cfg); err != nil {
+		return nil, err
+	}
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if anon, ok := p.anons[language]; ok {
+		return anon, nil
+	}
+
+	anon, err := p.buildAnonymizer(ctx, cfg, language)
+	if err != nil {
+		return nil, err
+	}
+	p.anons[language] = anon
+	return anon, nil
+}
+
+// resolveAnonymizer determines the language of the request — either the one
+// pinned in the config, or the one detected on the raw message text — and
+// returns the matching anonymizer. When a detected language cannot be served
+// (missing model, download failure…), it falls back to the configured fallback
+// language rather than letting the request through unpseudonymized.
+func (p *Plugin) resolveAnonymizer(ctx context.Context, cfg Config, messages []map[string]any) (string, *anonymizer.Anonymizer, error) {
+	fallback := cfg.FallbackLanguage
+	if fallback == "" {
+		fallback = defaultLanguage
+	}
+
+	language := cfg.Language
+	detected := false
+	if language == "" || language == LanguageAuto {
+		detector, candidates, err := p.getDetector(ctx, cfg)
+		if err != nil {
+			return "", nil, err
+		}
+		language, detected = detectLanguage(ctx, detector, detectionSample(messages, maxDetectionSample), candidates, fallback)
+	}
+
+	anon, err := p.getAnonymizer(ctx, cfg, language)
+	if err == nil {
+		return language, anon, nil
+	}
+
+	if !detected || language == fallback {
+		return "", nil, err
+	}
+
+	slog.WarnContext(ctx, "pseudonymizer: no anonymizer for detected language, falling back",
+		slog.String("detected", language),
+		slog.String("fallback", fallback),
+		slog.Any("error", err),
+	)
+
+	anon, fallbackErr := p.getAnonymizer(ctx, cfg, fallback)
+	if fallbackErr != nil {
+		return "", nil, fallbackErr
+	}
+	return fallback, anon, nil
+}
+
+// ensureStore returns the model store for cfg, recreating it (and dropping the
+// cached anonymizers and language detector) whenever the config changes.
+func (p *Plugin) ensureStore(cfg Config) (*modelstore.Store, error) {
 	cfgKey := buildCfgKey(cfg)
 
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	if p.lastCfgKey != cfgKey {
-		opts := storeOptionsFromConfig(cfg)
-		store, err := modelstore.New(opts...)
-		if err != nil {
-			return nil, fmt.Errorf("create model store: %w", err)
-		}
-		p.store = store
-		p.anons = make(map[string]*anonymizer.Anonymizer)
-		p.lastCfgKey = cfgKey
+	if p.store != nil && p.lastCfgKey == cfgKey {
+		return p.store, nil
 	}
 
-	if anon, ok := p.anons[cfg.Language]; ok {
-		return anon, nil
-	}
-
-	anon, err := p.buildAnonymizer(ctx, cfg)
+	store, err := modelstore.New(storeOptionsFromConfig(cfg)...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create model store: %w", err)
 	}
-	p.anons[cfg.Language] = anon
-	return anon, nil
+
+	p.store = store
+	p.anons = make(map[string]*anonymizer.Anonymizer)
+	p.detector = nil
+	p.candidates = nil
+	p.lastCfgKey = cfgKey
+
+	return p.store, nil
 }
 
-// buildAnonymizer downloads the model and creates a new Anonymizer for cfg.Language.
+// getDetector returns the language detector and the languages it is restricted
+// to. Both are built once per config: restricting the detector to the languages
+// actually servable by the model store makes detection far more reliable on
+// short texts.
+func (p *Plugin) getDetector(ctx context.Context, cfg Config) (goanon.LanguageDetector, []string, error) {
+	if _, err := p.ensureStore(cfg); err != nil {
+		return nil, nil, err
+	}
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.detector == nil {
+		p.candidates = supportedLanguages(ctx, p.store)
+		p.detector = goanon.NewWhatlangDetector(p.candidates...)
+		slog.DebugContext(ctx, "pseudonymizer: language detector ready",
+			slog.Any("candidates", p.candidates),
+		)
+	}
+
+	return p.detector, p.candidates, nil
+}
+
+// buildAnonymizer downloads the model and creates a new Anonymizer for language.
 // Must be called with p.mu held.
-func (p *Plugin) buildAnonymizer(ctx context.Context, cfg Config) (*anonymizer.Anonymizer, error) {
-	modelPath, err := p.store.Get(ctx, cfg.Language)
+func (p *Plugin) buildAnonymizer(ctx context.Context, cfg Config, language string) (*anonymizer.Anonymizer, error) {
+	modelPath, err := p.store.Get(ctx, language)
 	if err != nil {
-		return nil, fmt.Errorf("get model for language %q: %w", cfg.Language, err)
+		return nil, fmt.Errorf("get model for language %q: %w", language, err)
 	}
 
 	f, err := os.Open(modelPath)
@@ -524,12 +625,12 @@ func (p *Plugin) buildAnonymizer(ctx context.Context, cfg Config) (*anonymizer.A
 	}
 
 	// Load gazetteers (may be empty if not available).
-	gazs, _ := p.store.GetGazetteers(ctx, cfg.Language)
+	gazs, _ := p.store.GetGazetteers(ctx, language)
 	loadedGazs, firstnamesGaz := loadGazetteers(ctx, gazs)
 
 	// Build recognizer options in the correct filter application order.
 	var recOpts []goanon.RecognizerOption
-	recOpts = append(recOpts, goanon.WithLanguage(cfg.Language))
+	recOpts = append(recOpts, goanon.WithLanguage(language))
 
 	if cfg.BuiltinRegexPatterns {
 		recOpts = append(recOpts, goanon.WithBuiltinRegexPatterns())
@@ -575,6 +676,16 @@ func (p *Plugin) buildAnonymizer(ctx context.Context, cfg Config) (*anonymizer.A
 	rec, err := goanon.NewRecognizer(model, recOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("create recognizer: %w", err)
+	}
+
+	// Warnings report mismatches between the model's training configuration and
+	// the inference one (missing gazetteers, different language…). Each one
+	// silently degrades detection quality, so surface them.
+	for _, warning := range rec.Warnings() {
+		slog.WarnContext(ctx, "pseudonymizer: recognizer configuration mismatch",
+			slog.String("language", language),
+			slog.String("warning", warning),
+		)
 	}
 
 	// ConsistentMap is always true, matching the go-anon server behaviour.

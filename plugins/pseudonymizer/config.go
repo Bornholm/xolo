@@ -29,9 +29,16 @@ const configSchemaJSON = `{
     "language": {
       "type": "string",
       "title": "Langue",
-      "description": "Langue des messages à anonymiser.",
+      "description": "Langue des messages à anonymiser. 'auto' détecte automatiquement la langue de chaque requête parmi les modèles disponibles.",
+      "default": "auto",
+      "enum": ["auto", "fr", "en", "es"]
+    },
+    "fallback_language": {
+      "type": "string",
+      "title": "Langue de repli",
+      "description": "Langue utilisée lorsque la détection automatique n'est pas fiable (texte trop court, langue non supportée).",
       "default": "fr",
-      "enum": ["fr", "en"]
+      "enum": ["fr", "en", "es"]
     },
     "strategy": {
       "type": "string",
@@ -121,6 +128,7 @@ type Config struct {
 
 	// Anonymisation
 	Language              string              `json:"language"`
+	FallbackLanguage      string              `json:"fallback_language"`
 	Strategy              string              `json:"strategy"`
 	MinConfidence         float64             `json:"min_confidence"`
 	MaxTokens             int                 `json:"max_tokens"`
@@ -143,7 +151,10 @@ func parseConfig(configJSON string) (Config, error) {
 		return Config{}, fmt.Errorf("parse config: %w", err)
 	}
 	if cfg.Language == "" {
-		cfg.Language = "fr"
+		cfg.Language = LanguageAuto
+	}
+	if cfg.FallbackLanguage == "" {
+		cfg.FallbackLanguage = defaultLanguage
 	}
 	if cfg.Strategy == "" {
 		cfg.Strategy = "tag"
@@ -153,7 +164,8 @@ func parseConfig(configJSON string) (Config, error) {
 
 func defaultConfig() Config {
 	return Config{
-		Language:              "fr",
+		Language:              LanguageAuto,
+		FallbackLanguage:      defaultLanguage,
 		Strategy:              "tag",
 		MinConfidence:         0.30,
 		BuiltinRegexPatterns:  true,

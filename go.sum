@@ -6,12 +6,14 @@ github.com/RealAlexandreAI/json-repair v0.0.14 h1:4kTqotVonDVTio5n2yweRUELVcNe2x
 github.com/RealAlexandreAI/json-repair v0.0.14/go.mod h1:GKJi5borR78O8c7HCVbgqjhoiVibZ6hJldxbc6dGrAI=
 github.com/a-h/templ v0.3.1001 h1:yHDTgexACdJttyiyamcTHXr2QkIeVF1MukLy44EAhMY=
 github.com/a-h/templ v0.3.1001/go.mod h1:oCZcnKRf5jjsGpf2yELzQfodLphd2mwecwG4Crk5HBo=
+github.com/abadojack/whatlanggo v1.0.1 h1:19N6YogDnf71CTHm3Mp2qhYfkRdyvbgwWdd2EPxJRG4=
+github.com/abadojack/whatlanggo v1.0.1/go.mod h1:66WiQbSbJBIlOZMsvbKe5m6pzQovxCH9B/K8tQB2uoc=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/bornholm/genai v0.31.0 h1:nkMUtOxfXi1em0kWeMDHgUJASeQ+o8RIzBfzuAy41Qs=
 github.com/bornholm/genai v0.31.0/go.mod h1:ajuzZJvHAhy2SOsjxVNI1WUZaYKvGfabRE9UnLWirr0=
-github.com/bornholm/go-anon v0.0.4 h1:7AT3z6SjvnFjUifOs6PfkNVtoj4liCyIzTVLq9V6ZGY=
-github.com/bornholm/go-anon v0.0.4/go.mod h1:1/O3PELa9xtd3RRFHQuSD6XRQBf3GSviuJukkq01MFw=
+github.com/bornholm/go-anon v0.0.6 h1:YbnS8NbPuCrViUehSqQw2T1IkdNyV8qMn3CnXufoG1A=
+github.com/bornholm/go-anon v0.0.6/go.mod h1:PDc/KuqCfXkgndkZuOXnt1mO/9/Qo8V0jLEl3btgJ00=
 github.com/bornholm/go-fuzzy v0.0.0-20250815131223-76b121e8632d h1:IUrWuFur+t1DKOMt49Np0vzF/9WcX1A1H9kWpiyMhPA=
 github.com/bornholm/go-fuzzy v0.0.0-20250815131223-76b121e8632d/go.mod h1:0qK9yh4PmCaXwWNvIYDJ9GGIZv/72b90QaSBti6ZZUs=
 github.com/bornholm/go-x v0.0.0-20260127104343-c6737ea35324 h1:urrNBFQGXI3uvAivANnjEBdZVMDfmWn/okKIwDDqJ/w=

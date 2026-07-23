@@ -14,6 +14,21 @@ func formatFloat(f float64) string {
 	return strconv.FormatFloat(f, 'f', -1, 64)
 }
 
+// languageNames maps ISO 639-1 codes to their display name in the UI.
+var languageNames = map[string]string{
+	"fr": "Français",
+	"en": "English",
+	"es": "Español",
+}
+
+// languageLabel returns the display label of an ISO 639-1 language code.
+func languageLabel(code string) string {
+	if name, ok := languageNames[code]; ok {
+		return fmt.Sprintf("%s (%s)", name, code)
+	}
+	return code
+}
+
 // formatInt formats an int as a string for HTML input fields.
 // Returns empty string for zero to let the placeholder show.
 func formatInt(n int) string {

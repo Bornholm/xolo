@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/a-h/templ"
+	goanon "github.com/bornholm/go-anon"
 	"github.com/bornholm/go-anon/pkg/modelstore"
 	"github.com/bornholm/xolo/pkg/pluginsdk"
 )
@@ -31,6 +32,9 @@ type uiPageData struct {
 	Success     bool
 	Error       string
 	ModelStatus []modelStatusEntry
+	// Languages lists the languages selectable in the form: those handled by
+	// the go-anon pipeline for which a model is published.
+	Languages []string
 }
 
 type modelStatusEntry struct {
@@ -69,23 +73,24 @@ func (ui *pluginUI) loadPageData(r *http.Request) (uiPageData, error) {
 		Config:   cfg,
 	}
 
-	pd.ModelStatus = ui.fetchModelStatus(ctx, cfg)
+	pd.ModelStatus, pd.Languages = ui.fetchModelStatus(ctx, cfg)
 	return pd, nil
 }
 
-// fetchModelStatus builds a lightweight model status list (no downloads).
-func (ui *pluginUI) fetchModelStatus(ctx context.Context, cfg Config) []modelStatusEntry {
+// fetchModelStatus builds a lightweight model status list (no downloads) and
+// the list of languages usable for anonymization.
+func (ui *pluginUI) fetchModelStatus(ctx context.Context, cfg Config) ([]modelStatusEntry, []string) {
 	opts := storeOptionsFromConfig(cfg)
 	store, err := modelstore.New(opts...)
 	if err != nil {
 		slog.WarnContext(ctx, "pseudonymizer/ui: failed to create model store", slog.Any("error", err))
-		return nil
+		return nil, goanon.SupportedLanguages()
 	}
 
 	langs, err := store.Available(ctx)
 	if err != nil {
 		slog.WarnContext(ctx, "pseudonymizer/ui: failed to list available models", slog.Any("error", err))
-		return nil
+		return nil, supportedLanguages(ctx, nil)
 	}
 
 	entries := make([]modelStatusEntry, 0, len(langs))
@@ -95,7 +100,7 @@ func (ui *pluginUI) fetchModelStatus(ctx context.Context, cfg Config) []modelSta
 			Cached: store.IsCached(lang),
 		})
 	}
-	return entries
+	return entries, supportedLanguages(ctx, store)
 }
 
 func (ui *pluginUI) handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -147,12 +152,14 @@ func configFromForm(r *http.Request) Config {
 		ManifestURL:           r.FormValue("manifest_url"),
 		Offline:               r.FormValue("offline") == "on",
 		Language:              r.FormValue("language"),
+		FallbackLanguage:      r.FormValue("fallback_language"),
 		Strategy:              r.FormValue("strategy"),
 		FirstNameReclassify:   r.FormValue("first_name_reclassify") == "on",
 		Merge:                 r.FormValue("merge") == "on",
 		NameCompletion:        r.FormValue("name_completion") == "on",
 		BuiltinRegexPatterns:  r.FormValue("builtin_regex_patterns") == "on",
 		BuiltinSecretPatterns: r.FormValue("builtin_secret_patterns") == "on",
+		InjectInstruction:     r.FormValue("inject_instruction") == "on",
 	}
 
 	if minConf := r.FormValue("min_confidence"); minConf != "" {
@@ -169,7 +176,10 @@ func configFromForm(r *http.Request) Config {
 	}
 
 	if cfg.Language == "" {
-		cfg.Language = "fr"
+		cfg.Language = LanguageAuto
+	}
+	if cfg.FallbackLanguage == "" {
+		cfg.FallbackLanguage = defaultLanguage
 	}
 	if cfg.Strategy == "" {
 		cfg.Strategy = "tag"

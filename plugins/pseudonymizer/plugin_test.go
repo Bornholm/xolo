@@ -15,7 +15,7 @@ func TestInjectPlaceholderInstruction_NewSystemMessage(t *testing.T) {
 	}
 	cfg := defaultConfig()
 
-	got := injectPlaceholderInstruction(messages, mapping, cfg)
+	got := injectPlaceholderInstruction(messages, mapping, cfg, "fr")
 
 	if len(got) != 2 {
 		t.Fatalf("len(messages) = %d, want 2", len(got))
@@ -43,7 +43,7 @@ func TestInjectPlaceholderInstruction_PrependsToExistingSystemMessage(t *testing
 	mapping := map[string]string{"[PERSON_1]": "William Petit"}
 	cfg := defaultConfig()
 
-	got := injectPlaceholderInstruction(messages, mapping, cfg)
+	got := injectPlaceholderInstruction(messages, mapping, cfg, "fr")
 
 	if len(got) != 2 {
 		t.Fatalf("len(messages) = %d, want 2", len(got))
@@ -61,7 +61,7 @@ func TestInjectPlaceholderInstruction_NoEntities(t *testing.T) {
 	messages := []map[string]any{{"role": "user", "content": "Bonjour !"}}
 	cfg := defaultConfig()
 
-	got := injectPlaceholderInstruction(messages, nil, cfg)
+	got := injectPlaceholderInstruction(messages, nil, cfg, "fr")
 
 	if len(got) != 1 {
 		t.Fatalf("len(messages) = %d, want 1 (unchanged)", len(got))
@@ -74,7 +74,7 @@ func TestInjectPlaceholderInstruction_RedactStrategySkipped(t *testing.T) {
 	cfg := defaultConfig()
 	cfg.Strategy = "redact"
 
-	got := injectPlaceholderInstruction(messages, mapping, cfg)
+	got := injectPlaceholderInstruction(messages, mapping, cfg, "fr")
 
 	if len(got) != 1 {
 		t.Fatalf("len(messages) = %d, want 1 (unchanged)", len(got))
@@ -87,7 +87,7 @@ func TestInjectPlaceholderInstruction_Disabled(t *testing.T) {
 	cfg := defaultConfig()
 	cfg.InjectInstruction = false
 
-	got := injectPlaceholderInstruction(messages, mapping, cfg)
+	got := injectPlaceholderInstruction(messages, mapping, cfg, "fr")
 
 	if len(got) != 1 {
 		t.Fatalf("len(messages) = %d, want 1 (unchanged)", len(got))

@@ -79,9 +79,30 @@ templ page(pd uiPageData) {
 									name="language"
 									class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
 								>
-									<option value="fr" if pd.Config.Language == "fr" { selected }>Français (fr)</option>
-									<option value="en" if pd.Config.Language == "en" { selected }>English (en)</option>
+									<option value="auto" if pd.Config.Language == LanguageAuto { selected }>Détection automatique</option>
+									for _, lang := range pd.Languages {
+										<option value={ lang } if pd.Config.Language == lang { selected }>{ languageLabel(lang) }</option>
+									}
 								</select>
+								<p class="text-xs text-muted-foreground">
+									En détection automatique, la langue est déterminée à chaque requête à partir des
+									messages, parmi les modèles disponibles.
+								</p>
+							</div>
+							<div class="space-y-1">
+								@label.Label(label.Props{For: "fallback_language"}) { Langue de repli }
+								<select
+									id="fallback_language"
+									name="fallback_language"
+									class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+								>
+									for _, lang := range pd.Languages {
+										<option value={ lang } if pd.Config.FallbackLanguage == lang { selected }>{ languageLabel(lang) }</option>
+									}
+								</select>
+								<p class="text-xs text-muted-foreground">
+									Utilisée lorsque la détection n'est pas fiable (message trop court, langue non supportée).
+								</p>
 							</div>
 							<div class="space-y-1">
 								@label.Label(label.Props{For: "strategy"}) { Stratégie }
@@ -145,6 +166,7 @@ templ page(pd uiPageData) {
 							@checkboxRow("first_name_reclassify", "Reclassification des prénoms", "Reclasse les entités LOC d'un seul token en PER si le token est un prénom connu.", pd.Config.FirstNameReclassify)
 							@checkboxRow("merge", "Fusion des entités adjacentes", "Fusionne les entités adjacentes de même type (prénom + nom de famille).", pd.Config.Merge)
 							@checkboxRow("name_completion", "Complétion des noms", "Complète les entités PER partielles avec le token de nom de famille adjacent.", pd.Config.NameCompletion)
+							@checkboxRow("inject_instruction", "Instruction de préservation des jetons", "Ajoute une instruction système (dans la langue détectée) demandant au LLM de recopier les jetons de substitution sans les modifier. Ignoré pour la stratégie « redact ».", pd.Config.InjectInstruction)
 						</div>
 					}
 				}

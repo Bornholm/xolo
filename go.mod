@@ -5,7 +5,7 @@ go 1.25.5
 require (
 	github.com/Oudwins/tailwind-merge-go v0.2.1
 	github.com/bornholm/genai v0.31.0
-	github.com/bornholm/go-anon v0.0.4
+	github.com/bornholm/go-anon v0.0.6
 	github.com/bornholm/go-fuzzy v0.0.0-20250815131223-76b121e8632d
 	github.com/bornholm/go-x v0.0.0-20260127104343-c6737ea35324
 	github.com/caarlos0/env/v11 v11.3.1
@@ -33,6 +33,7 @@ require (
 
 require (
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
+	github.com/abadojack/whatlanggo v1.0.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/fatih/color v1.16.0 // indirect
