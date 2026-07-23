@@ -4,6 +4,7 @@ go 1.25.5
 
 require (
 	github.com/Oudwins/tailwind-merge-go v0.2.1
+	github.com/Padiwa/go-safe v0.1.0
 	github.com/bornholm/genai v0.31.0
 	github.com/bornholm/go-anon v0.0.6
 	github.com/bornholm/go-fuzzy v0.0.0-20250815131223-76b121e8632d
@@ -90,3 +91,5 @@ require (
 // replace github.com/bornholm/go-fuzzy => ../go-fuzzy
 
 // replace github.com/bornholm/go-anon => ../go-anon
+
+// replace github.com/Padiwa/go-safe => ../go-safe
