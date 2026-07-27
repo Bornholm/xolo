@@ -1,0 +1,239 @@
+package main
+
+import (
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/label"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/textarea"
+)
+
+templ page(pd uiPageData) {
+	<!DOCTYPE html>
+	<html class="dark">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<base href={ pd.BasePath }/>
+			<link rel="stylesheet" href="/assets/templui.css"/>
+		</head>
+		<body class="bg-background text-foreground min-h-screen p-4 space-y-4">
+			<h1 class="text-lg font-semibold">Classification safety</h1>
+			<p class="text-sm text-muted-foreground">
+				Bloque les requêtes LLM dont le contenu est classé comme sensible par un classifieur
+				go-safe (modèle <code>safety-fr</code> par défaut, FastText français embarqué).
+			</p>
+
+			if pd.Success {
+				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
+					@alert.Description() {
+						Configuration sauvegardée avec succès.
+					}
+				}
+			}
+			if pd.Error != "" {
+				@alert.Alert(alert.Props{Variant: alert.VariantDestructive}) {
+					@alert.Description() {
+						{ pd.Error }
+					}
+				}
+			}
+
+			@card.Card() {
+				@card.Header() {
+					@card.Title() { Modèles disponibles }
+				}
+				@card.Content() {
+					if len(pd.ModelStatus) == 0 {
+						<p class="text-sm text-muted-foreground italic">
+							Impossible de lister les modèles disponibles (pas de connexion réseau ou cache vide).
+						</p>
+					} else {
+						<div class="flex flex-wrap gap-2">
+							for _, ms := range pd.ModelStatus {
+								@modelStatusBadge(ms)
+							}
+						</div>
+						<p class="text-xs text-muted-foreground mt-2">
+							Les modèles non encore en cache seront téléchargés automatiquement lors du premier appel.
+						</p>
+					}
+				}
+			}
+
+			<form method="POST" action="api/config" class="space-y-4">
+				@card.Card() {
+					@card.Header() {
+						@card.Title() { Modèle et langue }
+					}
+					@card.Content() {
+						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+							<div class="space-y-1">
+								@label.Label(label.Props{For: "model"}) { Modèle }
+								<select
+									id="model"
+									name="model"
+									class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+								>
+									<option value="safety-fr" if pd.Config.Model == "safety-fr" { selected }>safety-fr (français)</option>
+									<option value="auto" if pd.Config.Model == "auto" { selected }>auto (détection de langue)</option>
+								</select>
+							</div>
+							<div class="space-y-1">
+								@label.Label(label.Props{For: "language"}) { Langue de fallback }
+								<select
+									id="language"
+									name="language"
+									class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+								>
+									<option value="fr" if pd.Config.Language == "fr" { selected }>Français (fr)</option>
+									<option value="en" if pd.Config.Language == "en" { selected }>English (en)</option>
+									<option value="auto" if pd.Config.Language == "auto" { selected }>auto</option>
+								</select>
+							</div>
+						</div>
+					}
+				}
+
+				@card.Card() {
+					@card.Header() {
+						@card.Title() { Seuil et labels }
+					}
+					@card.Content() {
+						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+							<div class="space-y-1">
+								@label.Label(label.Props{For: "threshold"}) { Seuil de confiance (0.0–1.0) }
+								@input.Input(input.Props{
+									ID:          "threshold",
+									Name:        "threshold",
+									Type:        "number",
+									Value:       formatFloat(pd.Config.Threshold),
+									Placeholder: "0.5",
+									Attributes:  templ.Attributes{"step": "0.05", "min": "0", "max": "1"},
+								})
+							</div>
+							<div class="space-y-1">
+								@label.Label(label.Props{For: "labels_to_block"}) { Labels bloquants (séparés par des virgules) }
+								@input.Input(input.Props{
+									ID:          "labels_to_block",
+									Name:        "labels_to_block",
+									Value:       joinLabels(pd.Config.LabelsToBlock),
+									Placeholder: "insecure,jailbreak",
+								})
+							</div>
+						</div>
+					}
+				}
+
+				@card.Card() {
+					@card.Header() {
+						@card.Title() { Stockage des modèles }
+					}
+					@card.Content() {
+						<div class="space-y-3">
+							<div class="space-y-1">
+								@label.Label(label.Props{For: "cache_dir"}) { Répertoire de cache }
+								@input.Input(input.Props{
+									ID:          "cache_dir",
+									Name:        "cache_dir",
+									Value:       pd.Config.CacheDir,
+									Placeholder: "Défaut : répertoire cache système",
+								})
+							</div>
+							<div class="space-y-1">
+								@label.Label(label.Props{For: "manifest_url"}) { URL du manifest }
+								@input.Input(input.Props{
+									ID:          "manifest_url",
+									Name:        "manifest_url",
+									Value:       pd.Config.ManifestURL,
+									Placeholder: "Défaut : dépôt officiel go-safe",
+								})
+							</div>
+							@checkboxRow("offline", "Mode hors-ligne", "Désactive les téléchargements réseau. Nécessite des modèles déjà en cache.", pd.Config.Offline)
+						</div>
+					}
+				}
+
+				@card.Card() {
+					@card.Header() {
+						@card.Title() { Mode dégradé }
+					}
+					@card.Content() {
+						<div class="space-y-1">
+							@label.Label(label.Props{For: "failure_mode"}) { Comportement si le modèle ne peut pas être chargé }
+							<select
+								id="failure_mode"
+								name="failure_mode"
+								class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+							>
+								<option value="allow" if pd.Config.FailureMode == "allow" { selected }>Autoriser (fail-open)</option>
+								<option value="block" if pd.Config.FailureMode == "block" { selected }>Bloquer (fail-closed)</option>
+							</select>
+						</div>
+					}
+				}
+
+				@card.Card() {
+					@card.Header() {
+						@card.Title() { Message de rejet }
+					}
+					@card.Content() {
+						<div class="space-y-2">
+							@label.Label(label.Props{For: "rejection_message"}) { Message personnalisé renvoyé au client en cas de blocage }
+							@textarea.Textarea(textarea.Props{
+								ID:          "rejection_message",
+								Name:        "rejection_message",
+								Value:       pd.Config.RejectionMessage,
+								Placeholder: "Ex: 🚫 Demande refusée : « {label} » (confiance {score}).",
+								Rows:        3,
+							})
+							<p class="text-xs text-muted-foreground">
+								Placeholders supportés :
+								<code>{`{`}label{`}`}</code> (label détecté),
+								<code>{`{`}score{`}`}</code> (confiance 0.0–1.0),
+								<code>{`{`}threshold{`}`}</code> (seuil configuré).
+								Laisser vide pour utiliser le message par défaut localisé.
+							</p>
+						</div>
+					}
+				}
+
+				<div class="flex justify-end">
+					@button.Button(button.Props{Type: button.TypeSubmit}) {
+						Sauvegarder
+					}
+				</div>
+			</form>
+		</body>
+	</html>
+}
+
+templ modelStatusBadge(ms modelStatusEntry) {
+	if ms.Cached {
+		@badge.Badge(badge.Props{}) {
+			✓ { ms.Name }
+		}
+	} else {
+		@badge.Badge(badge.Props{Variant: badge.VariantOutline}) {
+			○ { ms.Name }
+		}
+	}
+}
+
+templ checkboxRow(name, title, description string, checked bool) {
+	<div class="flex items-start gap-3">
+		<input
+			type="checkbox"
+			id={ name }
+			name={ name }
+			class="mt-0.5 h-4 w-4 rounded border border-input"
+			if checked { checked }
+		/>
+		<div class="space-y-0.5">
+			@label.Label(label.Props{For: name}) { { title } }
+			<p class="text-xs text-muted-foreground">{ description }</p>
+		</div>
+	</div>
+}
