@@ -115,6 +115,30 @@ const configSchemaJSON = `{
       "title": "Instruction de préservation des jetons",
       "description": "Ajoute une instruction système demandant au LLM de recopier les jetons de substitution (ex: [PERSON_1]) sans les modifier. Ignoré pour la stratégie 'redact'.",
       "default": true
+    },
+    "verification": {
+      "type": "boolean",
+      "title": "Observer les fuites (sans bloquer)",
+      "description": "Mesure les fuites de PII résiduelles après anonymisation sans bloquer la requête. Toute fuite est émise comme événement.",
+      "default": true
+    },
+    "verification_strict": {
+      "type": "boolean",
+      "title": "Mode strict — bloque les requêtes sur fuite",
+      "description": "Toute fuite détectée provoque l'échec de l'anonymisation (fail-closed).",
+      "default": false
+    },
+    "verification_on_leak": {
+      "type": "string",
+      "title": "Comportement sur fuite (mode strict)",
+      "description": "allow = passe-plat, événement sensible-data.leak émis. block = refus de la requête.",
+      "default": "allow",
+      "enum": ["allow", "block"]
+    },
+    "hash_scope": {
+      "type": "string",
+      "title": "Périmètre HMAC (stratégie hash)",
+      "description": "Compartimente les pseudonymes HMAC. Vide = partage entre toutes les requêtes."
     }
   }
 }`
@@ -140,6 +164,22 @@ type Config struct {
 	BuiltinRegexPatterns  bool                `json:"builtin_regex_patterns"`
 	BuiltinSecretPatterns bool                `json:"builtin_secret_patterns"`
 	InjectInstruction     bool                `json:"inject_instruction"`
+
+	// Vérification de la sortie (go-anon v0.1+)
+	// Verification active WithVerification : toute fuite résiduelle est
+	// observée et émise comme événement, sans bloquer.
+	Verification bool `json:"verification"`
+	// VerificationStrict active WithStrictVerification : une fuite fait
+	// échouer Anonymize avec *VerificationError.
+	VerificationStrict bool `json:"verification_strict"`
+	// VerificationOnLeak pilote le comportement du plugin quand le mode strict
+	// détecte une fuite : "allow" passe-plat, "block" refuse la requête.
+	// Valeurs autorisées : "allow", "block". Défaut : "allow".
+	VerificationOnLeak string `json:"verification_on_leak"`
+
+	// HashScope compartimente les pseudonymes HMAC (transmis à WithHashScope).
+	// Vide = scope partagé entre toutes les requêtes de l'org.
+	HashScope string `json:"hash_scope"`
 }
 
 func parseConfig(configJSON string) (Config, error) {
@@ -159,6 +199,14 @@ func parseConfig(configJSON string) (Config, error) {
 	if cfg.Strategy == "" {
 		cfg.Strategy = "tag"
 	}
+	if cfg.VerificationOnLeak == "" {
+		cfg.VerificationOnLeak = "allow"
+	}
+	switch cfg.VerificationOnLeak {
+	case "allow", "block":
+	default:
+		return Config{}, fmt.Errorf("verification_on_leak invalide : %q (attendu : allow|block)", cfg.VerificationOnLeak)
+	}
 	return cfg, nil
 }
 
@@ -171,6 +219,8 @@ func defaultConfig() Config {
 		BuiltinRegexPatterns:  true,
 		BuiltinSecretPatterns: true,
 		InjectInstruction:     true,
+		Verification:          true,
+		VerificationOnLeak:    "allow",
 	}
 }
 

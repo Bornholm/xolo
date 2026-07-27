@@ -29,3 +29,16 @@ func contextWithHostClient(ctx context.Context, client HostClient) context.Conte
 func contextWithPluginName(ctx context.Context, name string) context.Context {
 	return context.WithValue(ctx, pluginNameKey, name)
 }
+
+// ContextWithHostClientForTest injecte un HostClient dans le contexte.
+// Réservé aux tests des plugins (le serveur de production injecte le client
+// via ServeWithUI).
+func ContextWithHostClientForTest(ctx context.Context, client HostClient) context.Context {
+	return contextWithHostClient(ctx, client)
+}
+
+// ContextWithPluginNameForTest injecte un nom de plugin dans le contexte.
+// Réservé aux tests des plugins.
+func ContextWithPluginNameForTest(ctx context.Context, name string) context.Context {
+	return contextWithPluginName(ctx, name)
+}

@@ -25,9 +25,10 @@ type pseudoState struct {
 func TestPipeline_PseudonymizerAnonymizationRoundTrip(t *testing.T) {
 	const userMessage = "Contactez-moi à jean.dupont@example.com pour plus d'infos."
 
-	// Precompute the placeholder go-anon will assign to the email address, so
-	// the fake LLM response can reuse it as if it had received the
-	// anonymized prompt.
+	// precompute the placeholder so the fake LLM response can reuse it. Since
+	// each Anonymize call generates a new nonce per session, we reuse the same
+	// probe session both for the probe and for the real Anonymize call below,
+	// so the placeholder is byte-identical between the two.
 	probeSession := anonymizer.NewSession()
 	if _, err := pipelinetest.NewRegexAnonymizer().Anonymize(userMessage, anonymizer.WithSession(probeSession)); err != nil {
 		t.Fatalf("probe anonymize failed: %v", err)
@@ -35,6 +36,7 @@ func TestPipeline_PseudonymizerAnonymizationRoundTrip(t *testing.T) {
 	var placeholder string
 	for ph := range probeSession.Mapping {
 		placeholder = ph
+		break
 	}
 	if placeholder == "" {
 		t.Fatal("expected the probe anonymization to detect the email address")
@@ -48,7 +50,9 @@ func TestPipeline_PseudonymizerAnonymizationRoundTrip(t *testing.T) {
 			}
 
 			anon := pipelinetest.NewRegexAnonymizer()
-			session := anonymizer.NewSession()
+			// Reuse the probe session so its nonce carries over, making the
+			// placeholder byte-identical between probe and the real run.
+			session := probeSession
 
 			for _, msg := range messages {
 				content, ok := msg["content"].(string)

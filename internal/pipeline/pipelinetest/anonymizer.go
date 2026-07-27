@@ -14,8 +14,8 @@ type regexRecognizer struct {
 }
 
 func (r *regexRecognizer) Recognize(text string) ([]ner.Entity, error) {
-	filter := ner.RegexEntityFilter(func() string { return text }, r.patterns)
-	return filter(nil), nil
+	filter := ner.RegexEntityFilter(r.patterns)
+	return filter(text, nil), nil
 }
 
 // NewRegexAnonymizer creates a *goanon.Anonymizer that detects entities using

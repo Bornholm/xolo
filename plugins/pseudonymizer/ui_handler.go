@@ -21,6 +21,8 @@ func newUIHandler(p *Plugin) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /", ui.handleIndex)
 	mux.HandleFunc("POST /api/config", ui.handleSaveConfig)
+	mux.HandleFunc("POST /api/secrets/hash_key", ui.handleSaveHashKey)
+	mux.HandleFunc("POST /api/secrets/hash_key/delete", ui.handleDeleteHashKey)
 	return mux
 }
 
@@ -28,6 +30,7 @@ func newUIHandler(p *Plugin) http.Handler {
 type uiPageData struct {
 	BasePath    string
 	OrgID       string
+	NodeID      string
 	Config      Config
 	Success     bool
 	Error       string
@@ -35,6 +38,8 @@ type uiPageData struct {
 	// Languages lists the languages selectable in the form: those handled by
 	// the go-anon pipeline for which a model is published.
 	Languages []string
+	// HasHashKey indique si une clé HMAC est déjà stockée pour ce nœud.
+	HasHashKey bool
 }
 
 type modelStatusEntry struct {
@@ -71,6 +76,16 @@ func (ui *pluginUI) loadPageData(r *http.Request) (uiPageData, error) {
 		BasePath: basePath,
 		OrgID:    orgID,
 		Config:   cfg,
+	}
+
+	pd.NodeID = r.Header.Get("X-Xolo-Node-Id")
+	if host != nil && orgID != "" && pd.NodeID != "" {
+		_, found, err := host.GetSecret(ctx, orgID, pluginName, pd.NodeID, secretKeyHashHMAC)
+		if err != nil {
+			slog.WarnContext(ctx, "pseudonymizer/ui: failed to check hash secret", slog.Any("error", err))
+		} else {
+			pd.HasHashKey = found
+		}
 	}
 
 	pd.ModelStatus, pd.Languages = ui.fetchModelStatus(ctx, cfg)
@@ -142,6 +157,59 @@ func (ui *pluginUI) handleSaveConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	http.Redirect(w, r, "/?saved=1", http.StatusFound)
+}
+
+func (ui *pluginUI) handleSaveHashKey(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	orgID := r.Header.Get("X-Xolo-Org-Id")
+	nodeID := r.Header.Get("X-Xolo-Node-Id")
+	host := pluginsdk.HostClientFromContext(ctx)
+	pluginName := pluginsdk.PluginNameFromContext(ctx)
+
+	if host == nil || orgID == "" {
+		http.Error(w, "missing host or org context", http.StatusBadRequest)
+		return
+	}
+	if nodeID == "" {
+		http.Error(w, "missing node context", http.StatusBadRequest)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	value := r.FormValue("hash_key")
+	if value == "" {
+		http.Error(w, "hash_key vide", http.StatusBadRequest)
+		return
+	}
+	if _, err := goanon.ParseHashKey(value); err != nil {
+		http.Error(w, "clé invalide : "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := host.SetSecret(ctx, orgID, pluginName, nodeID, secretKeyHashHMAC, value); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/?saved=1", http.StatusFound)
+}
+
+func (ui *pluginUI) handleDeleteHashKey(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	orgID := r.Header.Get("X-Xolo-Org-Id")
+	nodeID := r.Header.Get("X-Xolo-Node-Id")
+	host := pluginsdk.HostClientFromContext(ctx)
+	pluginName := pluginsdk.PluginNameFromContext(ctx)
+
+	if host == nil || orgID == "" || nodeID == "" {
+		http.Error(w, "missing host, org or node context", http.StatusBadRequest)
+		return
+	}
+	if err := host.DeleteSecret(ctx, orgID, pluginName, nodeID, secretKeyHashHMAC); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	http.Redirect(w, r, "/?saved=1", http.StatusFound)
 }
 

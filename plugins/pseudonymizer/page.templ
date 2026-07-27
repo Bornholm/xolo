@@ -154,11 +154,24 @@ templ page(pd uiPageData) {
 					}
 				}
 
-				<!-- Options -->
-				@card.Card() {
-					@card.Header() {
-						@card.Title() { Options }
-					}
+			<!-- Vérification -->
+			@card.Card() {
+				@card.Header() {
+					@card.Title() { Vérification de la sortie }
+				}
+				@card.Content() {
+					<div class="space-y-3">
+						@checkboxRow("verification", "Observer les fuites (sans bloquer)", "Mesure les fuites de PII résiduelles sans bloquer la requête. Toute fuite est émise comme événement.", pd.Config.Verification)
+						@checkboxRow("verification_strict", "Mode strict — bloque les requêtes sur fuite", "Toute fuite détectée provoque l'échec de l'anonymisation (fail-closed).", pd.Config.VerificationStrict)
+					</div>
+				}
+			}
+
+			<!-- Options -->
+			@card.Card() {
+				@card.Header() {
+					@card.Title() { Options }
+				}
 					@card.Content() {
 						<div class="space-y-3">
 							@checkboxRow("builtin_regex_patterns", "Patterns regex intégrés", "Détecte EMAIL, IPV4/6, IBAN, SIRET, SIREN, PHONE automatiquement.", pd.Config.BuiltinRegexPatterns)
@@ -208,6 +221,51 @@ templ page(pd uiPageData) {
 					}
 				</div>
 			</form>
+
+			<!-- Sécurité -->
+			@card.Card() {
+				@card.Header() {
+					@card.Title() { Clé HMAC (stratégie hash) }
+				}
+				@card.Content() {
+					if pd.NodeID == "" {
+						<p class="text-sm text-muted-foreground italic">
+							Contexte de nœud absent — la clé HMAC ne peut pas être gérée depuis cette UI.
+						</p>
+					} else {
+						<form method="POST" action="/api/secrets/hash_key" class="space-y-3">
+							<div class="space-y-1">
+								@label.Label(label.Props{For: "hash_key"}) { Clé HMAC }
+								@input.Input(input.Props{
+									ID:          "hash_key",
+									Name:        "hash_key",
+									Type:        input.TypePassword,
+									Placeholder: hashKeyPlaceholder(pd.HasHashKey),
+								})
+								<p class="text-xs text-muted-foreground">
+									if pd.HasHashKey {
+										Une clé est déjà configurée pour ce nœud. Laisser vide pour la conserver.
+									} else {
+										Hex ou base64, ≥ 32 octets. Stockée séparément de la configuration.
+									}
+								</p>
+							</div>
+							<div class="flex justify-end">
+								@button.Button(button.Props{Type: button.TypeSubmit}) {
+									Enregistrer la clé
+								}
+							</div>
+						</form>
+						if pd.HasHashKey {
+							<form method="POST" action="/api/secrets/hash_key/delete" class="flex justify-end">
+								@button.Button(button.Props{Variant: button.VariantOutline, Type: button.TypeSubmit}) {
+									Supprimer la clé
+								}
+							</form>
+						}
+					}
+				}
+			}
 		</body>
 	</html>
 }

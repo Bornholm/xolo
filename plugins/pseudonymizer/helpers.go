@@ -37,3 +37,12 @@ func formatInt(n int) string {
 	}
 	return fmt.Sprintf("%d", n)
 }
+
+// hashKeyPlaceholder returns the input placeholder for the HMAC key field,
+// showing dots when a key is already configured.
+func hashKeyPlaceholder(hasValue bool) string {
+	if hasValue {
+		return "••••••••"
+	}
+	return ""
+}

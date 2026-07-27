@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -182,6 +183,7 @@ func (p *Plugin) PreRequest(ctx context.Context, in *proto.PreRequestInput) (*pr
 	// Anonymize all text content using a shared session for consistent numbering.
 	// Non-anonymizable attachments (documents, files…) are removed and tracked.
 	session := anonymizer.NewSession()
+	anonymOpts, _ := buildAnonymizeOptions(ctx, cfg, in.GetCtx(), p.getHostClient())
 	var removedParts []removedPart
 
 	filtered := make([]map[string]any, 0, len(messages))
@@ -194,8 +196,11 @@ func (p *Plugin) PreRequest(ctx context.Context, in *proto.PreRequestInput) (*pr
 		}
 		switch c := content.(type) {
 		case string:
-			result, err := anon.Anonymize(c, anonymizer.WithSession(session))
+			result, err := anon.Anonymize(c, append(anonymOpts, anonymizer.WithSession(session))...)
 			if err != nil {
+				if out := handleVerificationError(in, err, cfg, p.getHostClient()); out != nil {
+					return out, nil
+				}
 				slog.WarnContext(ctx, "pseudonymizer: failed to anonymize string content", slog.Any("error", err))
 			} else {
 				messages[i]["content"] = result.Text
@@ -213,8 +218,11 @@ func (p *Plugin) PreRequest(ctx context.Context, in *proto.PreRequestInput) (*pr
 				switch {
 				case partType == "text":
 					text, _ := partMap["text"].(string)
-					result, err := anon.Anonymize(text, anonymizer.WithSession(session))
+					result, err := anon.Anonymize(text, append(anonymOpts, anonymizer.WithSession(session))...)
 					if err != nil {
+						if out := handleVerificationError(in, err, cfg, p.getHostClient()); out != nil {
+							return out, nil
+						}
 						slog.WarnContext(ctx, "pseudonymizer: failed to anonymize text part", slog.Any("error", err))
 						kept = append(kept, part)
 					} else {
@@ -419,6 +427,52 @@ func buildInstructionText(mapping map[string]string, language string) string {
 			"les scinder, ni en inventer de nouveaux.",
 		examples,
 	)
+}
+
+// handleVerificationError convertit une erreur d'anonymisation en décision
+// plugin. Si l'erreur n'est pas une *VerificationError, retourne nil (à
+// traiter comme une autre erreur par l'appelant).
+func handleVerificationError(in *proto.PreRequestInput, err error, cfg Config, host pluginsdk.HostClient) *proto.PreRequestOutput {
+	var verr *anonymizer.VerificationError
+	if !errors.As(err, &verr) {
+		return nil
+	}
+	emitLeakEvent(in, verr, host)
+
+	if cfg.VerificationOnLeak == "block" {
+		return &proto.PreRequestOutput{Allowed: false}
+	}
+	return &proto.PreRequestOutput{Allowed: true}
+}
+
+// emitLeakEvent publie un événement décrivant la fuite détectée. Le rapport
+// est sérialisé sans texte source (offsets et types seulement).
+func emitLeakEvent(in *proto.PreRequestInput, verr *anonymizer.VerificationError, host pluginsdk.HostClient) {
+	if host == nil {
+		return
+	}
+	counts := verr.Report.CountByKind()
+	attrs := map[string]string{
+		"leak_count": strconv.Itoa(len(verr.Report.Leaks)),
+	}
+	for k, n := range counts {
+		attrs["leak_"+k.String()] = strconv.Itoa(n)
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := host.EmitEvent(ctx, pluginsdk.Event{
+			PluginName: "pseudonymizer",
+			OrgID:      in.GetCtx().GetOrgId(),
+			UserID:     in.GetCtx().GetUserId(),
+			Type:       "sensitive-data.leak",
+			Severity:   "error",
+			Message:    fmt.Sprintf("Fuite(s) PII détectée(s) après anonymisation : %d", len(verr.Report.Leaks)),
+			Attributes: attrs,
+		}); err != nil {
+			slog.Warn("pseudonymizer: could not emit leak event", slog.Any("error", err))
+		}
+	}()
 }
 
 // pluginState is the opaque blob stored in node_state between PreRequest and PostResponse.

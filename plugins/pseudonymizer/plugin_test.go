@@ -1,8 +1,15 @@
 package main
 
 import (
+	"context"
 	"strings"
+	"sync"
 	"testing"
+	"time"
+
+	goanon "github.com/bornholm/go-anon"
+	"github.com/bornholm/xolo/pkg/pluginsdk"
+	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
 )
 
 func TestInjectPlaceholderInstruction_NewSystemMessage(t *testing.T) {
@@ -91,5 +98,104 @@ func TestInjectPlaceholderInstruction_Disabled(t *testing.T) {
 
 	if len(got) != 1 {
 		t.Fatalf("len(messages) = %d, want 1 (unchanged)", len(got))
+	}
+}
+
+type captureHost struct {
+	pluginsdk.HostClient
+	mu    sync.Mutex
+	event pluginsdk.Event
+}
+
+func (c *captureHost) EmitEvent(_ context.Context, e pluginsdk.Event) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.event = e
+	return nil
+}
+
+func (c *captureHost) waitForEvent(t *testing.T) pluginsdk.Event {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		c.mu.Lock()
+		got := c.event
+		c.mu.Unlock()
+		if got.Type != "" {
+			return got
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.event
+}
+
+func TestHandleVerificationError_Allow(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.VerificationStrict = true
+	cfg.VerificationOnLeak = "allow"
+
+	verr := &goanon.VerificationError{
+		Report: &goanon.VerificationReport{
+			Leaks: []goanon.Leak{{Kind: goanon.LeakRegexHit, Type: goanon.TypeEMAIL, Start: 0, End: 10}},
+		},
+	}
+	host := &captureHost{}
+
+	out := handleVerificationError(&proto.PreRequestInput{}, verr, cfg, host)
+
+	if out == nil {
+		t.Fatalf("expected non-nil output")
+	}
+	if !out.Allowed {
+		t.Errorf("expected Allowed=true (allow), got false")
+	}
+	got := host.waitForEvent(t)
+	if got.Type != "sensitive-data.leak" {
+		t.Errorf("expected event type sensitive-data.leak, got %q", got.Type)
+	}
+	if got.Severity != "error" {
+		t.Errorf("expected severity error, got %q", got.Severity)
+	}
+}
+
+func TestHandleVerificationError_Block(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.VerificationStrict = true
+	cfg.VerificationOnLeak = "block"
+
+	verr := &goanon.VerificationError{
+		Report: &goanon.VerificationReport{
+			Leaks: []goanon.Leak{{Kind: goanon.LeakKnownEntity, Type: goanon.TypePER, Start: 5, End: 15}},
+		},
+	}
+	host := &captureHost{}
+
+	out := handleVerificationError(&proto.PreRequestInput{}, verr, cfg, host)
+
+	if out == nil {
+		t.Fatalf("expected non-nil output")
+	}
+	if out.Allowed {
+		t.Errorf("expected Allowed=false (block), got true")
+	}
+	got := host.waitForEvent(t)
+	if got.Type != "sensitive-data.leak" {
+		t.Errorf("expected event to be emitted even when blocking, got type %q", got.Type)
+	}
+}
+
+func TestHandleVerificationError_NonVerificationError(t *testing.T) {
+	cfg := defaultConfig()
+	host := &captureHost{}
+
+	out := handleVerificationError(&proto.PreRequestInput{}, context.Canceled, cfg, host)
+
+	if out != nil {
+		t.Errorf("expected nil output for non-VerificationError, got %+v", out)
+	}
+	if host.event.Type != "" {
+		t.Errorf("expected no event emitted, got %q", host.event.Type)
 	}
 }
