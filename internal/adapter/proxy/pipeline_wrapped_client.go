@@ -125,6 +125,12 @@ func (c *PipelineWrappedClient) Embeddings(ctx context.Context, inputs []string,
 	return c.inner.Embeddings(ctx, inputs, funcs...)
 }
 
+// Transcription is passed through unchanged: the pipeline's backward pass
+// operates on chat completion content only.
+func (c *PipelineWrappedClient) Transcription(ctx context.Context, audio []byte, funcs ...llm.TranscriptionOptionFunc) (llm.TranscriptionResponse, error) {
+	return c.inner.Transcription(ctx, audio, funcs...)
+}
+
 func (c *PipelineWrappedClient) runBackward(ctx context.Context, content string, tokens *pipeline.TokensUsed, hadError bool) {
 	if _, err := c.engine.RunBackward(ctx, c.forwardExec, content, tokens, hadError); err != nil {
 		slog.WarnContext(ctx, "pipeline backward pass failed", slog.Any("error", err))

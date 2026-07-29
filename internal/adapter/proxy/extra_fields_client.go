@@ -44,4 +44,10 @@ func (c *extraFieldsClient) Embeddings(ctx context.Context, inputs []string, fun
 	return c.inner.Embeddings(ctx, inputs, funcs...)
 }
 
+// Transcription is passed through unchanged: the configured extra fields target
+// chat completions only.
+func (c *extraFieldsClient) Transcription(ctx context.Context, audio []byte, funcs ...llm.TranscriptionOptionFunc) (llm.TranscriptionResponse, error) {
+	return c.inner.Transcription(ctx, audio, funcs...)
+}
+
 var _ llm.Client = (*extraFieldsClient)(nil)

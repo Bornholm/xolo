@@ -37,4 +37,8 @@ func (c *dummyClient) Embeddings(_ context.Context, _ []string, _ ...llm.Embeddi
 	return nil, errors.New(fmt.Sprintf("dummy client: embeddings not supported"))
 }
 
+func (c *dummyClient) Transcription(_ context.Context, _ []byte, _ ...llm.TranscriptionOptionFunc) (llm.TranscriptionResponse, error) {
+	return nil, errors.New("dummy client: transcription not supported")
+}
+
 var _ llm.Client = &dummyClient{}

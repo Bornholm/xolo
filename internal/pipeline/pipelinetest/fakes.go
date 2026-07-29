@@ -38,6 +38,10 @@ func (c *LLMClient) Embeddings(_ context.Context, _ []string, _ ...llm.Embedding
 	return nil, nil
 }
 
+func (c *LLMClient) Transcription(_ context.Context, _ []byte, _ ...llm.TranscriptionOptionFunc) (llm.TranscriptionResponse, error) {
+	return nil, nil
+}
+
 var _ llm.Client = (*LLMClient)(nil)
 
 type chatResponse struct{ content string }

@@ -63,6 +63,10 @@ func (c *multiChunkClient) Embeddings(_ context.Context, _ []string, _ ...llm.Em
 	return nil, nil
 }
 
+func (c *multiChunkClient) Transcription(_ context.Context, _ []byte, _ ...llm.TranscriptionOptionFunc) (llm.TranscriptionResponse, error) {
+	return nil, nil
+}
+
 var _ llm.Client = (*multiChunkClient)(nil)
 
 func collectContent(t *testing.T, ch <-chan llm.StreamChunk) string {

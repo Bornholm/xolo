@@ -59,6 +59,10 @@ func (c *scriptedClient) Embeddings(_ context.Context, _ []string, _ ...llm.Embe
 	return nil, nil
 }
 
+func (c *scriptedClient) Transcription(_ context.Context, _ []byte, _ ...llm.TranscriptionOptionFunc) (llm.TranscriptionResponse, error) {
+	return nil, nil
+}
+
 func toString(v any) string {
 	if s, ok := v.(string); ok {
 		return s

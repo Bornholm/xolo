@@ -204,6 +204,12 @@ func (c *ToolLoopClient) Embeddings(ctx context.Context, inputs []string, funcs 
 	return c.inner.Embeddings(ctx, inputs, funcs...)
 }
 
+// Transcription implements llm.Client. The tool loop only applies to chat
+// completions, so transcriptions are passed through unchanged.
+func (c *ToolLoopClient) Transcription(ctx context.Context, audio []byte, funcs ...llm.TranscriptionOptionFunc) (llm.TranscriptionResponse, error) {
+	return c.inner.Transcription(ctx, audio, funcs...)
+}
+
 var _ llm.Client = (*ToolLoopClient)(nil)
 
 // bufferStreamTurn drains sourceCh, accumulating tool call deltas (by index)

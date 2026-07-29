@@ -46,5 +46,10 @@ func (c *DummyLLMClient) Embeddings(_ context.Context, _ []string, _ ...llm.Embe
 	return nil, errors.New(fmt.Sprintf("dummy-model (%s): embeddings not supported", c.model))
 }
 
+// Transcription implements llm.TranscriptionClient. Dummy clients do not support transcription.
+func (c *DummyLLMClient) Transcription(_ context.Context, _ []byte, _ ...llm.TranscriptionOptionFunc) (llm.TranscriptionResponse, error) {
+	return nil, errors.New(fmt.Sprintf("dummy-model (%s): transcription not supported", c.model))
+}
+
 // Compile-time interface assertions.
 var _ llm.Client = &DummyLLMClient{}
