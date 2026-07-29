@@ -14,6 +14,8 @@ github.com/bornholm/genai v0.31.0 h1:nkMUtOxfXi1em0kWeMDHgUJASeQ+o8RIzBfzuAy41Qs
 github.com/bornholm/genai v0.31.0/go.mod h1:ajuzZJvHAhy2SOsjxVNI1WUZaYKvGfabRE9UnLWirr0=
 github.com/bornholm/genai v0.33.0 h1:MFZ3CuUuB4BH84MBiZuMzm0Bd6Chl2BxuDVfjjMw+DM=
 github.com/bornholm/genai v0.33.0/go.mod h1:ajuzZJvHAhy2SOsjxVNI1WUZaYKvGfabRE9UnLWirr0=
+github.com/bornholm/genai v0.33.1 h1:rrXzuBIytduy0edIsBH6/CiQV+iW0ZkxuvmZHBdFzI4=
+github.com/bornholm/genai v0.33.1/go.mod h1:ajuzZJvHAhy2SOsjxVNI1WUZaYKvGfabRE9UnLWirr0=
 github.com/bornholm/go-anon v0.1.1 h1:yeASvDWW79UF9R2kfIY9sB5Z+jzymij8o5YwXi6ar1k=
 github.com/bornholm/go-anon v0.1.1/go.mod h1:q9EiQH9IdPYxfcj3+Htua+WgR0Us4GIJ5uV5j3LZRRA=
 github.com/bornholm/go-fuzzy v0.0.0-20250815131223-76b121e8632d h1:IUrWuFur+t1DKOMt49Np0vzF/9WcX1A1H9kWpiyMhPA=
