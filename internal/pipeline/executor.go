@@ -72,6 +72,10 @@ type ForwardResult struct {
 	// reach the API client). Applied by the engine once the terminal model
 	// node has resolved a client.
 	ClientDecorator func(llm.Client) llm.Client
+	// NoResponseRewrite is set by a node that could rewrite the response in
+	// general, but knows it will not for this particular execution. It lets a
+	// streaming response be forwarded live instead of buffered.
+	NoResponseRewrite bool
 	// NestedExecutedNodes carries the ExecutedNodes of a nested pipeline run
 	// (virtual-model recursion or middleware chaining). The engine splices them
 	// into the parent execution so their backward (post-response) pass runs.
@@ -98,6 +102,23 @@ type NodeExecutor interface {
 	// reverse order. state is the NodeState returned by Forward for the same
 	// node in the same execution.
 	Backward(ctx context.Context, node model.PipelineNode, state []byte, responseContent string, tokens *TokensUsed, hadError bool) (*BackwardResult, error)
+}
+
+// ResponseModifier is implemented by executors whose Backward pass may replace
+// the response content. Executors that do not implement it are assumed to leave
+// the response untouched.
+//
+// This is what lets a streaming response be forwarded chunk by chunk instead of
+// being buffered until the LLM is done: buffering is only required when some
+// node might rewrite the text after the fact.
+type ResponseModifier interface {
+	// ModifiesResponse reports whether this node's Backward pass may return a
+	// ModifiedResponseContent. It must be conservative: return true when unsure.
+	//
+	// It answers for the node type as a whole. A node that can rewrite in
+	// general but knows it will not for the execution at hand should instead
+	// set ForwardResult.NoResponseRewrite, which the engine checks first.
+	ModifiesResponse(ctx context.Context, node model.PipelineNode) bool
 }
 
 // noopBackward is a helper that returns an empty BackwardResult without error.

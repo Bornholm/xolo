@@ -183,6 +183,14 @@ message PreRequestOutput {
   // outputs_json contains the values produced on output ports as a JSON object
   // {portName: value}. The pipeline engine stores these for downstream nodes.
   string outputs_json = 6;
+  // no_response_rewrite lets a POST_RESPONSE plugin tell the host that, for
+  // this particular execution, it will not rewrite the response content (e.g.
+  // the pseudonymizer found nothing to anonymize). The host can then forward a
+  // streaming response chunk by chunk instead of buffering it whole.
+  //
+  // The default (false) means "may rewrite", so plugins that ignore this field
+  // keep the buffered behaviour.
+  bool no_response_rewrite = 7;
 }
 
 message PostResponseInput {

@@ -44,6 +44,9 @@ type ForwardExecution struct {
 type ExecutedNode struct {
 	Node      model.PipelineNode
 	NodeState []byte
+	// NoResponseRewrite records that this node declared, during its forward
+	// pass, that it will not rewrite the response for this execution.
+	NoResponseRewrite bool
 }
 
 // RunForward executes the graph in topological order (forward pass).
@@ -101,7 +104,7 @@ func (e *Engine) RunForward(ctx context.Context, graph *model.PipelineGraph, ec 
 		// Splice the executed nodes of any nested pipeline before this node's own
 		// entry, so the backward pass covers them (in reverse) too.
 		executed = append(executed, result.NestedExecutedNodes...)
-		executed = append(executed, ExecutedNode{Node: *node, NodeState: result.NodeState})
+		executed = append(executed, ExecutedNode{Node: *node, NodeState: result.NodeState, NoResponseRewrite: result.NoResponseRewrite})
 
 		// Store output values in the value context.
 		for port, val := range result.OutputValues {
@@ -166,6 +169,41 @@ func (e *Engine) RunBackward(
 		}
 	}
 	return current, nil
+}
+
+// MayModifyResponse reports whether the backward pass of this execution could
+// rewrite the response content. It is false for the common case — no node
+// declares a POST_RESPONSE capability — which lets callers stream the response
+// straight through instead of buffering it to have the full text on hand.
+//
+// It is conservative by construction: any executor that does not implement
+// ResponseModifier counts as a potential modifier only if its Backward is not
+// known to be a no-op, so new node types default to the safe (buffered) path.
+func (e *Engine) MayModifyResponse(ctx context.Context, exec *ForwardExecution) bool {
+	if exec == nil {
+		return false
+	}
+	for _, en := range exec.ExecutedNodes {
+		// The node already told us during its forward pass that it will leave
+		// this response alone, which is more precise than what its type can say.
+		if en.NoResponseRewrite {
+			continue
+		}
+		ex, ok := e.registry.Get(en.Node.Type)
+		if !ok {
+			// Unknown type: RunBackward skips it entirely.
+			continue
+		}
+		rm, ok := ex.(ResponseModifier)
+		if !ok {
+			// No declared capability: assume it may rewrite the response.
+			return true
+		}
+		if rm.ModifiesResponse(ctx, en.Node) {
+			return true
+		}
+	}
+	return false
 }
 
 // RejectionError is returned when a pipeline node blocks the request.

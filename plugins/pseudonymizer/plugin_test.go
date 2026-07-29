@@ -199,3 +199,42 @@ func TestHandleVerificationError_NonVerificationError(t *testing.T) {
 		t.Errorf("expected no event emitted, got %q", host.event.Type)
 	}
 }
+
+// Every path that lets the request through without anonymizing stashes no
+// state, so PostResponse has nothing to restore. Saying so lets the host stream
+// the response instead of buffering it whole waiting for a rewrite that will
+// never come.
+func TestPassthroughOutput_DeclaresNoResponseRewrite(t *testing.T) {
+	out := passthroughOutput()
+
+	if !out.Allowed {
+		t.Error("passthrough output must allow the request")
+	}
+	if !out.NoResponseRewrite {
+		t.Error("a passthrough leaves the response untouched and must say so")
+	}
+	if len(out.NodeState) != 0 {
+		t.Errorf("passthrough must not stash state, got %d bytes", len(out.NodeState))
+	}
+}
+
+// A leak detected with the "allow" policy still passes through untouched.
+func TestHandleVerificationError_AllowDeclaresNoResponseRewrite(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.VerificationOnLeak = "allow"
+
+	verr := &goanon.VerificationError{
+		Report: &goanon.VerificationReport{
+			Leaks: []goanon.Leak{{Kind: goanon.LeakRegexHit, Type: goanon.TypeEMAIL, Start: 0, End: 10}},
+		},
+	}
+
+	out := handleVerificationError(&proto.PreRequestInput{}, verr, cfg, nil)
+
+	if out == nil {
+		t.Fatal("expected non-nil output")
+	}
+	if !out.NoResponseRewrite {
+		t.Error("the allow path rewrites nothing and must say so")
+	}
+}

@@ -159,8 +159,9 @@ func (e *PluginExecutor) forwardPreRequest(
 	}
 
 	result := &ForwardResult{
-		NodeState:    out.NodeState,
-		OutputValues: ParseOutputsJSON(out.OutputsJson),
+		NodeState:         out.NodeState,
+		OutputValues:      ParseOutputsJSON(out.OutputsJson),
+		NoResponseRewrite: out.NoResponseRewrite,
 	}
 	if result.OutputValues == nil {
 		result.OutputValues = make(map[string]interface{})
@@ -217,6 +218,22 @@ func (e *PluginExecutor) forwardResolveModel(
 		result.OutputValues["model_name"] = out.ResolvedProxyName
 	}
 	return result, nil
+}
+
+// ModifiesResponse reports whether the plugin backing this node declares the
+// POST_RESPONSE capability, which is the only way it can rewrite the response.
+// Plugins without it (or that cannot be resolved) leave the response alone, so
+// a streaming call can be forwarded live instead of buffered.
+func (e *PluginExecutor) ModifiesResponse(ctx context.Context, node model.PipelineNode) bool {
+	data, err := parsePluginNodeData(node)
+	if err != nil {
+		return false
+	}
+	_, desc, ok := e.provider.GetOrRestart(ctx, data.PluginName)
+	if !ok {
+		return false
+	}
+	return hasCapability(desc, proto.PluginDescriptor_POST_RESPONSE)
 }
 
 func (e *PluginExecutor) Backward(ctx context.Context, node model.PipelineNode, state []byte, responseContent string, tokens *TokensUsed, hadError bool) (*BackwardResult, error) {

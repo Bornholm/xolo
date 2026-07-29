@@ -115,11 +115,18 @@ func (p *Plugin) Describe(_ context.Context, _ *proto.DescribeRequest) (*proto.P
 	}, nil
 }
 
+// passthroughOutput lets the request through untouched. No state is stashed, so
+// PostResponse has nothing to restore: the host is told it can stream the
+// response live rather than buffer it.
+func passthroughOutput() *proto.PreRequestOutput {
+	return &proto.PreRequestOutput{Allowed: true, NoResponseRewrite: true}
+}
+
 func (p *Plugin) PreRequest(ctx context.Context, in *proto.PreRequestInput) (*proto.PreRequestOutput, error) {
 	cfg, err := parseConfig(in.GetCtx().GetConfigJson())
 	if err != nil {
 		slog.WarnContext(ctx, "pseudonymizer: config error, passing through", slog.Any("error", err))
-		return &proto.PreRequestOutput{Allowed: true}, nil
+		return passthroughOutput(), nil
 	}
 
 	// Resolve request body: prefer from input port, fall back to Model (full request body JSON).
@@ -141,7 +148,7 @@ func (p *Plugin) PreRequest(ctx context.Context, in *proto.PreRequestInput) (*pr
 	if requestJSON != "" {
 		if err := json.Unmarshal([]byte(requestJSON), &requestBody); err != nil {
 			slog.WarnContext(ctx, "pseudonymizer: failed to parse request body, passing through", slog.Any("error", err))
-			return &proto.PreRequestOutput{Allowed: true}, nil
+			return passthroughOutput(), nil
 		}
 	}
 
@@ -155,13 +162,13 @@ func (p *Plugin) PreRequest(ctx context.Context, in *proto.PreRequestInput) (*pr
 		}
 	}
 	if messagesJSON == "" {
-		return &proto.PreRequestOutput{Allowed: true}, nil
+		return passthroughOutput(), nil
 	}
 
 	var messages []map[string]any
 	if err := json.Unmarshal([]byte(messagesJSON), &messages); err != nil {
 		slog.WarnContext(ctx, "pseudonymizer: failed to parse messages, passing through", slog.Any("error", err))
-		return &proto.PreRequestOutput{Allowed: true}, nil
+		return passthroughOutput(), nil
 	}
 
 	// Resolve the language of the conversation (explicit config or automatic
@@ -170,7 +177,7 @@ func (p *Plugin) PreRequest(ctx context.Context, in *proto.PreRequestInput) (*pr
 	language, anon, err := p.resolveAnonymizer(ctx, cfg, messages)
 	if err != nil {
 		slog.WarnContext(ctx, "pseudonymizer: failed to initialize anonymizer, passing through", slog.Any("error", err))
-		return &proto.PreRequestOutput{Allowed: true}, nil
+		return passthroughOutput(), nil
 	}
 
 	slog.DebugContext(ctx, "pseudonymizer: anonymizing messages",
@@ -266,7 +273,7 @@ func (p *Plugin) PreRequest(ctx context.Context, in *proto.PreRequestInput) (*pr
 	modifiedMessagesJSON, err := json.Marshal(filtered)
 	if err != nil {
 		slog.WarnContext(ctx, "pseudonymizer: failed to marshal anonymized messages, passing through", slog.Any("error", err))
-		return &proto.PreRequestOutput{Allowed: true}, nil
+		return passthroughOutput(), nil
 	}
 
 	// Rebuild the full request body with filtered messages for the output port.
@@ -322,6 +329,10 @@ func (p *Plugin) PreRequest(ctx context.Context, in *proto.PreRequestInput) (*pr
 		ModifiedMessagesJson: string(modifiedMessagesJSON),
 		OutputsJson:          outputsJSON,
 		NodeState:            stateJSON,
+		// With nothing anonymized and no attachment removed, PostResponse has
+		// nothing to restore and returns the response untouched. Saying so lets
+		// the host stream the response live instead of buffering it whole.
+		NoResponseRewrite: len(session.Mapping) == 0 && len(removedParts) == 0,
 	}, nil
 }
 
@@ -442,7 +453,7 @@ func handleVerificationError(in *proto.PreRequestInput, err error, cfg Config, h
 	if cfg.VerificationOnLeak == "block" {
 		return &proto.PreRequestOutput{Allowed: false}
 	}
-	return &proto.PreRequestOutput{Allowed: true}
+	return passthroughOutput()
 }
 
 // emitLeakEvent publie un événement décrivant la fuite détectée. Le rapport

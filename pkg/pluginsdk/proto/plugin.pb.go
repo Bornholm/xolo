@@ -1585,9 +1585,17 @@ type PreRequestOutput struct {
 	NodeState []byte `protobuf:"bytes,5,opt,name=node_state,json=nodeState,proto3" json:"node_state,omitempty"`
 	// outputs_json contains the values produced on output ports as a JSON object
 	// {portName: value}. The pipeline engine stores these for downstream nodes.
-	OutputsJson   string `protobuf:"bytes,6,opt,name=outputs_json,json=outputsJson,proto3" json:"outputs_json,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	OutputsJson string `protobuf:"bytes,6,opt,name=outputs_json,json=outputsJson,proto3" json:"outputs_json,omitempty"`
+	// no_response_rewrite lets a POST_RESPONSE plugin tell the host that, for
+	// this particular execution, it will not rewrite the response content (e.g.
+	// the pseudonymizer found nothing to anonymize). The host can then forward a
+	// streaming response chunk by chunk instead of buffering it whole.
+	//
+	// The default (false) means "may rewrite", so plugins that ignore this field
+	// keep the buffered behaviour.
+	NoResponseRewrite bool `protobuf:"varint,7,opt,name=no_response_rewrite,json=noResponseRewrite,proto3" json:"no_response_rewrite,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *PreRequestOutput) Reset() {
@@ -1660,6 +1668,13 @@ func (x *PreRequestOutput) GetOutputsJson() string {
 		return x.OutputsJson
 	}
 	return ""
+}
+
+func (x *PreRequestOutput) GetNoResponseRewrite() bool {
+	if x != nil {
+		return x.NoResponseRewrite
+	}
+	return false
 }
 
 type PostResponseInput struct {
@@ -2456,7 +2471,7 @@ const file_pkg_pluginsdk_proto_plugin_proto_rawDesc = "" +
 	"\x05model\x18\x02 \x01(\tR\x05model\x12#\n" +
 	"\rmessages_json\x18\x03 \x01(\tR\fmessagesJson\x12\x1f\n" +
 	"\vinputs_json\x18\x04 \x01(\tR\n" +
-	"inputsJson\"\xf4\x01\n" +
+	"inputsJson\"\xa4\x02\n" +
 	"\x10PreRequestOutput\x12\x18\n" +
 	"\aallowed\x18\x01 \x01(\bR\aallowed\x12)\n" +
 	"\x10rejection_reason\x18\x02 \x01(\tR\x0frejectionReason\x12#\n" +
@@ -2464,7 +2479,8 @@ const file_pkg_pluginsdk_proto_plugin_proto_rawDesc = "" +
 	"\x16modified_messages_json\x18\x04 \x01(\tR\x14modifiedMessagesJson\x12\x1d\n" +
 	"\n" +
 	"node_state\x18\x05 \x01(\fR\tnodeState\x12!\n" +
-	"\foutputs_json\x18\x06 \x01(\tR\voutputsJson\"\x94\x02\n" +
+	"\foutputs_json\x18\x06 \x01(\tR\voutputsJson\x12.\n" +
+	"\x13no_response_rewrite\x18\a \x01(\bR\x11noResponseRewrite\"\x94\x02\n" +
 	"\x11PostResponseInput\x120\n" +
 	"\x03ctx\x18\x01 \x01(\v2\x1e.xolo.plugin.v1.RequestContextR\x03ctx\x12\x14\n" +
 	"\x05model\x18\x02 \x01(\tR\x05model\x12#\n" +

@@ -54,12 +54,23 @@ func (c *PipelineWrappedClient) ChatCompletion(ctx context.Context, funcs ...llm
 	return resp, nil
 }
 
-// ChatCompletionStream buffers the full streaming response, runs the backward
-// pass, then re-streams the (possibly modified) content.
+// ChatCompletionStream runs the pipeline's backward pass over the streamed
+// response.
+//
+// When no executed node can rewrite the response content, chunks are forwarded
+// to the caller as they arrive and the backward pass runs once the stream ends:
+// the client keeps a real token-by-token stream. Only when a node may rewrite
+// the text — a plugin with the POST_RESPONSE capability, e.g. the
+// pseudonymizer's de-anonymization step — is the stream buffered, since the
+// rewrite needs the whole text before anything can be emitted.
 func (c *PipelineWrappedClient) ChatCompletionStream(ctx context.Context, funcs ...llm.ChatCompletionOptionFunc) (<-chan llm.StreamChunk, error) {
 	sourceCh, err := c.inner.ChatCompletionStream(ctx, funcs...)
 	if err != nil {
 		return nil, err
+	}
+
+	if !c.engine.MayModifyResponse(ctx, c.forwardExec) {
+		return c.streamPassthrough(ctx, sourceCh), nil
 	}
 
 	outCh := make(chan llm.StreamChunk, 8)
@@ -118,6 +129,49 @@ func (c *PipelineWrappedClient) ChatCompletionStream(ctx context.Context, funcs 
 	}()
 
 	return outCh, nil
+}
+
+// streamPassthrough forwards every chunk as it arrives while accumulating the
+// content and token usage needed by the backward pass, which runs once the
+// source stream is exhausted. Nothing is held back, so the caller sees the
+// provider's own streaming cadence.
+func (c *PipelineWrappedClient) streamPassthrough(ctx context.Context, sourceCh <-chan llm.StreamChunk) <-chan llm.StreamChunk {
+	outCh := make(chan llm.StreamChunk, 8)
+
+	go func() {
+		defer close(outCh)
+
+		var buf bytes.Buffer
+		var lastTokens *pipeline.TokensUsed
+
+		for chunk := range sourceCh {
+			if d := chunk.Delta(); d != nil {
+				buf.WriteString(d.Content())
+			}
+			if u := chunk.Usage(); u != nil {
+				lastTokens = &pipeline.TokensUsed{
+					Prompt:     u.PromptTokens(),
+					Completion: u.CompletionTokens(),
+				}
+			}
+
+			select {
+			case outCh <- chunk:
+			case <-ctx.Done():
+				// The caller is gone. Still run the backward pass below so
+				// nodes that record state (usage, quotas…) see the partial
+				// response instead of nothing.
+				c.runBackward(context.WithoutCancel(ctx), buf.String(), lastTokens, true)
+				return
+			}
+		}
+
+		// The response was already delivered: a rewrite here would be ignored,
+		// which is exactly why this path was chosen.
+		c.runBackward(ctx, buf.String(), lastTokens, false)
+	}()
+
+	return outCh
 }
 
 // Embeddings is passed through unchanged.
