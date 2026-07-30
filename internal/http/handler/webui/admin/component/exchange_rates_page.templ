@@ -2,9 +2,10 @@ package component
 
 import (
 	"fmt"
+
 	"github.com/bornholm/xolo/internal/core/model"
 	commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
 )
@@ -16,55 +17,65 @@ type ExchangeRatesPageVModel struct {
 
 templ ExchangeRatesPage(vmodel ExchangeRatesPageVModel) {
 	@commonComp.AppLayout(vmodel.AppLayoutVModel, commonComp.WithTitle("Taux de change")) {
-		<div class="space-y-6">
-			<!-- Header -->
-			<div class="flex items-center gap-4">
-				@icon.RefreshCw(icon.Props{Class: "h-8 w-8"})
-				<div>
-					<h1 class="text-2xl font-semibold">Taux de change</h1>
-					<p class="text-sm text-muted-foreground">Données en cache, rafraîchies automatiquement</p>
-				</div>
+		<div class="max-w-4xl">
+			@commonComp.PageHeader(commonComp.PageHeaderProps{
+				Title:    "Taux de change",
+				Subtitle: "Données en cache, rafraîchies automatiquement. Elles convertissent les coûts des fournisseurs vers la devise de chaque organisation.",
+			})
+			<div class="mb-3.5">
+				@commonComp.InfoBanner(commonComp.ToneInfo, lastSyncMessage(vmodel.Rates)) {
+					<!-- TODO(rework-ux): le rafraîchissement est piloté par
+					ExchangeRateService.StartRefresher, sur une minuterie. Aucune
+					route ne le déclenche à la demande ; le bouton de la maquette
+					reste donc inerte (cf. lot 7 du plan). -->
+					@button.Button(button.Props{
+						Variant:  button.VariantOutline,
+						Size:     button.SizeSm,
+						Disabled: true,
+						Class:    "ml-auto gap-1.5 bg-card",
+					}) {
+						@icon.RefreshCw(icon.Props{Class: "size-3.5"})
+						Synchroniser
+					}
+				}
 			</div>
 			if len(vmodel.Rates) == 0 {
-				<div class="rounded-lg border border-border p-6 text-center">
-					<div class="flex flex-col items-center gap-2">
-						@icon.Info(icon.Props{Class: "h-8 w-8 text-muted-foreground"})
-						<p class="text-muted-foreground">Aucun taux de change en cache. Le rafraîchissement automatique peuplera cette table au démarrage.</p>
-					</div>
-				</div>
+				@commonComp.EmptyState(commonComp.EmptyStateProps{
+					Icon:        icon.RefreshCw,
+					Title:       "Aucun taux en cache",
+					Description: "Le rafraîchissement automatique peuplera cette table au prochain cycle. Tant qu'elle est vide, les coûts sont affichés dans la devise du fournisseur.",
+				})
 			} else {
-				@card.Card() {
-					@card.Content() {
-						@table.Table() {
-							@table.Header() {
-								@table.Head() {
-									De
-								}
-								@table.Head() {
-									Vers
-								}
-								@table.Head() {
-									Taux
-								}
-								@table.Head() {
-									Mis à jour le
-								}
+				@commonComp.Section() {
+					@table.Table() {
+						@table.Header() {
+							@table.Head() {
+								De
 							}
-							@table.Body() {
-								for _, rate := range vmodel.Rates {
-									@table.Row() {
-										@table.Cell() {
-											<span class="font-medium">{ rate.FromCurrency }</span>
-										}
-										@table.Cell() {
-											<span class="font-medium">{ rate.ToCurrency }</span>
-										}
-										@table.Cell() {
-											{ fmt.Sprintf("%.8g", rate.Rate) }
-										}
-										@table.Cell() {
-											<span class="text-muted-foreground">{ rate.FetchedAt.Format("02/01/2006 15:04:05") }</span>
-										}
+							@table.Head() {
+								Vers
+							}
+							@table.Head(table.HeadProps{Class: "text-right"}) {
+								Taux
+							}
+							@table.Head() {
+								Mis à jour le
+							}
+						}
+						@table.Body() {
+							for _, rate := range vmodel.Rates {
+								@table.Row() {
+									@table.Cell(table.CellProps{Class: "font-mono text-sm font-semibold"}) {
+										{ rate.FromCurrency }
+									}
+									@table.Cell(table.CellProps{Class: "font-mono text-sm font-semibold"}) {
+										{ rate.ToCurrency }
+									}
+									@table.Cell(table.CellProps{Class: "text-right text-sm"}) {
+										{ fmt.Sprintf("%.8g", rate.Rate) }
+									}
+									@table.Cell() {
+										@commonComp.Mono(rate.FetchedAt.Format("02/01/2006 15:04:05"))
 									}
 								}
 							}

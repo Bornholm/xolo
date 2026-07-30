@@ -82,23 +82,6 @@ func AssertUser(ctx context.Context, funcs ...authz.AssertFunc) bool {
 
 var User = httpCtx.User
 
-// WithUserVariant sets the page color scheme variant from the user's preferences,
-// matching the behavior of AppLayout. No-op if user is nil or has no preference set.
-func WithUserVariant(user model.User) PageOptionFunc {
-	return func(opts *PageOptions) {
-		if user == nil {
-			return
-		}
-		if darkMode, exists := user.Preferences().DarkMode(); exists {
-			if darkMode {
-				opts.Variant = VariantDark
-			} else {
-				opts.Variant = VariantLight
-			}
-		}
-	}
-}
-
 // HasPermissionInAnyOrg reports whether the current user holds perm in at least
 // one of their org memberships. Useful for cross-org features like personal VMs.
 func HasPermissionInAnyOrg(ctx context.Context, perm rbac.Permission) bool {

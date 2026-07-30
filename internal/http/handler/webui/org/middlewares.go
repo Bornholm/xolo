@@ -29,8 +29,6 @@ func (h *Handler) getMiddlewaresPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	mws, err := h.middlewareStore.ListMiddlewares(ctx, org.ID())
 	if err != nil {
 		slog.ErrorContext(ctx, "could not list middlewares", slog.Any("error", err))
@@ -44,16 +42,16 @@ func (h *Handler) getMiddlewaresPage(w http.ResponseWriter, r *http.Request) {
 		Success:     r.URL.Query().Get("success"),
 		Error:       r.URL.Query().Get("error"),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-middlewares",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-middlewares",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Middlewares", Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 
@@ -71,24 +69,22 @@ func (h *Handler) getNewMiddlewarePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	vmodel := component.MiddlewareFormVModel{
 		Org:     org,
 		IsNew:   true,
 		Enabled: true,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-middlewares",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-middlewares",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Middlewares", Href: "/orgs/" + orgSlug + "/admin/middlewares"},
 				{Label: "Nouveau", Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 
@@ -155,8 +151,6 @@ func (h *Handler) getEditMiddlewarePage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	options := h.middlewareTargetOptions(ctx, org)
 	selected := make(map[string]bool, len(mw.Targets()))
 	for _, t := range mw.Targets() {
@@ -175,17 +169,17 @@ func (h *Handler) getEditMiddlewarePage(w http.ResponseWriter, r *http.Request) 
 		Options:      options,
 		Selected:     selected,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-middlewares",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-middlewares",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Middlewares", Href: "/orgs/" + orgSlug + "/admin/middlewares"},
 				{Label: mw.Name(), Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 
@@ -262,6 +256,55 @@ func (h *Handler) updateMiddleware(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/orgs/"+orgSlug+"/admin/middlewares?success=updated", http.StatusSeeOther)
 }
 
+// toggleMiddleware flips the enabled flag from the list screen.
+//
+// It is a separate endpoint rather than a call to updateMiddleware: the list row
+// only submits `enabled`, so reusing the full update would blank the name, the
+// description and the targets of every middleware toggled from there.
+func (h *Handler) toggleMiddleware(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	orgSlug := r.PathValue("orgSlug")
+	middlewareID := r.PathValue("middlewareID")
+
+	if _, err := h.orgFromSlug(ctx, orgSlug); err != nil {
+		http.Error(w, "Organization not found", http.StatusNotFound)
+		return
+	}
+
+	mw, err := h.middlewareStore.GetMiddlewareByID(ctx, model.MiddlewareID(middlewareID))
+	if err != nil {
+		if errors.Is(err, port.ErrNotFound) {
+			http.NotFound(w, r)
+			return
+		}
+		slog.ErrorContext(ctx, "could not get middleware", slog.Any("error", err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form", http.StatusBadRequest)
+		return
+	}
+
+	m, ok := mw.(middlewareMutable)
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	// An unchecked switch submits nothing, which is what turns the middleware off.
+	m.SetEnabled(r.FormValue("enabled") != "")
+
+	if err := h.middlewareStore.SaveMiddleware(ctx, mw); err != nil {
+		slog.ErrorContext(ctx, "could not save middleware", slog.Any("error", err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/orgs/"+orgSlug+"/admin/middlewares?success=updated", http.StatusSeeOther)
+}
+
 func (h *Handler) deleteMiddleware(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	orgSlug := r.PathValue("orgSlug")
@@ -317,7 +360,6 @@ func (h *Handler) getMiddlewarePipelineEditorPage(w http.ResponseWriter, r *http
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
 	baseURL := httpCtx.BaseURL(ctx)
 	readonly := !common.HasPermission(ctx, org.ID(), rbac.PermMiddlewaresWrite)
 
@@ -329,18 +371,18 @@ func (h *Handler) getMiddlewarePipelineEditorPage(w http.ResponseWriter, r *http
 		ContextType: "middleware",
 		Readonly:    readonly,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-middlewares",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
-			FullBleed:     true,
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-middlewares",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
+			FullBleed:    true,
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Middlewares", Href: "/orgs/" + orgSlug + "/admin/middlewares"},
 				{Label: mw.Name(), Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 

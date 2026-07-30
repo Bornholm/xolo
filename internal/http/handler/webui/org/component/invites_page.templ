@@ -5,9 +5,7 @@ import (
 	"github.com/bornholm/xolo/internal/core/rbac"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
 )
@@ -16,137 +14,110 @@ import (
 templ InvitesPage(vmodel InvitesPageVModel) {
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Invitations — "+vmodel.Org.Name())) {
 		<div class="space-y-6">
-			<div class="flex items-start justify-between gap-4">
-				<div>
-					<h1 class="text-2xl font-semibold">Invitations</h1>
-					<p class="text-sm text-muted-foreground">Liens d'invitation en attente.</p>
-				</div>
+			@common.PageHeader(common.PageHeaderProps{
+				Title:    "Invitations",
+				Subtitle: "Liens d'invitation en attente.",
+			}) {
 				if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermInvitesWrite) {
 					@button.Button(button.Props{Size: button.SizeSm, Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/new"))}) {
 						@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
 						Nouvelle invitation
 					}
 				}
-			</div>
+			}
 			if vmodel.NewURL != "" {
 				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
 					@alert.Description() {
 						<div class="font-medium">Lien d'invitation créé</div>
-						<div class="text-sm mt-1 font-mono break-all">{ vmodel.NewURL }</div>
+						<div class="mt-1">
+							@common.InlineSnippet(vmodel.NewURL)
+						</div>
 					}
 				}
 			}
-			if vmodel.Success != "" && vmodel.NewURL == "" {
-				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-					@alert.Description() {
-						Opération réussie.
-					}
-				}
+			if vmodel.NewURL == "" {
+				@common.FlashToast(vmodel.Success, "L'invitation")
 			}
 			if len(vmodel.Invites) == 0 {
-				<div class="rounded-lg border p-6 text-center text-muted-foreground">Aucune invitation.</div>
+				@common.EmptyState(common.EmptyStateProps{
+					Icon:        icon.Mail,
+					Title:       "Aucune invitation",
+					Description: "Créez un lien d'invitation pour faire entrer de nouveaux membres dans l'organisation.",
+				})
 			} else {
-				@card.Card() {
-					@card.Content() {
-						@table.Table() {
-							@table.Header() {
-								@table.Head() {
-									Destinataire / type
-								}
-								@table.Head() {
-									Rôle
-								}
-								@table.Head() {
-									Expire le
-								}
-								@table.Head() {
-									Usages
-								}
-								@table.Head(table.HeadProps{Class: "text-right"}) {
-									Actions
-								}
+				@common.Section() {
+					@table.Table() {
+						@table.Header() {
+							@table.Head() {
+								Destinataire / type
 							}
-							@table.Body() {
-								for _, inv := range vmodel.Invites {
-									@table.Row() {
-										@table.Cell() {
-											if inv.InviteeEmail() != nil {
-												<div class="font-medium">{ *inv.InviteeEmail() }</div>
-												<div class="text-xs text-muted-foreground">Invitation ciblée</div>
-											} else {
-												<div class="font-medium">Invitation ouverte</div>
-												<div class="text-xs text-muted-foreground">lien partagé</div>
-											}
+							@table.Head() {
+								Rôle
+							}
+							@table.Head() {
+								Expire le
+							}
+							@table.Head() {
+								Usages
+							}
+							@table.Head(table.HeadProps{Class: "text-right"}) {
+								Actions
+							}
+						}
+						@table.Body() {
+							for _, inv := range vmodel.Invites {
+								@table.Row() {
+									@table.Cell() {
+										if inv.InviteeEmail() != nil {
+											<div class="font-medium">{ *inv.InviteeEmail() }</div>
+											<div class="text-xs text-muted-foreground">Invitation ciblée</div>
+										} else {
+											<div class="font-medium">Invitation ouverte</div>
+											<div class="text-xs text-muted-foreground">lien partagé</div>
 										}
-										@table.Cell() {
-											@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
-												{ roleLabelFromMap(vmodel.RoleNames, inv.Role()) }
-											}
+									}
+									@table.Cell() {
+										@common.Badge(common.ToneInfo, roleLabelFromMap(vmodel.RoleNames, inv.Role()))
+									}
+									@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
+										if inv.ExpiresAt() != nil {
+											{ inv.ExpiresAt().Format("2006-01-02") }
+										} else {
+											Jamais
 										}
-										@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
-											if inv.ExpiresAt() != nil {
-												{ inv.ExpiresAt().Format("2006-01-02") }
-											} else {
-												Jamais
-											}
+									}
+									@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
+										if inv.MaxUses() != nil {
+											{ fmt.Sprintf("%d / %d", inv.UsesCount(), *inv.MaxUses()) }
+										} else {
+											{ fmt.Sprintf("%d / ∞", inv.UsesCount()) }
 										}
-										@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
-											if inv.MaxUses() != nil {
-												{ fmt.Sprintf("%d / %d", inv.UsesCount(), *inv.MaxUses()) }
-											} else {
-												{ fmt.Sprintf("%d / ∞", inv.UsesCount()) }
+									}
+									@table.Cell(table.CellProps{Class: "text-right"}) {
+										<div class="inline-flex items-center gap-1">
+											if inv.RevokedAt() != nil {
+												@common.Badge(common.ToneNegative, "Révoqué")
 											}
-										}
-										@table.Cell(table.CellProps{Class: "text-right"}) {
-											<div class="inline-flex items-center gap-1">
-												if inv.RevokedAt() != nil {
-													@badge.Badge(badge.Props{Variant: badge.VariantDestructive, Class: "mr-1"}) {
-														Révoqué
-													}
+											@common.CopyValueButton(vmodel.BaseURL+"/join/"+string(inv.ID()), "Copier le lien")
+											if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermInvitesWrite) {
+												if inv.RevokedAt() == nil {
+													@common.ConfirmDelete(common.ConfirmDeleteProps{
+														URL:          common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/", string(inv.ID()))),
+														Icon:         icon.Ban,
+														Tooltip:      "Révoquer",
+														Title:        "Révoquer cette invitation ?",
+														Description:  "Le lien d'invitation cessera immédiatement de fonctionner. L'invitation reste visible dans la liste.",
+														ConfirmLabel: "Révoquer",
+													})
 												}
-												@button.Button(button.Props{
-													Variant: button.VariantGhost,
-													Size:    button.SizeSm,
-													Attributes: templ.Attributes{
-														"type":     "button",
-														"data-url": vmodel.BaseURL + "/join/" + string(inv.ID()),
-														"onclick":  "navigator.clipboard.writeText(this.dataset.url)",
-													},
-												}) {
-													@icon.Copy(icon.Props{Size: 14, Class: "mr-2"})
-													Copier le lien
-												}
-												if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermInvitesWrite) {
-													if inv.RevokedAt() == nil {
-														@button.Button(button.Props{
-															Variant: button.VariantGhost,
-															Size:    button.SizeIcon,
-															Attributes: templ.Attributes{
-																"type":    "button",
-																"title":   "Révoquer",
-																"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/", string(inv.ID()))),
-																"onclick": "if(confirm('Révoquer cette invitation ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
-															},
-														}) {
-															@icon.Ban(icon.Props{Size: 15})
-														}
-													}
-													@button.Button(button.Props{
-														Variant: button.VariantGhost,
-														Size:    button.SizeIcon,
-														Class:   "text-destructive hover:text-destructive",
-														Attributes: templ.Attributes{
-															"type":    "button",
-															"title":   "Supprimer définitivement",
-															"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/", string(inv.ID()), "/delete")),
-															"onclick": "if(confirm('Supprimer définitivement cette invitation ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
-														},
-													}) {
-														@icon.Trash2(icon.Props{Size: 15})
-													}
-												}
-											</div>
-										}
+												@common.ConfirmDelete(common.ConfirmDeleteProps{
+													URL:         common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/invites/", string(inv.ID()), "/delete")),
+													Tooltip:     "Supprimer définitivement",
+													Title:       "Supprimer définitivement cette invitation ?",
+													Description: "Elle disparaîtra de la liste. Cette action est irréversible.",
+												})
+											}
+										</div>
 									}
 								}
 							}

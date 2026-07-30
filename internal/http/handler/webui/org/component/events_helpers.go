@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 )
 
 // explorerHref builds an events-explorer URL, preserving and properly
@@ -40,27 +40,43 @@ func viewedPath(path, view string) string {
 	return path + "?view=" + view
 }
 
-// severityBadgeVariant maps an event severity to a badge variant.
-func severityBadgeVariant(sev model.EventSeverity) badge.Variant {
+// severityTone maps an event severity onto the semantic colours of the design
+// system, which the pills of the event tables are drawn with.
+func severityTone(sev model.EventSeverity) common.Tone {
 	switch sev {
 	case model.SeverityError:
-		return badge.VariantDestructive
+		return common.ToneNegative
 	case model.SeverityWarning:
-		return badge.VariantSecondary
+		return common.ToneWarning
 	default:
-		return badge.VariantOutline
+		return common.ToneNeutral
 	}
 }
 
-// alertStateBadgeVariant maps an alert state to a badge variant.
-func alertStateBadgeVariant(state model.AlertState) badge.Variant {
+// alertStateTone maps an alert state onto the same scale: a firing alert is
+// read as an incident, a pending one as a warning.
+func alertStateTone(state model.AlertState) common.Tone {
 	switch state {
 	case model.AlertStateFiring:
-		return badge.VariantDestructive
+		return common.ToneNegative
 	case model.AlertStatePending:
-		return badge.VariantSecondary
+		return common.ToneWarning
 	default:
-		return badge.VariantOutline
+		return common.ToneNeutral
+	}
+}
+
+// alertsSubtitle explains what an alert does, and which scope the current user
+// is allowed to work in — the two things that decide what the screen can show.
+func alertsSubtitle(vmodel AlertsPageVModel) string {
+	subtitle := "Une alerte se déclenche quand le nombre d'événements correspondant à sa requête franchit son seuil sur sa fenêtre."
+	switch {
+	case vmodel.CanWriteOrg:
+		return subtitle + " Vous gérez les alertes de l'organisation (portée « org »)."
+	case vmodel.CanOwnAlerts:
+		return subtitle + " Vos alertes portent sur vos propres événements (portée « perso »)."
+	default:
+		return subtitle
 	}
 }
 

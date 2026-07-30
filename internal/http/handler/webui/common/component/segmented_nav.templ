@@ -1,0 +1,72 @@
+package component
+
+import (
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/tabs"
+)
+
+// Segment is one entry of a SegmentedNav.
+type Segment struct {
+	Label  string
+	Href   string
+	Active bool
+	// Disabled renders an inert segment. Used for the filters of the mockup whose
+	// criterion the domain cannot evaluate yet (lot 7 of docs/plan/rework-ux.md);
+	// dropping them instead would silently change the information architecture.
+	Disabled bool
+}
+
+// SegmentedNav renders a segmented control whose segments are routes, not
+// in-page panels.
+//
+// It borrows tabs.List for the rail so the segmented look comes from the
+// component library rather than a hand-copied class string, but the segments
+// themselves are button.Button links: tabs.Trigger is a <button> driven by
+// tabs.min.js, which only toggles sibling tabs.Content panels. Wiring it to a
+// route would mean either an inline handler or a navigation that dies with
+// JavaScript — the shell relies on hx-boost precisely because plain links keep
+// working without it.
+templ SegmentedNav(segments []Segment) {
+	@tabs.List() {
+		for _, s := range segments {
+			if s.Disabled {
+				@button.Button(button.Props{
+					Size:     button.SizeSm,
+					Variant:  button.VariantGhost,
+					Disabled: true,
+					Class:    "h-[calc(100%-1px)] rounded-md font-medium",
+					Attributes: templ.Attributes{
+						"title": "Bientôt disponible",
+					},
+				}) {
+					{ s.Label }
+				}
+			} else {
+				@button.Button(button.Props{
+					Href:    s.Href,
+					Size:    button.SizeSm,
+					Variant: button.VariantGhost,
+					Class:   segmentClass(s.Active),
+				}) {
+					{ s.Label }
+				}
+			}
+		}
+	}
+}
+
+// segmentClass distinguishes the selected period from the others.
+//
+// A heavier weight alone does not carry across a screen — the control is read at
+// a glance, from the corner of the eye, and four labels of the same colour on
+// the same grey rail all look alike. The selected one takes the accent: tinted
+// ground, accent ink, raised off the rail. The flat accent stays reserved for
+// the context rail and the banners (design system §02), hence the tint.
+func segmentClass(active bool) string {
+	const base = "h-[calc(100%-1px)] rounded-md"
+	if active {
+		return base + " bg-primary-tint font-semibold text-primary shadow-xs ring-1 ring-primary/20" +
+			" hover:bg-primary-tint hover:text-primary"
+	}
+	return base + " font-medium text-muted-foreground"
+}

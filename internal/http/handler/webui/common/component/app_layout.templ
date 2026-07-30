@@ -1,238 +1,528 @@
 package component
 
 import (
-	"github.com/bornholm/xolo/internal/core/rbac"
+	httpCtx "github.com/bornholm/xolo/internal/http/context"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/breadcrumb"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/chart"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/dialog"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/dropdown"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/popover"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/sheet"
-	"github.com/bornholm/xolo/internal/http/middleware/authz"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/sidebar"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/tooltip"
 )
 
-templ AppNavigationItems(vmodel AppLayoutVModel) {
-	@NavItem(icon.ChartColumn, "Usage", string(BaseURL(ctx, WithPath("/usage"))), vmodel.SelectedItem == "usage")
-	@NavItem(icon.Bell, "Événements", string(BaseURL(ctx, WithPath("/events"))), vmodel.SelectedItem == "events")
-	if CanAccessModelsPage(ctx) {
-		@NavItem(icon.BrainCircuit, "Modèles d'org.", string(BaseURL(ctx, WithPath("/models"))), vmodel.SelectedItem == "models")
-	}
-	if HasPermissionInAnyOrg(ctx, rbac.PermPersonalVMCreate) {
-		@NavItem(icon.Network, "Mes modèles", string(BaseURL(ctx, WithPath("/profile/personal-models"))), vmodel.SelectedItem == "personal-models")
-	}
-	@NavItem(icon.KeyRound, "Clés API", string(BaseURL(ctx, WithPath("/profile/tokens"))), vmodel.SelectedItem == "tokens")
-}
+// boostedShell lists the regions of the shell that must follow a boosted
+// navigation. `hx-boost` only swaps `#content`, which is what we want — the
+// sidebar keeps its collapse state and none of its scripts are re-run — but the
+// active nav item, the breadcrumb and the context chrome do change from page to
+// page. Naming them here has HTMX pick them out of the same response and swap
+// them out of band, so no extra request is needed.
+//
+// Every id below is rendered unconditionally by AppLayout (empty when it has
+// nothing to show) so an out-of-band swap always finds its target, and none of
+// them nests inside another — an out-of-band swap works by id, so a nested one
+// would be inserted twice.
+//
+// The attribute is set on <body> rather than here: popover moves its content to
+// a portal on document.body, and a link inside the context switcher would
+// otherwise no longer have the shell as an ancestor to inherit from.
+const boostedShell = "#app-rail,#app-context,#context-switcher,#app-nav,#app-sidebar-footer,#app-banner,#app-breadcrumb"
 
-templ AdminNavigationItems(vmodel AppLayoutVModel) {
-	@NavItem(icon.Building2, "Organisations", string(BaseURL(ctx, WithPath("/admin/orgs"))), vmodel.SelectedItem == "orgs")
-	@NavItem(icon.Users, "Utilisateurs", string(BaseURL(ctx, WithPath("/admin/users"))), vmodel.SelectedItem == "users")
-	@NavItem(icon.RefreshCw, "Taux de change", string(BaseURL(ctx, WithPath("/admin/exchange-rates"))), vmodel.SelectedItem == "exchange-rates")
-	@NavItem(icon.Plug, "Plugins", string(BaseURL(ctx, WithPath("/admin/plugins"))), vmodel.SelectedItem == "plugins")
-}
-
-templ CommonFooterItems(vmodel AppLayoutVModel) {
-	@NavItem(icon.User, vmodel.User.DisplayName(), string(BaseURL(ctx, WithPath("/profile"))), vmodel.SelectedItem == "profile")
-	@NavItem(icon.LogOut, "Déconnexion", string(BaseURL(ctx, WithPath("/auth/oidc/logout"))), false)
-}
-
-templ AppFooterItems(vmodel AppLayoutVModel) {
-	@CommonFooterItems(vmodel)
-}
-
-templ AdminFooterItems(vmodel AppLayoutVModel) {
-	@NavItem(icon.ArrowLeft, "Retour espace perso.", string(BaseURL(ctx, WithPath("/usage"))), false)
-	@CommonFooterItems(vmodel)
-}
-
-templ OrgAdminFooterItems(vmodel AppLayoutVModel) {
-	@NavItem(icon.ArrowLeft, "Retour espace perso.", string(BaseURL(ctx, WithPath("/usage"))), false)
-	@CommonFooterItems(vmodel)
-}
-
-// PublicShareNavigationItems renders navigation items for public share pages (no auth required).
-templ PublicShareNavigationItems(vmodel AppLayoutVModel) {
-	@NavItem(icon.House, "Accueil", string(BaseURL(ctx)), vmodel.SelectedItem == "home")
-}
-
-// PublicShareFooterItems renders footer items for public share pages.
-templ PublicShareFooterItems(vmodel AppLayoutVModel) {
-	if vmodel.User != nil {
-		@NavItem(icon.User, vmodel.User.DisplayName(), string(BaseURL(ctx, WithPath("/profile"))), vmodel.SelectedItem == "profile")
-		@NavItem(icon.LogOut, "Déconnexion", string(BaseURL(ctx, WithPath("/auth/oidc/logout"))), false)
-	} else {
-		@NavItem(icon.LogIn, "Connexion", string(BaseURL(ctx, WithPath("/auth/oidc/login"))), false)
-	}
-}
-
-templ AdminDropdown(vmodel AppLayoutVModel) {
-	{{ hasAdminAccess := AssertUser(ctx, authz.Has(authz.RoleAdmin)) || len(OrgAdminMemberships(ctx)) > 0 }}
-	if hasAdminAccess {
-		<div class="ml-auto">
-			@dropdown.Dropdown() {
-				@dropdown.Trigger() {
-					@button.Button(button.Props{
-						Size:    button.SizeIcon,
-						Variant: button.VariantGhost,
-					}) {
-						@icon.Cog(icon.Props{Class: "h-8 w-8"})
-					}
+// AppLayout is the main application shell: context rail, sidebar (brand, context
+// switcher, grouped navigation, user footer) and the inset holding the header
+// and the page content.
+templ AppLayout(vmodel AppLayoutVModel, funcs ...PageOptionFunc) {
+	{{
+		// Les scripts des composants sont enregistrés ici, pour *toutes* les pages
+		// de l'application, et jamais page par page : `hx-boost` n'échange que
+		// #content et ne réexécute jamais le <head>. Un script déclaré par une
+		// seule page n'est donc chargé que si cette page est ouverte en
+		// navigation complète — atteinte par un lien de la coquille, elle serait
+		// rendue inerte (un selectbox qui ne réagit plus au clic, un graphique
+		// vide). Les charger partout garde un <head> identique d'une page à
+		// l'autre, seul état sûr sous hx-boost.
+		funcs = append(funcs, WithScripts(
+			// dialog also drives the off-canvas sheet the sidebar falls back to
+			// under 768px.
+			Script{Name: "dialog", Component: dialog.Script()},
+			Script{Name: "popover", Component: popover.Script()},
+			Script{Name: "selectbox", Component: selectbox.Script()},
+			Script{Name: "chart", Component: chart.Script()},
+		))
+		funcs = append(funcs, WithBodyAttributes(templ.Attributes{"hx-select-oob": boostedShell}))
+	}}
+	{{ vmodel = vmodel.resolve(ctx) }}
+	@Page(funcs...) {
+		<!-- Liseré de contexte : épinglé en haut de la fenêtre, au-dessus de la
+		barre latérale qui est en position fixed. -->
+		<div id="app-rail" class={ "fixed inset-x-0 top-0 z-50 h-[3px]", vmodel.Context.RailClass() }></div>
+		<!-- Contenu du sélecteur de contexte. Rendu hors de la barre latérale :
+		popover.min.js le déplace de toute façon dans un portail sur <body>, et il
+		doit rester un frère de #app-context pour qu'aucune des deux régions
+		échangées hors-bande ne contienne l'autre. -->
+		@contextSwitcherContent(vmodel)
+		<!-- La coquille tient exactement dans la fenêtre et c'est #content qui
+		défile, comme la maquette (`height:100vh; overflow:hidden`). Sur une
+		hauteur minimale c'était le document qui défilait, et l'en-tête — pourtant
+		`shrink-0` — sortait du champ. `min-h-0` neutralise le `min-h-svh` de
+		templui, qui l'emporterait sinon sur la hauteur fixée. -->
+		@sidebar.Layout(sidebar.LayoutProps{
+			ID:    "app-sidebar",
+			Class: "h-svh min-h-0 overflow-hidden pt-[3px]",
+		}) {
+			<!-- Repliée, la barre garde une gouttière d'icônes plutôt que de
+			disparaître : la navigation reste atteignable d'un clic, et l'écran ne
+			perd que les libellés. L'état vient du cookie écrit par
+			sidebar.min.js, relu à chaque chargement complet — sans quoi un
+			rafraîchissement rouvrirait la barre. -->
+			@sidebar.Sidebar(sidebar.Props{
+				Collapsible: sidebar.CollapsibleIcon,
+				Collapsed:   !httpCtx.SidebarExpanded(ctx),
+				Class:       "pt-[3px]",
+			}) {
+				@sidebar.Header(sidebar.HeaderProps{Class: "gap-0 p-0"}) {
+					@sidebarBrand(vmodel)
 				}
-				@dropdown.Content() {
-					@dropdown.Label() {
-						Administration
-					}
-					{{ orgs := OrgAdminMemberships(ctx) }}
-					if len(orgs) > 0 {
-						@dropdown.Group() {
-							for _, m := range orgs {
-								if m.Org() != nil {
-									@dropdown.Item(dropdown.ItemProps{Href: string(BaseURL(ctx, WithPath("/orgs/", m.Org().Slug(), "/usage")))}) {
-										@icon.Building(icon.Props{Class: "h-4 w-4 mr-2"})
-										{ m.Org().Name() }
-									}
+				@sidebar.Content(sidebar.ContentProps{ID: "app-nav", Class: "gap-0 py-1"}) {
+					for _, group := range vmodel.NavGroups {
+						@sidebar.Group(sidebar.GroupProps{Class: "py-1"}) {
+							if group.Title != "" {
+								<!-- Repliée, templui escamote le titre de groupe en le
+								remontant de sa propre hauteur à opacité nulle : invisible,
+								il reste posé sur la ligne du dessus et en intercepte les
+								clics. `pointer-events-none` le rend inerte. -->
+								@sidebar.GroupLabel(sidebar.GroupLabelProps{
+									Class: "text-xs uppercase tracking-wider text-muted-foreground" +
+										" group-data-[tui-sidebar-state=collapsed]:group-data-[tui-sidebar-collapsible=icon]:pointer-events-none",
+								}) {
+									{ group.Title }
+								}
+							}
+							@sidebar.Menu() {
+								for _, item := range group.Items {
+									@navItem(item)
 								}
 							}
 						}
-						@dropdown.Separator()
-					}
-					if AssertUser(ctx, authz.Has(authz.RoleAdmin)) {
-						@dropdown.Item(dropdown.ItemProps{Href: string(BaseURL(ctx, WithPath("/admin/")))}) {
-							@icon.CloudCog(icon.Props{Class: "h-4 w-4 mr-2"})
-							Plateforme
-						}
 					}
 				}
+				@sidebar.Footer(sidebar.FooterProps{ID: "app-sidebar-footer", Class: "gap-2 border-t p-2"}) {
+					if vmodel.IsAdminVisit {
+						@button.Button(button.Props{
+							Variant:    button.VariantOutline,
+							Class:      "w-full justify-start gap-2 group-data-[tui-sidebar-state=collapsed]:group-data-[tui-sidebar-collapsible=icon]:justify-center group-data-[tui-sidebar-state=collapsed]:group-data-[tui-sidebar-collapsible=icon]:px-0",
+							Href:       BaseURLString(ctx, WithPath("/admin/")),
+							Attributes: templ.Attributes{"title": "Retour console plateforme"},
+						}) {
+							@icon.ArrowLeft(icon.Props{Class: "size-4"})
+							<span class={ collapsedHidden }>Retour console plateforme</span>
+						}
+					}
+					@userCard(vmodel)
+				}
 			}
-		</div>
-	}
-}
-
-// AppLayout is the main responsive layout shell with sidebar navigation.
-templ AppLayout(vmodel AppLayoutVModel, funcs ...PageOptionFunc) {
-	{{
-		funcs = append(funcs, WithScripts(
-			Script{Name: "dialog", Component: dialog.Script()},
-			Script{Name: "dropdown", Component: dropdown.Script()},
-			Script{Name: "popover", Component: popover.Script()},
-		))
-	}}
-	{{
-		if vmodel.User != nil {
-			if darkMode, exists := vmodel.User.Preferences().DarkMode(); exists {
-				if darkMode {
-					funcs = append(funcs, WithVariant(VariantDark))
+			@sidebar.Inset() {
+				<header class="flex h-13.5 shrink-0 items-center gap-3 border-b bg-card px-4">
+					@sidebar.Trigger()
+					<div id="app-breadcrumb" class="min-w-0 flex-1">
+						if len(vmodel.Breadcrumbs) > 0 {
+							@appBreadcrumb(vmodel.Breadcrumbs)
+						}
+					</div>
+					@headerActions(vmodel)
+				</header>
+				<div id="app-banner" class="shrink-0">
+					if vmodel.IsAdminVisit {
+						@alert.Alert(alert.Props{Class: "rounded-none border-x-0 border-t-0 border-platform/25 bg-platform-tint text-platform"}) {
+							@icon.ShieldUser()
+							@alert.Description(alert.DescriptionProps{Class: "text-platform"}) {
+								<div class="flex flex-wrap items-center justify-between gap-2">
+									<span>
+										Accès admin plateforme — vous consultez une organisation dont vous n'êtes pas membre. Les actions sont journalisées.
+									</span>
+									@button.Button(button.Props{
+										Variant: button.VariantOutline,
+										Size:    button.SizeSm,
+										Href:    BaseURLString(ctx, WithPath("/admin/orgs")),
+										Class:   "border-platform/30 bg-card text-platform hover:bg-platform-tint",
+									}) {
+										Quitter
+									}
+								</div>
+							}
+						}
+					}
+				</div>
+				<!-- Zone de contenu. #content est la seule région échangée par
+				hx-boost ; le reste de la coquille suit via hx-select-oob. -->
+				if vmodel.FullBleed {
+					<div id="content" class="flex min-h-0 flex-1 flex-col overflow-hidden">
+						{ children... }
+					</div>
 				} else {
-					funcs = append(funcs, WithVariant(VariantLight))
+					<div id="content" class="min-h-0 flex-1 overflow-auto p-4 md:p-6">
+						{ children... }
+					</div>
 				}
 			}
 		}
-	}}
-	@Page(funcs...) {
-		<div class="flex h-screen overflow-hidden bg-background">
-			<!-- Mobile overlay sidebar -->
-			<div class="lg:hidden">
-				@sheet.Sheet(sheet.Props{Side: sheet.SideLeft}) {
-					@sheet.Trigger() {
-						@button.Button(button.Props{
-							Variant: button.VariantGhost,
-							Size:    button.SizeIcon,
-							Class:   "fixed top-3 left-3 z-50",
-						}) {
-							@icon.Menu()
-						}
-					}
-					@sheet.Content(sheet.ContentProps{Side: sheet.SideLeft, Class: "w-64 p-0"}) {
-						@sidebarContent(vmodel)
-					}
-				}
-			</div>
-			<!-- Desktop sidebar -->
-			<aside class="hidden lg:flex lg:w-60 lg:flex-col border-r bg-card">
-				@sidebarContent(vmodel)
-			</aside>
-			<!-- Main content area -->
-			<div class="flex flex-1 flex-col overflow-hidden">
-				<!-- Top bar -->
-				<header class="flex h-14 items-center gap-4 border-b bg-card px-4 md:px-6">
-					<div class="lg:hidden w-10"></div>
-					<!-- Spacer for hamburger on mobile -->
-					if len(vmodel.Breadcrumbs) > 0 {
-						@breadcrumb(vmodel.Breadcrumbs)
-					}
-					@AdminDropdown(vmodel)
-				</header>
-				<!-- Page content -->
-				if vmodel.FullBleed {
-					<main class="flex flex-1 flex-col overflow-hidden p-0">
-						{ children... }
-					</main>
-				} else {
-					<main class="flex-1 overflow-auto p-4 md:p-6">
-						{ children... }
-					</main>
-				}
-			</div>
-		</div>
 	}
 }
 
-// sidebarContent renders the sidebar navigation content.
-templ sidebarContent(vmodel AppLayoutVModel) {
-	<div class="flex h-full flex-col" hx-boost="false">
-		<!-- Brand -->
-		<div class="flex h-14 items-center border-b px-4">
-			@Logo("h-7 w-7 mr-2")
-			<div class="flex flex-col">
-				<a href={ templ.SafeURL(vmodel.HomeLink) } title="Home"><span class="font-semibold text-lg">Xolo</span></a>
-				if vmodel.AdminSubtitle != "" {
-					<span class="text-xs text-muted-foreground">{ vmodel.AdminSubtitle }</span>
+// navItem renders one sidebar link. Entries flagged ComingSoon are rendered as
+// inert rows so the information architecture of the mockup shows through even
+// where the product has nothing to link to yet.
+// collapsedHidden is what a row drops when the rail is folded: everything but
+// its icon. The label doubles as the `title` so the row still says what it is
+// under the cursor.
+const collapsedHidden = "group-data-[tui-sidebar-state=collapsed]:group-data-[tui-sidebar-collapsible=icon]:hidden"
+
+templ navItem(item NavEntry) {
+	@sidebar.MenuItem() {
+		if item.Disabled {
+			<div
+				class="flex w-full cursor-not-allowed items-center gap-2 rounded-md p-2 text-sm text-muted-foreground/60"
+				aria-disabled="true"
+				title={ item.Label }
+			>
+				if item.Icon != nil {
+					@item.Icon(icon.Props{Class: "size-4 shrink-0"})
+				}
+				<span class={ "truncate", collapsedHidden }>{ item.Label }</span>
+				if item.ComingSoon {
+					<span class={ "ml-auto shrink-0", collapsedHidden }>
+						@Badge(ToneNeutral, "Bientôt")
+					</span>
 				}
 			</div>
+		} else {
+			@sidebar.MenuButton(sidebar.MenuButtonProps{
+				Href:       item.Href,
+				IsActive:   item.Active,
+				Attributes: templ.Attributes{"title": item.Label},
+			}) {
+				if item.Icon != nil {
+					@item.Icon(icon.Props{Class: "size-4 shrink-0"})
+				}
+				<span class={ "truncate", collapsedHidden }>{ item.Label }</span>
+				if item.Badge != "" {
+					<span class={ "ml-auto shrink-0", collapsedHidden }>
+						@Badge(item.BadgeTone, item.Badge)
+					</span>
+				}
+			}
+		}
+	}
+}
+
+// sidebarBrand renders the head of the sidebar: the wordmark over its watermark
+// logo, then the context switcher, on the wash that announces the current space.
+//
+// Brand and switcher share one block — and one id — because they say the same
+// thing: the wash, the logo, the version and the kicker are all inked by the
+// context, so a boosted navigation that changes space must swap them together.
+//
+// Geometry comes from « Xolo Refonte.dc.html » and is reproduced to the pixel.
+// The lengths are written in px rather than on the spacing scale because that
+// scale is compressed for density (--spacing: 0.2222rem, so p-4 is 14 px, not
+// 16): no step of it lands on the values the mockup uses here.
+//
+// One deviation: the mockup floors the block at 154 px, which leaves 24 px of
+// slack under the switcher. The block hugs its content instead — that space
+// bought nothing, and the navigation starts 24 px higher for it.
+templ sidebarBrand(vmodel AppLayoutVModel) {
+	<div
+		id="app-context"
+		class={ "relative flex shrink-0 flex-col justify-start border-b border-muted",
+			"bg-linear-to-b from-0% to-white/0 to-92%",
+			"group-data-[tui-sidebar-state=collapsed]:group-data-[tui-sidebar-collapsible=icon]:h-13.5",
+			vmodel.Context.TintGradientClass() }
+	>
+		<!-- Barre repliée : le logo reprend sa pleine opacité et une taille de
+		gouttière. Un filigrane à 44 % derrière rien du tout ne serait plus un
+		fond, seulement une image pâle.
+		Le bloc prend alors exactement la hauteur de l'en-tête (h-13.5), pour que
+		son filet et celui de la barre du haut soient sur la même ligne : deux
+		bordures voisines décalées de quelques pixels se lisent comme un défaut
+		d'alignement, pas comme deux zones distinctes. -->
+		<a
+			href={ templ.SafeURL(vmodel.HomeLink) }
+			class={ "hidden h-full items-center justify-center",
+				"group-data-[tui-sidebar-state=collapsed]:group-data-[tui-sidebar-collapsible=icon]:flex" }
+			title="Xolo"
+		>
+			@Logo("size-7 " + vmodel.Context.AccentClass())
+		</a>
+		<div class={ "contents",
+			"group-data-[tui-sidebar-state=collapsed]:group-data-[tui-sidebar-collapsible=icon]:hidden" }>
+		<!-- Filigrane : le logo déborde du coin, dans la couleur du contexte.
+		La maquette le pose à 17 % d'opacité, où il se devine à peine ; à 44 % il
+		tient la zone sans que le switcher, posé dessus sur un fond translucide,
+		perde en lisibilité — au-delà c'est lui qu'on lit d'abord.
+		Décoratif, donc masqué aux lecteurs d'écran — le nom du produit est juste
+		à côté, en texte. -->
+		<span aria-hidden="true" class="pointer-events-none absolute -left-[12px] -top-[11px] opacity-[0.44]">
+			@Logo("h-[112px] w-[93px] " + vmodel.Context.AccentClass())
+		</span>
+		<div class="relative flex items-baseline justify-end gap-[8px] px-[14px] pt-[14px] leading-[normal]">
+			<a
+				href={ templ.SafeURL(vmodel.HomeLink) }
+				class="text-[14px] font-bold uppercase leading-[normal] tracking-[0.235em] text-foreground"
+			>
+				Xolo
+			</a>
+			if vmodel.Version != "" {
+				<span class={ "shrink-0 font-mono text-[9.5px] font-medium tracking-[0.02em] opacity-75",
+					vmodel.Context.AccentClass() }>
+					{ vmodel.Version }
+				</span>
+			}
 		</div>
-		<!-- Navigation -->
-		<nav class="flex-1 space-y-1 p-3">
-			if vmodel.NavigationItems != nil {
-				@vmodel.NavigationItems(vmodel)
-			}
-		</nav>
-		<!-- User footer -->
-		<div class="border-t p-3 space-y-1">
-			if vmodel.FooterItems != nil {
-				@vmodel.FooterItems(vmodel)
-			}
+		<div class="relative px-[10px] pb-[14px] pt-[36px]">
+			@contextSwitcher(vmodel)
+		</div>
 		</div>
 	</div>
 }
 
-// NavItem renders a navigation item with icon and label.
-templ NavItem(iconFunc func(...icon.Props) templ.Component, label, href string, active bool) {
+// contextSwitcher renders the trigger of the popover that moves the user between
+// the personal space, their organisations and the platform console.
+templ contextSwitcher(vmodel AppLayoutVModel) {
+	@popover.Trigger(popover.TriggerProps{For: "context-switcher", Class: "block w-full"}) {
+		@button.Button(button.Props{
+			Variant: button.VariantOutline,
+			// Fond opaque : la maquette le pose à 62 % sur un filigrane à 17 %,
+			// où rien ne transparaît. Le nôtre est à 44 % et se lisait au travers
+			// du switcher — un contrôle posé sur un décor doit le masquer, pas le
+			// laisser deviner. Le survol reprend le gris des contrôles du design
+			// system (#f2f4f6) faute de pouvoir éclaircir un blanc plein.
+			// `has-[>svg]:px-[9px]` neutralise le palier de taille du bouton, qui
+			// resserre son padding horizontal dès qu'il contient une icône — ici
+			// le chevron — et l'emporterait sinon sur `px-[9px]`.
+			Class: "h-auto w-full justify-start gap-[9px] rounded-[7px] border-border/90 bg-card px-[9px] py-[8px] text-left shadow-none has-[>svg]:px-[9px] hover:border-input hover:bg-rule",
+		}) {
+			<span class={ "flex size-[26px] shrink-0 items-center justify-center rounded-md font-mono text-[12px] font-bold leading-[normal]",
+				vmodel.Context.PillClass() }>
+				{ Initials(vmodel.ContextName) }
+			</span>
+			<span class="min-w-0 flex-1 leading-[normal]">
+				<span class={ "block text-[9.5px] font-semibold uppercase tracking-[0.09em]", vmodel.Context.AccentClass() }>
+					{ vmodel.Context.Kicker() }
+				</span>
+				<span class="block truncate text-[13px] font-semibold text-foreground">{ vmodel.ContextName }</span>
+			</span>
+			<!-- La classe `size-` est aussi ce qui écarte le dimensionnement par
+			défaut que le bouton impose aux icônes qu'il contient. -->
+			@icon.ChevronsUpDown(icon.Props{Size: 12, StrokeWidth: "2.2", Class: "ml-auto size-[12px] shrink-0 text-icon-muted"})
+		}
+	}
+}
+
+// contextSwitcherContent renders the popover itself: a search box filtering the
+// list server-side, then the destinations.
+templ contextSwitcherContent(vmodel AppLayoutVModel) {
+	@popover.Content(popover.ContentProps{
+		ID:        "context-switcher",
+		Placement: popover.PlacementBottomStart,
+		Offset:    6,
+		Class:     "w-72 p-1",
+	}) {
+		<div class="p-1">
+			@input.Input(input.Props{
+				Type:        input.TypeSearch,
+				Name:        "q",
+				Placeholder: "Rechercher…",
+				Class:       "h-8",
+				Attributes: templ.Attributes{
+					"hx-get":     SwitcherFragmentURL(ctx, vmodel.Context, vmodel.ContextSlug),
+					"hx-trigger": "input changed delay:200ms, search",
+					"hx-target":  "#switcher-list",
+					"hx-swap":    "outerHTML",
+					// <body> carries the boost defaults; this request is a plain
+					// fragment fetch and must not inherit them.
+					"hx-select":     "unset",
+					"hx-select-oob": "unset",
+					"autocomplete":  "off",
+				},
+			})
+		</div>
+		@SwitcherList(vmodel.Switcher)
+	}
+}
+
+// SwitcherList renders the destinations of the context switcher. It is also
+// served on its own by the /switcher fragment endpoint when the search filters
+// the list.
+templ SwitcherList(entries []SwitcherEntry) {
+	<div id="switcher-list" class="max-h-80 overflow-auto">
+		if len(entries) == 0 {
+			<p class="px-2 py-3 text-center text-xs text-muted-foreground">Aucun résultat</p>
+		}
+		for i, entry := range entries {
+			if i > 0 && entry.Context != entries[i-1].Context {
+				<div class="my-1 border-t"></div>
+			}
+			if label := switcherGroupLabel(entries, i); label != "" {
+				<div class="px-2 pb-1 pt-1.5 text-2xs font-semibold uppercase tracking-caps text-muted-foreground">
+					{ label }
+				</div>
+			}
+			@switcherItem(entry)
+		}
+	</div>
+}
+
+templ switcherItem(entry SwitcherEntry) {
 	<a
-		href={ templ.SafeURL(href) }
+		href={ templ.SafeURL(entry.Href) }
 		class={
-			"flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-			templ.KV("bg-accent text-accent-foreground", active),
-			templ.KV("text-muted-foreground hover:bg-accent hover:text-accent-foreground", !active),
+			"flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent",
+			templ.KV("bg-accent font-medium", entry.Current),
 		}
 	>
-		@iconFunc(icon.Props{Class: "h-4 w-4"})
-		{ label }
+		<span class={ "flex size-5 shrink-0 items-center justify-center rounded-sm font-mono text-2xs font-bold",
+			entry.Context.PillClass() }>
+			if entry.Context == ContextPlatform {
+				@icon.Box(icon.Props{Class: "size-3"})
+			} else {
+				{ entry.Initial() }
+			}
+		</span>
+		<span class="flex min-w-0 flex-col">
+			<span class="truncate">{ entry.Label }</span>
+			if entry.Slug != "" {
+				<span class="truncate font-mono text-xs text-muted-foreground">{ entry.Slug }</span>
+			}
+		</span>
+		if entry.Current {
+			@icon.Check(icon.Props{Class: "ml-auto size-4 shrink-0"})
+		}
 	</a>
 }
 
-// breadcrumb renders the breadcrumb navigation.
-templ breadcrumb(items []BreadcrumbItem) {
-	<nav class="flex items-center gap-1.5 text-sm text-muted-foreground">
-		for i, item := range items {
-			if i > 0 {
-				@icon.ChevronRight(icon.Props{Class: "h-3.5 w-3.5"})
-			}
-			if item.Href != "" && i < len(items)-1 {
-				<a href={ templ.SafeURL(item.Href) } class="hover:text-foreground transition-colors">
-					{ item.Label }
-				</a>
-			} else {
-				<span class="text-foreground font-medium">{ item.Label }</span>
+// headerActions renders the right-hand side of the header: command palette,
+// proxy health and documentation.
+templ headerActions(vmodel AppLayoutVModel) {
+	<div class="flex shrink-0 items-center gap-2">
+		<!-- TODO(rework-ux): la palette de commandes ⌘K n'a pas d'implémentation
+		côté produit. Le déclencheur est visible mais inerte (cf. lot 7 du plan). -->
+		@button.Button(button.Props{
+			Variant:  button.VariantOutline,
+			Size:     button.SizeSm,
+			Disabled: true,
+			Class:    "hidden gap-2 text-muted-foreground md:inline-flex",
+		}) {
+			@icon.Search(icon.Props{Class: "size-4"})
+			Rechercher
+			<kbd class="rounded border bg-muted px-1 font-mono text-xs">⌘K</kbd>
+		}
+		@proxyStatusDot(vmodel.ProxyStatus)
+		if vmodel.APIDocURL != "" {
+			@tooltip.Tooltip() {
+				@tooltip.Trigger(tooltip.TriggerProps{For: "header-docs"}) {
+					@button.Button(button.Props{
+						Variant:    button.VariantGhost,
+						Size:       button.SizeIcon,
+						Href:       vmodel.APIDocURL,
+						Target:     "_blank",
+						Attributes: templ.Attributes{"hx-boost": "false", "rel": "noreferrer"},
+					}) {
+						@icon.BookOpen(icon.Props{Class: "size-4"})
+					}
+				}
+				@tooltip.Content(tooltip.ContentProps{ID: "header-docs", Position: tooltip.PositionBottom}) {
+					Documentation de l'API
+				}
 			}
 		}
-	</nav>
+	</div>
 }
+
+// proxyStatusDot shows the upstream health of the topbar. It is a badge like any
+// other — only the tone changes.
+//
+// TODO(rework-ux): nothing probes the upstream providers yet, so ProxyStatus is
+// always unknown and it reads "Bientôt disponible" (cf. lot 7 du plan).
+templ proxyStatusDot(status ProxyStatus) {
+	<span class="hidden md:inline-block">
+		switch status {
+			case ProxyStatusOperational:
+				@Badge(TonePositive, "Proxy opérationnel")
+			case ProxyStatusDegraded:
+				@Badge(ToneWarning, "Proxy dégradé")
+			case ProxyStatusDown:
+				@Badge(ToneNegative, "Proxy indisponible")
+			default:
+				@Badge(ToneNeutral, "État du proxy — bientôt")
+		}
+	</span>
+}
+
+// userCard renders the identity block at the bottom of the sidebar.
+templ userCard(vmodel AppLayoutVModel) {
+	<div class="flex items-center gap-2 px-1 group-data-[tui-sidebar-state=collapsed]:group-data-[tui-sidebar-collapsible=icon]:justify-center group-data-[tui-sidebar-state=collapsed]:group-data-[tui-sidebar-collapsible=icon]:px-0">
+		if vmodel.User != nil {
+			<a
+				href={ templ.SafeURL(BaseURLString(ctx, WithPath("/profile"))) }
+				class="shrink-0"
+				title={ vmodel.User.DisplayName() }
+			>
+				@PersonAvatar(vmodel.User.DisplayName(), "size-6")
+			</a>
+			<a href={ templ.SafeURL(BaseURLString(ctx, WithPath("/profile"))) } class={ "flex min-w-0 flex-1 flex-col", collapsedHidden }>
+				<span class="truncate text-sm font-medium">{ vmodel.User.DisplayName() }</span>
+				<span class="truncate font-mono text-2xs text-muted-foreground">{ UserRoleLabel(ctx, vmodel) }</span>
+			</a>
+			@button.Button(button.Props{
+				Variant: button.VariantGhost,
+				Size:    button.SizeIcon,
+				Href:    BaseURLString(ctx, WithPath("/auth/oidc/logout")),
+				Class:   "shrink-0 " + collapsedHidden,
+				// Logging out leaves the application (and often this origin) — a
+				// boosted swap would have nothing to put in #content.
+				Attributes: templ.Attributes{"hx-boost": "false", "title": "Déconnexion"},
+			}) {
+				@icon.LogOut(icon.Props{Class: "size-4"})
+			}
+		} else {
+			@button.Button(button.Props{
+				Variant:    button.VariantOutline,
+				Class:      "w-full justify-start gap-2",
+				Href:       BaseURLString(ctx, WithPath("/auth/oidc/login")),
+				Attributes: templ.Attributes{"hx-boost": "false"},
+			}) {
+				@icon.LogIn(icon.Props{Class: "size-4"})
+				Connexion
+			}
+		}
+	</div>
+}
+
+// appBreadcrumb renders the trail of the current page.
+templ appBreadcrumb(items []BreadcrumbItem) {
+	@breadcrumb.Breadcrumb() {
+		@breadcrumb.List(breadcrumb.ListProps{Class: "flex-nowrap gap-0 overflow-hidden"}) {
+			for i, item := range items {
+				@breadcrumb.Item() {
+					if i > 0 {
+						@breadcrumb.Separator(breadcrumb.SeparatorProps{Class: "mx-1"})
+					}
+					if item.Href != "" && i < len(items)-1 {
+						@breadcrumb.Link(breadcrumb.LinkProps{Href: item.Href, Class: "truncate"}) {
+							{ item.Label }
+						}
+					} else {
+						@breadcrumb.Page(breadcrumb.ItemProps{Class: "truncate"}) {
+							{ item.Label }
+						}
+					}
+				}
+			}
+		}
+	}
+}
+

@@ -3,6 +3,7 @@ export type PipelineNodeType =
   | 'generator'
   | 'sink'
   | 'model'
+  | 'value'
   | 'plugin'
 
 // Port type mirrors model.PortType
@@ -17,12 +18,16 @@ export interface PortDescriptor {
 export interface NodeTypeDescriptor {
   type: PipelineNodeType
   pluginName?: string
+  /** Plugin's own version, shown in the palette. Empty for built-in types. */
+  version?: string
   label: string
   description: string
   inputPorts: PortDescriptor[]
   outputPorts: PortDescriptor[]
   configSchema?: string
   hasUI?: boolean
+  /** Plugin capabilities, e.g. "POST_RESPONSE". Absent for built-in types. */
+  capabilities?: string[]
 }
 
 // Pipeline graph structures (mirrors Go model.PipelineGraph)
@@ -65,13 +70,30 @@ export interface PipelineBundle {
   graph?: PipelineGraph
 }
 
-// Node data payloads
+// Node data payloads.
+//
+// React Flow types a node's `data` as Record<string, unknown>, so each payload
+// carries an index signature: without it every read from a node requires a
+// double cast through `unknown`, which defeats the point of typing them.
 export interface PluginNodeData {
   pluginName: string
   config?: Record<string, unknown>
+  [key: string]: unknown
 }
 
 export interface ModelNodeData {
+  [key: string]: unknown
   proxyName?: string
+  /**
+   * Passthrough resolves the model the caller asked for instead of a fixed one.
+   * Middleware pipelines are always passthrough; virtual models may opt in.
+   */
+  passthrough?: boolean
+}
+
+export interface ValueNodeData {
+  [key: string]: unknown
+  portType?: 'string' | 'number' | 'boolean'
+  value?: string
 }
 

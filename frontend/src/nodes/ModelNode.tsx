@@ -1,6 +1,6 @@
 import type { NodeProps } from '@xyflow/react'
-import { DeleteButton } from './DeleteButton'
-import { InputPortRow, OutputPortRow } from './PortRow'
+import type { ModelNodeData } from '../types'
+import { NodeCard } from './NodeCard'
 
 // In a middleware pipeline every model node is a passthrough: it wraps the model
 // actually requested by the caller (enforced server-side). In other contexts
@@ -10,32 +10,28 @@ function isMiddlewareContext(): boolean {
   return root?.dataset.contextType === 'middleware'
 }
 
-export function ModelNode({ id }: NodeProps) {
+export function ModelNode({ data }: NodeProps) {
   const middleware = isMiddlewareContext()
+  const nodeData = data as ModelNodeData
+  const passthrough = middleware || nodeData.passthrough === true
+
+  // A passthrough node has no fixed model: naming one would be a lie, since the
+  // model is whatever the caller asked for.
+  const title = passthrough ? 'modèle demandé' : (nodeData.proxyName || 'non configuré')
+  const subtitle = passthrough ? 'passthrough' : 'proxyName'
+
+  const inputs = [{ name: 'request', port_type: 'request', label: 'request' }]
+  if (!passthrough) {
+    inputs.push({ name: 'model_name', port_type: 'string', label: 'model_name' })
+  }
 
   return (
-    <div className="pipeline-node pipeline-node--model">
-      <DeleteButton nodeId={id} />
-      <div className="pipeline-node__header">
-        <span className="pipeline-node__icon">🤖</span>
-        <span className="pipeline-node__label">{middleware ? 'Modèle demandé' : 'Modèle LLM'}</span>
-      </div>
-      {middleware && (
-        <div className="pipeline-node__body">
-          <span style={{ fontSize: 12, opacity: 0.7 }}>Applique le traitement au modèle appelé (passthrough)</span>
-        </div>
-      )}
-      <div className="pipeline-node__ports">
-        <div className="pipeline-node__ports-col">
-          <InputPortRow portId="request" label="requête" portType="request" />
-          {!middleware && (
-            <InputPortRow portId="model_name" label="nom modèle" portType="string" />
-          )}
-        </div>
-        <div className="pipeline-node__ports-col">
-          <OutputPortRow portId="response" label="réponse" portType="response" />
-        </div>
-      </div>
-    </div>
+    <NodeCard
+      kind="model"
+      title={title}
+      subtitle={subtitle}
+      inputs={inputs}
+      outputs={[{ name: 'response', port_type: 'response', label: 'response' }]}
+    />
   )
 }

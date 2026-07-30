@@ -5,10 +5,8 @@ import (
 
 	"github.com/bornholm/xolo/internal/core/rbac"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/form"
 )
 
 // ── Quota Page ────────────────────────────────────────────────────────────────
@@ -16,67 +14,45 @@ templ QuotaPage(vmodel QuotaPageVModel) {
 	{{ title := "Budget de l'organisation" }}
 	{{ action := common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/quota")) }}
 	if vmodel.ScopeType == "user" && vmodel.Membership != nil {
-		{{ title = "Budget membre" }}
+		{{ title = "Budget du membre" }}
 		{{ action = common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members/", string(vmodel.Membership.ID()), "/quota")) }}
 	}
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(title)) {
 		{{ readonly := !common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermQuotaWrite) }}
-		<div class="space-y-6">
-			<h1 class="text-2xl font-semibold">{ title }</h1>
+		<div class="max-w-4xl">
+			@common.PageHeader(common.PageHeaderProps{
+				Title:    title,
+				Subtitle: "Les plafonds bloquent les nouvelles requêtes une fois atteints. Ils ne s'appliquent qu'aux fournisseurs en mode pay-as-you-go ; les fournisseurs en abonnement ont leurs propres limites de plan.",
+			})
 			if vmodel.Success != "" {
-				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-					@alert.Description() {
-						Budget enregistré.
-					}
-				}
+				<div class="mb-3.5">
+					@common.InfoBanner(common.TonePositive, "Budget enregistré.")
+				</div>
 			}
-			<form method="POST" action={ templ.SafeURL(action) }>
-				@card.Card() {
-					@card.Header() {
-						@card.Title() {
-							Budget
+			<form method="POST" action={ templ.SafeURL(action) } class="space-y-3.5">
+				@common.Section() {
+					@common.SectionHeader() {
+						@common.SectionTitle() {
+							Plafonds
 						}
-						@card.Description() {
-							Bloque les nouvelles requêtes une fois le plafond atteint. S'applique uniquement aux fournisseurs en mode <strong>Pay-as-you-go</strong> ; les fournisseurs en mode abonnement disposent de leurs propres limites de plan.
-						}
+						<span class="ml-auto text-xs text-muted-foreground">
+							Devise : { vmodel.Org.Currency() }
+						</span>
 					}
-					@card.Content() {
-						<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-							<div class="space-y-2">
-								<label class="text-sm font-medium">Budget journalier (vide = illimité)</label>
-								if vmodel.Quota != nil && vmodel.Quota.DailyBudget() != nil {
-									@input.Input(input.Props{Name: "daily_budget", Type: "number", Placeholder: "10.00", Value: formatBudgetField(*vmodel.Quota.DailyBudget()), Disabled: readonly, Attributes: templ.Attributes{"step": "any"}})
-								} else {
-									@input.Input(input.Props{Name: "daily_budget", Type: "number", Placeholder: "10.00", Disabled: readonly, Attributes: templ.Attributes{"step": "any"}})
-								}
-							</div>
-							<div class="space-y-2">
-								<label class="text-sm font-medium">Budget mensuel (vide = illimité)</label>
-								if vmodel.Quota != nil && vmodel.Quota.MonthlyBudget() != nil {
-									@input.Input(input.Props{Name: "monthly_budget", Type: "number", Placeholder: "100.00", Value: formatBudgetField(*vmodel.Quota.MonthlyBudget()), Disabled: readonly, Attributes: templ.Attributes{"step": "any"}})
-								} else {
-									@input.Input(input.Props{Name: "monthly_budget", Type: "number", Placeholder: "100.00", Disabled: readonly, Attributes: templ.Attributes{"step": "any"}})
-								}
-							</div>
-							<div class="space-y-2">
-								<label class="text-sm font-medium">Budget annuel (vide = illimité)</label>
-								if vmodel.Quota != nil && vmodel.Quota.YearlyBudget() != nil {
-									@input.Input(input.Props{Name: "yearly_budget", Type: "number", Placeholder: "1000.00", Value: formatBudgetField(*vmodel.Quota.YearlyBudget()), Disabled: readonly, Attributes: templ.Attributes{"step": "any"}})
-								} else {
-									@input.Input(input.Props{Name: "yearly_budget", Type: "number", Placeholder: "1000.00", Disabled: readonly, Attributes: templ.Attributes{"step": "any"}})
-								}
-							</div>
+					@common.SectionBody(common.SectionBodyProps{Class: "space-y-3.5"}) {
+						<div class="grid gap-3.5 sm:grid-cols-3">
+							@budgetField("quota-daily", "daily_budget", "Journalier", "10.00", budgetFieldValue(vmodel, budgetScopeDaily), vmodel.Org.Currency(), readonly)
+							@budgetField("quota-monthly", "monthly_budget", "Mensuel", "100.00", budgetFieldValue(vmodel, budgetScopeMonthly), vmodel.Org.Currency(), readonly)
+							@budgetField("quota-yearly", "yearly_budget", "Annuel", "1000.00", budgetFieldValue(vmodel, budgetScopeYearly), vmodel.Org.Currency(), readonly)
 						</div>
-						@alert.Alert(alert.Props{Variant: alert.VariantDefault, Class: "mt-4"}) {
-							@alert.Description() {
-								<div>Les budgets sont exprimés dans la devise de l'organisation (<strong>{ vmodel.Org.Currency() }</strong>).</div>
-								<div>Pour modifier la devise, rendez-vous dans les <a href={ templ.SafeURL(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/settings"))) } class="underline font-medium">Paramètres</a>.</div>
-							}
-						}
+						<p class="text-xs text-muted-foreground">
+							Un champ vide vaut « illimité ». Pour changer la devise, passez par les
+							<a href={ templ.SafeURL(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/settings"))) } class="font-medium underline">paramètres de l'organisation</a>.
+						</p>
 					}
-					@card.Footer() {
-						if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermQuotaWrite) {
-							@button.Button(button.Props{Type: "submit"}) {
+					if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermQuotaWrite) {
+						@common.SectionHeader(common.SectionHeaderProps{Class: "border-b-0 border-t"}) {
+							@button.Button(button.Props{Type: "submit", Size: button.SizeSm}) {
 								Enregistrer
 							}
 						}
@@ -84,14 +60,14 @@ templ QuotaPage(vmodel QuotaPageVModel) {
 				}
 			</form>
 			if vmodel.Quota != nil && (vmodel.Quota.DailyBudget() != nil || vmodel.Quota.MonthlyBudget() != nil || vmodel.Quota.YearlyBudget() != nil) {
-				@card.Card() {
-					@card.Header() {
-						@card.Title() {
-							Consommation actuelle
+				<div class="mt-3.5">
+					@common.Section() {
+						@common.SectionHeader() {
+							@common.SectionTitle() {
+								Consommation
+							}
 						}
-					}
-					@card.Content() {
-						<div class="space-y-4">
+						@common.SectionBody(common.SectionBodyProps{Class: "space-y-3.5"}) {
 							if vmodel.Quota.DailyBudget() != nil {
 								@quotaUsageRow("Journalier", vmodel.DailyCost, *vmodel.Quota.DailyBudget(), vmodel.Org.Currency())
 							}
@@ -101,24 +77,46 @@ templ QuotaPage(vmodel QuotaPageVModel) {
 							if vmodel.Quota.YearlyBudget() != nil {
 								@quotaUsageRow("Annuel", vmodel.YearlyCost, *vmodel.Quota.YearlyBudget(), vmodel.Org.Currency())
 							}
-						</div>
+						}
 					}
-				}
+				</div>
 			}
 		</div>
 	}
 }
 
+templ budgetField(id string, name string, label string, placeholder string, value string, currency string, readonly bool) {
+	@form.Item() {
+		@form.Label(form.LabelProps{For: id}) {
+			{ label }
+		}
+		@common.MoneyInput(common.MoneyInputProps{
+			ID:          id,
+			Name:        name,
+			Value:       value,
+			Placeholder: placeholder,
+			Currency:    currency,
+			Disabled:    readonly,
+		})
+	}
+}
+
 templ quotaUsageRow(label string, spent int64, budget int64, currency string) {
 	{{ pct := common.UsagePercent(spent, &budget) }}
-	{{ barColor := common.QuotaBarColor(pct) }}
 	<div class="space-y-1.5">
-		<div class="flex items-center justify-between text-sm">
+		<div class="flex flex-wrap items-baseline gap-2 text-sm">
 			<span class="font-medium">{ label }</span>
-			<span class="text-muted-foreground">{ common.FormatCost(spent, currency) } / { common.FormatCost(budget, currency) } · { fmt.Sprintf("%d%%", pct) }</span>
+			<span class="tnum text-muted-foreground">
+				{ common.FormatCost(spent, currency) } / { common.FormatCost(budget, currency) }
+			</span>
+			<span class="ml-auto">
+				@common.Badge(common.BudgetTone(pct), fmt.Sprintf("%d %%", pct))
+			</span>
 		</div>
-		<div class="h-2 rounded-full bg-muted overflow-hidden">
-			<div class="h-full rounded-full" style={ fmt.Sprintf("width: %d%%; background: %s", pct, barColor) }></div>
-		</div>
+		<!-- TODO(rework-ux): la maquette ajoute un repère noir de projection de fin
+		de période sur la jauge. Il demande une extrapolation de la dépense (rythme
+		courant × jours restants) qui n'existe pas côté domaine ; BudgetGauge sait
+		déjà le dessiner dès qu'une projection lui sera fournie (cf. lot 7 du plan). -->
+		@common.BudgetGauge(pct, 0, "")
 	</div>
 }

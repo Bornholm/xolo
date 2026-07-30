@@ -4,70 +4,108 @@ import (
 	"strconv"
 
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/collapsible"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 )
 
 templ IncidentsPage(vmodel IncidentsPageVModel) {
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Incidents — "+vmodel.Org.Name())) {
-		<div class="space-y-6">
-			<h1 class="text-2xl font-semibold">Incidents</h1>
-			@EventsTabs(vmodel.Org, "incidents", vmodel.View)
-			<p class="text-sm text-muted-foreground">
-				Historique des déclenchements d'alertes. Les événements ayant contribué à un incident sont épinglés et
-				conservés au-delà de la fenêtre glissante.
-			</p>
+		<div>
+			@common.PageHeader(common.PageHeaderProps{
+				Title:    "Incidents",
+				Subtitle: "Historique des déclenchements d'alertes. Les événements ayant contribué à un incident sont épinglés et conservés au-delà de la fenêtre glissante.",
+			})
+			<div class="mb-3.5">
+				@EventsTabs(vmodel.Org, "incidents", vmodel.View)
+			</div>
 			if len(vmodel.Incidents) == 0 {
-				<p class="text-muted-foreground">Aucun incident.</p>
-			}
-			for _, view := range vmodel.Incidents {
-				@incidentCard(view)
+				@common.EmptyState(common.EmptyStateProps{
+					Icon:        icon.CircleCheck,
+					Title:       "Aucun incident",
+					Description: "Aucune alerte ne s'est déclenchée. Les incidents ouverts et résolus apparaîtront ici.",
+				})
+			} else {
+				<div class="space-y-2.5">
+					for _, view := range vmodel.Incidents {
+						@incidentCard(view)
+					}
+				</div>
 			}
 		</div>
 	}
 }
 
+// incidentCard renders one incident as the left-ruled card of the mockup: the
+// rule carries the state, so an open incident is spotted without reading.
 templ incidentCard(view IncidentView) {
-	<div class="bg-card shadow-xs w-full border text-card-foreground rounded-lg p-6 space-y-3">
-		<div class="flex items-center justify-between">
-			<div class="space-y-1">
-				<div class="font-medium">
-					if view.Alert != nil {
-						{ view.Alert.Name() }
+	@common.Section(common.SectionProps{Class: incidentRuleClass(view.Incident.Status())}) {
+		@common.SectionBody(common.SectionBodyProps{Class: "space-y-2.5"}) {
+			<div class="flex flex-wrap items-start gap-3">
+				<div class="min-w-0 space-y-1">
+					<div class="text-sm font-semibold">
+						if view.Alert != nil {
+							{ view.Alert.Name() }
+						} else {
+							<span class="text-muted-foreground">Alerte supprimée</span>
+						}
+					</div>
+					<div class="text-xs text-muted-foreground">
+						Déclenché le { formatEventTime(view.Incident.StartedAt()) }
+						if view.Incident.ResolvedAt() != nil {
+							· résolu le { formatOptionalTime(view.Incident.ResolvedAt()) }
+						}
+					</div>
+				</div>
+				<div class="ml-auto flex shrink-0 items-center gap-2">
+					<span class="tnum text-xs text-muted-foreground">
+						pic { strconv.FormatFloat(view.Incident.PeakValue(), 'f', -1, 64) }
+					</span>
+					if view.Incident.Status() == "firing" {
+						@common.Badge(common.ToneNegative, "firing")
+						<!-- TODO(rework-ux): la maquette propose d'acquitter un
+						incident. Le modèle d'incident ne porte ni acquittement ni
+						auteur d'acquittement, et aucune route ne l'expose
+						(cf. lot 7 du plan). -->
+						@button.Button(button.Props{
+							Variant:  button.VariantOutline,
+							Size:     button.SizeSm,
+							Disabled: true,
+							Attributes: templ.Attributes{
+								"title": "Bientôt disponible",
+							},
+						}) {
+							Acquitter
+						}
 					} else {
-						<span class="text-muted-foreground">Alerte supprimée</span>
-					}
-				</div>
-				<div class="text-xs text-muted-foreground">
-					Déclenché le { formatEventTime(view.Incident.StartedAt()) }
-					if view.Incident.ResolvedAt() != nil {
-						· résolu le { formatOptionalTime(view.Incident.ResolvedAt()) }
+						@common.Badge(common.TonePositive, "resolved")
 					}
 				</div>
 			</div>
-			<div class="flex items-center gap-2">
-				<span class="text-xs text-muted-foreground">pic { strconv.FormatFloat(view.Incident.PeakValue(), 'f', -1, 64) }</span>
-				if view.Incident.Status() == "firing" {
-					@badge.Badge(badge.Props{Variant: badge.VariantDestructive}) { firing }
-				} else {
-					@badge.Badge(badge.Props{Variant: badge.VariantOutline}) { resolved }
+			if len(view.Events) > 0 {
+				@collapsible.Collapsible(collapsible.Props{Class: "text-sm"}) {
+					@collapsible.Trigger(collapsible.TriggerProps{Class: "cursor-pointer text-xs text-muted-foreground"}) {
+						{ strconv.Itoa(len(view.Events)) } événement(s) épinglé(s)
+					}
+					@collapsible.Content(collapsible.ContentProps{Class: "mt-2 space-y-1"}) {
+						for _, e := range view.Events {
+							<div class="flex items-center gap-2 text-xs">
+								<span class="whitespace-nowrap font-mono text-muted-foreground">{ formatEventTime(e.CreatedAt()) }</span>
+								<span class="font-mono">{ e.Type() }</span>
+								<span class="min-w-0 truncate">{ e.Message() }</span>
+							</div>
+						}
+					}
 				}
-			</div>
-		</div>
-		if len(view.Events) > 0 {
-			<details class="text-sm">
-				<summary class="cursor-pointer text-muted-foreground">
-					{ strconv.Itoa(len(view.Events)) } événement(s) épinglé(s)
-				</summary>
-				<div class="mt-2 space-y-1">
-					for _, e := range view.Events {
-						<div class="flex gap-2 items-center text-xs">
-							<span class="text-muted-foreground whitespace-nowrap">{ formatEventTime(e.CreatedAt()) }</span>
-							<span class="font-mono">{ e.Type() }</span>
-							<span>{ e.Message() }</span>
-						</div>
-					}
-				</div>
-			</details>
+			}
 		}
-	</div>
+	}
+}
+
+// incidentRuleClass returns the coloured left rule of an incident card.
+func incidentRuleClass(status string) string {
+	if status == "firing" {
+		return "border-l-3 border-l-destructive"
+	}
+	return "border-l-3 border-l-success"
 }

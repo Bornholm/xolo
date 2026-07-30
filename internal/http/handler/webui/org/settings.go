@@ -25,8 +25,6 @@ func (h *Handler) getSettingsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	var eventsOverride *int
 	if h.eventSettingsStore != nil {
 		if override, err := h.eventSettingsStore.GetMaxEvents(ctx, org.ID()); err == nil {
@@ -41,16 +39,16 @@ func (h *Handler) getSettingsPage(w http.ResponseWriter, r *http.Request) {
 		EventsDefault:     h.eventsDefaultPerOrg,
 		EventsGlobalCap:   h.eventsMaxPerOrg,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-settings",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-settings",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Paramètres", Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 

@@ -32,28 +32,32 @@ func viewParam(personal bool) string {
 	return ""
 }
 
+// events sidebar keys. Alerts and incidents share the "Alertes & incidents"
+// entry, the events explorer has its own.
+const (
+	eventsNavEvents = "events"
+	eventsNavAlerts = "alerts"
+)
+
 // eventsLayout builds the AppLayoutVModel for a shared events page. The same
 // pages are reachable from the org-admin menu (org layout) and from the personal
 // menu (personal layout, marked with ?view=personal); the layout follows the
-// entry point so the user never switches section unexpectedly. tailCrumbs are
-// appended after the context root breadcrumb.
-func (h *Handler) eventsLayout(org model.Organization, user model.User, personal bool, tailCrumbs []common.BreadcrumbItem) common.AppLayoutVModel {
+// entry point so the user never switches section unexpectedly. nav selects which
+// org sidebar entry is highlighted, and tailCrumbs are appended after the
+// context root breadcrumb.
+func (h *Handler) eventsLayout(org model.Organization, user model.User, personal bool, nav string, tailCrumbs []common.BreadcrumbItem) common.AppLayoutVModel {
 	if !personal {
-		nav, footer := orgAdminNav(org)
 		crumbs := append([]common.BreadcrumbItem{
 			{Label: org.Name(), Href: "/orgs/" + org.Slug() + "/usage"},
 		}, tailCrumbs...)
 		return common.AppLayoutVModel{
-			User: user,
-			// Keep the "Événements" sidebar item highlighted across the events,
-			// alerts and incidents sub-pages; the active sub-page is shown by the
-			// in-page tabs.
-			SelectedItem:    "org-" + org.Slug() + "-events",
-			HomeLink:        "/orgs/" + org.Slug(),
-			AdminSubtitle:   "Admin. " + org.Name(),
-			Breadcrumbs:     crumbs,
-			NavigationItems: nav,
-			FooterItems:     footer,
+			User:         user,
+			SelectedItem: "org-" + org.Slug() + "-" + nav,
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
+			Breadcrumbs:  crumbs,
 		}
 	}
 
@@ -63,14 +67,8 @@ func (h *Handler) eventsLayout(org model.Organization, user model.User, personal
 	return common.AppLayoutVModel{
 		User:         user,
 		SelectedItem: "events",
-		HomeLink:     "/usage",
 		Breadcrumbs:  crumbs,
-		NavigationItems: func(vm common.AppLayoutVModel) templ.Component {
-			return common.AppNavigationItems(vm)
-		},
-		FooterItems: func(vm common.AppLayoutVModel) templ.Component {
-			return common.AppFooterItems(vm)
-		},
+		Context:      common.ContextPersonal,
 	}
 }
 
@@ -154,18 +152,18 @@ func (h *Handler) getEventsExplorerPage(w http.ResponseWriter, r *http.Request) 
 
 	personal := personalView(r)
 	vmodel := component.EventsExplorerVModel{
-		Org:            org,
-		Query:          queryStr,
-		Scope:          scope,
-		CanReadAll:     canReadAll,
-		Events:         events,
-		Error:          errStr,
-		Page:           page,
-		HasPrev:        page > 1,
-		HasNext:        hasNext,
-		View:           viewParam(personal),
-		KnownTypes:     model.PlatformEventTypes(),
-		AppLayoutVModel: h.eventsLayout(org, user, personal, []common.BreadcrumbItem{{Label: "Événements", Href: ""}}),
+		Org:             org,
+		Query:           queryStr,
+		Scope:           scope,
+		CanReadAll:      canReadAll,
+		Events:          events,
+		Error:           errStr,
+		Page:            page,
+		HasPrev:         page > 1,
+		HasNext:         hasNext,
+		View:            viewParam(personal),
+		KnownTypes:      model.PlatformEventTypes(),
+		AppLayoutVModel: h.eventsLayout(org, user, personal, eventsNavEvents, []common.BreadcrumbItem{{Label: "Événements", Href: ""}}),
 	}
 
 	templ.Handler(component.EventsExplorerPage(vmodel)).ServeHTTP(w, r)
@@ -208,10 +206,10 @@ func (h *Handler) getIncidentsPage(w http.ResponseWriter, r *http.Request) {
 
 	personal := personalView(r)
 	vmodel := component.IncidentsPageVModel{
-		Org:            org,
-		Incidents:      views,
-		View:           viewParam(personal),
-		AppLayoutVModel: h.eventsLayout(org, user, personal, []common.BreadcrumbItem{{Label: "Incidents", Href: ""}}),
+		Org:             org,
+		Incidents:       views,
+		View:            viewParam(personal),
+		AppLayoutVModel: h.eventsLayout(org, user, personal, eventsNavAlerts, []common.BreadcrumbItem{{Label: "Incidents", Href: ""}}),
 	}
 
 	templ.Handler(component.IncidentsPage(vmodel)).ServeHTTP(w, r)

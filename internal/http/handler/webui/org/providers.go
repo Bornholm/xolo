@@ -37,8 +37,6 @@ func (h *Handler) getProvidersPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	providers, err := h.providerStore.ListProviders(ctx, org.ID())
 	if err != nil {
 		slog.ErrorContext(ctx, "could not list providers", slogx.Error(err))
@@ -63,16 +61,16 @@ func (h *Handler) getProvidersPage(w http.ResponseWriter, r *http.Request) {
 		ModelCounts: modelCounts,
 		Success:     r.URL.Query().Get("success"),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-providers",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-providers",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 
@@ -90,23 +88,21 @@ func (h *Handler) getNewProviderPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	vmodel := component.ProviderFormVModel{
 		Org:   org,
 		IsNew: true,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-providers",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-providers",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
 				{Label: "Nouveau fournisseur", Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 
@@ -168,8 +164,6 @@ func (h *Handler) getEditProviderPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	p, err := h.providerStore.GetProviderByID(ctx, model.ProviderID(providerID))
 	if err != nil {
 		if errors.Is(err, port.ErrNotFound) {
@@ -185,17 +179,17 @@ func (h *Handler) getEditProviderPage(w http.ResponseWriter, r *http.Request) {
 		Provider: p,
 		IsNew:    false,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-providers",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-providers",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
 				{Label: p.Name(), Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 
@@ -410,8 +404,6 @@ func (h *Handler) getModelsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	p, err := h.providerStore.GetProviderByID(ctx, model.ProviderID(providerID))
 	if err != nil {
 		http.Error(w, "Provider not found", http.StatusNotFound)
@@ -439,17 +431,17 @@ func (h *Handler) getModelsPage(w http.ResponseWriter, r *http.Request) {
 		Models:   filtered,
 		Success:  r.URL.Query().Get("success"),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-providers",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-providers",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
 				{Label: p.Name(), Href: "/orgs/" + orgSlug + "/admin/providers/" + string(p.ID()) + "/models"},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 
@@ -468,8 +460,6 @@ func (h *Handler) getNewModelPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	p, err := h.providerStore.GetProviderByID(ctx, model.ProviderID(providerID))
 	if err != nil {
 		http.Error(w, "Provider not found", http.StatusNotFound)
@@ -481,18 +471,18 @@ func (h *Handler) getNewModelPage(w http.ResponseWriter, r *http.Request) {
 		Provider: p,
 		IsNew:    true,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-providers",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-providers",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
 				{Label: p.Name(), Href: "/orgs/" + orgSlug + "/admin/providers/" + string(p.ID()) + "/models"},
 				{Label: p.Name(), Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 
@@ -816,8 +806,6 @@ func (h *Handler) getEditModelPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	p, err := h.providerStore.GetProviderByID(ctx, model.ProviderID(providerID))
 	if err != nil {
 		http.Error(w, "Provider not found", http.StatusNotFound)
@@ -836,18 +824,18 @@ func (h *Handler) getEditModelPage(w http.ResponseWriter, r *http.Request) {
 		Model:    m,
 		IsNew:    false,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-providers",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-providers",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
 				{Label: p.Name(), Href: "/orgs/" + orgSlug + "/admin/providers/" + string(p.ID()) + "/models"},
 				{Label: m.ProxyName(), Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 
@@ -969,7 +957,6 @@ func (h *Handler) updateModel(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) renderModelFormError(w http.ResponseWriter, r *http.Request, ctx context.Context, user model.User, orgSlug string, org model.Organization, p model.Provider, m model.LLMModel, isNew bool, errMsg string) {
-	nav, footer := orgAdminNav(org)
 	vmodel := component.ModelFormVModel{
 		Org:      org,
 		Provider: p,
@@ -977,18 +964,18 @@ func (h *Handler) renderModelFormError(w http.ResponseWriter, r *http.Request, c
 		IsNew:    isNew,
 		Error:    errMsg,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-providers",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-providers",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
 				{Label: p.Name(), Href: "/orgs/" + orgSlug + "/admin/providers/" + string(p.ID()) + "/models"},
 				{Label: m.ProxyName(), Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 	w.WriteHeader(http.StatusUnprocessableEntity)
@@ -996,24 +983,23 @@ func (h *Handler) renderModelFormError(w http.ResponseWriter, r *http.Request, c
 }
 
 func (h *Handler) renderProviderFormError(w http.ResponseWriter, r *http.Request, ctx context.Context, user model.User, orgSlug string, org model.Organization, p model.Provider, isNew bool, errMsg string) {
-	nav, footer := orgAdminNav(org)
 	vmodel := component.ProviderFormVModel{
 		Org:      org,
 		Provider: p,
 		IsNew:    isNew,
 		Error:    errMsg,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-providers",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-providers",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Fournisseurs", Href: "/orgs/" + orgSlug + "/admin/providers"},
 				{Label: p.Name(), Href: "/orgs/" + orgSlug + "/admin/providers/" + string(p.ID()) + "/models"},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 	w.WriteHeader(http.StatusUnprocessableEntity)

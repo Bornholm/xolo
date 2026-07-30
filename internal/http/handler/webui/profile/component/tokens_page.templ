@@ -5,11 +5,11 @@ import (
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/dialog"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/form"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
-"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
 )
 
@@ -22,103 +22,79 @@ type TokensPageVModel struct {
 }
 
 templ TokensPage(vmodel TokensPageVModel) {
-	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Clés API"), common.WithScripts(common.Script{Name: "selectbox", Component: selectbox.Script()})) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Clés API")) {
 		<div class="space-y-6">
 			<!-- Header -->
-			<div class="flex items-start justify-between gap-4">
-				<div>
-					<h1 class="text-2xl font-semibold">Clés API</h1>
-					<p class="text-sm text-muted-foreground">Authentifiez vos requêtes vers le proxy compatible OpenAI.</p>
-				</div>
+			@common.PageHeader(common.PageHeaderProps{
+				Title:    "Clés API",
+				Subtitle: "Authentifiez vos requêtes vers le proxy compatible OpenAI.",
+			}) {
 				@dialog.Trigger(dialog.TriggerProps{For: "token-create-dialog"}) {
 					@button.Button(button.Props{Size: button.SizeSm}) {
 						@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
 						Nouvelle clé
 					}
 				}
-			</div>
+			}
 			if vmodel.DeletedToken {
-				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-					@alert.Description() {
-						Clé API supprimée avec succès.
-					}
-				}
+				@common.InfoBanner(common.TonePositive, "Clé API supprimée avec succès.")
 			}
 			if vmodel.CreatedToken != "" {
 				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
 					@alert.Description() {
 						<div class="font-medium">Clé API créée avec succès</div>
 						<div class="text-sm mt-1">Copiez cette clé maintenant, elle ne sera plus affichée.</div>
-						<div class="flex items-center gap-2 mt-2">
-							<code class="flex-1 block bg-muted rounded-md px-3 py-2 text-sm font-mono break-all">{ vmodel.CreatedToken }</code>
-							@button.Button(button.Props{
-								Variant: button.VariantOutline,
-								Size:    button.SizeSm,
-								Class:   "shrink-0",
-								Attributes: templ.Attributes{
-									"type":     "button",
-									"title":    "Copier",
-									"data-url": vmodel.CreatedToken,
-									"onclick":  "navigator.clipboard.writeText(this.dataset.url)",
-								},
-							}) {
-								@icon.Copy(icon.Props{Class: "h-4 w-4 mr-2"})
-								Copier
-							}
+						<div class="mt-2">
+							@common.InlineSnippet(vmodel.CreatedToken)
 						</div>
 					}
 				}
 			}
 			<!-- Auth Tokens Section -->
+			@apiCallExample()
 			if len(vmodel.AuthTokens) == 0 {
-				<div class="rounded-lg border p-6 text-center text-muted-foreground">
-					Aucune clé API configurée. Les clés API permettent d'utiliser les modèles exposés par Xolo depuis vos applications et outils habituels.
-				</div>
+				@common.EmptyState(common.EmptyStateProps{
+					Icon:        icon.KeyRound,
+					Title:       "Aucune clé API",
+					Description: "Une clé API authentifie vos appels au proxy compatible OpenAI depuis vos applications et vos outils habituels.",
+				})
 			} else {
-				@card.Card() {
-					@card.Content() {
-						@table.Table() {
-							@table.Header() {
-								@table.Head() {
-									Nom
-								}
-								@table.Head() {
-									Organisation
-								}
-								@table.Head() {
-									Expiration
-								}
-								@table.Head(table.HeadProps{Class: "text-right"}) {
-									Actions
-								}
+				@common.Section() {
+					@table.Table() {
+						@table.Header() {
+							@table.Head() {
+								Nom
 							}
-							@table.Body() {
-								for _, token := range vmodel.AuthTokens {
-									@table.Row() {
-										@table.Cell() {
-											<span class="font-medium">{ token.Label() }</span>
-										}
-										@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
-											{ tokenOrgName(token, vmodel.OrgMemberships) }
-										}
-										@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
-											{ tokenExpiry(token) }
-										}
-										@table.Cell(table.CellProps{Class: "text-right"}) {
-											@button.Button(button.Props{
-												Variant: button.VariantGhost,
-												Size:    button.SizeSm,
-												Class:   "text-destructive hover:text-destructive",
-												Attributes: templ.Attributes{
-													"type":     "button",
-													"data-url": common.BaseURLString(ctx, common.WithPath("/profile/tokens/", string(token.ID()))),
-													"onclick":  "if(confirm('Supprimer cette clé API ? Cette action est irréversible.'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
-												},
-											}) {
-												@icon.Trash2(icon.Props{Size: 14, Class: "mr-2"})
-												Révoquer
-											}
-										}
+							@table.Head() {
+								Organisation
+							}
+							@table.Head() {
+								Expiration
+							}
+							@table.Head(table.HeadProps{Class: "text-right"}) {
+								Actions
+							}
+						}
+						@table.Body() {
+							for _, token := range vmodel.AuthTokens {
+								@table.Row() {
+									@table.Cell() {
+										<span class="font-medium">{ token.Label() }</span>
+									}
+									@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
+										{ tokenOrgName(token, vmodel.OrgMemberships) }
+									}
+									@table.Cell(table.CellProps{Class: "text-muted-foreground"}) {
+										{ tokenExpiry(token) }
+									}
+									@table.Cell(table.CellProps{Class: "text-right"}) {
+										@common.ConfirmDelete(common.ConfirmDeleteProps{
+											URL:          common.BaseURLString(ctx, common.WithPath("/profile/tokens/", string(token.ID()))),
+											Label:        "Révoquer",
+											Title:        "Révoquer cette clé API ?",
+											Description:  "Tout ce qui utilise cette clé cessera d'accéder à la passerelle. Cette action est irréversible.",
+											ConfirmLabel: "Révoquer",
+										})
 									}
 								}
 							}
@@ -136,25 +112,32 @@ templ TokensPage(vmodel TokensPageVModel) {
 					}
 				}
 				<div class="space-y-4">
-					<div class="p-3 rounded-md bg-yellow-50 dark:bg-yellow-900/20 text-sm">
+					<div class="p-3 rounded-md bg-warning-tint text-warning text-sm">
 						<strong>Important :</strong> La clé API ne sera affichée qu'une seule fois après sa création. Assurez-vous de la copier dans un endroit sûr.
 					</div>
 					<form id="token-create-form" method="POST" action={ common.BaseURL(ctx, common.WithPath("/profile/tokens")) } class="space-y-4">
-						<div class="space-y-2">
-							<label for="token-label" class="text-sm font-medium">Nom de la clé</label>
+						@form.Item() {
+							@form.Label(form.LabelProps{For: "token-label"}) {
+								Nom de la clé
+							}
 							@input.Input(input.Props{
 								Name:        "label",
 								ID:          "token-label",
 								Placeholder: "Ex: Application mobile, Script de sauvegarde...",
 							})
-						</div>
-						<div class="space-y-2">
-							<label for="token-org" class="text-sm font-medium">Organisation <span class="text-destructive">*</span></label>
+						}
+						@form.Item() {
+							@form.Label(form.LabelProps{For: "token-org-trigger"}) {
+								Organisation <span class="text-destructive">*</span>
+							}
 							if len(vmodel.OrgMemberships) == 0 {
-								<p class="text-sm text-muted-foreground">Vous n’appartenez à aucune organisation. Contactez un administrateur pour rejoindre une organisation avant de créer une clé API.</p>
+								@form.Description() {
+									Vous n’appartenez à aucune organisation. Contactez un administrateur pour rejoindre une organisation avant de créer une clé API.
+								}
 							} else {
 								@selectbox.SelectBox(selectbox.Props{ID: "token-org"}) {
 									@selectbox.Trigger(selectbox.TriggerProps{
+										ID:         "token-org-trigger",
 										Name:       "org_id",
 										Attributes: templ.Attributes{"required": "required"},
 									}) {
@@ -173,20 +156,24 @@ templ TokensPage(vmodel TokensPageVModel) {
 									}
 								}
 							}
-						</div>
-						<div class="space-y-2">
-							<label for="token-expires" class="text-sm font-medium">Date d'expiration (optionnel)</label>
+						}
+						@form.Item() {
+							@form.Label(form.LabelProps{For: "token-expires"}) {
+								Date d'expiration (optionnel)
+							}
 							@input.Input(input.Props{ID: "token-expires", Name: "expires_at", Type: input.TypeDate})
-						</div>
+						}
 					</form>
 				</div>
 				@dialog.Footer(dialog.FooterProps{}) {
+					<!-- Le bouton vit dans le pied du dialogue, hors du <form>.
+					L'attribut `form` de HTML5 le rattache au formulaire par son id :
+					pas de JavaScript, et la validation native s'applique. -->
 					@button.Button(button.Props{
 						Type:     button.TypeSubmit,
+						Form:     "token-create-form",
+						Size:     button.SizeSm,
 						Disabled: len(vmodel.OrgMemberships) == 0,
-						Attributes: templ.Attributes{
-							"onclick": "document.getElementById('token-create-form').requestSubmit()",
-						},
 					}) {
 						Créer la clé
 					}
@@ -213,4 +200,34 @@ func tokenExpiry(token model.AuthToken) string {
 		return "—"
 	}
 	return token.ExpiresAt().Format("02/01/2006")
+}
+
+// apiCallExample shows how to spend a key, which is the first thing anyone
+// landing on this screen needs. The base URL comes from the request, so a
+// deployment behind a reverse proxy shows its own address rather than a
+// placeholder.
+templ apiCallExample() {
+	{{ baseURL := common.BaseURLString(ctx, common.WithPath("/v1")) }}
+	<div class="mb-3.5">
+		@common.Section() {
+			@common.SectionHeader() {
+				@common.SectionTitle() {
+					Exemple d'appel
+				}
+				<span class="ml-auto text-xs text-muted-foreground">Compatible OpenAI</span>
+			}
+			@common.SectionBody(common.SectionBodyProps{Class: "space-y-2.5"}) {
+				<div class="flex flex-wrap items-center gap-2 text-sm">
+					<span class="text-muted-foreground">URL de base :</span>
+					<span class="min-w-48 flex-1">
+						@common.InlineSnippet(baseURL)
+					</span>
+				</div>
+				@common.Snippet("bash", "curl "+baseURL+"/chat/completions \\\n"+
+					"  -H \"Authorization: Bearer $XOLO_API_KEY\" \\\n"+
+					"  -H \"Content-Type: application/json\" \\\n"+
+					"  -d '{\"model\": \"mon-modele\", \"messages\": [{\"role\": \"user\", \"content\": \"Bonjour\"}]}'")
+			}
+		}
+	</div>
 }

@@ -1,8 +1,6 @@
 package component
 
-import (
-	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-)
+import common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 
 templ PersonalModelEditorPage(vmodel PersonalModelEditorVModel) {
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Pipeline — "+vmodel.VM.Name())) {

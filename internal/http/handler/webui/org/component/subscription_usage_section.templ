@@ -5,8 +5,9 @@ import (
 	"time"
 
 	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/progress"
 )
 
 // SubscriptionUsageSection renders plan consumption for each subscription provider.
@@ -14,7 +15,9 @@ import (
 templ SubscriptionUsageSection(providers []SubscriptionProviderUsage) {
 	if len(providers) > 0 {
 		<div class="space-y-3">
-			<h2 class="text-lg font-semibold">Abonnements</h2>
+			@common.SectionTitle() {
+				Abonnements
+			}
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 				for _, pu := range providers {
 					@subscriptionProviderCard(pu)
@@ -31,9 +34,7 @@ templ subscriptionProviderCard(pu SubscriptionProviderUsage) {
 				<div class="flex items-center gap-2">
 					<span>{ pu.Provider.Name() }</span>
 					if pu.PerUser {
-						@badge.Badge(badge.Props{Variant: badge.VariantOutline}) {
-							Ma part
-						}
+						@common.Badge(common.ToneNeutral, "Ma part")
 					}
 				</div>
 			}
@@ -67,13 +68,9 @@ templ rollingWindowConstraintRow(cu SubscriptionConstraintUsage) {
 		<div class="flex items-center gap-2">
 			<span class="text-sm font-medium">{ cu.Constraint.Label }</span>
 			if cu.Anchored {
-				@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
-					Fenêtre fixe
-				}
+				@common.Badge(common.ToneNeutral, "Fenêtre fixe")
 			} else {
-				@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
-					Fenêtre glissante
-				}
+				@common.Badge(common.ToneNeutral, "Fenêtre glissante")
 			}
 		</div>
 		// Token budget bar
@@ -123,13 +120,9 @@ templ concurrencyConstraintRow(cu SubscriptionConstraintUsage) {
 	<div class="space-y-2">
 		<div class="flex items-center gap-2">
 			<span class="text-sm font-medium">{ cu.Constraint.Label }</span>
-			@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
-				Concurrence
-			}
+			@common.Badge(common.ToneNeutral, "Concurrence")
 			if cu.Exhausted {
-				@badge.Badge(badge.Props{Variant: badge.VariantDestructive}) {
-					Épuisé
-				}
+				@common.Badge(common.ToneNegative, "Épuisé")
 			}
 		</div>
 		if cu.Constraint.MaxConcurrent != nil {
@@ -147,19 +140,17 @@ templ concurrencyConstraintRow(cu SubscriptionConstraintUsage) {
 	</div>
 }
 
-// progressBar renders a simple CSS-width-based bar.
-// danger=true colours it red.
+// progressBar renders a plan consumption bar.
+// danger=true colours it with the destructive token instead of the primary one.
 templ progressBar(pct int, danger bool) {
 	{{ barClass := "bg-primary" }}
 	if danger {
 		{{ barClass = "bg-destructive" }}
 	}
-	<div class="w-full overflow-hidden rounded-full bg-secondary h-2.5">
-		<div
-			class={ "h-2.5 rounded-full transition-all " + barClass }
-			style={ fmt.Sprintf("width: %d%%", pct) }
-		></div>
-	</div>
+	@progress.Progress(progress.Props{
+		Value:    pct,
+		BarClass: barClass,
+	})
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

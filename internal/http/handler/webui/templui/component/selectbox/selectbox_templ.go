@@ -569,8 +569,12 @@ func Content(props ...ContentProps) templ.Component {
 			Offset:     4,
 			MatchWidth: true,
 			DisableESC: !p.NoSearch,
+			// ÉCART AVEC TEMPLUI v1.5.0 : le `z-50` d'origine a été retiré. Il
+			// écrasait par TwMerge le `z-[9999]` de popover.Content, et un select
+			// ouvert depuis un autre popover (le panneau de filtres) passait alors
+			// *sous* lui — les deux vivent dans le même portail sur <body>.
 			Class: utils.TwMerge(
-				"p-1 select-content z-50 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md",
+				"p-1 select-content overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md",
 				"min-w-[var(--popover-trigger-width)] w-[var(--popover-trigger-width)]",
 				p.Class,
 			),
@@ -632,7 +636,7 @@ func Group(props ...GroupProps) templ.Component {
 			var templ_7745c5c3_Var20 string
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(p.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/templui/component/selectbox/selectbox.templ`, Line: 264, Col: 12}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/templui/component/selectbox/selectbox.templ`, Line: 268, Col: 12}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {
@@ -722,7 +726,7 @@ func Label(props ...LabelProps) templ.Component {
 			var templ_7745c5c3_Var24 string
 			templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(p.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/templui/component/selectbox/selectbox.templ`, Line: 281, Col: 12}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/templui/component/selectbox/selectbox.templ`, Line: 285, Col: 12}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 			if templ_7745c5c3_Err != nil {
@@ -820,7 +824,7 @@ func Item(props ...ItemProps) templ.Component {
 			var templ_7745c5c3_Var28 string
 			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(p.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/templui/component/selectbox/selectbox.templ`, Line: 297, Col: 12}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/templui/component/selectbox/selectbox.templ`, Line: 301, Col: 12}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 			if templ_7745c5c3_Err != nil {
@@ -851,7 +855,7 @@ func Item(props ...ItemProps) templ.Component {
 		var templ_7745c5c3_Var30 string
 		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(p.Value)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/templui/component/selectbox/selectbox.templ`, Line: 310, Col: 36}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/templui/component/selectbox/selectbox.templ`, Line: 314, Col: 36}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 		if templ_7745c5c3_Err != nil {
@@ -864,7 +868,7 @@ func Item(props ...ItemProps) templ.Component {
 		var templ_7745c5c3_Var31 string
 		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.FormatBool(p.Selected))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/templui/component/selectbox/selectbox.templ`, Line: 311, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/templui/component/selectbox/selectbox.templ`, Line: 315, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 		if templ_7745c5c3_Err != nil {
@@ -877,7 +881,7 @@ func Item(props ...ItemProps) templ.Component {
 		var templ_7745c5c3_Var32 string
 		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.FormatBool(p.Disabled))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/templui/component/selectbox/selectbox.templ`, Line: 312, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/templui/component/selectbox/selectbox.templ`, Line: 316, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 		if templ_7745c5c3_Err != nil {
@@ -969,7 +973,7 @@ func Script() templ.Component {
 		var templ_7745c5c3_Var36 string
 		templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(templ.GetNonce(ctx))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/templui/component/selectbox/selectbox.templ`, Line: 333, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/templui/component/selectbox/selectbox.templ`, Line: 337, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 		if templ_7745c5c3_Err != nil {
@@ -982,7 +986,7 @@ func Script() templ.Component {
 		var templ_7745c5c3_Var37 string
 		templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(utils.ScriptURL("/assets/js/selectbox.min.js"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/templui/component/selectbox/selectbox.templ`, Line: 333, Col: 97}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/templui/component/selectbox/selectbox.templ`, Line: 337, Col: 97}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 		if templ_7745c5c3_Err != nil {

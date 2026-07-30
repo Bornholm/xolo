@@ -15,7 +15,7 @@ type JoinSuccessVModel struct {
 }
 
 templ JoinSuccess(vmodel JoinSuccessVModel) {
-	@common.StandaloneLayout(common.WithUserVariant(vmodel.User), common.WithTitle("Bienvenue dans "+vmodel.OrgName)) {
+	@common.StandaloneLayout(common.WithTitle("Bienvenue dans " + vmodel.OrgName)) {
 		@card.Card() {
 			@card.Header() {
 				@card.Title() {

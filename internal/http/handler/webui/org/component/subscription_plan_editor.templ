@@ -5,7 +5,10 @@ import (
 	"time"
 
 	"github.com/bornholm/xolo/internal/core/model"
+	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/form"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
 )
 
@@ -29,89 +32,54 @@ templ SubscriptionPlanEditor(plan *model.SubscriptionPlan, readonly bool) {
 		{{ constraints = plan.Constraints }}
 		{{ planLabel = plan.Label }}
 	}
-	<div class="rounded-md border p-4 space-y-4">
-		<p class="text-sm font-semibold">Plan d'abonnement</p>
-		<div class="space-y-1">
-			<label class="text-xs font-medium text-muted-foreground">Nom du plan</label>
-			@input.Input(input.Props{Name: "plan_label", Value: planLabel, Placeholder: "ex : MiniMax Max, GLM Coding Pro…", Disabled: readonly})
-		</div>
-		<div class="space-y-1">
-			<p class="text-xs font-medium text-muted-foreground">Contraintes</p>
-			<div id="plan-constraints" class="space-y-3">
-				for i, c := range constraints {
-					@planConstraintRow(i, c, readonly)
-				}
-			</div>
-		</div>
-		<input type="hidden" id="plan-constraint-count" name="plan_constraint_count" value={ fmt.Sprintf("%d", len(constraints)) }/>
-		if !readonly {
-			@button.Button(button.Props{
-				Type:    "button",
-				Variant: button.VariantOutline,
-				Attributes: templ.Attributes{
-					"onclick": "addPlanConstraint()",
-					"class":   "w-full",
-				},
-			}) {
-				+ Ajouter une contrainte
+	@common.Section() {
+		@common.SectionHeader() {
+			@common.SectionTitle() {
+				Plan d'abonnement
 			}
 		}
-	</div>
-	// Template element for JS cloning (invisible, no initial display).
-	// planConstraintRow with idx -1 emits placeholder names (plan_c__I___kind, etc.).
+		@common.SectionBody(common.SectionBodyProps{Class: "space-y-4"}) {
+			@form.Item() {
+				@form.Label(form.LabelProps{For: "plan_label"}) {
+					Nom du plan
+				}
+				@input.Input(input.Props{ID: "plan_label", Name: "plan_label", Value: planLabel, Placeholder: "ex : MiniMax Max, GLM Coding Pro…", Disabled: readonly})
+			}
+			<div class="space-y-1">
+				<p class="text-xs font-medium text-muted-foreground">Contraintes</p>
+				<div
+					id="plan-constraints"
+					class="space-y-3"
+					data-xolo-rows
+					data-rows-template="plan-constraint-tpl"
+					data-rows-count="plan-constraint-count"
+				>
+					for i, c := range constraints {
+						@planConstraintRow(i, c, readonly)
+					}
+				</div>
+			</div>
+			// Hidden input : porte le nombre de lignes, tenu à jour par le module de
+			// lignes répétables d'assets/js/xolo.js.
+			<input type="hidden" id="plan-constraint-count" name="plan_constraint_count" value={ fmt.Sprintf("%d", len(constraints)) }/>
+			if !readonly {
+				@button.Button(button.Props{
+					Type:       "button",
+					Variant:    button.VariantOutline,
+					Class:      "w-full",
+					Attributes: templ.Attributes{"data-xolo-row-add": "plan-constraints"},
+				}) {
+					+ Ajouter une contrainte
+				}
+			}
+		}
+	}
+	// Modèle cloné à l'ajout d'une contrainte. planConstraintRow avec idx -1 émet
+	// des noms à trou (plan_c{i}_kind, …) que la renumérotation réécrit.
 	if !readonly {
 		<template id="plan-constraint-tpl">
 			@planConstraintRow(-1, model.PlanConstraint{}, false)
 		</template>
-		<script>
-		(function () {
-			var INPUT_CLS = "flex h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs outline-none md:text-sm placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:opacity-50";
-			var SELECT_CLS = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs outline-none md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:opacity-50";
-
-			function reindex() {
-				var rows = document.querySelectorAll('#plan-constraints > [data-constraint-row]');
-				rows.forEach(function (row, i) {
-					row.querySelectorAll('[data-plan-name]').forEach(function (el) {
-						el.name = el.dataset.planName.replace(/{i}/g, i);
-					});
-					// Keep select in sync with hidden input
-					var kindSel = row.querySelector('select[data-plan-name]');
-					if (kindSel) {
-						updateKindFields(kindSel);
-					}
-				});
-				document.getElementById('plan-constraint-count').value = rows.length;
-			}
-
-			function updateKindFields(select) {
-				var row = select.closest('[data-constraint-row]');
-				var kind = select.value;
-				row.querySelectorAll('[data-kind-fields]').forEach(function (el) {
-					el.style.display = (kind && el.dataset.kindFields === kind) ? '' : 'none';
-				});
-			}
-
-			window.planConstraintKindChange = function (sel) { updateKindFields(sel); };
-
-			window.addPlanConstraint = function () {
-				var tpl = document.getElementById('plan-constraint-tpl');
-				var clone = tpl.content.cloneNode(true);
-				document.getElementById('plan-constraints').appendChild(clone);
-				reindex();
-			};
-
-			window.removePlanConstraint = function (btn) {
-				btn.closest('[data-constraint-row]').remove();
-				reindex();
-			};
-
-			// Initialise visibility for pre-rendered rows.
-			document.querySelectorAll('#plan-constraints > [data-constraint-row]').forEach(function (row) {
-				var sel = row.querySelector('select[data-plan-name]');
-				if (sel) updateKindFields(sel);
-			});
-		})();
-		</script>
 	}
 }
 
@@ -157,112 +125,159 @@ templ planConstraintRow(idx int, c model.PlanConstraint, readonly bool) {
 	// rolling_window visible by default if kind matches (hidden for template row where kind is empty).
 	{{ showRolling := c.Kind == model.ConstraintRollingWindow }}
 	{{ showConcurrency := c.Kind == model.ConstraintConcurrency }}
-	<div data-constraint-row class="rounded-md border p-3 space-y-3 bg-muted/30">
+	<div data-xolo-row class="rounded-md border p-3 space-y-3 bg-muted/30">
 		// ── Header row: kind selector + delete button ─────────────────────
 		<div class="flex items-center gap-2">
 			<div class="flex-1 space-y-1">
-				<label class="text-xs font-medium text-muted-foreground">Type</label>
+				@form.Label(form.LabelProps{For: "plan-kind-" + idxKey}) {
+					Type
+				}
+				// TODO(rework-ux): passer sur selectbox.* une fois le lot 8 fait.
+				// Ce <select> est cloné depuis le <template> ci-dessus par
+				// le module de lignes répétables. selectbox.* portalise son contenu sur
+				// document.body sous un identifiant tiré au hasard au rendu :
+				// deux lignes clonées pointeraient sur le même contenu. La
+				// conversion suppose donc de remplacer d'abord l'ajout de ligne
+				// par un fragment HTMX, qui rendrait chaque ligne côté serveur.
 				<select
+					id={ "plan-kind-" + idxKey }
 					name={ kindName }
-					data-plan-name={ "plan_c{i}_kind" }
-					onchange="planConstraintKindChange(this)"
+					data-xolo-name={ "plan_c{i}_kind" }
+					data-xolo-row-variant
 					class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:opacity-50"
 					disabled?={ readonly }
 				>
-					<option value="" if c.Kind == "" { selected }>— Sélectionner un type —</option>
-					<option value="rolling_window" if c.Kind == model.ConstraintRollingWindow { selected }>Fenêtre glissante (rolling window)</option>
-					<option value="concurrency" if c.Kind == model.ConstraintConcurrency { selected }>Concurrence max</option>
+					<option
+						value=""
+						if c.Kind == "" {
+							selected
+						}
+					>— Sélectionner un type —</option>
+					<option
+						value="rolling_window"
+						if c.Kind == model.ConstraintRollingWindow {
+							selected
+						}
+					>Fenêtre glissante (rolling window)</option>
+					<option
+						value="concurrency"
+						if c.Kind == model.ConstraintConcurrency {
+							selected
+						}
+					>Concurrence max</option>
 				</select>
 			</div>
 			if !readonly {
-				<button
-					type="button"
-					onclick="removePlanConstraint(this)"
-					class="mt-5 inline-flex items-center justify-center h-9 w-9 rounded-md border border-input text-sm text-muted-foreground hover:text-destructive hover:border-destructive transition-colors"
-					title="Supprimer cette contrainte"
-				>✕</button>
+				@button.Button(button.Props{
+					Type:    button.TypeButton,
+					Variant: button.VariantOutline,
+					Size:    button.SizeIcon,
+					Class:   "mt-5 text-muted-foreground hover:text-destructive hover:border-destructive",
+					Attributes: templ.Attributes{
+						"data-xolo-row-remove": "",
+						"title":                "Supprimer cette contrainte",
+					},
+				}) {
+					@icon.X(icon.Props{Size: 15})
+				}
 			}
 		</div>
 		// ── Label (all kinds) ──────────────────────────────────────────────
 		<div class="space-y-1">
-			<label class="text-xs font-medium text-muted-foreground">Libellé</label>
+			@form.Label() {
+				Libellé
+			}
 			@input.Input(input.Props{
 				Name:        labelName,
 				Value:       c.Label,
 				Placeholder: "ex : 5h, weekly, concurrent…",
 				Disabled:    readonly,
-				Attributes:  templ.Attributes{"data-plan-name": "plan_c{i}_label"},
+				Attributes:  templ.Attributes{"data-xolo-name": "plan_c{i}_label"},
 			})
 		</div>
 		// ── Rolling window fields ──────────────────────────────────────────
 		<div
-			data-kind-fields="rolling_window"
+			data-xolo-variant="rolling_window"
 			class="space-y-3"
-			if !showRolling { style="display:none" }
+			hidden?={ !showRolling }
 		>
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 				<div class="space-y-1">
-					<label class="text-xs font-medium text-muted-foreground">Durée de la fenêtre</label>
-					<p class="text-xs text-muted-foreground/70">Format Go : <code>5h</code>, <code>168h</code>, <code>30m</code></p>
+					@form.Label() {
+						Durée de la fenêtre
+					}
+					@form.Description() {
+						Format Go : <code>5h</code>, <code>168h</code>, <code>30m</code>
+					}
 					@input.Input(input.Props{
 						Name:        durationName,
 						Value:       durStr,
 						Placeholder: "ex : 5h",
 						Disabled:    readonly,
-						Attributes:  templ.Attributes{"data-plan-name": "plan_c{i}_duration"},
+						Attributes:  templ.Attributes{"data-xolo-name": "plan_c{i}_duration"},
 					})
 				</div>
 				<div class="space-y-1">
-					<label class="text-xs font-medium text-muted-foreground">Reset dans (optionnel)</label>
-					<p class="text-xs text-muted-foreground/70">Copié de l'écran du fournisseur (ex : <code>4h29m</code>, <code>4d13h</code>). Vide = fenêtre glissante.</p>
+					@form.Label() {
+						Reset dans (optionnel)
+					}
+					@form.Description() {
+						Copié de l'écran du fournisseur (ex : <code>4h29m</code>, <code>4d13h</code>). Vide = fenêtre glissante.
+					}
 					@input.Input(input.Props{
 						Name:        resetInName,
 						Value:       resetInStr,
 						Placeholder: "ex : 4h29m",
 						Disabled:    readonly,
-						Attributes:  templ.Attributes{"data-plan-name": "plan_c{i}_reset_in"},
+						Attributes:  templ.Attributes{"data-xolo-name": "plan_c{i}_reset_in"},
 					})
 				</div>
 			</div>
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 				<div class="space-y-1">
-					<label class="text-xs font-medium text-muted-foreground">Budget tokens (vide = illimité)</label>
+					@form.Label() {
+						Budget tokens (vide = illimité)
+					}
 					@input.Input(input.Props{
 						Name:        tokenBudgetName,
 						Type:        input.TypeNumber,
 						Value:       tokenBudgetStr,
 						Placeholder: "ex : 10000000",
 						Disabled:    readonly,
-						Attributes:  templ.Attributes{"data-plan-name": "plan_c{i}_token_budget", "min": "0"},
+						Attributes:  templ.Attributes{"data-xolo-name": "plan_c{i}_token_budget", "min": "0"},
 					})
 				</div>
 				<div class="space-y-1">
-					<label class="text-xs font-medium text-muted-foreground">Budget valeur (devise du fournisseur, vide = illimité)</label>
+					@form.Label() {
+						Budget valeur (devise du fournisseur, vide = illimité)
+					}
 					@input.Input(input.Props{
 						Name:        valueBudgetName,
 						Type:        input.TypeNumber,
 						Value:       valueBudgetStr,
 						Placeholder: "ex : 20.00",
 						Disabled:    readonly,
-						Attributes:  templ.Attributes{"data-plan-name": "plan_c{i}_value_budget", "min": "0", "step": "any"},
+						Attributes:  templ.Attributes{"data-xolo-name": "plan_c{i}_value_budget", "min": "0", "step": "any"},
 					})
 				</div>
 			</div>
 		</div>
 		// ── Concurrency fields ─────────────────────────────────────────────
 		<div
-			data-kind-fields="concurrency"
+			data-xolo-variant="concurrency"
 			class="space-y-1"
-			if !showConcurrency { style="display:none" }
+			hidden?={ !showConcurrency }
 		>
-			<label class="text-xs font-medium text-muted-foreground">Nombre max de requêtes simultanées</label>
+			@form.Label() {
+				Nombre max de requêtes simultanées
+			}
 			@input.Input(input.Props{
 				Name:        maxConcName,
 				Type:        input.TypeNumber,
 				Value:       maxConcStr,
 				Placeholder: "ex : 4",
 				Disabled:    readonly,
-				Attributes:  templ.Attributes{"data-plan-name": "plan_c{i}_max_concurrent", "min": "1"},
+				Attributes:  templ.Attributes{"data-xolo-name": "plan_c{i}_max_concurrent", "min": "1"},
 			})
 		</div>
 	</div>

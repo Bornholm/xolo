@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"slices"
+	"strings"
 	"strconv"
 
 	"github.com/a-h/templ"
@@ -176,21 +177,14 @@ func (h *Handler) fillUsersPageVModelAppLayout(ctx context.Context, vmodel *comp
 	isAdmin := slices.Contains(user.Roles(), authz.RoleAdmin)
 
 	vmodel.AppLayoutVModel = commonComp.AppLayoutVModel{
-		User:          user,
-		IsAdmin:       isAdmin,
-		SelectedItem:  "users",
-		HomeLink:      "/admin/",
-		AdminSubtitle: "Admin. plateforme",
+		User:         user,
+		IsAdmin:      isAdmin,
+		SelectedItem: "users",
 		Breadcrumbs: []commonComp.BreadcrumbItem{
 			{Label: "Plateforme", Href: "/admin/"},
 			{Label: "Utilisateurs", Href: "/admin/users"},
 		},
-		NavigationItems: func(vmodel commonComp.AppLayoutVModel) templ.Component {
-			return commonComp.AdminNavigationItems(vmodel)
-		},
-		FooterItems: func(vmodel commonComp.AppLayoutVModel) templ.Component {
-			return commonComp.AdminFooterItems(vmodel)
-		},
+		Context: commonComp.ContextPlatform,
 	}
 
 	return nil
@@ -212,10 +206,13 @@ func (h *Handler) fillUsersPageVModelUsers(ctx context.Context, vmodel *componen
 		}
 	}
 
-	filterOpts := port.QueryUsersOptions{}
+	search := strings.TrimSpace(r.URL.Query().Get("q"))
+
+	filterOpts := port.QueryUsersOptions{Search: search}
 	opts := port.QueryUsersOptions{
-		Page:  &page,
-		Limit: &limit,
+		Page:   &page,
+		Limit:  &limit,
+		Search: search,
 	}
 
 	total, err := h.userStore.CountUsers(ctx, filterOpts)
@@ -228,12 +225,54 @@ func (h *Handler) fillUsersPageVModelUsers(ctx context.Context, vmodel *componen
 		return errors.WithStack(err)
 	}
 
+	// The subtitle states how many accounts are deactivated. It is a count on the
+	// unfiltered set, so it keeps meaning something while a search is active.
+	inactive := false
+	inactiveCount, err := h.userStore.CountUsers(ctx, port.QueryUsersOptions{Active: &inactive})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	orgNames, err := h.usersOrgNames(ctx, users)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
 	vmodel.Users = users
 	vmodel.CurrentPage = page + 1 // Convert back to 1-based
 	vmodel.PageSize = limit
 	vmodel.TotalUsers = int(total)
+	vmodel.InactiveUsers = int(inactiveCount)
+	vmodel.Search = search
+	vmodel.OrgNames = orgNames
 
 	return nil
+}
+
+// usersOrgNames resolves the organisations of the users on the current page.
+//
+// One query per row, but the page holds ten of them and the alternative — a
+// cross-user membership listing — has no port for it. Should the page size grow,
+// this is the call to batch.
+func (h *Handler) usersOrgNames(ctx context.Context, users []model.User) (map[model.UserID][]string, error) {
+	names := make(map[model.UserID][]string, len(users))
+
+	for _, user := range users {
+		memberships, err := h.orgStore.GetUserMemberships(ctx, user.ID())
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		for _, membership := range memberships {
+			org := membership.Org()
+			if org == nil {
+				continue
+			}
+			names[user.ID()] = append(names[user.ID()], org.Name())
+		}
+	}
+
+	return names, nil
 }
 
 func (h *Handler) fillEditUserPageVModelAppLayout(ctx context.Context, vmodel *component.EditUserPageVModel, r *http.Request) error {
@@ -245,20 +284,14 @@ func (h *Handler) fillEditUserPageVModelAppLayout(ctx context.Context, vmodel *c
 	isAdmin := slices.Contains(user.Roles(), authz.RoleAdmin)
 
 	vmodel.AppLayoutVModel = commonComp.AppLayoutVModel{
-		User:          user,
-		IsAdmin:       isAdmin,
-		SelectedItem:  "users",
-		AdminSubtitle: "Admin. plateforme",
+		User:         user,
+		IsAdmin:      isAdmin,
+		SelectedItem: "users",
 		Breadcrumbs: []commonComp.BreadcrumbItem{
 			{Label: "Plateforme", Href: "/admin/"},
 			{Label: "Utilisateurs", Href: "/admin/users"},
 		},
-		NavigationItems: func(vmodel commonComp.AppLayoutVModel) templ.Component {
-			return commonComp.AdminNavigationItems(vmodel)
-		},
-		FooterItems: func(vmodel commonComp.AppLayoutVModel) templ.Component {
-			return commonComp.AdminFooterItems(vmodel)
-		},
+		Context: commonComp.ContextPlatform,
 	}
 
 	return nil

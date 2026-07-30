@@ -25,8 +25,6 @@ func (h *Handler) getDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	members, _, err := h.orgStore.ListOrgMembers(ctx, org.ID(), port.ListOrgMembersOptions{})
 	if err != nil {
 		slog.ErrorContext(ctx, "could not list members", slogx.Error(err))
@@ -45,16 +43,16 @@ func (h *Handler) getDashboard(w http.ResponseWriter, r *http.Request) {
 		Members:   members,
 		Providers: providers,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug,
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug,
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Tableau de bord", Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 

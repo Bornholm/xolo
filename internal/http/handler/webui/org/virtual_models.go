@@ -26,8 +26,6 @@ func (h *Handler) getVirtualModelsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	vms, err := h.virtualModelStore.ListVirtualModels(ctx, org.ID())
 	if err != nil {
 		slog.ErrorContext(ctx, "could not list virtual models", slog.Any("error", err))
@@ -40,24 +38,42 @@ func (h *Handler) getVirtualModelsPage(w http.ResponseWriter, r *http.Request) {
 	vmodel := component.VirtualModelsPageVModel{
 		Org:           org,
 		VirtualModels: vms,
+		Selected:      selectedVirtualModel(vms, r.URL.Query().Get("vm")),
 		BaseURL:       baseURL.String(),
 		Success:       r.URL.Query().Get("success"),
 		Error:         r.URL.Query().Get("error"),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-virtual-models",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-virtual-models",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Modèles virtuels", Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 
 	templ.Handler(component.VirtualModelsPage(vmodel)).ServeHTTP(w, r)
+}
+
+// selectedVirtualModel resolves the model the detail pane previews. An unknown
+// or absent `?vm=` falls back to the first one, so the pane is never empty while
+// the list is not — a stale bookmark shows the list rather than a blank frame.
+func selectedVirtualModel(vms []model.VirtualModel, id string) model.VirtualModel {
+	if len(vms) == 0 {
+		return nil
+	}
+
+	for _, vm := range vms {
+		if string(vm.ID()) == id {
+			return vm
+		}
+	}
+
+	return vms[0]
 }
 
 func (h *Handler) getNewVirtualModelPage(w http.ResponseWriter, r *http.Request) {
@@ -71,23 +87,21 @@ func (h *Handler) getNewVirtualModelPage(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	vmodel := component.VirtualModelFormVModel{
 		Org:   org,
 		IsNew: true,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-virtual-models",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-virtual-models",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Modèles virtuels", Href: "/orgs/" + orgSlug + "/admin/virtual-models"},
 				{Label: "Nouveau", Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 
@@ -147,8 +161,6 @@ func (h *Handler) getEditVirtualModelPage(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	vm, err := h.virtualModelStore.GetVirtualModelByID(ctx, model.VirtualModelID(modelID))
 	if err != nil {
 		if errors.Is(err, port.ErrNotFound) {
@@ -167,17 +179,17 @@ func (h *Handler) getEditVirtualModelPage(w http.ResponseWriter, r *http.Request
 		Name:         vm.Name(),
 		Description:  vm.Description(),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-virtual-models",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-virtual-models",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Modèles virtuels", Href: "/orgs/" + orgSlug + "/admin/virtual-models"},
 				{Label: vm.Name(), Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 
@@ -275,8 +287,6 @@ func (h *Handler) getPipelineEditorPage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	vm, err := h.virtualModelStore.GetVirtualModelByID(ctx, model.VirtualModelID(modelID))
 	if err != nil {
 		if errors.Is(err, port.ErrNotFound) {
@@ -297,18 +307,18 @@ func (h *Handler) getPipelineEditorPage(w http.ResponseWriter, r *http.Request) 
 		APIBase:    baseURL.String(),
 		Readonly:   readonly,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-virtual-models",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
-			FullBleed:     true,
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-virtual-models",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
+			FullBleed:    true,
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Modèles virtuels", Href: "/orgs/" + orgSlug + "/admin/virtual-models"},
 				{Label: vm.Name(), Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 

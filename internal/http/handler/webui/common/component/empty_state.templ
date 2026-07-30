@@ -1,0 +1,69 @@
+package component
+
+import "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+
+type EmptyStateProps struct {
+	// Icon is drawn in a tinted square above the title. Defaults to icon.Inbox.
+	Icon        func(...icon.Props) templ.Component
+	Title       string
+	Description string
+	Class       string
+	// Compact drops the vertical breathing room, for an empty state that has to
+	// fit inside a section rather than fill a screen.
+	Compact bool
+}
+
+// EmptyState renders the illustrated empty state of the mockup: a tinted icon, a
+// sentence explaining what is missing, and the primary call to action carried by
+// the children.
+//
+// The audit found this shape rewritten in nearly every list screen as a
+// `<div class="rounded-lg border p-6 text-center">`; it is a component so the
+// wording and the call to action are the only things a screen has to decide.
+templ EmptyState(props EmptyStateProps) {
+	<div
+		class={
+			"flex flex-col items-center justify-center rounded-lg border border-dashed bg-card px-6 text-center",
+			templ.KV("py-14", !props.Compact),
+			templ.KV("py-8", props.Compact),
+			props.Class,
+		}
+	>
+		<span class="mb-3 flex size-11 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+			if props.Icon != nil {
+				@props.Icon(icon.Props{Class: "size-5"})
+			} else {
+				@icon.Inbox(icon.Props{Class: "size-5"})
+			}
+		</span>
+		<p class="text-base font-semibold">{ props.Title }</p>
+		if props.Description != "" {
+			<p class="mt-1.5 max-w-md text-sm text-muted-foreground">{ props.Description }</p>
+		}
+		<div class="mt-4 flex flex-wrap items-center justify-center gap-2 empty:hidden">
+			{ children... }
+		</div>
+	</div>
+}
+
+// SectionEmpty renders the empty body of a dashboard block: the same illustrated
+// state as EmptyState, minus the frame — the section already provides one.
+//
+// A block with nothing to show keeps its frame and its title, so a dashboard
+// stays legible as a dashboard and an absent figure never reads as a section
+// that failed to load. Whether that emptiness is illustrated is not a per-screen
+// decision, which is why the compact/frameless pair is named here instead of
+// being spelled out at each call site.
+templ SectionEmpty(props EmptyStateProps) {
+	@SectionBody() {
+		@EmptyState(EmptyStateProps{
+			Icon:        props.Icon,
+			Title:       props.Title,
+			Description: props.Description,
+			Compact:     true,
+			Class:       "border-0 bg-transparent " + props.Class,
+		}) {
+			{ children... }
+		}
+	}
+}

@@ -21,55 +21,38 @@ import (
 //   - extra_body_k{i}_value
 templ ExtraBodyEditor(rows []ExtraBodyRow, readonly bool) {
 	<div class="space-y-3">
-		<div id="extra-body-rows" class="space-y-2">
+		<div
+			id="extra-body-rows"
+			class="space-y-2"
+			data-xolo-rows
+			data-rows-template="extra-body-tpl"
+			data-rows-count="extra-body-count"
+		>
 			for i, row := range rows {
 				@extraBodyRow(i, row, readonly)
 			}
 		</div>
+		// Hidden input : porte le nombre de lignes, tenu à jour par le module de
+		// lignes répétables d'assets/js/xolo.js. Il transporte une valeur, ce n'est
+		// pas un contrôle — templui n'a pas d'équivalent et n'en a pas besoin.
 		<input type="hidden" id="extra-body-count" name="extra_body_count" value={ fmt.Sprintf("%d", len(rows)) }/>
 		if !readonly {
 			@button.Button(button.Props{
-				Type:    "button",
-				Variant: button.VariantOutline,
-				Attributes: templ.Attributes{
-					"onclick": "addExtraBodyRow()",
-					"class":   "w-full",
-				},
+				Type:       "button",
+				Variant:    button.VariantOutline,
+				Class:      "w-full",
+				Attributes: templ.Attributes{"data-xolo-row-add": "extra-body-rows"},
 			}) {
 				+ Ajouter un champ
 			}
 		}
 	</div>
-	// Template element for JS cloning. extraBodyRow with idx -1 emits
-	// placeholder names (extra_body_k{i}_key, …) that reindex() rewrites.
+	// Modèle cloné à l'ajout d'une ligne. extraBodyRow avec idx -1 émet des noms
+	// à trou (extra_body_k{i}_key, …) que la renumérotation réécrit.
 	if !readonly {
 		<template id="extra-body-tpl">
 			@extraBodyRow(-1, ExtraBodyRow{}, false)
 		</template>
-		<script>
-		(function () {
-			function reindex() {
-				var rows = document.querySelectorAll('#extra-body-rows > [data-eb-row]');
-				rows.forEach(function (row, i) {
-					row.querySelectorAll('[data-eb-name]').forEach(function (el) {
-						el.name = el.dataset.ebName.replace(/{i}/g, i);
-					});
-				});
-				document.getElementById('extra-body-count').value = rows.length;
-			}
-
-			window.addExtraBodyRow = function () {
-				var tpl = document.getElementById('extra-body-tpl');
-				document.getElementById('extra-body-rows').appendChild(tpl.content.cloneNode(true));
-				reindex();
-			};
-
-			window.removeExtraBodyRow = function (btn) {
-				btn.closest('[data-eb-row]').remove();
-				reindex();
-			};
-		})();
-		</script>
 	}
 }
 
@@ -82,14 +65,14 @@ templ extraBodyRow(idx int, row ExtraBodyRow, readonly bool) {
 	}
 	{{ keyName := "extra_body_k" + idxKey + "_key" }}
 	{{ valName := "extra_body_k" + idxKey + "_value" }}
-	<div data-eb-row class="flex items-start gap-2">
+	<div data-xolo-row class="flex items-start gap-2">
 		<div class="flex-1">
 			@input.Input(input.Props{
 				Name:        keyName,
 				Value:       row.Key,
 				Placeholder: "clé (ex : reasoning_split)",
 				Disabled:    readonly,
-				Attributes:  templ.Attributes{"data-eb-name": "extra_body_k{i}_key"},
+				Attributes:  templ.Attributes{"data-xolo-name": "extra_body_k{i}_key"},
 			})
 		</div>
 		<div class="flex-1">
@@ -98,7 +81,7 @@ templ extraBodyRow(idx int, row ExtraBodyRow, readonly bool) {
 				Value:       row.Value,
 				Placeholder: "valeur (ex : true, 40, auto)",
 				Disabled:    readonly,
-				Attributes:  templ.Attributes{"data-eb-name": "extra_body_k{i}_value"},
+				Attributes:  templ.Attributes{"data-xolo-name": "extra_body_k{i}_value"},
 			})
 		</div>
 		if !readonly {
@@ -107,8 +90,8 @@ templ extraBodyRow(idx int, row ExtraBodyRow, readonly bool) {
 				Variant: button.VariantOutline,
 				Size:    button.SizeIcon,
 				Attributes: templ.Attributes{
-					"onclick": "removeExtraBodyRow(this)",
-					"title":   "Supprimer ce champ",
+					"data-xolo-row-remove": "",
+					"title":                "Supprimer ce champ",
 				},
 			}) {
 				✕

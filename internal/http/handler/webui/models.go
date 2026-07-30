@@ -59,17 +59,11 @@ func (h *Handler) getModelsPage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "models",
-			HomeLink:     "/usage",
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: "Espace personnel", Href: "/usage"},
 				{Label: "Modèles", Href: ""},
 			},
-			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppNavigationItems(vmodel)
-			},
-			FooterItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppFooterItems(vmodel)
-			},
+			Context: common.ContextPersonal,
 		},
 		ModelUsages:    modelUsages,
 		AllModelUsages: allModelUsages,

@@ -3,9 +3,9 @@ package component
 import (
 	"strconv"
 
+	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/rbac"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/form"
@@ -16,171 +16,211 @@ import (
 
 templ VirtualModelsPage(vmodel VirtualModelsPageVModel) {
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Modèles virtuels — "+vmodel.Org.Name())) {
-		<div class="space-y-6">
-			<div class="flex items-start justify-between gap-4">
-				<div>
-					<h1 class="text-2xl font-semibold">Modèles virtuels</h1>
-					<p class="text-sm text-muted-foreground">Pipelines de routage et de load-balancing composant plusieurs modèles.</p>
+		@common.PageHeader(common.PageHeaderProps{
+			Title:    "Modèles virtuels",
+			Subtitle: "Pipelines de routage, de repli et de traitement composant plusieurs modèles réels.",
+		}) {
+			if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermVirtualModelsWrite) {
+				<div class="hidden">
+					@input.Input(input.Props{
+						ID:         "vm-import-input",
+						Type:       input.TypeFile,
+						FileAccept: ".json,application/json",
+						Attributes: templ.Attributes{
+							"data-xolo-import":   vmodel.BaseURL + "/api/orgs/" + vmodel.Org.Slug() + "/virtual-models/import",
+							"data-redirect-base": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/")),
+						},
+					})
 				</div>
-				<div class="flex items-center gap-2">
-					if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermVirtualModelsWrite) {
-						<div class="hidden">
-							@input.Input(input.Props{
-								ID:         "vm-import-input",
-								Type:       input.TypeFile,
-								FileAccept: ".json,application/json",
-								Attributes: templ.Attributes{
-									"data-api-base":      vmodel.BaseURL,
-									"data-org-slug":      vmodel.Org.Slug(),
-									"data-redirect-base": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/")),
-									"onchange": "(async function(el){" +
-										"var file=el.files[0]; if(!file) return;" +
-										"try {" +
-										"var txt=await file.text();" +
-										"var bundle=JSON.parse(txt);" +
-										"var res=await fetch(el.dataset.apiBase+'/api/orgs/'+el.dataset.orgSlug+'/virtual-models/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(bundle)});" +
-										"if(!res.ok){var e=await res.text();alert('Erreur import : '+e);return;}" +
-										"var vm=await res.json();" +
-										"window.location.href=el.dataset.redirectBase+vm.id+'/pipeline';" +
-										"} catch(e) { alert('Fichier invalide : '+e); }" +
-										"finally { el.value=''; }" +
-										"})(this)",
-								},
-							})
-						</div>
-						@button.Button(button.Props{
-							Variant: button.VariantOutline,
-							Size:    button.SizeSm,
-							Attributes: templ.Attributes{
-								"onclick": "document.getElementById('vm-import-input').click()",
-								"type":    "button",
-							},
-						}) {
-							Importer depuis un fichier
-						}
-						@button.Button(button.Props{
-							Size: button.SizeSm,
-							Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/new")),
-						}) {
-							@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
-							Nouveau modèle virtuel
-						}
+				@button.Button(button.Props{
+					Variant: button.VariantOutline,
+					Size:    button.SizeSm,
+					Attributes: templ.Attributes{
+						"data-xolo-file-trigger": "vm-import-input",
+						"type":                   "button",
+					},
+				}) {
+					Importer un bundle
+				}
+				@button.Button(button.Props{
+					Size:  button.SizeSm,
+					Class: "gap-1.5",
+					Href:  common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/new")),
+				}) {
+					@icon.Plus(icon.Props{Class: "size-3.5"})
+					Nouveau modèle virtuel
+				}
+			}
+		}
+		@common.FlashToast(vmodel.Success, "Le modèle virtuel")
+		@common.FlashError(vmodel.Error, "Un modèle virtuel")
+		if len(vmodel.VirtualModels) == 0 {
+			@common.EmptyState(common.EmptyStateProps{
+				Icon:        icon.Network,
+				Title:       "Aucun modèle virtuel",
+				Description: "Un modèle virtuel compose plusieurs modèles derrière un seul nom : routage, repli, répartition de charge.",
+			}) {
+				if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermVirtualModelsWrite) {
+					@button.Button(button.Props{
+						Size: button.SizeSm,
+						Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/new")),
+					}) {
+						Nouveau modèle virtuel
 					}
-				</div>
+				}
+			}
+		} else {
+			<div class="grid items-start gap-3.5 lg:grid-cols-[340px_minmax(0,1fr)]">
+				@virtualModelList(vmodel)
+				@virtualModelDetail(vmodel)
 			</div>
-			if vmodel.Success == "created" {
-				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-					@alert.Description() {
-						Modèle virtuel créé avec succès.
-					}
-				}
+		}
+	}
+}
+
+// virtualModelList renders the master column: the whole set of virtual models,
+// the selected one highlighted. Selection is a plain link carrying `?vm=`, so it
+// survives a reload and stays shareable — the pane has no state of its own.
+templ virtualModelList(vmodel VirtualModelsPageVModel) {
+	@common.Section() {
+		@common.SectionHeader() {
+			@common.SectionTitle() {
+				{ Pluralize(len(vmodel.VirtualModels), "modèle virtuel", "modèles virtuels") }
 			}
-			if vmodel.Success == "updated" {
-				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-					@alert.Description() {
-						Modèle virtuel mis à jour avec succès.
-					}
-				}
-			}
-			if vmodel.Success == "deleted" {
-				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-					@alert.Description() {
-						Modèle virtuel supprimé avec succès.
-					}
-				}
-			}
-			if vmodel.Error == "exists" {
-				@alert.Alert(alert.Props{Variant: alert.VariantDestructive}) {
-					@alert.Description() {
-						Un modèle virtuel avec ce nom existe déjà.
-					}
-				}
-			}
-			if vmodel.Error == "create_failed" {
-				@alert.Alert(alert.Props{Variant: alert.VariantDestructive}) {
-					@alert.Description() {
-						Erreur lors de la création du modèle virtuel.
-					}
-				}
-			}
-			if len(vmodel.VirtualModels) == 0 {
-				<div class="rounded-lg border p-6 text-center text-muted-foreground">
-					Aucun modèle virtuel configuré.
-				</div>
-			} else {
-				<div class="flex flex-col gap-3">
-					for _, vm := range vmodel.VirtualModels {
-						{{ nodeCount := 0 }}
-						if vm.Graph() != nil {
-							{{ nodeCount = len(vm.Graph().Nodes) }}
+		}
+		<div class="flex flex-col">
+			for _, vm := range vmodel.VirtualModels {
+				{{ selected := vmodel.Selected != nil && vm.ID() == vmodel.Selected.ID() }}
+				<a
+					href={ templ.SafeURL(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models"), common.WithValues("vm", string(vm.ID())))) }
+					class={ "border-b px-4 py-2.5 last:border-b-0 hover:bg-row-hover", templ.KV("bg-primary/5", selected) }
+					aria-current?={ selected }
+				>
+					<span class="flex items-center gap-2">
+						<span class="min-w-0 flex-1 truncate font-mono text-sm font-semibold">{ vm.Name() }</span>
+						if vm.Graph() != nil && len(vm.Graph().Nodes) > 0 {
+							@common.Badge(common.TonePositive, "actif")
+						} else {
+							@common.Badge(common.ToneNeutral, "brouillon")
 						}
-						@card.Card() {
-							@card.Content(card.ContentProps{Class: "flex items-center gap-4"}) {
-								<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent">
-									@icon.Network(icon.Props{Size: 20, Class: "text-primary"})
-								</div>
-								<div class="flex-1 min-w-0">
-									<div class="font-semibold font-mono truncate">{ vmodel.Org.Slug() }/{ vm.Name() }</div>
-									if vm.Description() != "" {
-										<div class="text-sm text-muted-foreground mt-0.5 truncate">{ vm.Description() }</div>
-									}
-								</div>
-								<div class="text-sm text-muted-foreground shrink-0">
-									if nodeCount == 1 {
-										1 nœud
-									} else {
-										{ strconv.Itoa(nodeCount) } nœuds
-									}
-								</div>
-								<div class="flex gap-1 shrink-0">
-									if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermVirtualModelsRead) {
-										@button.Button(button.Props{
-											Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()), "/pipeline")),
-											Variant: button.VariantOutline,
-											Size:    button.SizeSm,
-										}) {
-											@icon.Workflow(icon.Props{Size: 14, Class: "mr-2"})
-											Pipeline
-										}
-									}
-									if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermVirtualModelsWrite) {
-										@button.Button(button.Props{
-											Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()), "/edit")),
-											Variant: button.VariantGhost,
-											Size:    button.SizeIcon,
-											Attributes: templ.Attributes{"title": "Modifier"},
-										}) {
-											@icon.Pencil(icon.Props{Size: 15})
-										}
-										@button.Button(button.Props{
-											Href:    common.BaseURLString(ctx, common.WithPath("/api/orgs/", vmodel.Org.Slug(), "/virtual-models/", string(vm.ID()), "/export")),
-											Variant: button.VariantGhost,
-											Size:    button.SizeIcon,
-											Attributes: templ.Attributes{"title": "Exporter"},
-										}) {
-											@icon.Download(icon.Props{Size: 15})
-										}
-										@button.Button(button.Props{
-											Variant: button.VariantGhost,
-											Size:    button.SizeIcon,
-											Class:   "text-destructive hover:text-destructive",
-											Attributes: templ.Attributes{
-												"type":     "button",
-												"title":    "Supprimer",
-												"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()))),
-												"onclick":  "if(confirm('Supprimer ce modèle virtuel ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
-											},
-										}) {
-											@icon.Trash2(icon.Props{Size: 15})
-										}
-									}
-								</div>
-							}
-						}
+					</span>
+					if vm.Description() != "" {
+						<span class="mt-0.5 block text-xs text-muted-foreground">{ vm.Description() }</span>
 					}
-				</div>
+					<span class="mt-1.5 block font-mono text-2xs text-muted-foreground">
+						{ Pluralize(GraphNodeCount(vm.Graph()), "nœud", "nœuds") }
+					</span>
+				</a>
 			}
 		</div>
+	}
+}
+
+// virtualModelDetail renders the preview pane: the pipeline of the selected
+// model, read-only, as an invitation to open the editor.
+templ virtualModelDetail(vmodel VirtualModelsPageVModel) {
+	if vm := vmodel.Selected; vm != nil {
+		{{ pipelineHref := common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()), "/pipeline")) }}
+		@common.Section() {
+			@common.SectionHeader() {
+				@common.SectionTitle() {
+					<span class="font-mono">{ vmodel.Org.Slug() }/{ vm.Name() }</span>
+				}
+				<span class="text-xs text-muted-foreground">aperçu</span>
+				<span class="ml-auto flex flex-wrap items-center gap-1">
+					if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermVirtualModelsWrite) {
+						@button.Button(button.Props{
+							Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()), "/edit")),
+							Variant: button.VariantOutline,
+							Size:    button.SizeSm,
+						}) {
+							Renommer
+						}
+						@button.Button(button.Props{
+							Href:    common.BaseURLString(ctx, common.WithPath("/api/orgs/", vmodel.Org.Slug(), "/virtual-models/", string(vm.ID()), "/export")),
+							Variant: button.VariantOutline,
+							Size:    button.SizeSm,
+						}) {
+							Exporter
+						}
+						@common.ConfirmDelete(common.ConfirmDeleteProps{
+							URL:         common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/virtual-models/", string(vm.ID()))),
+							Tooltip:     "Supprimer",
+							Title:       "Supprimer ce modèle virtuel ?",
+							Description: "Les appels qui le nomment échoueront dès la suppression.",
+						})
+					}
+					if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermVirtualModelsRead) {
+						@button.Button(button.Props{Href: pipelineHref, Size: button.SizeSm, Class: "gap-1.5"}) {
+							@icon.Workflow(icon.Props{Class: "size-3.5"})
+							Ouvrir l'éditeur
+						}
+					}
+				</span>
+			}
+			@PipelinePreview(vm.Graph(), pipelineHref)
+			<div class="flex flex-wrap gap-6 border-t px-4 py-3">
+				@common.InlineStat("Nœuds", common.ToneNeutral) {
+					{ strconv.Itoa(GraphNodeCount(vm.Graph())) }
+				}
+				@common.InlineStat("Liaisons", common.ToneNeutral) {
+					{ strconv.Itoa(GraphEdgeCount(vm.Graph())) }
+				}
+				// TODO(rework-ux): la maquette affiche appels 30 j, latence ajoutée
+				// p50 et rejets par modèle virtuel. port.UsageStore agrège par nom
+				// de modèle proxy, sans distinguer ce qu'un pipeline ajoute — il
+				// manque une mesure par nœud (cf. lot 7 du plan).
+				@common.InlineStat("Appels 30 j", common.ToneNeutral) {
+					@common.PendingValue("L'usage n'est pas encore agrégé par modèle virtuel.")
+				}
+				@common.InlineStat("Latence ajoutée p50", common.ToneNeutral) {
+					@common.PendingValue("La latence propre au pipeline n'est pas encore mesurée.")
+				}
+			</div>
+		}
+	}
+}
+
+// PipelinePreview draws the node chain of a graph. The whole canvas is a link to
+// the editor: the mockup makes the preview itself clickable, which is also the
+// only affordance saying the boxes are not editable here.
+//
+// Exported because the personal virtual models are the same object under another
+// owner, and their screen is the same screen.
+templ PipelinePreview(graph *model.PipelineGraph, href string) {
+	{{ cards := PipelineCards(graph) }}
+	if len(cards) == 0 {
+		<div class="px-4 py-8 text-center text-sm text-muted-foreground">
+			Ce modèle virtuel n'a pas encore de pipeline.
+		</div>
+	} else {
+		<a
+			href={ templ.SafeURL(href) }
+			title="Ouvrir l'éditeur de pipeline"
+			class="block overflow-x-auto bg-row-hover bg-[radial-gradient(theme(colors.border)_1px,transparent_1px)] bg-[length:16px_16px] px-4 py-5"
+		>
+			<span class="flex w-max items-stretch gap-1">
+				for i, card := range cards {
+					if i > 0 {
+						<span class="flex items-center px-0.5 text-muted-foreground/50" aria-hidden="true">
+							@icon.ArrowRight(icon.Props{Class: "size-4"})
+						</span>
+					}
+					<span class="block w-40 rounded-lg border bg-card px-2.5 py-2 shadow-xs">
+						<span class="flex items-center gap-1.5">
+							<span class={ "flex size-5 shrink-0 items-center justify-center rounded-sm", card.TintClass }>
+								@card.Icon(icon.Props{Class: "size-3"})
+							</span>
+							<span class="text-2xs font-bold uppercase tracking-caps">{ card.Kind }</span>
+						</span>
+						<span class="mt-1.5 block truncate font-mono text-xs font-semibold">{ card.Name }</span>
+						if card.Detail != "" {
+							<span class="mt-0.5 block text-2xs text-muted-foreground">{ card.Detail }</span>
+						}
+					</span>
+				}
+			</span>
+		</a>
 	}
 }
 
@@ -193,25 +233,27 @@ templ VirtualModelFormPage(vmodel VirtualModelFormVModel) {
 	}
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(title)) {
 		<div class="space-y-6">
-			<h1 class="text-2xl font-semibold">{ title }</h1>
-			if vmodel.Error != "" {
-				<div class="bg-red-50 border border-red-200 text-red-800 px-4 py-2 rounded-md">
-					{ vmodel.Error }
-				</div>
-			}
+			@common.PageHeader(common.PageHeaderProps{
+				Title: title,
+			})
+			@common.FlashError(vmodel.Error, "Un modèle virtuel")
 			<form method="POST" action={ templ.SafeURL(action) } class="space-y-4">
-				<div class="bg-card shadow-xs w-full border text-card-foreground rounded-lg">
-					<div class="p-6">
+				@card.Card() {
+					@card.Content() {
 						<div class="space-y-4 pt-4">
 							<div class="space-y-2">
-								@form.Label(form.LabelProps{}) { Nom }
+								@form.Label(form.LabelProps{}) {
+									Nom 
+								}
 								if vmodel.IsNew {
 									@input.Input(input.Props{
 										Name:        "name",
 										Placeholder: "ex: auto, fast, smart",
 										Attributes:  templ.Attributes{"required": true},
 									})
-									@form.Description() { Le nom sera utilisé comme suffixe du nom qualifié (ex: acme/auto) }
+									@form.Description() {
+										Le nom sera utilisé comme suffixe du nom qualifié (ex: acme/auto) 
+									}
 								} else {
 									@input.Input(input.Props{
 										Name:     "name",
@@ -221,11 +263,13 @@ templ VirtualModelFormPage(vmodel VirtualModelFormVModel) {
 								}
 							</div>
 							<div class="space-y-2">
-								@form.Label(form.LabelProps{}) { Description }
+								@form.Label(form.LabelProps{}) {
+									Description 
+								}
 								@textarea.Textarea(textarea.Props{Name: "description", Rows: 3, Value: vmodel.Description})
 							</div>
 						</div>
-					</div>
+					}
 					<div class="pt-0 flex items-center p-6">
 						@button.Button(button.Props{Type: button.TypeSubmit}) {
 							Enregistrer
@@ -237,7 +281,7 @@ templ VirtualModelFormPage(vmodel VirtualModelFormVModel) {
 							Annuler
 						}
 					</div>
-				</div>
+				}
 			</form>
 		</div>
 	}

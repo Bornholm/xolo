@@ -244,6 +244,28 @@ func (s *Store) DeleteUser(ctx context.Context, userID model.UserID) error {
 	return nil
 }
 
+// applyUserSearch restricts a user query to the rows whose display name, email
+// or subject contains term.
+//
+// LIKE is case-insensitive in SQLite for ASCII, which covers e-mail addresses
+// and subjects; display names are lowered on both sides so accented names match
+// too. `%` and `_` are escaped so a search for "jean_dupont" does not turn the
+// underscore into a wildcard.
+func applyUserSearch(query *gorm.DB, term string) *gorm.DB {
+	term = strings.TrimSpace(term)
+	if term == "" {
+		return query
+	}
+
+	escaper := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+	pattern := "%" + escaper.Replace(strings.ToLower(term)) + "%"
+
+	return query.Where(
+		`(LOWER(display_name) LIKE ? ESCAPE '\' OR LOWER(email) LIKE ? ESCAPE '\' OR LOWER(subject) LIKE ? ESCAPE '\')`,
+		pattern, pattern, pattern,
+	)
+}
+
 // CountUsers implements port.UserStore.
 func (s *Store) CountUsers(ctx context.Context, opts port.QueryUsersOptions) (int64, error) {
 	var count int64
@@ -260,6 +282,8 @@ func (s *Store) CountUsers(ctx context.Context, opts port.QueryUsersOptions) (in
 		if opts.Active != nil {
 			query = query.Where("active = ?", *opts.Active)
 		}
+
+		query = applyUserSearch(query, opts.Search)
 
 		return errors.WithStack(query.Count(&count).Error)
 	}, sqlite3.LOCKED, sqlite3.BUSY)
@@ -289,6 +313,8 @@ func (s *Store) QueryUsers(ctx context.Context, opts port.QueryUsersOptions) ([]
 		if opts.Active != nil {
 			query = query.Where("active = ?", *opts.Active)
 		}
+
+		query = applyUserSearch(query, opts.Search)
 
 		// Apply pagination
 		if opts.Page != nil {

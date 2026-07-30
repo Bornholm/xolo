@@ -5,10 +5,9 @@ import (
 
 	"github.com/bornholm/xolo/internal/core/rbac"
 	commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/checkbox"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/form"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/label"
@@ -25,37 +24,37 @@ func roleFormAction(ctx context.Context, vmodel RoleFormVModel) string {
 templ RoleForm(vmodel RoleFormVModel) {
 	@commonComp.AppLayout(vmodel.AppLayoutVModel, commonComp.WithTitle("Rôle")) {
 		{{ readonly := !commonComp.HasPermission(ctx, vmodel.Org.ID(), rbac.PermRolesWrite) }}
-		<div class="space-y-6">
-			<div class="flex items-center gap-4">
-				<a href={ commonComp.BaseURL(ctx, commonComp.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/roles")) } class="inline-flex items-center justify-center rounded-md border border-input bg-background px-2 py-2 text-sm font-medium shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 cursor-pointer">
-					@icon.ArrowLeft(icon.Props{Class: "h-4 w-4"})
-				</a>
-				<h1 class="text-2xl font-semibold">
-					if vmodel.IsNew {
-						Nouveau rôle
-					} else {
-						{ vmodel.Role.Name() }
-					}
-				</h1>
-			</div>
-			if vmodel.Error != "" {
-				@alert.Alert(alert.Props{Variant: alert.VariantDestructive}) {
-					@alert.Description() {
-						{ vmodel.Error }
-					}
+		<div class="max-w-5xl">
+			@commonComp.PageHeader(commonComp.PageHeaderProps{
+				Title:    roleFormTitle(vmodel),
+				Subtitle: "Un rôle est un jeu d'autorisations. Cochez ce que ses porteurs pourront faire dans l'organisation.",
+			}) {
+				@button.Button(button.Props{
+					Variant: button.VariantOutline,
+					Size:    button.SizeSm,
+					Class:   "gap-1.5",
+					Href:    commonComp.BaseURLString(ctx, commonComp.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/roles")),
+				}) {
+					@icon.ArrowLeft(icon.Props{Class: "size-3.5"})
+					Retour
 				}
 			}
+			if vmodel.Error != "" {
+				<div class="mb-3.5">
+					@commonComp.InfoBanner(commonComp.ToneNegative, vmodel.Error)
+				</div>
+			}
 			<form method="POST" action={ templ.SafeURL(roleFormAction(ctx, vmodel)) }>
-				<div class="space-y-6">
-					@card.Card() {
-						@card.Header() {
-							@card.Title() {
+				<div class="space-y-3.5">
+					@commonComp.Section() {
+						@commonComp.SectionHeader() {
+							@commonComp.SectionTitle() {
 								Informations
 							}
 						}
-						@card.Content() {
-							<div class="space-y-4">
-								<div class="space-y-2">
+						@commonComp.SectionBody() {
+							<div class="grid gap-3.5 sm:grid-cols-2">
+								@form.Item() {
 									@label.Label(label.Props{For: "name"}) {
 										Nom du rôle
 									}
@@ -67,8 +66,8 @@ templ RoleForm(vmodel RoleFormVModel) {
 										Disabled:    roleFieldsLocked(vmodel) || readonly,
 										Attributes:  templ.Attributes{"required": "required"},
 									})
-								</div>
-								<div class="space-y-2">
+								}
+								@form.Item() {
 									@label.Label(label.Props{For: "description"}) {
 										Description
 									}
@@ -79,19 +78,21 @@ templ RoleForm(vmodel RoleFormVModel) {
 										Placeholder: "Description du rôle",
 										Disabled:    roleFieldsLocked(vmodel) || readonly,
 									})
-								</div>
+								}
 							</div>
 						}
 					}
-					for _, group := range rbac.Catalog() {
-						@card.Card() {
-							@card.Header() {
-								@card.Title() {
-									{ group.Label }
+					<!-- Groupes de permissions sur deux colonnes : la maquette pose
+					l'éditeur en 2 colonnes, chaque groupe restant une carte. -->
+					<div class="grid gap-3.5 lg:grid-cols-2">
+						for _, group := range rbac.Catalog() {
+							@commonComp.Section() {
+								@commonComp.SectionHeader() {
+									@commonComp.SectionTitle() {
+										{ group.Label }
+									}
 								}
-							}
-							@card.Content() {
-								<div class="space-y-3">
+								@commonComp.SectionBody(commonComp.SectionBodyProps{Class: "space-y-2.5"}) {
 									for _, def := range group.Perms {
 										<div class="flex items-start gap-3">
 											@checkbox.Checkbox(checkbox.Props{
@@ -106,19 +107,19 @@ templ RoleForm(vmodel RoleFormVModel) {
 											}
 										</div>
 									}
-								</div>
+								}
 							}
 						}
-					}
+					</div>
 					if len(vmodel.ModelOptions) > 0 {
-						@card.Card() {
-							@card.Header() {
-								@card.Title() {
+						@commonComp.Section() {
+							@commonComp.SectionHeader() {
+								@commonComp.SectionTitle() {
 									Modèles autorisés (accès restreint)
 								}
 							}
-							@card.Content() {
-								<p class="text-sm text-muted-foreground mb-3">
+							@commonComp.SectionBody() {
+								<p class="mb-3 text-sm text-muted-foreground">
 									Cochez des modèles pour autoriser explicitement leur usage, même sans la permission globale correspondante.
 								</p>
 								<div class="space-y-3">
@@ -145,12 +146,12 @@ templ RoleForm(vmodel RoleFormVModel) {
 					}
 					<div class="flex items-center gap-2">
 						if commonComp.HasPermission(ctx, vmodel.Org.ID(), rbac.PermRolesWrite) {
-							@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeLg}) {
-								@icon.Save()
-								<span>Enregistrer</span>
+							@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeSm, Class: "gap-1.5"}) {
+								@icon.Save(icon.Props{Class: "size-3.5"})
+								Enregistrer
 							}
 						}
-						@button.Button(button.Props{Variant: button.VariantOutline, Size: button.SizeLg, Href: commonComp.BaseURLString(ctx, commonComp.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/roles"))}) {
+						@button.Button(button.Props{Variant: button.VariantGhost, Size: button.SizeSm, Href: commonComp.BaseURLString(ctx, commonComp.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/roles"))}) {
 							Annuler
 						}
 					</div>
@@ -178,4 +179,13 @@ func roleDescription(vmodel RoleFormVModel) string {
 // (true for builtin roles, whose identity is fixed).
 func roleFieldsLocked(vmodel RoleFormVModel) bool {
 	return vmodel.Role != nil && vmodel.Role.Builtin()
+}
+
+// roleFormTitle names the screen: a new role has no name yet, an existing one
+// carries its own.
+func roleFormTitle(vmodel RoleFormVModel) string {
+	if vmodel.IsNew || vmodel.Role == nil {
+		return "Nouveau rôle"
+	}
+	return vmodel.Role.Name()
 }

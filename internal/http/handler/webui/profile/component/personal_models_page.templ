@@ -1,165 +1,170 @@
 package component
 
 import (
-	"strconv"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	orgcomponent "github.com/bornholm/xolo/internal/http/handler/webui/org/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/form"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/textarea"
+	"strconv"
 )
 
 templ PersonalModelsPage(vmodel PersonalModelsPageVModel) {
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Mes modèles")) {
-		<div class="space-y-6">
-			<div class="flex items-start justify-between gap-4">
-				<div>
-					<h1 class="text-2xl font-semibold">Mes modèles</h1>
-					<p class="text-sm text-muted-foreground">Modèles virtuels personnels, accessibles via l'API avec le préfixe <code class="bg-muted px-1 rounded">~/</code>.</p>
-				</div>
-				<div class="flex items-center gap-2">
-					<div class="hidden">
-						@input.Input(input.Props{
-							ID:         "pvm-import-input",
-							Type:       input.TypeFile,
-							FileAccept: ".json,application/json",
-							Attributes: templ.Attributes{
-								"data-api-base":      vmodel.BaseURL,
-								"data-redirect-base": common.BaseURLString(ctx, common.WithPath("/profile/personal-models/")),
-								"onchange": "(async function(el){" +
-									"var file=el.files[0]; if(!file) return;" +
-									"try {" +
-									"var txt=await file.text();" +
-									"var bundle=JSON.parse(txt);" +
-									"var res=await fetch(el.dataset.apiBase+'/api/personal-models/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(bundle)});" +
-									"if(!res.ok){var e=await res.text();alert('Erreur import : '+e);return;}" +
-									"var vm=await res.json();" +
-									"window.location.href=el.dataset.redirectBase+vm.id+'/pipeline';" +
-									"} catch(e) { alert('Fichier invalide : '+e); }" +
-									"finally { el.value=''; }" +
-									"})(this)",
-							},
-						})
-					</div>
-					@button.Button(button.Props{
-						Variant: button.VariantOutline,
-						Size:    button.SizeSm,
-						Attributes: templ.Attributes{
-							"onclick": "document.getElementById('pvm-import-input').click()",
-							"type":    "button",
-						},
-					}) {
-						Importer depuis un fichier
-					}
-					@button.Button(button.Props{
-						Size: button.SizeSm,
-						Href: common.BaseURLString(ctx, common.WithPath("/profile/personal-models/new")),
-					}) {
-						@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
-						Nouveau modèle virtuel
-					}
-				</div>
+		@common.PageHeader(common.PageHeaderProps{
+			Title:    "Mes modèles",
+			Subtitle: "Modèles virtuels personnels, appelés via l'API avec le préfixe ~/.",
+		}) {
+			<div class="hidden">
+				@input.Input(input.Props{
+					ID:         "pvm-import-input",
+					Type:       input.TypeFile,
+					FileAccept: ".json,application/json",
+					Attributes: templ.Attributes{
+						"data-xolo-import":   vmodel.BaseURL + "/api/personal-models/import",
+						"data-redirect-base": common.BaseURLString(ctx, common.WithPath("/profile/personal-models/")),
+					},
+				})
 			</div>
-			if vmodel.Success == "created" {
-				<div class="bg-green-50 border border-green-200 text-green-800 px-4 py-2 rounded-md">
-					Modèle virtuel créé avec succès.
-				</div>
+			@button.Button(button.Props{
+				Variant: button.VariantOutline,
+				Size:    button.SizeSm,
+				Attributes: templ.Attributes{
+					"data-xolo-file-trigger": "pvm-import-input",
+					"type":                   "button",
+				},
+			}) {
+				Importer un bundle
 			}
-			if vmodel.Success == "updated" {
-				<div class="bg-green-50 border border-green-200 text-green-800 px-4 py-2 rounded-md">
-					Modèle virtuel mis à jour avec succès.
-				</div>
+			@button.Button(button.Props{
+				Size:  button.SizeSm,
+				Class: "gap-1.5",
+				Href:  common.BaseURLString(ctx, common.WithPath("/profile/personal-models/new")),
+			}) {
+				@icon.Plus(icon.Props{Class: "size-3.5"})
+				Nouveau modèle virtuel
 			}
-			if vmodel.Success == "deleted" {
-				<div class="bg-green-50 border border-green-200 text-green-800 px-4 py-2 rounded-md">
-					Modèle virtuel supprimé avec succès.
-				</div>
+		}
+		@common.FlashToast(vmodel.Success, "Le modèle virtuel")
+		@common.FlashError(vmodel.Error, "Un modèle virtuel")
+		if len(vmodel.VirtualModels) == 0 {
+			@common.EmptyState(common.EmptyStateProps{
+				Icon:        icon.Network,
+				Title:       "Aucun modèle personnel",
+				Description: "Composez vos propres pipelines à partir des modèles auxquels vos organisations vous donnent accès.",
+			}) {
+				@button.Button(button.Props{
+					Size: button.SizeSm,
+					Href: common.BaseURLString(ctx, common.WithPath("/profile/personal-models/new")),
+				}) {
+					Nouveau modèle virtuel
+				}
 			}
-			if vmodel.Error == "exists" {
-				<div class="bg-red-50 border border-red-200 text-red-800 px-4 py-2 rounded-md">
-					Un modèle virtuel avec ce nom existe déjà.
-				</div>
+		} else {
+			<div class="grid items-start gap-3.5 lg:grid-cols-[340px_minmax(0,1fr)]">
+				@personalModelList(vmodel)
+				@personalModelDetail(vmodel)
+			</div>
+		}
+	}
+}
+
+// personalModelList is the master column of the screen, identical in shape to the
+// organisation one: the whole set, the selected entry highlighted, selection
+// carried by `?vm=` so a pane survives a reload and stays shareable.
+templ personalModelList(vmodel PersonalModelsPageVModel) {
+	@common.Section() {
+		@common.SectionHeader() {
+			@common.SectionTitle() {
+				{ orgcomponent.Pluralize(len(vmodel.VirtualModels), "modèle virtuel", "modèles virtuels") }
 			}
-			if vmodel.Error == "create_failed" {
-				<div class="bg-red-50 border border-red-200 text-red-800 px-4 py-2 rounded-md">
-					Erreur lors de la création du modèle virtuel.
-				</div>
-			}
-			if len(vmodel.VirtualModels) == 0 {
-				<div class="rounded-lg border p-6 text-center text-muted-foreground">
-					Aucun modèle virtuel personnel configuré.
-				</div>
-			} else {
-				<div class="flex flex-col gap-3">
-					for _, vm := range vmodel.VirtualModels {
-						{{ nodeCount := 0 }}
-						if vm.Graph() != nil {
-							{{ nodeCount = len(vm.Graph().Nodes) }}
+		}
+		<div class="flex flex-col">
+			for _, vm := range vmodel.VirtualModels {
+				{{ selected := vmodel.Selected != nil && vm.ID() == vmodel.Selected.ID() }}
+				<a
+					href={ templ.SafeURL(common.BaseURLString(ctx, common.WithPath("/profile/personal-models"), common.WithValues("vm", string(vm.ID())))) }
+					class={ "border-b px-4 py-2.5 last:border-b-0 hover:bg-row-hover", templ.KV("bg-primary/5", selected) }
+					aria-current?={ selected }
+				>
+					<span class="flex items-center gap-2">
+						<span class="min-w-0 flex-1 truncate font-mono text-sm font-semibold">~/{ vm.Name() }</span>
+						if vm.Graph() != nil && len(vm.Graph().Nodes) > 0 {
+							@common.Badge(common.TonePositive, "actif")
+						} else {
+							@common.Badge(common.ToneNeutral, "brouillon")
 						}
-						@card.Card() {
-							@card.Content(card.ContentProps{Class: "flex items-center gap-4"}) {
-								<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent">
-									@icon.Network(icon.Props{Size: 20, Class: "text-primary"})
-								</div>
-								<div class="flex-1 min-w-0">
-									<div class="font-semibold font-mono truncate">~/{ vm.Name() }</div>
-									if vm.Description() != "" {
-										<div class="text-sm text-muted-foreground mt-0.5 truncate">{ vm.Description() }</div>
-									}
-								</div>
-								<div class="text-sm text-muted-foreground shrink-0">
-									if nodeCount == 1 {
-										1 nœud
-									} else {
-										{ strconv.Itoa(nodeCount) } nœuds
-									}
-								</div>
-								<div class="flex gap-1 shrink-0">
-									@button.Button(button.Props{
-										Href:    common.BaseURLString(ctx, common.WithPath("/profile/personal-models/", string(vm.ID()), "/pipeline")),
-										Variant: button.VariantOutline,
-										Size:    button.SizeSm,
-									}) {
-										@icon.Workflow(icon.Props{Size: 14, Class: "mr-2"})
-										Configurer
-									}
-									@button.Button(button.Props{
-										Href:    common.BaseURLString(ctx, common.WithPath("/profile/personal-models/", string(vm.ID()), "/edit")),
-										Variant: button.VariantGhost,
-										Size:    button.SizeIcon,
-										Attributes: templ.Attributes{"title": "Modifier"},
-									}) {
-										@icon.Pencil(icon.Props{Size: 15})
-									}
-									@button.Button(button.Props{
-										Href:    common.BaseURLString(ctx, common.WithPath("/api/personal-models/", string(vm.ID()), "/export")),
-										Variant: button.VariantGhost,
-										Size:    button.SizeIcon,
-										Attributes: templ.Attributes{"title": "Exporter"},
-									}) {
-										@icon.Download(icon.Props{Size: 15})
-									}
-									@button.Button(button.Props{
-										Variant: button.VariantGhost,
-										Size:    button.SizeIcon,
-										Class:   "text-destructive hover:text-destructive",
-										Attributes: templ.Attributes{
-											"type":     "button",
-											"title":    "Supprimer",
-											"data-url": common.BaseURLString(ctx, common.WithPath("/profile/personal-models/", string(vm.ID()))),
-											"onclick":  "if(confirm('Supprimer ce modèle virtuel ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
-										},
-									}) {
-										@icon.Trash2(icon.Props{Size: 15})
-									}
-								</div>
-							}
-						}
+					</span>
+					if vm.Description() != "" {
+						<span class="mt-0.5 block text-xs text-muted-foreground">{ vm.Description() }</span>
 					}
-				</div>
+					<span class="mt-1.5 block font-mono text-2xs text-muted-foreground">
+						{ orgcomponent.Pluralize(orgcomponent.GraphNodeCount(vm.Graph()), "nœud", "nœuds") }
+					</span>
+				</a>
 			}
 		</div>
+	}
+}
+
+// personalModelDetail previews the pipeline of the selected model, read-only, as
+// an invitation to open the editor.
+templ personalModelDetail(vmodel PersonalModelsPageVModel) {
+	if vm := vmodel.Selected; vm != nil {
+		{{ pipelineHref := common.BaseURLString(ctx, common.WithPath("/profile/personal-models/", string(vm.ID()), "/pipeline")) }}
+		@common.Section() {
+			@common.SectionHeader() {
+				@common.SectionTitle() {
+					<span class="font-mono">~/{ vm.Name() }</span>
+				}
+				<span class="text-xs text-muted-foreground">aperçu</span>
+				<span class="ml-auto flex flex-wrap items-center gap-1">
+					@button.Button(button.Props{
+						Href:    common.BaseURLString(ctx, common.WithPath("/profile/personal-models/", string(vm.ID()), "/edit")),
+						Variant: button.VariantOutline,
+						Size:    button.SizeSm,
+					}) {
+						Renommer
+					}
+					@button.Button(button.Props{
+						Href:    common.BaseURLString(ctx, common.WithPath("/api/personal-models/", string(vm.ID()), "/export")),
+						Variant: button.VariantOutline,
+						Size:    button.SizeSm,
+					}) {
+						Exporter
+					}
+					@common.ConfirmDelete(common.ConfirmDeleteProps{
+						URL:         common.BaseURLString(ctx, common.WithPath("/profile/personal-models/", string(vm.ID()))),
+						Tooltip:     "Supprimer",
+						Title:       "Supprimer ce modèle virtuel ?",
+						Description: "Les appels qui le nomment échoueront dès la suppression.",
+					})
+					@button.Button(button.Props{Href: pipelineHref, Size: button.SizeSm, Class: "gap-1.5"}) {
+						@icon.Workflow(icon.Props{Class: "size-3.5"})
+						Ouvrir l'éditeur
+					}
+				</span>
+			}
+			@orgcomponent.PipelinePreview(vm.Graph(), pipelineHref)
+			<div class="flex flex-wrap gap-6 border-t px-4 py-3">
+				@common.InlineStat("Nœuds", common.ToneNeutral) {
+					{ strconv.Itoa(orgcomponent.GraphNodeCount(vm.Graph())) }
+				}
+				@common.InlineStat("Liaisons", common.ToneNeutral) {
+					{ strconv.Itoa(orgcomponent.GraphEdgeCount(vm.Graph())) }
+				}
+				<!-- Mêmes colonnes en attente que côté organisation : l'usage n'est
+				pas encore agrégé par modèle virtuel (lot 7 du plan). -->
+				@common.InlineStat("Appels 30 j", common.ToneNeutral) {
+					@common.PendingValue("L'usage n'est pas encore agrégé par modèle virtuel.")
+				}
+				@common.InlineStat("Latence ajoutée p50", common.ToneNeutral) {
+					@common.PendingValue("La latence propre au pipeline n'est pas encore mesurée.")
+				}
+			</div>
+		}
 	}
 }
 
@@ -172,15 +177,15 @@ templ PersonalModelFormPage(vmodel PersonalModelFormVModel) {
 	}
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(title)) {
 		<div class="space-y-6">
-			<h1 class="text-2xl font-semibold">{ title }</h1>
-			if vmodel.Error != "" {
-				<div class="bg-red-50 border border-red-200 text-red-800 px-4 py-2 rounded-md">
-					{ vmodel.Error }
-				</div>
-			}
+			@common.PageHeader(common.PageHeaderProps{
+				Title: title,
+			})
+			@common.FlashError(vmodel.Error, "Un modèle virtuel")
 			<form method="POST" action={ templ.SafeURL(action) } class="space-y-4">
 				<div class="space-y-2">
-					<label class="text-sm font-medium">Nom</label>
+					@form.Label() {
+						Nom
+					}
 					if vmodel.IsNew {
 						@input.Input(input.Props{
 							Name:        "name",
@@ -197,7 +202,9 @@ templ PersonalModelFormPage(vmodel PersonalModelFormVModel) {
 					}
 				</div>
 				<div class="space-y-2">
-					<label class="text-sm font-medium">Description</label>
+					@form.Label() {
+						Description
+					}
 					@textarea.Textarea(textarea.Props{Name: "description", Rows: 3, Value: vmodel.Description})
 				</div>
 				<div class="flex gap-2">

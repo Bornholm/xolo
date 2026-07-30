@@ -48,8 +48,11 @@ func (h *Handler) vmResource() pipelineResource {
 }
 
 type nodeTypeDescriptor struct {
-	Type         model.PipelineNodeType  `json:"type"`
-	PluginName   string                  `json:"pluginName,omitempty"`
+	Type       model.PipelineNodeType `json:"type"`
+	PluginName string                 `json:"pluginName,omitempty"`
+	// Version is the plugin's own version, shown in the editor palette. It is
+	// empty for built-in node types, which are versioned with the server.
+	Version      string                  `json:"version,omitempty"`
 	Label        string                  `json:"label"`
 	Description  string                  `json:"description"`
 	InputPorts   []*proto.PortDescriptor `json:"inputPorts"`
@@ -250,6 +253,7 @@ func (h *Handler) handlePipelineNodeTypes(w http.ResponseWriter, r *http.Request
 			nd := nodeTypeDescriptor{
 				Type:         model.NodeTypePlugin,
 				PluginName:   desc.Name,
+				Version:      desc.Version,
 				Label:        desc.Name,
 				Description:  desc.Description,
 				InputPorts:   desc.InputPorts,

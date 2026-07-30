@@ -1,7 +1,6 @@
 package component
 
 import (
-	"strings"
 	"time"
 
 	"github.com/bornholm/xolo/internal/core/model"
@@ -193,9 +192,13 @@ type VirtualModelsPageVModel struct {
 	common.AppLayoutVModel
 	Org           model.Organization
 	VirtualModels []model.VirtualModel
-	BaseURL       string
-	Success       string
-	Error         string
+	// Selected is the virtual model whose pipeline the right pane previews. The
+	// screen is a master/detail, so it is never nil when VirtualModels is not
+	// empty — the handler falls back to the first one.
+	Selected model.VirtualModel
+	BaseURL  string
+	Success  string
+	Error    string
 }
 
 type VirtualModelFormVModel struct {
@@ -210,8 +213,14 @@ type VirtualModelFormVModel struct {
 
 type RolesPageVModel struct {
 	common.AppLayoutVModel
-	Org     model.Organization
-	Roles   []model.Role
+	Org   model.Organization
+	Roles []model.Role
+	// Query filters the permission rows on their code, their label or the label
+	// of their group.
+	Query string
+	// RoleID, when set, keeps only the permissions that role grants — the way to
+	// audit one role in a matrix that shows them all.
+	RoleID  string
 	Success string
 }
 
@@ -266,28 +275,4 @@ func BuiltinRoleLabel(kind string) string {
 	default:
 		return "Utilisateur"
 	}
-}
-
-// initials returns the 1-2 letter initials used as an avatar fallback.
-func initials(name string) string {
-	fields := strings.FieldsFunc(name, func(r rune) bool {
-		switch r {
-		case ' ', '@', '.', '_', '-':
-			return true
-		default:
-			return false
-		}
-	})
-	if len(fields) == 0 {
-		return "?"
-	}
-	if len(fields) == 1 {
-		if len(fields[0]) >= 2 {
-			return strings.ToUpper(fields[0][:2])
-		}
-		return strings.ToUpper(fields[0])
-	}
-	first := fields[0][:1]
-	last := fields[len(fields)-1][:1]
-	return strings.ToUpper(first + last)
 }

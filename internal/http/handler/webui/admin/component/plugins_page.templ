@@ -2,8 +2,9 @@ package component
 
 import (
 	commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
 )
 
@@ -13,35 +14,66 @@ type PluginsDiagnosticsPageVModel struct {
 }
 
 templ PluginsDiagnosticsPage(vmodel PluginsDiagnosticsPageVModel) {
-	@commonComp.AppLayout(vmodel.AppLayoutVModel, commonComp.WithTitle("Plugins (diagnostics)")) {
-		<div class="space-y-6">
-			<h1 class="text-2xl font-bold">Plugins (diagnostics)</h1>
-			if len(vmodel.Descriptors) == 0 {
-				<p class="text-muted-foreground">Aucun plugin chargé.</p>
-			} else {
-				@table.Table() {
-					@table.Header() {
-						@table.Row() {
-							@table.Head() { Nom }
-							@table.Head() { Version }
-							@table.Head() { Description }
-							@table.Head() { Statut }
-						}
-					}
-					@table.Body() {
-						for _, d := range vmodel.Descriptors {
-							@table.Row() {
-								@table.Cell(table.CellProps{Class: "font-mono"}) { { d.Name } }
-								@table.Cell() { { d.Version } }
-								@table.Cell() { { d.Description } }
-								@table.Cell() {
-									@badge.Badge(badge.Props{}) { actif }
-								}
-							}
-						}
-					}
-				}
+	@commonComp.AppLayout(vmodel.AppLayoutVModel, commonComp.WithTitle("Plugins")) {
+		@commonComp.PageHeader(commonComp.PageHeaderProps{
+			Title:    "Plugins (diagnostics)",
+			Subtitle: "Extensions chargées par le moteur de pipeline. Elles sont disponibles dans les modèles virtuels et les middlewares des organisations.",
+		}) {
+			<!-- TODO(rework-ux): les plugins sont chargés au démarrage à partir de
+			la configuration ; il n'existe pas de route pour en enregistrer un à
+			chaud, ni de stockage pour l'accueillir (cf. lot 7 du plan). -->
+			@button.Button(button.Props{
+				Variant:  button.VariantOutline,
+				Size:     button.SizeSm,
+				Disabled: true,
+				Class:    "gap-1.5",
+			}) {
+				@icon.Upload(icon.Props{Class: "size-3.5"})
+				Charger un plugin
 			}
-		</div>
+			@commonComp.ComingSoon()
+		}
+		if len(vmodel.Descriptors) == 0 {
+			@commonComp.EmptyState(commonComp.EmptyStateProps{
+				Icon:        icon.Plug,
+				Title:       "Aucun plugin chargé",
+				Description: "Déclarez les plugins à charger dans la configuration de la passerelle ; ils apparaîtront ici au prochain démarrage.",
+			})
+		} else {
+			<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+				for _, descriptor := range vmodel.Descriptors {
+					@pluginCard(descriptor)
+				}
+			</div>
+		}
+	}
+}
+
+templ pluginCard(descriptor *proto.PluginDescriptor) {
+	@card.Card(card.Props{Class: "transition-colors hover:border-input"}) {
+		@card.Content(card.ContentProps{Class: "flex h-full flex-col p-3.5"}) {
+			<div class="mb-2 flex items-center gap-2.5">
+				<span class="flex size-6.5 shrink-0 items-center justify-center rounded-md bg-platform-tint text-platform">
+					@icon.Plug(icon.Props{Class: "size-3.5"})
+				</span>
+				<span class="min-w-0 flex-1 truncate font-mono text-sm font-semibold">{ descriptor.Name }</span>
+				if descriptor.Version != "" {
+					@commonComp.Mono(descriptor.Version)
+				}
+			</div>
+			<p class="min-h-9 flex-1 text-sm text-muted-foreground">
+				if descriptor.Description != "" {
+					{ descriptor.Description }
+				} else {
+					Aucune description fournie par le plugin.
+				}
+			</p>
+			<div class="mt-2.5 flex flex-wrap items-center gap-1.5">
+				@commonComp.Badge(commonComp.TonePositive, "Chargé")
+				for _, capability := range descriptor.Capabilities {
+					@commonComp.Badge(commonComp.ToneNeutral, pluginCapabilityLabel(capability))
+				}
+			</div>
+		}
 	}
 }

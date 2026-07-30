@@ -35,8 +35,6 @@ func (h *Handler) getApplicationsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	apps, err := h.applicationStore.QueryApplications(ctx, org.ID())
 	if err != nil {
 		slog.ErrorContext(ctx, "could not list applications", slogx.Error(err))
@@ -45,6 +43,7 @@ func (h *Handler) getApplicationsPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	appRoles := make(map[model.ApplicationID][]model.Role, len(apps))
+	tokenCounts := make(map[model.ApplicationID]int, len(apps))
 	for _, app := range apps {
 		roles, err := h.roleStore.ListApplicationRoles(ctx, app.ID())
 		if err != nil {
@@ -53,24 +52,36 @@ func (h *Handler) getApplicationsPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		appRoles[app.ID()] = roles
+
+		// An application without a token cannot call anything, which the list is
+		// the only place to notice — so the count is loaded here despite the extra
+		// query per row, exactly as the roles above are.
+		tokens, err := h.applicationStore.GetApplicationAuthTokens(ctx, app.ID())
+		if err != nil {
+			slog.ErrorContext(ctx, "could not list application auth tokens", slogx.Error(err))
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		tokenCounts[app.ID()] = len(tokens)
 	}
 
 	vmodel := component.ApplicationsPageVModel{
-		Org:      org,
-		Apps:     apps,
-		AppRoles: appRoles,
-		Success:  r.URL.Query().Get("success"),
+		Org:         org,
+		Apps:        apps,
+		AppRoles:    appRoles,
+		TokenCounts: tokenCounts,
+		Success:     r.URL.Query().Get("success"),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-applications",
-			HomeLink:      "/orgs/" + orgSlug + "/admin/",
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-applications",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
 				{Label: "Applications", Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 
@@ -91,8 +102,6 @@ func (h *Handler) getNewApplicationPage(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-
-	nav, footer := orgAdminNav(org)
 
 	orgRoles, err := h.roleStore.ListOrgRoles(ctx, org.ID())
 	if err != nil {
@@ -116,17 +125,17 @@ func (h *Handler) getNewApplicationPage(w http.ResponseWriter, r *http.Request) 
 		AssignedRoleIDs: assigned,
 		IsNew:           true,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-applications",
-			HomeLink:      "/orgs/" + orgSlug + "/admin/",
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-applications",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
 				{Label: "Applications", Href: "/orgs/" + orgSlug + "/admin/applications"},
 				{Label: "Nouvelle application", Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 
@@ -224,8 +233,6 @@ func (h *Handler) getEditApplicationPage(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	app, err := h.applicationStore.GetApplication(ctx, model.ApplicationID(appID))
 	if err != nil {
 		if errors.Is(err, port.ErrNotFound) {
@@ -270,17 +277,17 @@ func (h *Handler) getEditApplicationPage(w http.ResponseWriter, r *http.Request)
 		AssignedRoleIDs: assigned,
 		IsNew:           false,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-applications",
-			HomeLink:      "/orgs/" + orgSlug + "/admin/",
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-applications",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/admin/"},
 				{Label: "Applications", Href: "/orgs/" + orgSlug + "/admin/applications"},
 				{Label: app.Name(), Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 

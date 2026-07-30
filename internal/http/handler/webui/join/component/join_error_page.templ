@@ -13,7 +13,7 @@ type JoinErrorVModel struct {
 }
 
 templ JoinError(vmodel JoinErrorVModel) {
-	@common.StandaloneLayout(common.WithUserVariant(vmodel.User), common.WithTitle("Invitation invalide")) {
+	@common.StandaloneLayout(common.WithTitle("Invitation invalide")) {
 		@card.Card() {
 			@card.Header() {
 				@card.Title() {

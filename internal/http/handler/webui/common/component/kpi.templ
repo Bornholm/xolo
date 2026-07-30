@@ -1,0 +1,92 @@
+package component
+
+type KPIBandProps struct {
+	ID    string
+	Class string
+	// Attributes carries the HTMX wiring when a band is refreshed on its own.
+	Attributes templ.Attributes
+}
+
+// KPIBand renders the strip of figures every dashboard opens with.
+//
+// The cells are joined and separated by a 1 px rule — `gap-px` over a `bg-border`
+// grid — rather than detached cards: the design system wants a line of numbers
+// read left to right, not a collection of objects.
+//
+// The column count is a `grid-cols-*` utility passed in Class, since it changes
+// from screen to screen (4 on the org dashboard, 6 on the platform overview).
+templ KPIBand(props ...KPIBandProps) {
+	{{ var p KPIBandProps }}
+	if len(props) > 0 {
+		{{ p = props[0] }}
+	}
+	<div
+		if p.ID != "" {
+			id={ p.ID }
+		}
+		class={ "grid gap-px overflow-hidden rounded-lg border bg-border", p.Class }
+		{ p.Attributes... }
+	>
+		{ children... }
+	</div>
+}
+
+// KPI renders one cell of a KPI band.
+templ KPI(props KPIProps) {
+	<div class="flex flex-col bg-card px-3.5 py-3">
+		<div class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">{ props.Label }</div>
+		<div class="mt-1.5 flex flex-wrap items-baseline gap-2">
+			<span class={ "whitespace-nowrap text-2xl font-semibold tracking-tight tnum", props.ValueTone.TextClass(), templ.KV("text-foreground", props.ValueTone == ToneNeutral) }>
+				{ props.Value }
+			</span>
+			if props.Delta != "" {
+				<span class={ "text-xs font-semibold", props.DeltaTone.TextClass() }>{ props.Delta }</span>
+			}
+		</div>
+		if points := SparkPoints(props.Spark); points != "" {
+			<svg
+				viewBox="0 0 100 24"
+				preserveAspectRatio="none"
+				aria-hidden="true"
+				class={ "mt-2 block h-6 w-full", defaultSparkClass(props.SparkClass) }
+			>
+				<polyline
+					points={ points }
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.6"
+					vector-effect="non-scaling-stroke"
+				></polyline>
+			</svg>
+		}
+		if props.Note != "" {
+			<div class="mt-2 text-xs text-muted-foreground">{ props.Note }</div>
+		}
+	</div>
+}
+
+// defaultSparkClass falls back to the first chart colour when the caller did not
+// pick one, so a band always draws in the palette rather than in the text colour.
+func defaultSparkClass(class string) string {
+	if class == "" {
+		return "text-chart-1"
+	}
+	return class
+}
+
+// KPIPending renders a KPI cell whose figure the product cannot compute yet: the
+// label stays in place so the band keeps the shape of the mockup, and the value
+// is replaced by the "bientôt disponible" marker of lot 7.
+templ KPIPending(label string, note string) {
+	<div class="flex flex-col bg-card px-3.5 py-3">
+		<div class="text-2xs font-semibold uppercase tracking-caps text-muted-foreground">{ label }</div>
+		<div class="mt-1.5 text-2xl font-semibold tracking-tight text-muted-foreground/50">—</div>
+		<div class="mt-2 text-xs text-muted-foreground/70">
+			if note != "" {
+				{ note }
+			} else {
+				Bientôt disponible
+			}
+		</div>
+	</div>
+}

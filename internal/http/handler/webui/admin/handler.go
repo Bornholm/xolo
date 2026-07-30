@@ -18,6 +18,7 @@ type Handler struct {
 	userStore           port.UserStore
 	orgStore            port.OrgStore
 	roleStore           port.RoleStore
+	usageStore          port.UsageStore
 	taskRunner          port.TaskRunner
 	exchangeRateService *service.ExchangeRateService
 	pluginManager       pluginManagerIface
@@ -28,12 +29,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.mux.ServeHTTP(w, r)
 }
 
-func NewHandler(userStore port.UserStore, orgStore port.OrgStore, roleStore port.RoleStore, taskRunner port.TaskRunner, exchangeRateService *service.ExchangeRateService, pluginManager pluginManagerIface) *Handler {
+func NewHandler(userStore port.UserStore, orgStore port.OrgStore, roleStore port.RoleStore, usageStore port.UsageStore, taskRunner port.TaskRunner, exchangeRateService *service.ExchangeRateService, pluginManager pluginManagerIface) *Handler {
 	h := &Handler{
 		mux:                 http.NewServeMux(),
 		userStore:           userStore,
 		orgStore:            orgStore,
 		roleStore:           roleStore,
+		usageStore:          usageStore,
 		taskRunner:          taskRunner,
 		exchangeRateService: exchangeRateService,
 		pluginManager:       pluginManager,
@@ -43,6 +45,9 @@ func NewHandler(userStore port.UserStore, orgStore port.OrgStore, roleStore port
 	assertAdmin := authz.Middleware(http.HandlerFunc(h.getForbiddenPage), authz.Has(authz.RoleAdmin))
 
 	h.mux.Handle("GET /", assertAdmin(http.HandlerFunc(h.getIndexPage)))
+
+	// Proxy health
+	h.mux.Handle("GET /health", assertAdmin(http.HandlerFunc(h.getProxyHealthPage)))
 
 	// User routes
 	h.mux.Handle("GET /users", assertAdmin(http.HandlerFunc(h.getUsersPage)))

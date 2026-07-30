@@ -27,8 +27,6 @@ func (h *Handler) getInvitesPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	invites, err := h.inviteStore.ListInvites(ctx, org.ID())
 	if err != nil {
 		slog.ErrorContext(ctx, "could not list invites", slogx.Error(err))
@@ -62,16 +60,16 @@ func (h *Handler) getInvitesPage(w http.ResponseWriter, r *http.Request) {
 		Success:   r.URL.Query().Get("success"),
 		NewURL:    r.URL.Query().Get("new_url"),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-invites",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-invites",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Invitations", Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 
@@ -96,22 +94,20 @@ func (h *Handler) getNewInvitePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	vmodel := component.InviteFormVModel{
 		Org:      org,
 		OrgRoles: orgRoles,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-invites",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-invites",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Invitations", Href: "/orgs/" + orgSlug + "/admin/invites"},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 

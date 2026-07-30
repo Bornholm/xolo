@@ -1,0 +1,38 @@
+package component
+
+import "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+
+type MoneyInputProps struct {
+	ID          string
+	Name        string
+	Value       string
+	Placeholder string
+	// Currency is an ISO 4217 code; its symbol is what the affix shows.
+	Currency string
+	Disabled bool
+	Class    string
+}
+
+// MoneyInput renders the amount field of the design system: the currency symbol
+// sits in a fixed affix on the left of the control, so a column of budgets reads
+// as a column of numbers.
+//
+// The affix is an overlay rather than a sibling box: input.Input owns its own
+// border and height, and splitting them would mean rebuilding the field by hand.
+templ MoneyInput(props MoneyInputProps) {
+	<div class={ "relative", props.Class }>
+		<span class="pointer-events-none absolute left-0 top-0 flex h-full items-center border-r px-2.5 text-sm text-muted-foreground">
+			{ CurrencySymbol(props.Currency) }
+		</span>
+		@input.Input(input.Props{
+			ID:          props.ID,
+			Name:        props.Name,
+			Type:        input.TypeNumber,
+			Value:       props.Value,
+			Placeholder: props.Placeholder,
+			Disabled:    props.Disabled,
+			Class:       "pl-10 tnum",
+			Attributes:  templ.Attributes{"step": "any", "min": "0"},
+		})
+	</div>
+}

@@ -54,7 +54,6 @@ func NewHandler(userStore port.UserStore, orgStore port.OrgStore, inviteStore po
 	h.mux.Handle("GET /tokens", assertUser(http.HandlerFunc(h.getTokensPage)))
 	h.mux.Handle("POST /tokens", assertUser(http.HandlerFunc(h.createToken)))
 	h.mux.Handle("DELETE /tokens/{tokenID}", assertUser(http.HandlerFunc(h.deleteToken)))
-	h.mux.Handle("POST /preferences", assertUser(http.HandlerFunc(h.updatePreferences)))
 	h.mux.Handle("GET /invitations", assertUser(http.HandlerFunc(h.getInvitationsPage)))
 	// Plugin UI proxy (personal context — no org required)
 	// Both GET and POST are registered explicitly to avoid a ServeMux conflict
@@ -79,22 +78,15 @@ func (h *Handler) getProfilePage(w http.ResponseWriter, r *http.Request) {
 	user := httpCtx.User(ctx)
 
 	vmodel := component.ProfilePageVModel{
-		User:        user,
-		Preferences: user.Preferences(),
+		User: user,
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "profile",
-			HomeLink:     "/usage",
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: "Espace personnel", Href: "/usage"},
 				{Label: "Profil", Href: ""},
 			},
-			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppNavigationItems(vmodel)
-			},
-			FooterItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppFooterItems(vmodel)
-			},
+			Context: common.ContextPersonal,
 		},
 	}
 
@@ -134,56 +126,16 @@ func (h *Handler) getTokensPage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "tokens",
-			HomeLink:     "/usage",
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: "Espace personnel", Href: "/usage"},
 				{Label: "Profil", Href: "/profile/"},
 				{Label: "Jetons API", Href: ""},
 			},
-			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppNavigationItems(vmodel)
-			},
-			FooterItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppFooterItems(vmodel)
-			},
+			Context: common.ContextPersonal,
 		},
 	}
 
 	templ.Handler(component.TokensPage(vmodel)).ServeHTTP(w, r)
-}
-
-func (h *Handler) updatePreferences(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	user := httpCtx.User(ctx)
-
-	// Parse form values
-	darkMode := r.FormValue("dark_mode") == "on"
-
-	// Fetch the full user from the database (with preferences loaded)
-	existingUser, err := h.userStore.GetUserByID(ctx, user.ID())
-	if err != nil {
-		slog.ErrorContext(ctx, "could not fetch user", slogx.Error(err))
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-
-	// Copy user to get a mutable BaseUser and update preferences
-	updatedUser := model.CopyUser(existingUser)
-	updatedUser.SetPreferences(model.NewUserPreferences(
-		model.SetUserPrefencesDarkMode(&darkMode),
-	))
-
-	// Save user with updated preferences
-	if err := h.userStore.SaveUser(ctx, updatedUser); err != nil {
-		slog.ErrorContext(ctx, "could not save user preferences", slogx.Error(err))
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Add("HX-Refresh", "true")
-
-	// Redirect back to profile page
-	http.Redirect(w, r, "/profile/", http.StatusSeeOther)
 }
 
 func (h *Handler) createToken(w http.ResponseWriter, r *http.Request) {
@@ -301,18 +253,12 @@ func (h *Handler) getInvitationsPage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "profile",
-			HomeLink:     "/usage",
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: "Espace personnel", Href: "/usage"},
 				{Label: "Profil", Href: "/profile/"},
 				{Label: "Invitations", Href: ""},
 			},
-			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppNavigationItems(vmodel)
-			},
-			FooterItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppFooterItems(vmodel)
-			},
+			Context: common.ContextPersonal,
 		},
 	}
 

@@ -310,31 +310,26 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "usage",
-			HomeLink:     "/usage",
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: "Espace personnel", Href: "/usage"},
 				{Label: "Usage", Href: ""},
 			},
-			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppNavigationItems(vmodel)
-			},
-			FooterItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppFooterItems(vmodel)
-			},
+			Context: common.ContextPersonal,
 		},
 		OrgUsages:             orgUsages,
 		SubscriptionProviders: subscriptionProviders,
-		Aggregate:           agg,
-		Records:             displayRecords,
-		Orgs:                orgs,
-		Range:               rangeParam,
-		Page:                page,
-		HasNext:             hasNext,
-		ChartPerDay:         dashChartByDate(perDay),
-		ChartSharesPerModel: common.ChartShares(common.TopNChartDataPoints(dashChartByValue(perModel), 5)),
-		ChartPerProvider:    dashChartByProvider(perProvider, providerNames),
-		TotalEnergyWh:       totalEnergyWh,
-		TotalCO2GramsMid:    totalCO2GramsMid,
+		Aggregate:             agg,
+		Records:               displayRecords,
+		Orgs:                  orgs,
+		Range:                 rangeParam,
+		Page:                  page,
+		PageSize:              dashboardPageSize,
+		HasNext:               hasNext,
+		ChartPerDay:           common.CostSeries(perDay, since, time.Now(), rangeParam),
+		ChartSharesPerModel:   common.ChartShares(common.TopNChartDataPoints(dashChartByValue(perModel), 5)),
+		ChartPerProvider:      dashChartByProvider(perProvider, providerNames),
+		TotalEnergyWh:         totalEnergyWh,
+		TotalCO2GramsMid:      totalCO2GramsMid,
 	}
 
 	templ.Handler(component.DashboardPage(vmodel)).ServeHTTP(w, r)
@@ -446,19 +441,6 @@ func dashChartByProvider(m map[model.ProviderID]int64, names map[model.ProviderI
 		pts = append(pts, component.ProfileChartDataPoint{Label: label, Value: float64(cost) / 1_000_000})
 	}
 	sort.Slice(pts, func(i, j int) bool { return pts[i].Value > pts[j].Value })
-	return pts
-}
-
-func dashChartByDate(m map[string]int64) []component.ProfileChartDataPoint {
-	dates := make([]string, 0, len(m))
-	for k := range m {
-		dates = append(dates, k)
-	}
-	sort.Strings(dates)
-	pts := make([]component.ProfileChartDataPoint, 0, len(dates))
-	for _, d := range dates {
-		pts = append(pts, component.ProfileChartDataPoint{Label: d, Value: float64(m[d]) / 1_000_000})
-	}
 	return pts
 }
 

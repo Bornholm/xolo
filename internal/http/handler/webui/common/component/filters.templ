@@ -1,0 +1,56 @@
+package component
+
+import (
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+)
+
+type SearchFilterProps struct {
+	ID          string
+	Name        string
+	Value       string
+	Placeholder string
+	// Class sizes the field; the mockup gives it 280 to 320 px depending on the
+	// screen.
+	Class string
+	// Attributes carries the HTMX wiring of the live filter — `hx-get`,
+	// `hx-target` on the `<tbody>`, `hx-trigger="input changed delay:200ms"`.
+	Attributes templ.Attributes
+}
+
+// FilterBar is the row of controls sitting between a page header and the table
+// it filters.
+templ FilterBar() {
+	<div class="mb-3 flex flex-wrap items-center gap-2">
+		{ children... }
+	</div>
+}
+
+// SearchFilter renders the search field of a filter bar: a magnifier inside a
+// standard input.
+//
+// The icon is positioned rather than passed to input.Input, which has no slot
+// for one; padding it out of the way is the only thing the field itself needs.
+templ SearchFilter(props SearchFilterProps) {
+	<div class={ "relative", defaultSearchWidth(props.Class) }>
+		@icon.Search(icon.Props{Class: "pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"})
+		@input.Input(input.Props{
+			ID:          props.ID,
+			Type:        input.TypeSearch,
+			Name:        props.Name,
+			Value:       props.Value,
+			Placeholder: props.Placeholder,
+			Class:       "h-8 pl-8",
+			Attributes:  props.Attributes,
+		})
+	</div>
+}
+
+// defaultSearchWidth keeps the filter from stretching to the full page width when
+// a screen does not size it.
+func defaultSearchWidth(class string) string {
+	if class == "" {
+		return "w-full max-w-80"
+	}
+	return class
+}

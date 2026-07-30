@@ -2,9 +2,11 @@ package component
 
 import (
 	"fmt"
+	"math"
+	"strconv"
+	"strings"
 
 	"github.com/bornholm/xolo/internal/estimator/energy"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
 )
 
 // ChartDataPoint represents a single labeled value for bar/pie charts.
@@ -33,10 +35,16 @@ func ChartValues(pts []ChartDataPoint) []float64 {
 
 // ChartShare represents a value's share of a total, as a percentage, with
 // an associated chart color (cycling through the design system's palette).
+//
+// The color travels as a Tailwind class rather than a raw CSS value: the bar is
+// rendered by progress.Progress, whose BarClass is the only colour seam that does
+// not require an inline style on a component-owned element.
 type ChartShare struct {
 	Label string
 	Pct   int
-	Color string
+	// ColorClass is a background utility built on the --chart-* tokens
+	// ("bg-chart-1"), suitable for both the legend swatch and the bar.
+	ColorClass string
 }
 
 // TopNChartDataPoints returns the n highest-value points (pts must be
@@ -65,16 +73,74 @@ func ChartShares(pts []ChartDataPoint) []ChartShare {
 	for _, p := range pts {
 		total += p.Value
 	}
-	colors := []string{"var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)"}
+	colors := []string{"bg-chart-1", "bg-chart-2", "bg-chart-3", "bg-chart-4"}
 	shares := make([]ChartShare, 0, len(pts))
 	for i, p := range pts {
 		pct := 0
 		if total > 0 {
 			pct = int(p.Value / total * 100)
 		}
-		shares = append(shares, ChartShare{Label: p.Label, Pct: pct, Color: colors[i%len(colors)]})
+		shares = append(shares, ChartShare{Label: p.Label, Pct: pct, ColorClass: colors[i%len(colors)]})
 	}
 	return shares
+}
+
+// chartPalette is the series palette of the design system, as literal colours.
+//
+// The CSS tokens (--chart-1…5) cannot be used here: a chart is drawn on a
+// <canvas>, and Chart.js hands the string straight to the 2D context, which does
+// not resolve CSS custom properties — "var(--chart-1)" is parsed as an invalid
+// colour and silently painted black. These values mirror the tokens declared in
+// misc/tailwind/templui.css; the two must be changed together.
+var chartPalette = []string{
+	"#15678f", // --chart-1, = --primary
+	"#2a9d8f", // --chart-2
+	"#7b5ea7", // --chart-3
+	"#e09f3e", // --chart-4
+	"#c9455e", // --chart-5
+}
+
+// ChartColor returns the i-th series colour, cycling through the palette.
+func ChartColor(i int) string {
+	return chartPalette[i%len(chartPalette)]
+}
+
+// ChartCoveredColor is the muted blue the design system reserves for the
+// "couvert par forfait" part of a stacked cost bar: the same hue as the
+// pay-as-you-go series, desaturated, because it is the same spend under a
+// different billing arrangement — not a different category.
+const ChartCoveredColor = "#b8cfdd"
+
+// RankedRows converts data points into leaderboard entries, each bar scaled
+// against the leader rather than against the total.
+//
+// That is what makes a ranking readable: scaled against the total, a flat
+// distribution collapses every bar into a stub and the ordering stops being
+// visible — which is the only thing the list is there to show.
+func RankedRows(pts []ChartDataPoint) []Ranked {
+	var max float64
+	for _, p := range pts {
+		if p.Value > max {
+			max = p.Value
+		}
+	}
+
+	colors := []string{"bg-chart-1", "bg-chart-2", "bg-chart-3", "bg-chart-4", "bg-chart-5"}
+	rows := make([]Ranked, 0, len(pts))
+	for i, p := range pts {
+		pct := 0
+		if max > 0 {
+			pct = int(p.Value / max * 100)
+		}
+		rows = append(rows, Ranked{
+			Label:      p.Label,
+			Value:      p.Value,
+			Pct:        pct,
+			ColorClass: colors[i%len(colors)],
+		})
+	}
+
+	return rows
 }
 
 // CurrencySymbol returns the display symbol for an ISO 4217 currency code.
@@ -97,49 +163,103 @@ func CurrencySymbol(currency string) string {
 	}
 }
 
-// FormatCost formats an absolute cost stored in microcents (1 microcent = $0.000001).
-func FormatCost(v int64, currency string) string {
-	return fmt.Sprintf("%.6f%s", float64(v)/1_000_000, CurrencySymbol(currency))
+// French typography puts a space inside a number and before a unit, and both
+// must be unbreakable or a figure splits across two lines in the middle of a
+// table column. They are named constants rather than inline literals because
+// the two characters are invisible in a diff: a plain space typed by mistake
+// would pass review unnoticed.
+const (
+	// groupSep separates thousands: narrow no-break space, U+202F.
+	groupSep = "\u202f"
+	// unitSep precedes a unit or a currency symbol: no-break space, U+00A0.
+	unitSep = "\u00a0"
+)
+
+// FormatDecimal renders a float in the French convention the whole UI uses:
+// narrow no-break space between thousands, comma as the decimal mark.
+//
+// Go's fmt has no locale, so the grouping is inserted here rather than left to
+// each call site — which is how the same figure ended up printed three different
+// ways across the screens.
+func FormatDecimal(v float64, decimals int) string {
+	s := strconv.FormatFloat(v, 'f', decimals, 64)
+
+	sign := ""
+	if strings.HasPrefix(s, "-") {
+		sign, s = "-", s[1:]
+	}
+
+	whole, frac, _ := strings.Cut(s, ".")
+
+	var b strings.Builder
+	for i, digit := range whole {
+		// A separator goes before every digit whose distance to the end is a
+		// multiple of three — except at the very start of the number.
+		if i > 0 && (len(whole)-i)%3 == 0 {
+			b.WriteString(groupSep)
+		}
+		b.WriteRune(digit)
+	}
+
+	out := sign + b.String()
+	if frac != "" {
+		out += "," + frac
+	}
+
+	return out
 }
 
-// FormatCostCompact formats a cost stored in microcents, using k/M/B suffixes
-// once the amount reaches the thousands, falling back to FormatCost otherwise.
+// FormatCost formats an absolute cost stored in microcents (1 microcent =
+// $0.000001) as an amount of money: "1 284,40 €".
+//
+// The precision follows the magnitude. Two decimals is what an invoice shows,
+// but a single LLM call costs fractions of a cent, and rounding those to "0,00 €"
+// would make every row of the requests table read as free.
+func FormatCost(v int64, currency string) string {
+	amount := float64(v) / 1_000_000
+
+	decimals := 2
+	if amount != 0 && math.Abs(amount) < 1 {
+		decimals = 4
+	}
+
+	return FormatDecimal(amount, decimals) + unitSep + CurrencySymbol(currency)
+}
+
+// FormatCostCompact formats a cost stored in microcents, switching to k/M/B
+// suffixes once the amount reaches the thousands — the form a KPI cell needs to
+// stay on one line.
 func FormatCostCompact(v int64, currency string) string {
 	amount := float64(v) / 1_000_000
-	abs := amount
-	if abs < 0 {
-		abs = -abs
-	}
-	symbol := CurrencySymbol(currency)
+	abs := math.Abs(amount)
+	symbol := unitSep + CurrencySymbol(currency)
+
 	switch {
 	case abs >= 1_000_000_000:
-		return fmt.Sprintf("%.2fB%s", amount/1_000_000_000, symbol)
+		return FormatDecimal(amount/1_000_000_000, 2) + unitSep + "B" + symbol
 	case abs >= 1_000_000:
-		return fmt.Sprintf("%.2fM%s", amount/1_000_000, symbol)
+		return FormatDecimal(amount/1_000_000, 2) + unitSep + "M" + symbol
 	case abs >= 1_000:
-		return fmt.Sprintf("%.2fk%s", amount/1_000, symbol)
+		return FormatDecimal(amount/1_000, 2) + unitSep + "k" + symbol
 	default:
 		return FormatCost(v, currency)
 	}
 }
 
-// FormatCount formats an integer count using k/M/B suffixes once the value
-// reaches the thousands.
+// FormatCount formats an integer count: grouped in full below a million
+// ("31 940"), suffixed above it ("48,2 M"), which is where the digits stop
+// carrying meaning and start costing width.
 func FormatCount(n int64) string {
 	f := float64(n)
-	abs := f
-	if abs < 0 {
-		abs = -abs
-	}
+	abs := math.Abs(f)
+
 	switch {
 	case abs >= 1_000_000_000:
-		return fmt.Sprintf("%.2fB", f/1_000_000_000)
+		return FormatDecimal(f/1_000_000_000, 1) + unitSep + "B"
 	case abs >= 1_000_000:
-		return fmt.Sprintf("%.2fM", f/1_000_000)
-	case abs >= 1_000:
-		return fmt.Sprintf("%.2fk", f/1_000)
+		return FormatDecimal(f/1_000_000, 1) + unitSep + "M"
 	default:
-		return fmt.Sprintf("%d", n)
+		return FormatDecimal(f, 0)
 	}
 }
 
@@ -155,23 +275,18 @@ func UsagePercent(used int64, budget *int64) int {
 	return pct
 }
 
-// QuotaBarColor returns the progress bar color for a budget usage percentage.
-func QuotaBarColor(pct int) string {
+// QuotaBarClass returns the progress bar fill utility for a budget usage
+// percentage. It is a class rather than a CSS value so it can be handed to
+// progress.Progress's BarClass — templui's own Variant palette (bg-green-500,
+// bg-yellow-500) sits outside the design system's tokens.
+func QuotaBarClass(pct int) string {
 	if pct > 90 {
-		return "var(--destructive)"
+		return "bg-destructive"
 	}
 	if pct > 70 {
-		return "var(--chart-3)"
+		return "bg-chart-3"
 	}
-	return "var(--chart-2)"
-}
-
-// QuotaBadgeVariant returns the badge variant for a budget usage percentage.
-func QuotaBadgeVariant(pct int) badge.Variant {
-	if pct > 90 {
-		return badge.VariantDestructive
-	}
-	return badge.VariantSecondary
+	return "bg-chart-2"
 }
 
 // FormatEnergyWh formats an energy value with auto-scaling (kWh, Wh, mWh, µWh).
