@@ -45,8 +45,7 @@ type ConfirmDeleteProps struct {
 // It replaces the `onclick="if(confirm(…))fetch(…,{method:'DELETE'})"` one-liner
 // that used to be copied onto every delete button. The request is now an
 // hx-delete: the handlers answer 303 to the list page, and the swap attributes
-// inherited from <body> drop that page's #content in place. Those attributes sit
-// on <body> precisely because dialog content is portalled there.
+// inherited from <body> drop that page's #content in place.
 templ ConfirmDelete(props ConfirmDeleteProps) {
 	{{ confirmLabel := props.ConfirmLabel }}
 	if confirmLabel == "" {

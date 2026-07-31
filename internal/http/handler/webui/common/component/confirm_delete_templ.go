@@ -53,8 +53,7 @@ type ConfirmDeleteProps struct {
 // It replaces the `onclick="if(confirm(…))fetch(…,{method:'DELETE'})"` one-liner
 // that used to be copied onto every delete button. The request is now an
 // hx-delete: the handlers answer 303 to the list page, and the swap attributes
-// inherited from <body> drop that page's #content in place. Those attributes sit
-// on <body> precisely because dialog content is portalled there.
+// inherited from <body> drop that page's #content in place.
 func ConfirmDelete(props ConfirmDeleteProps) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -136,7 +135,7 @@ func ConfirmDelete(props ConfirmDeleteProps) templ.Component {
 						var templ_7745c5c3_Var5 string
 						templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(props.Label)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/common/component/confirm_delete.templ`, Line: 74, Col: 18}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/common/component/confirm_delete.templ`, Line: 73, Col: 18}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 						if templ_7745c5c3_Err != nil {
@@ -209,7 +208,7 @@ func ConfirmDelete(props ConfirmDeleteProps) templ.Component {
 						var templ_7745c5c3_Var9 string
 						templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(props.Title)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/common/component/confirm_delete.templ`, Line: 90, Col: 18}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/common/component/confirm_delete.templ`, Line: 89, Col: 18}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 						if templ_7745c5c3_Err != nil {
@@ -241,7 +240,7 @@ func ConfirmDelete(props ConfirmDeleteProps) templ.Component {
 							var templ_7745c5c3_Var11 string
 							templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(props.Description)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/common/component/confirm_delete.templ`, Line: 94, Col: 25}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/common/component/confirm_delete.templ`, Line: 93, Col: 25}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 							if templ_7745c5c3_Err != nil {
@@ -335,7 +334,7 @@ func ConfirmDelete(props ConfirmDeleteProps) templ.Component {
 						var templ_7745c5c3_Var16 string
 						templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(confirmLabel)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/common/component/confirm_delete.templ`, Line: 109, Col: 19}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/common/component/confirm_delete.templ`, Line: 108, Col: 19}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 						if templ_7745c5c3_Err != nil {

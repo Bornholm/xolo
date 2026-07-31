@@ -56,6 +56,80 @@
       });
   });
 
+  // Purge du portail après un échange HTMX.
+  //
+  // Fermer ne suffit pas : `open` **déplace** le contenu du popover dans le
+  // portail et `close` ne l'en ressort jamais. Le nœud survit donc à l'échange
+  // qui détruit la page dont il vient, et comme les identifiants sont rendus par
+  // le serveur (`role-filter-content`, `usage-filters`…), la page suivante en
+  // rend un jumeau : deux éléments portent le même id.
+  //
+  // Le doublon ne se voit pas tout de suite. `document.getElementById` rend le
+  // premier dans l'ordre du document, donc le neuf — jusqu'à la réouverture, qui
+  // le déplace à la fin du portail, *derrière* l'ancien. À partir de là toutes
+  // les recherches par id du composant tombent sur le nœud mort : le selectbox
+  // relit une liste vide (le libellé retombe sur le placeholder, la coche reste
+  // sur l'élément cliqué) et `closePopover` masque un nœud déjà invisible — la
+  // surface visible ne se ferme plus. C'est le symptôme « après quelques clics,
+  // le filtre ne se ferme ni ne sélectionne plus ».
+  //
+  // Deux cas se règlent ici, et rien d'autre ne les distingue de façon fiable :
+  //   - un jumeau du même id existe hors du portail : le nœud portalisé est la
+  //     dépouille de la page précédente ;
+  //   - plus aucun déclencheur ne pointe vers l'id : la surface n'a plus de
+  //     page d'origine du tout (navigation vers un écran qui ne la rend pas, ou
+  //     selectbox à id aléatoire imbriqué dans un panneau lui-même purgé).
+  //
+  // Le balayage se répète tant qu'il retire quelque chose : purger un panneau
+  // orphelin retire aussi le déclencheur des surfaces qu'il contenait, ce qui
+  // ne les rend orphelines qu'au tour suivant.
+  function attrValue(value) {
+    return value.replace(/["\\]/g, "\\$&");
+  }
+
+  function purgePortal() {
+    var portal = document.querySelector("[data-tui-popover-portal-container]");
+    if (!portal) return;
+
+    var removed;
+    do {
+      removed = false;
+      portal.querySelectorAll("[data-tui-popover-id]").forEach(function (surface) {
+        var id = surface.getAttribute("data-tui-popover-id");
+        if (!id) return;
+
+        var stale = false;
+        document
+          .querySelectorAll('[data-tui-popover-id="' + attrValue(id) + '"]')
+          .forEach(function (twin) {
+            if (twin !== surface && !portal.contains(twin)) stale = true;
+          });
+        if (!stale) {
+          stale = !document.querySelector('[data-tui-popover-trigger="' + attrValue(id) + '"]');
+        }
+        if (!stale) return;
+
+        // Passe par l'API du composant tant que le nœud est encore là : c'est
+        // elle qui libère la boucle de repositionnement enregistrée sous cet id.
+        if (window.tui && window.tui.popover) window.tui.popover.close(id, true);
+        surface.remove();
+        removed = true;
+      });
+    } while (removed);
+  }
+
+  document.addEventListener("htmx:afterSwap", purgePortal);
+
+  // La restauration d'historique ne passe par aucun échange : HTMX réécrit le
+  // `innerHTML` de <body> — portail compris — depuis l'instantané pris avant la
+  // navigation. Les surfaces qu'il contenait reviennent donc en double avec
+  // celles du #content restauré. Les fermer d'abord remet à zéro l'état ouvert
+  // figé dans l'instantané.
+  document.addEventListener("htmx:historyRestore", function () {
+    if (window.tui && window.tui.popover) window.tui.popover.closeAll();
+    purgePortal();
+  });
+
   // ── Soumission au changement ──────────────────────────────────────────────
 
   // Un contrôle qui pilote un filtre de page (période d'usage, portée…) doit
