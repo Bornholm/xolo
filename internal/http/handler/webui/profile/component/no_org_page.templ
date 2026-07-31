@@ -11,6 +11,9 @@ type NoOrgPageVModel struct {
 	User        model.User
 	Invites     []model.InviteToken
 	DeclinedIDs []string
+	// IsAdmin marks a platform administrator: they are not stuck here, the
+	// console is theirs and it is where an organisation gets created.
+	IsAdmin bool
 }
 
 func isDeclined(id string, declinedIDs []string) bool {
@@ -20,6 +23,16 @@ func isDeclined(id string, declinedIDs []string) bool {
 		}
 	}
 	return false
+}
+
+// noOrgDescription words the emptiness for who is reading it: a plain account
+// waits for an invitation, an administrator creates the organisation.
+func noOrgDescription(isAdmin bool) string {
+	if isAdmin {
+		return "Xolo s'utilise depuis une organisation : c'est elle qui porte les fournisseurs, les modèles et le budget. Créez-en une depuis la console plateforme."
+	}
+
+	return "Xolo s'utilise depuis une organisation : c'est elle qui porte les fournisseurs, les modèles et le budget. Demandez à un administrateur de vous y inviter."
 }
 
 // inviteRoleLabel returns the display label for an organization role.
@@ -50,6 +63,14 @@ templ NoOrgPage(vmodel NoOrgPageVModel) {
 				Title:       "Aucune organisation",
 				Description: "Xolo s'utilise depuis une organisation : c'est elle qui porte les fournisseurs, les modèles et le budget. Demandez à un administrateur de vous y inviter.",
 			}) {
+				if vmodel.IsAdmin {
+					@button.Button(button.Props{
+						Href: common.BaseURLString(ctx, common.WithPath("/admin/")),
+						Size: button.SizeSm,
+					}) {
+						Console plateforme
+					}
+				}
 				@button.Button(button.Props{
 					Href:       common.BaseURLString(ctx, common.WithPath("/auth/oidc/logout")),
 					Variant:    button.VariantOutline,

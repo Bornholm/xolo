@@ -16,7 +16,7 @@ func (h *Handler) getPersonalEventsRedirect(w http.ResponseWriter, r *http.Reque
 
 	memberships := httpCtx.Memberships(ctx)
 	if len(memberships) == 0 {
-		http.Redirect(w, r, baseURL.JoinPath("/no-org").String(), http.StatusTemporaryRedirect)
+		http.Redirect(w, r, landingWithoutOrg(httpCtx.User(ctx), baseURL), http.StatusTemporaryRedirect)
 		return
 	}
 

@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 
 	"github.com/a-h/templ"
 	"github.com/bornholm/go-x/slogx"
 	"github.com/bornholm/xolo/internal/core/model"
 	httpCtx "github.com/bornholm/xolo/internal/http/context"
 	"github.com/bornholm/xolo/internal/http/handler/webui/profile/component"
+	"github.com/bornholm/xolo/internal/http/middleware/authz"
 )
 
 func (h *Handler) getNoOrgPage(w http.ResponseWriter, r *http.Request) {
@@ -46,6 +48,7 @@ func (h *Handler) getNoOrgPage(w http.ResponseWriter, r *http.Request) {
 		User:        user,
 		Invites:     invites,
 		DeclinedIDs: declinedIDs,
+		IsAdmin:     slices.Contains(user.Roles(), authz.RoleAdmin),
 	}
 
 	templ.Handler(component.NoOrgPage(vmodel)).ServeHTTP(w, r)

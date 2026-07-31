@@ -14,7 +14,7 @@ func (h *Handler) getHomePage(w http.ResponseWriter, r *http.Request) {
 	memberships := httpCtx.Memberships(ctx)
 
 	if user == nil || len(memberships) == 0 {
-		http.Redirect(w, r, baseURL.JoinPath("/no-org").String(), http.StatusTemporaryRedirect)
+		http.Redirect(w, r, landingWithoutOrg(user, baseURL), http.StatusTemporaryRedirect)
 		return
 	}
 

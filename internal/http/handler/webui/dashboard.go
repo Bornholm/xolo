@@ -32,7 +32,7 @@ func (h *Handler) getDashboardPage(w http.ResponseWriter, r *http.Request) {
 
 	// No memberships → redirect to /no-org
 	if len(memberships) == 0 {
-		http.Redirect(w, r, baseURL.JoinPath("/no-org").String(), http.StatusTemporaryRedirect)
+		http.Redirect(w, r, landingWithoutOrg(user, baseURL), http.StatusTemporaryRedirect)
 		return
 	}
 
