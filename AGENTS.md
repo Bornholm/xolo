@@ -16,6 +16,7 @@ make CMD='bin/server' run-with-env
 # Test
 go test ./...
 go test ./internal/adapter/memory/...  # single package
+make seed                     # generates e2e.sqlite, a deterministic E2E fixture (see cmd/seed/README.md)
 
 # Release
 make goreleaser               # snapshot release

@@ -50,6 +50,14 @@ build-%: generate
 purge:
 	rm -rf *.sqlite* index.bleve
 
+# Generates a SQLite database populated with coherent fake data for E2E tests.
+# See cmd/seed/README.md for the catalog of the generated fixture.
+SEED_DSN ?= e2e.sqlite
+SEED_DAYS ?= 90
+.PHONY: seed
+seed:
+	go run ./cmd/seed -dsn $(SEED_DSN) -days $(SEED_DAYS) -force
+
 build-frontend:
 	cd frontend && npm ci && npm run build
 
