@@ -5,6 +5,7 @@ import (
 
 	commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/chart"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
 )
@@ -60,54 +61,54 @@ templ overviewKPIs(vmodel OverviewPageVModel) {
 	}
 }
 
-// overviewCostChart draws the stacked daily cost, one segment per organisation.
+// overviewCostChart draws the stacked daily cost, one series per organisation.
+//
+// Same construction as the organisation dashboard — templui's chart, bars, y
+// grid, zero baseline — so the two screens are read the same way; only the
+// stacking is added, since the platform sums several organisations per day.
 templ overviewCostChart(vmodel OverviewPageVModel) {
+	{{ trueVal := true }}
 	@commonComp.Section() {
 		@commonComp.SectionHeader() {
 			@commonComp.SectionTitle() {
 				Coût par jour et par organisation
 			}
+			<!-- La légende est bâtie sur les séries tracées, jamais sur le tableau
+			des organisations : le graphique ne porte que le coût à l'usage, donc
+			une organisation entièrement en forfait a un coût dans le tableau et
+			rien à tracer ici. -->
 			<div class="ml-auto flex flex-wrap items-center gap-3">
-				for _, org := range vmodel.Orgs {
-					if org.Cost > 0 {
-						<span class="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
-							<span class={ "size-2 shrink-0 rounded-xs", org.ColorClass }></span>
-							{ org.Name }
-						</span>
-					}
+				for _, series := range vmodel.CostSeries.Series {
+					<span class="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
+						<span class={ "size-2 shrink-0 rounded-xs", series.ColorClass }></span>
+						{ series.OrgName }
+					</span>
 				}
+				<span class="shrink-0 whitespace-nowrap text-xs text-muted-foreground">Hors requêtes couvertes par un forfait</span>
 			</div>
 		}
-		if len(vmodel.Days) == 0 {
+		if len(vmodel.CostSeries.Series) == 0 {
 			@commonComp.SectionEmpty(commonComp.EmptyStateProps{
 				Icon:        icon.ChartColumn,
-				Title:       "Aucune consommation sur la période",
-				Description: "Les requêtes facturées apparaîtront ici dès qu'une organisation utilisera la passerelle.",
+				Title:       "Aucune consommation à l'usage sur la période",
+				Description: "Les requêtes facturées à l'usage apparaîtront ici ; celles couvertes par un forfait ne sont pas ventilées par jour.",
 			})
 		} else {
 			@commonComp.SectionBody() {
-				<div class="flex h-44 items-end gap-[3px]">
-					for _, day := range vmodel.Days {
-						<div
-							class="flex h-full flex-1 cursor-crosshair flex-col justify-end gap-px"
-							title={ fmt.Sprintf("%s — %s", day.Label, commonComp.FormatCostCompact(day.Total, vmodel.Currency)) }
-						>
-							for _, segment := range day.Segments {
-								<!-- La hauteur est une part calculée : aucune classe
-								utilitaire ne peut porter un pourcentage arbitraire. -->
-								<div
-									class={ "w-full rounded-xs", segment.ColorClass }
-									style={ fmt.Sprintf("height:%.2f%%", segment.HeightPct) }
-								></div>
-							}
-						</div>
-					}
-				</div>
-				<div class="mt-2 flex justify-between font-mono text-2xs text-muted-foreground">
-					for _, label := range overviewAxisLabels(vmodel.Days) {
-						<span>{ label }</span>
-					}
-				</div>
+				@chart.Chart(chart.Props{
+					Variant:     chart.VariantBar,
+					ShowXLabels: true,
+					ShowYLabels: true,
+					ShowYGrid:   true,
+					ShowLegend:  false,
+					Stacked:     true,
+					BeginAtZero: &trueVal,
+					Class:       "h-64",
+					Data: chart.Data{
+						Labels:   vmodel.CostSeries.Labels,
+						Datasets: overviewDatasets(vmodel),
+					},
+				})
 			}
 		}
 	}

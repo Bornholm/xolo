@@ -636,9 +636,6 @@
   .h-40 {
     height: calc(var(--spacing) * 40);
   }
-  .h-44 {
-    height: calc(var(--spacing) * 44);
-  }
   .h-64 {
     height: calc(var(--spacing) * 64);
   }
@@ -941,9 +938,6 @@
   .animate-pulse {
     animation: var(--animate-pulse);
   }
-  .cursor-crosshair {
-    cursor: crosshair;
-  }
   .cursor-default {
     cursor: default;
   }
@@ -1084,9 +1078,6 @@
   }
   .gap-6 {
     gap: calc(var(--spacing) * 6);
-  }
-  .gap-\[3px\] {
-    gap: 3px;
   }
   .gap-\[8px\] {
     gap: 8px;

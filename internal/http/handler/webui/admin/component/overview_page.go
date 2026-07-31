@@ -6,6 +6,7 @@ import (
 
 	"github.com/bornholm/xolo/internal/core/model"
 	commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/chart"
 )
 
 // OverviewPageVModel backs the platform overview, the landing screen of the
@@ -26,7 +27,9 @@ type OverviewPageVModel struct {
 	TotalRequests int64
 
 	Orgs []OverviewOrg
-	Days []OverviewDay
+	// CostSeries is the stacked cost histogram: one bar per day, one series per
+	// organisation.
+	CostSeries OverviewCostSeries
 }
 
 // OverviewOrg is one organisation of the overview, with its usage over the
@@ -45,21 +48,27 @@ type OverviewOrg struct {
 	ColorClass string
 }
 
-// OverviewDay is one column of the stacked cost histogram.
-type OverviewDay struct {
-	Label    string
-	Total    int64
-	Segments []OverviewSegment
+// OverviewCostSeries is the stacked cost histogram of the overview: the days of
+// the window, and one series per organisation that consumed on it.
+//
+// The legend is drawn from Series, never from the organisation table: the chart
+// only carries pay-as-you-go cost, so an organisation billed entirely on a
+// subscription has a cost in the table and nothing to draw here. Advertising it
+// in the legend would announce a colour the reader cannot find.
+type OverviewCostSeries struct {
+	Labels []string
+	Series []OverviewSeries
 }
 
-// OverviewSegment is one organisation's share of a day.
-type OverviewSegment struct {
-	OrgName    string
+// OverviewSeries is one organisation's contribution, aligned on Labels: a day
+// without usage carries a zero, so every series has the same length.
+type OverviewSeries struct {
+	OrgName string
+	// ColorClass inks the legend chip, Color the bars — the same palette entry
+	// in the two notations Tailwind and Chart.js each need.
 	ColorClass string
-	Cost       int64
-	// HeightPct is the share of the tallest column of the chart, so all columns
-	// share a scale.
-	HeightPct float64
+	Color      string
+	Values     []float64
 }
 
 // overviewOrgColors is the fixed series order of the design system. Beyond five
@@ -72,32 +81,24 @@ func OverviewOrgColor(i int) string {
 	return overviewOrgColors[i%len(overviewOrgColors)]
 }
 
+// overviewDatasets turns the series into what templui's chart expects: one bar
+// dataset per organisation, all stacked on the same day.
+func overviewDatasets(vmodel OverviewPageVModel) []chart.Dataset {
+	datasets := make([]chart.Dataset, 0, len(vmodel.CostSeries.Series))
+	for _, series := range vmodel.CostSeries.Series {
+		datasets = append(datasets, chart.Dataset{
+			Label:           series.OrgName,
+			Data:            series.Values,
+			BackgroundColor: series.Color,
+		})
+	}
+	return datasets
+}
+
 // overviewSubtitle states the scope of the figures, as the mockup does.
 func overviewSubtitle(vmodel OverviewPageVModel) string {
 	return fmt.Sprintf(
 		"Consommation agrégée de %d organisation(s) · %d membre(s) · 30 derniers jours · devise de référence %s",
 		vmodel.TotalOrgs, vmodel.TotalMembers, vmodel.Currency,
 	)
-}
-
-// overviewAxisLabels picks the few dates written under the histogram: the first,
-// the last, and two in between — more would collide at this column width.
-func overviewAxisLabels(days []OverviewDay) []string {
-	if len(days) == 0 {
-		return nil
-	}
-	if len(days) <= 4 {
-		labels := make([]string, 0, len(days))
-		for _, d := range days {
-			labels = append(labels, d.Label)
-		}
-		return labels
-	}
-	last := len(days) - 1
-	return []string{
-		days[0].Label,
-		days[last/3].Label,
-		days[2*last/3].Label,
-		days[last].Label,
-	}
 }

@@ -55,11 +55,11 @@ func (h *Handler) getIndexPage(w http.ResponseWriter, r *http.Request) {
 			},
 			Context: common.ContextPlatform,
 		},
-		Currency:  currency,
-		Since:     since,
-		Orgs:      rows,
-		Days:      h.overviewDays(ctx, rows, since, currency),
-		TotalOrgs: len(orgs),
+		Currency:   currency,
+		Since:      since,
+		Orgs:       rows,
+		CostSeries: h.overviewCostSeries(ctx, rows, since, currency),
+		TotalOrgs:  len(orgs),
 	}
 
 	for _, row := range rows {
@@ -114,26 +114,29 @@ func (h *Handler) overviewOrgs(ctx context.Context, orgs []model.Organization, s
 	return rows
 }
 
-// overviewDays builds the stacked cost histogram: one column per day of the
-// window, one segment per organisation.
+// overviewCostSeries builds the stacked cost histogram: one bar per day of the
+// window, one series per organisation.
 //
 // The sub-totals come from a single GROUP BY over the whole period rather than
 // one query per organisation, then are converted and bucketed in memory.
-func (h *Handler) overviewDays(ctx context.Context, orgs []component.OverviewOrg, since time.Time, currency string) []component.OverviewDay {
+//
+// Only organisations that actually consumed pay-as-you-go end up in the result:
+// AggregateCostByDimension excludes the requests covered by a subscription, so
+// an organisation billed entirely on a plan has nothing to draw — and must not
+// appear in the legend either, which is built from these series.
+func (h *Handler) overviewCostSeries(ctx context.Context, orgs []component.OverviewOrg, since time.Time, currency string) component.OverviewCostSeries {
 	rows, err := h.usageStore.AggregateCostByDimension(ctx, port.UsageFilter{Since: &since}, port.UsageDimensionDay)
 	if err != nil {
 		slog.WarnContext(ctx, "could not aggregate platform cost by day", slogx.Error(err))
-		return nil
+		return component.OverviewCostSeries{}
 	}
 	if len(rows) == 0 {
-		return nil
+		return component.OverviewCostSeries{}
 	}
 
-	colors := make(map[model.OrgID]string, len(orgs))
 	names := make(map[model.OrgID]string, len(orgs))
 	order := make(map[model.OrgID]int, len(orgs))
 	for i, org := range orgs {
-		colors[org.ID] = org.ColorClass
 		names[org.ID] = org.Name
 		order[org.ID] = i
 	}
@@ -159,51 +162,69 @@ func (h *Handler) overviewDays(ctx context.Context, orgs []component.OverviewOrg
 		days = days[len(days)-overviewChartDays:]
 	}
 
-	// A single scale across the whole chart: columns are only comparable if they
-	// share one.
-	var maxDay int64
-	totals := make([]int64, len(days))
-	for i, day := range days {
-		for _, cost := range perDay[day] {
-			totals[i] += cost
-		}
-		if totals[i] > maxDay {
-			maxDay = totals[i]
-		}
-	}
-	if maxDay == 0 {
-		return nil
-	}
-
-	out := make([]component.OverviewDay, 0, len(days))
-	for i, day := range days {
-		entry := component.OverviewDay{Label: day, Total: totals[i]}
-
+	// The organisations that carry cost over the kept days, in the order of the
+	// table above the chart so a colour means the same thing on both.
+	drawn := make(map[model.OrgID]bool)
+	for _, day := range days {
 		for orgID, cost := range perDay[day] {
-			if cost <= 0 {
-				continue
+			if cost > 0 {
+				drawn[orgID] = true
 			}
-			name, known := names[orgID]
-			if !known {
-				name = string(orgID)
-			}
-			entry.Segments = append(entry.Segments, component.OverviewSegment{
-				OrgName:    name,
-				ColorClass: colors[orgID],
-				Cost:       cost,
-				HeightPct:  float64(cost) / float64(maxDay) * 100,
-			})
 		}
-
-		// Stack the organisations in the order of the legend, not in map order.
-		sort.SliceStable(entry.Segments, func(a, b int) bool {
-			return entry.Segments[a].Cost > entry.Segments[b].Cost
-		})
-
-		out = append(out, entry)
+	}
+	if len(drawn) == 0 {
+		return component.OverviewCostSeries{}
 	}
 
-	return out
+	orgIDs := make([]model.OrgID, 0, len(drawn))
+	for orgID := range drawn {
+		orgIDs = append(orgIDs, orgID)
+	}
+	sort.SliceStable(orgIDs, func(a, b int) bool {
+		ra, oka := order[orgIDs[a]]
+		rb, okb := order[orgIDs[b]]
+		switch {
+		case oka && okb:
+			return ra < rb
+		case oka:
+			return true
+		case okb:
+			return false
+		default:
+			return orgIDs[a] < orgIDs[b]
+		}
+	})
+
+	series := make([]component.OverviewSeries, 0, len(orgIDs))
+	for i, orgID := range orgIDs {
+		name, known := names[orgID]
+		if !known {
+			name = string(orgID)
+		}
+
+		values := make([]float64, len(days))
+		for d, day := range days {
+			// Costs are stored in micro-units of currency; the chart plots the
+			// currency itself, as the org dashboard does.
+			values[d] = float64(perDay[day][orgID]) / 1_000_000
+		}
+
+		series = append(series, component.OverviewSeries{
+			OrgName:    name,
+			ColorClass: component.OverviewOrgColor(i),
+			Color:      common.ChartColor(i),
+			Values:     values,
+		})
+	}
+
+	// Les clés restent en ISO pour les recherches ci-dessus ; l'axe, lui, se lit
+	// dans la même écriture que les autres graphiques de coût.
+	labels := make([]string, 0, len(days))
+	for _, day := range days {
+		labels = append(labels, common.FormatDayLabel(day))
+	}
+
+	return component.OverviewCostSeries{Labels: labels, Series: series}
 }
 
 // convert moves an amount between currencies, falling back to the raw amount

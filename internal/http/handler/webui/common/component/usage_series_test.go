@@ -115,3 +115,16 @@ func TestRangeBucket(t *testing.T) {
 		t.Errorf("title on a weekly range: %q", got)
 	}
 }
+
+func TestFormatDayLabel(t *testing.T) {
+	if got, want := FormatDayLabel("2026-07-27"), "27 juil."; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+	if got, want := FormatDayLabel("2026-01-02"), "2 janv."; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+	// A key that is not a date keeps its bar labelled rather than blank.
+	if got, want := FormatDayLabel("inconnu"), "inconnu"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}

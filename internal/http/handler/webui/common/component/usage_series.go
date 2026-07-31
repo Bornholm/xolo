@@ -155,3 +155,18 @@ func seriesLabel(at time.Time, bucket SeriesBucket) string {
 	}
 	return fmt.Sprintf("%d %s", at.Day(), month)
 }
+
+// FormatDayLabel words an ISO day key the way the axes of the cost charts do —
+// "2026-07-27" becomes "27 juil.", as the mockup labels them.
+//
+// It exists for the screens that bucket their days themselves, the platform
+// overview in particular, so a date is written the same everywhere. A key that
+// is not a date is returned unchanged: a bar keeps a label rather than none.
+func FormatDayLabel(day string) string {
+	at, err := time.ParseInLocation("2006-01-02", day, time.Local)
+	if err != nil {
+		return day
+	}
+
+	return seriesLabel(at, SeriesBucketDay)
+}
