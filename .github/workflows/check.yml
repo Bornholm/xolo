@@ -2,7 +2,7 @@ name: check
 
 on:
   push:
-    branches: ["main", "desktop"]
+    branches: ["main"]
   pull_request:
     branches: ["main"]
 
