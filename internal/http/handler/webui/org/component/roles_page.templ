@@ -1,110 +1,337 @@
 package component
 
 import (
+	"strconv"
+
+	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/rbac"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/checkbox"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
 )
 
+// RolesPage renders the permission matrix of the organisation.
+//
+// The screen is a matrix rather than a list of roles because the question it
+// answers is comparative — "who can do what" — and a list forces the reader to
+// open each role in turn and hold the answer in their head. Permissions are the
+// rows, roles the columns, exactly as rbac.Catalog() groups them: the catalog is
+// the single source of truth, so a permission added to the domain shows up here
+// without touching this file.
 templ RolesPage(vmodel RolesPageVModel) {
+	{{ writable := common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermRolesWrite) }}
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Rôles — "+vmodel.Org.Name())) {
-		<div class="space-y-6">
-			<div class="flex items-start justify-between gap-4">
-				<div>
-					<h1 class="text-2xl font-semibold">Rôles & permissions</h1>
-					<p class="text-sm text-muted-foreground">Définissez des rôles et leurs autorisations pour les membres de l'organisation.</p>
-				</div>
-				if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermRolesWrite) {
-					@button.Button(button.Props{Size: button.SizeSm, Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/roles/new"))}) {
-						@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
+		<div class="space-y-3.5">
+			@common.PageHeader(common.PageHeaderProps{
+				Title:    "Rôles & permissions",
+				Subtitle: "Matrice des permissions appliquée aux membres et aux applications M2M.",
+			}) {
+				if writable {
+					@button.Button(button.Props{
+						Size:  button.SizeSm,
+						Class: "gap-1.5",
+						Href:  common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/roles/new")),
+					}) {
+						@icon.Plus(icon.Props{Class: "size-3.5"})
 						Nouveau rôle
 					}
 				}
-			</div>
+			}
 			if vmodel.Success != "" {
-				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-					@alert.Description() {
-						Opération réussie.
+				@common.InfoBanner(common.TonePositive, "Opération réussie.")
+			}
+			if len(vmodel.Roles) == 0 {
+				@common.EmptyState(common.EmptyStateProps{
+					Icon:        icon.Shield,
+					Title:       "Aucun rôle",
+					Description: "Un rôle est un jeu d'autorisations ; chaque membre et chaque application en porte un ou plusieurs.",
+				}) {
+					if writable {
+						@button.Button(button.Props{
+							Size: button.SizeSm,
+							Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/roles/new")),
+						}) {
+							Nouveau rôle
+						}
 					}
 				}
-			}
-			@card.Card() {
-				@card.Content() {
-					@table.Table() {
-						@table.Header() {
-							@table.Head() {
-								Rôle
-							}
-							@table.Head() {
-								Description
-							}
-							@table.Head() {
-								Type
-							}
-							@table.Head(table.HeadProps{Class: "text-right"}) {
-								Actions
-							}
+			} else {
+				{{ groups := filterCatalog(vmodel) }}
+				@rolesFilterBar(vmodel, countPermissions(groups))
+				if len(groups) == 0 {
+					@common.EmptyState(common.EmptyStateProps{
+						Icon:        icon.SearchX,
+						Title:       "Aucune permission ne correspond",
+						Description: "Aucune permission du catalogue ne répond à ces critères. Élargissez la recherche ou retirez le filtre de rôle.",
+					}) {
+						@button.Button(button.Props{
+							Variant: button.VariantOutline,
+							Size:    button.SizeSm,
+							Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/roles")),
+						}) {
+							Réinitialiser les filtres
 						}
-						@table.Body() {
-							for _, role := range vmodel.Roles {
-								@table.Row() {
-									@table.Cell() {
-										<span class="font-medium">{ role.Name() }</span>
+					}
+				} else {
+					@common.Section() {
+						<!-- La matrice défile horizontalement dès que les rôles sont
+						nombreux ; la colonne des permissions reste collée à gauche, sans quoi
+						une coche au bout du défilement ne désigne plus rien. -->
+						<div class="overflow-x-auto">
+							@table.Table() {
+								@table.Header() {
+									<!-- La colonne des permissions prend toute la largeur
+									restante (`w-full`), ce qui réduit chaque colonne de rôle à
+									la largeur de son nom (`w-px` + `whitespace-nowrap`) et
+									pousse la matrice contre le bord droit. -->
+									@table.Head(table.HeadProps{Class: "sticky left-0 z-10 w-full bg-row-hover"}) {
+										Permission
 									}
-									@table.Cell() {
-										<span class="text-sm text-muted-foreground">{ role.Description() }</span>
+									for _, role := range vmodel.Roles {
+										@table.Head(table.HeadProps{Class: "w-px whitespace-nowrap text-center"}) {
+											@roleColumnHeader(vmodel, role, writable)
+										}
 									}
-									@table.Cell() {
-										if role.Builtin() {
-											@badge.Badge(badge.Props{Variant: badge.VariantOutline}) {
-												Intégré
-											}
-										} else {
-											@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
-												Personnalisé
+								}
+								@table.Body() {
+									for _, group := range groups {
+										@permissionGroupRow(group.Label, len(vmodel.Roles))
+										for _, def := range group.Perms {
+											@table.Row() {
+												@table.Cell(table.CellProps{Class: "sticky left-0 z-10 bg-card"}) {
+													<div class="font-mono text-xs font-semibold">{ string(def.Code) }</div>
+													<div class="mt-0.5 text-xs text-muted-foreground">{ def.Label }</div>
+												}
+												for _, role := range vmodel.Roles {
+													@table.Cell(table.CellProps{Class: "text-center"}) {
+														@permissionCellControl(vmodel, role, def.Code, writable)
+													}
+												}
 											}
 										}
 									}
-									@table.Cell(table.CellProps{Class: "text-right"}) {
-										<div class="inline-flex gap-1">
-											if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermRolesWrite) && role.BuiltinKind() != "owner" {
-												@button.Button(button.Props{
-													Href:       common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/roles/", string(role.ID()), "/edit")),
-													Variant:    button.VariantGhost,
-													Size:       button.SizeIcon,
-													Attributes: templ.Attributes{"title": "Modifier"},
-												}) {
-													@icon.Pencil(icon.Props{Size: 15})
-												}
-											}
-											if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermRolesWrite) && !role.Builtin() {
-												@button.Button(button.Props{
-													Variant: button.VariantGhost,
-													Size:    button.SizeIcon,
-													Class:   "text-destructive hover:text-destructive",
-													Attributes: templ.Attributes{
-														"type":     "button",
-														"title":    "Supprimer",
-														"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/roles/", string(role.ID()))),
-														"onclick":  "if(confirm('Supprimer ce rôle ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
-													},
-												}) {
-													@icon.Trash(icon.Props{Size: 15})
-												}
-											}
-										</div>
-									}
 								}
 							}
+						</div>
+					}
+					@common.SectionNote() {
+						if writable {
+							Cochez une case pour accorder la permission au rôle. Une permission de
+							lecture accordée implicitement par une permission d'écriture est marquée
+							et ne se retire pas séparément ; le rôle propriétaire autorise tout et
+							ne se restreint pas.
+						} else {
+							Consultation seule : accorder ou retirer une permission demande le droit
+							de gérer les rôles.
 						}
 					}
 				}
 			}
 		</div>
+	}
+}
+
+// rolesFilterBar renders the search box and the role filter above the matrix.
+//
+// The catalog is long enough that finding one permission means scrolling past
+// ten sections. Both controls are a GET form, so a filtered view is an URL: it
+// survives a reload, and "which permissions does this role grant?" becomes a
+// link someone can be sent.
+//
+// The search also matches the permission code, which makes the read/write split
+// fall out of it — typing ":write" lists every write permission — so no separate
+// control is needed for it.
+templ rolesFilterBar(vmodel RolesPageVModel, matches int) {
+	{{ action := common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/roles")) }}
+	{{ filtered := vmodel.Query != "" || selectedRole(vmodel) != nil }}
+	<form method="GET" action={ templ.SafeURL(action) }>
+		@common.FilterBar() {
+			@common.SearchFilter(common.SearchFilterProps{
+				ID:          "permission-search",
+				Name:        "q",
+				Value:       vmodel.Query,
+				Placeholder: "Rechercher une permission… (ex : quota, :write)",
+			})
+			@selectbox.SelectBox(selectbox.Props{ID: "role-filter", Class: "w-56"}) {
+				@selectbox.Trigger(selectbox.TriggerProps{
+					Name:       "role",
+					Attributes: templ.Attributes{"data-xolo-submit-on-change": true},
+				}) {
+					@selectbox.Value(selectbox.ValueProps{Placeholder: "Tous les rôles"})
+				}
+				@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
+					@selectbox.Group() {
+						@selectbox.Item(selectbox.ItemProps{Value: "", Selected: vmodel.RoleID == ""}) {
+							Tous les rôles
+						}
+						for _, role := range vmodel.Roles {
+							@selectbox.Item(selectbox.ItemProps{
+								Value:    string(role.ID()),
+								Selected: string(role.ID()) == vmodel.RoleID,
+							}) {
+								Accordées par { role.Name() }
+							}
+						}
+					}
+				}
+			}
+			@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeSm, Variant: button.VariantOutline}) {
+				Filtrer
+			}
+			if filtered {
+				@button.Button(button.Props{
+					Variant: button.VariantGhost,
+					Size:    button.SizeSm,
+					Type:    button.TypeButton,
+					Href:    action,
+				}) {
+					Réinitialiser
+				}
+				<span class="text-xs tnum text-muted-foreground">
+					{ strconv.Itoa(matches) } sur { strconv.Itoa(totalPermissions()) } permissions
+				</span>
+			}
+		}
+	</form>
+}
+
+// roleColumnHeader renders one role at the head of its column: the name, whether
+// it is builtin, and — for a role the reader may change — the way in.
+//
+// The mockup shows the name and the kind only. The edit and delete paths have to
+// live somewhere, and the column header is where a reader already looks to
+// identify a role, so they hang off it rather than needing a second screen.
+templ roleColumnHeader(vmodel RolesPageVModel, role model.Role, writable bool) {
+	{{ editable := writable && role.BuiltinKind() != "owner" }}
+	<div class="flex flex-col items-center gap-1">
+		<!-- La corbeille est accolée au nom, pas à la mention d'origine : c'est le
+		rôle qu'elle supprime, et une action posée sur la ligne de légende se lit
+		comme portant sur la légende.
+		La ligne du nom a une hauteur fixe, sinon la colonne qui porte le bouton
+		serait plus haute que les autres et les noms cesseraient d'être alignés. -->
+		<span class="flex h-5 items-center gap-1">
+			if editable {
+				<a
+					href={ templ.SafeURL(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/roles/", string(role.ID()), "/edit"))) }
+					class="text-sm font-semibold normal-case tracking-normal text-foreground hover:text-primary"
+					title="Modifier ce rôle"
+				>
+					{ role.Name() }
+				</a>
+			} else {
+				<span class="text-sm font-semibold normal-case tracking-normal text-foreground">{ role.Name() }</span>
+			}
+			if writable && !role.Builtin() {
+				@common.ConfirmDelete(common.ConfirmDeleteProps{
+					URL:         common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/roles/", string(role.ID()))),
+					Tooltip:     "Supprimer ce rôle",
+					Title:       "Supprimer ce rôle ?",
+					Description: "Les membres et les applications qui le portent perdront les permissions qu'il accordait.",
+					Class:       "size-5 rounded-sm [&_svg]:size-3.5",
+				})
+			}
+		</span>
+		<!-- L'origine du rôle est une étiquette d'état, pas une légende grise :
+		le design system la rend en pastille teintée. La casse est remise à plat
+		parce que la règle de densité des tables met tout <th> en capitales. -->
+		<span class="normal-case tracking-normal">
+			if role.Builtin() {
+				@common.Badge(common.ToneNeutral, "intégré")
+			} else {
+				@common.Badge(common.ToneInfo, "personnalisé")
+			}
+		</span>
+	</div>
+}
+
+// permissionGroupRow renders the tinted band that opens each section of the
+// catalog. It spans the whole matrix so the label is not mistaken for a
+// permission of the first column.
+templ permissionGroupRow(label string, roleCount int) {
+	@table.Row(table.RowProps{Class: "bg-row-hover hover:bg-row-hover"}) {
+		@table.Cell(table.CellProps{
+			Class: "py-1.5 text-xs font-semibold text-foreground",
+			Attributes: templ.Attributes{
+				"colspan": roleCount + 1,
+				"scope":   "colgroup",
+			},
+		}) {
+			{ label }
+		}
+	}
+}
+
+// permissionCellControl renders one cell of the matrix: a checkbox when the
+// reader may change it, a static mark otherwise.
+//
+// Each cell is its own form posting a single permission. A click then means
+// exactly what it looks like — one permission, one role — and it works without
+// JavaScript: the endpoint answers with a redirect, and hx-boost swaps the page
+// content in place when it is available.
+templ permissionCellControl(vmodel RolesPageVModel, role model.Role, perm rbac.Permission, writable bool) {
+	{{ cell := permissionCell(role, perm, writable) }}
+	switch {
+		case cell.AlwaysGranted:
+			<span
+				class="inline-flex size-4.5 items-center justify-center rounded-sm bg-success-tint text-success"
+				title="Le rôle propriétaire autorise toutes les permissions"
+			>
+				@icon.Check(icon.Props{Class: "size-3"})
+			</span>
+		case cell.ImpliedBy != "":
+			<!-- Accordée par une autre permission : une case à cocher serait un
+			piège, elle se recocherait seule à la lecture suivante. -->
+			<span
+				class="inline-flex size-4.5 items-center justify-center rounded-sm bg-success-tint text-success/60"
+				title={ "Accordée implicitement par " + cell.ImpliedBy }
+			>
+				@icon.Check(icon.Props{Class: "size-3"})
+			</span>
+		case cell.Editable:
+			<form
+				method="POST"
+				action={ templ.SafeURL(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/roles/", string(role.ID()), "/permissions"))) }
+				class="inline-flex"
+			>
+				<input type="hidden" name="permission" value={ string(perm) }/>
+				<!-- Les filtres courants voyagent avec la requête : sans eux, cocher
+				une case renverrait sur la matrice complète, loin des lignes qu'on
+				était en train de lire. -->
+				<input type="hidden" name="q" value={ vmodel.Query }/>
+				<input type="hidden" name="role" value={ vmodel.RoleID }/>
+				@checkbox.Checkbox(checkbox.Props{
+					ID:      "perm-" + string(role.ID()) + "-" + string(perm),
+					Name:    "granted",
+					Value:   "1",
+					Checked: cell.Granted,
+					Attributes: templ.Attributes{
+						"data-xolo-submit-on-change": true,
+						"title":                      permissionToggleTitle(cell, perm),
+					},
+				})
+			</form>
+		default:
+			@permissionMark(cell.Effective())
+	}
+}
+
+// permissionMark renders a matrix cell: a granted permission is a check on its
+// own tint, a missing one a dash.
+//
+// The dash is drawn rather than left blank — an empty cell in a wide grid reads
+// as a rendering gap, whereas a dash states that the answer is "no".
+templ permissionMark(granted bool) {
+	if granted {
+		<span
+			class="inline-flex size-4.5 items-center justify-center rounded-sm bg-success-tint text-success"
+			title="Autorisé"
+		>
+			@icon.Check(icon.Props{Class: "size-3"})
+		</span>
+	} else {
+		<span class="inline-block text-muted-foreground/40" title="Non autorisé">·</span>
 	}
 }

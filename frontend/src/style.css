@@ -1,99 +1,197 @@
-/* ─── Pipeline Editor shell ─────────────────────────────────────────────── */
+/* ───────────────────────────────────────────────────────────────────────────
+   Éditeur de pipeline — feuille de style de l'îlot React.
+
+   Ce fichier n'importe pas Tailwind : le bundle React est monté dans une page
+   rendue par templ, il hérite donc des variables déclarées sur :root par
+   misc/tailwind/templui.css. Toutes les valeurs ci-dessous passent par ces
+   tokens — plus de couleurs codées en dur, plus de design system parallèle
+   (lot 6 de docs/plan/rework-ux.md).
+
+   Les seules valeurs littérales qui restent sont des géométries propres au
+   canevas (largeur de la palette et de l'inspecteur, taille des poignées de
+   connexion, pas de la grille) : elles n'ont pas de token correspondant.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ─── Coquille de l'éditeur ──────────────────────────────────────────────── */
 
 .pipeline-editor {
   display: flex;
   flex-direction: column;
   height: 100%;
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
 }
 
 .pipeline-editor__toolbar {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 16px;
-  background: #1e293b;
-  color: #f1f5f9;
-  border-bottom: 1px solid #334155;
+  padding: 8px 14px;
+  background: var(--card);
+  color: var(--foreground);
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 
+.pipeline-editor__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--muted-foreground);
+  text-decoration: none;
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+.pipeline-editor__back:hover { background: var(--muted); color: var(--foreground); }
+
 .pipeline-editor__vm-name {
+  /* Le nom d'un pipeline est un identifiant : mono, comme partout ailleurs. */
+  font-family: var(--font-mono);
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: var(--text-sm);
+}
+
+.pipeline-editor__counts {
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+  white-space: nowrap;
 }
 
 .pipeline-editor__error {
-  color: #f87171;
-  font-size: 0.85rem;
+  color: var(--destructive);
+  font-size: var(--text-xs);
+  min-width: 0;
   flex: 1;
 }
 
-.pipeline-editor__save-btn {
+.pipeline-editor__actions {
   margin-left: auto;
-  padding: 6px 18px;
-  background: #3b82f6;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
-.pipeline-editor__save-btn:hover:not(:disabled) { background: #2563eb; }
-.pipeline-editor__save-btn:disabled { opacity: 0.5; cursor: default; }
 
-.pipeline-editor__export-btn {
-  padding: 6px 14px;
-  background: transparent;
-  color: #94a3b8;
-  border: 1px solid #475569;
-  border-radius: 6px;
+.pipeline-editor__btn {
+  padding: 5px 11px;
+  background: var(--card);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-family: inherit;
+  font-size: var(--text-xs);
+  white-space: nowrap;
 }
-.pipeline-editor__export-btn:hover:not(:disabled) { color: #f1f5f9; border-color: #94a3b8; }
-.pipeline-editor__export-btn:disabled { opacity: 0.4; cursor: default; }
+.pipeline-editor__btn:hover:not(:disabled) { background: var(--muted); }
+/* Les contrôles de la maquette encore sans implémentation (lot 7) restent
+   visibles et inertes : les masquer changerait l'architecture de la barre. */
+.pipeline-editor__btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-.pipeline-editor__import-btn {
-  padding: 6px 14px;
-  background: transparent;
-  color: #94a3b8;
-  border: 1px solid #475569;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
+.pipeline-editor__btn--primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
+  font-weight: 600;
 }
-.pipeline-editor__import-btn:hover { color: #f1f5f9; border-color: #94a3b8; }
+.pipeline-editor__btn--primary:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--primary) 88%, black);
+}
 
 .pipeline-editor__body {
   display: flex;
   flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
-.pipeline-editor__canvas {
+.pipeline-editor__center {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-/* ─── Node Palette ───────────────────────────────────────────────────────── */
+.pipeline-editor__canvas { flex: 1; min-height: 0; }
+
+/* ─── Barre d'état ───────────────────────────────────────────────────────── */
+
+.pipeline-editor__status {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 7px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--card);
+  font-size: var(--text-xs);
+  flex-shrink: 0;
+}
+
+.pipeline-editor__status-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.pipeline-editor__status-text--ok { color: var(--success); }
+.pipeline-editor__status-text--warn { color: var(--warning); }
+
+.pipeline-editor__status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.pipeline-editor__legend {
+  margin-left: auto;
+  display: flex;
+  gap: 12px;
+  color: var(--muted-foreground);
+}
+
+.pipeline-editor__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pipeline-editor__legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ─── Palette de nœuds ───────────────────────────────────────────────────── */
 
 .pipeline-palette {
-  width: 200px;
+  /* 212 px : largeur de la palette dans la maquette. */
+  width: 212px;
   flex-shrink: 0;
-  background: #f8fafc;
-  border-right: 1px solid #e2e8f0;
+  background: var(--card);
+  border-right: 1px solid var(--border);
   overflow-y: auto;
-  padding: 12px 8px;
+  padding: 12px 10px;
 }
 
+.pipeline-palette__group + .pipeline-palette__group { margin-top: 16px; }
+
 .pipeline-palette__title {
-  font-size: 0.75rem;
+  font-size: var(--text-2xs);
   font-weight: 600;
-  color: #64748b;
+  color: var(--muted-foreground);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin: 0 0 8px 4px;
+  letter-spacing: var(--tracking-caps);
+  margin: 0 0 7px 2px;
 }
+
+.pipeline-palette__count { font-weight: 400; }
 
 .pipeline-palette__list {
   list-style: none;
@@ -101,391 +199,394 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .pipeline-palette__item {
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
-  border-radius: 6px;
+  padding: 7px 9px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 0.85rem;
-  color: #1e293b;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  transition: background 0.1s;
+  text-align: left;
+  color: var(--foreground);
+  background: var(--card);
+  border: 1px solid var(--border);
+  font-family: inherit;
 }
-.pipeline-palette__item:hover { background: #e0f2fe; border-color: #93c5fd; }
+.pipeline-palette__item:hover { background: var(--muted); border-color: var(--input); }
 
-/* ─── React Flow canvas overrides (force light theme) ───────────────────── */
+.pipeline-palette__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+/* La teinte de la pastille porte le genre du nœud, comme sur le canevas. */
+.pipeline-palette__icon--generator,
+.pipeline-palette__icon--sink { background: var(--muted); color: var(--muted-foreground); }
+.pipeline-palette__icon--model { background: color-mix(in oklab, var(--primary) 12%, transparent); color: var(--primary); }
+.pipeline-palette__icon--value { background: color-mix(in oklab, var(--chart-4) 16%, transparent); color: var(--chart-4); }
+.pipeline-palette__icon--plugin { background: color-mix(in oklab, var(--chart-3) 16%, transparent); color: var(--chart-3); }
 
-.react-flow {
-  background-color: #f8fafc !important;
+.pipeline-palette__text { min-width: 0; display: flex; flex-direction: column; }
+
+.pipeline-palette__label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pipeline-palette__label--mono { font-family: var(--font-mono); }
+
+.pipeline-palette__subtitle {
+  font-size: var(--text-2xs);
+  color: var(--muted-foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.react-flow__background {
-  background-color: #f8fafc !important;
-}
+/* ─── Canevas React Flow ─────────────────────────────────────────────────── */
 
-/* Reset colour vars that the parent dark theme may inject */
+.react-flow,
+.react-flow__background { background-color: var(--row-hover) !important; }
+
 .react-flow__node,
-.react-flow__edge {
-  color: #1e293b;
-}
+.react-flow__edge { color: var(--foreground); }
 
-/* Larger handles for easier connection drag */
-.react-flow__handle {
-  width: 14px;
-  height: 14px;
-}
+/* Poignées agrandies : la cible de préhension par défaut est trop petite pour
+   un glisser précis. */
+.react-flow__handle { width: 9px; height: 9px; border-width: 2px; }
 
-/* ─── Pipeline Nodes ─────────────────────────────────────────────────────── */
+/* ─── Cartes de nœud ─────────────────────────────────────────────────────── */
 
 .pipeline-node {
   position: relative;
-  min-width: 160px;
-  background: #fff;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-  padding: 8px 0;
-  font-size: 0.82rem;
+  min-width: 152px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 2px rgb(16 24 40 / 0.05);
   overflow: visible;
 }
 
-.pipeline-node--generator { border-color: #f59e0b; }
-.pipeline-node--sink      { border-color: #ef4444; }
-.pipeline-node--model     { border-color: #8b5cf6; }
-.pipeline-node--plugin    { border-color: #3b82f6; }
-.pipeline-node--value     { border-width: 2px; }
-.pipeline-node--expr-router { border-color: #f59e0b; }
-
-.value-node__type-select {
-  margin-left: auto;
-  font-size: 0.65rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 3px;
-  padding: 1px 4px;
-  background: #fff;
-  color: #475569;
-  outline: none;
-  cursor: pointer;
+/* Le nœud sélectionné porte l'anneau du design system, pas une bordure de
+   couleur : la couleur code déjà le genre du nœud. */
+.react-flow__node.selected .pipeline-node {
+  border-color: var(--success);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--success) 25%, transparent);
 }
-.value-node__type-select:focus { border-color: #94a3b8; }
 
-.pipeline-node__header {
+.pipeline-node__kind {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  padding: 7px 10px 0;
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--muted-foreground);
+}
+
+.pipeline-node--model .pipeline-node__kind { color: var(--primary); }
+.pipeline-node--value .pipeline-node__kind { color: var(--chart-4); }
+.pipeline-node--plugin .pipeline-node__kind { color: var(--chart-3); }
+
+.pipeline-node__identity { padding: 5px 10px 8px; }
+
+.pipeline-node__title {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
   font-weight: 600;
-  padding: 0 12px;
-  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.pipeline-node__icon { font-size: 0.9rem; }
-
-/* Delete button — hidden by default, shown on hover */
-.pipeline-node__delete {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #ef4444;
-  color: #fff;
-  border: none;
-  font-size: 10px;
-  line-height: 18px;
-  text-align: center;
-  cursor: pointer;
-  padding: 0;
-  display: none;
-  z-index: 10;
-}
-.pipeline-node:hover .pipeline-node__delete,
-.react-flow__node.selected .pipeline-node__delete {
-  display: block;
-}
-.pipeline-node__delete:hover { background: #dc2626; }
-
-.pipeline-node__body {
-  font-size: 0.78rem;
-  color: #475569;
-  padding: 0 12px;
+.pipeline-node__subtitle {
+  margin-top: 1px;
+  font-size: var(--text-2xs);
+  color: var(--muted-foreground);
 }
 
-.pipeline-node__subheader {
-  font-size: 0.78rem;
-  color: #475569;
-  padding: 0 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.pipeline-node__value {
-  display: block;
-  cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 3px;
-  word-break: break-all;
-}
-.pipeline-node__value:hover { background: #f1f5f9; }
-
-.pipeline-node__value--code {
-  font-family: monospace;
-  font-size: 0.75rem;
-  white-space: pre-wrap;
-}
-
-.pipeline-node__input {
-  width: 100%;
-  font-size: 0.78rem;
-  padding: 3px 6px;
-  border: 1px solid #94a3b8;
-  border-radius: 4px;
-  outline: none;
-  font-family: inherit;
-  resize: vertical;
-}
-
-/* ─── Port rows ──────────────────────────────────────────────────────────────
-   Each port is a row that extends edge-to-edge (negative margin cancels the
-   node's left/right padding). The Handle sits inside with position: absolute
-   at left: 0 (or right: 0), so it lands exactly on the node border.
+/* ─── Ports ──────────────────────────────────────────────────────────────────
+   Chaque port est une rangée qui touche les bords de la carte : la poignée est
+   positionnée en absolu à left: 0 / right: 0, donc exactement sur la bordure.
 ──────────────────────────────────────────────────────────────────────────── */
 
 .pipeline-node__ports {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-top: 6px;
-  border-top: 1px solid #f1f5f9;
-  padding-top: 2px;
+  border-top: 1px solid var(--rule);
+  padding: 2px 0;
 }
 
-.pipeline-node__ports-col {
-  display: flex;
-  flex-direction: column;
-}
+.pipeline-node__ports-col { display: flex; flex-direction: column; }
 
-/* A single port row — position: relative so the Handle inside is positioned
-   relative to this row, not the entire node. */
 .pipeline-node__port-row {
   position: relative;
   display: flex;
   align-items: center;
-  height: 22px;
-  font-size: 0.65rem;
-  color: #64748b;
+  height: 20px;
+  font-size: var(--text-2xs);
+  color: var(--muted-foreground);
   white-space: nowrap;
 }
 
-/* Input (left) port rows: label indented to clear the handle */
-.pipeline-node__port-row--input {
-  padding-left: 20px;
-  padding-right: 8px;
-}
+.pipeline-node__port-row--input { padding-left: 14px; padding-right: 8px; }
 
-/* Output (right) port rows: label aligned right, handle on right edge */
 .pipeline-node__port-row--output {
-  padding-right: 20px;
+  padding-right: 14px;
   padding-left: 8px;
   justify-content: flex-end;
 }
 
-/* ─── ExprRouter input configurator ─────────────────────────────────────── */
+/* ─── Panneau d'inspection ───────────────────────────────────────────────── */
 
-.expr-router__inputs {
-  margin-top: 6px;
-  border-top: 1px solid #f1f5f9;
-  padding-top: 4px;
+.pipeline-inspector {
+  /* La largeur est pilotée en JS (290 px par défaut, comme la maquette) : voir
+     useInspectorWidth. Elle est ici pour le cas où le style charge seul. */
+  width: 290px;
+  flex-shrink: 0;
+  background: var(--card);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  /* Le panneau ne défile pas lui-même : c'est son corps qui le fait, sinon une
+     iframe de hauteur fixe se retrouve dans un conteneur défilant et l'on
+     obtient deux ascenseurs imbriqués. */
+  overflow: hidden;
+  position: relative;
+  animation: pipeline-inspector-in 120ms ease-out;
+}
+
+@keyframes pipeline-inspector-in {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pipeline-inspector { animation: none; }
+}
+
+/* Poignée de redimensionnement : elle déborde de 2 px sur le canevas pour être
+   attrapable sans viser la bordure au pixel près. */
+.pipeline-inspector__resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -2px;
+  width: 7px;
+  cursor: col-resize;
+  z-index: 5;
+  touch-action: none;
+}
+.pipeline-inspector__resizer:hover { background: color-mix(in oklab, var(--primary) 22%, transparent); }
+
+.pipeline-inspector__header {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding-left: 12px;
-  padding-right: 12px;
-}
-
-.expr-router__inputs-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 2px;
-}
-
-.expr-router__inputs-title {
-  font-size: 0.65rem;
-  font-weight: 600;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.expr-router__add-btn {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #10b981;
-  color: #fff;
-  border: none;
-  font-size: 12px;
-  line-height: 16px;
-  text-align: center;
-  cursor: pointer;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.expr-router__add-btn:hover { background: #059669; }
-
-/* Each input config row also serves as the Handle anchor */
-.expr-router__input-row {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  height: 24px;
-  margin-left: -12px;
-  padding-left: 20px;
-  padding-right: 0;
-}
-
-.expr-router__name-input {
-  flex: 1;
-  min-width: 0;
-  font-size: 0.7rem;
-  padding: 1px 4px;
-  border: 1px solid #e2e8f0;
-  border-radius: 3px;
-  outline: none;
-  font-family: monospace;
-}
-.expr-router__name-input:focus { border-color: #94a3b8; }
-
-.expr-router__type-select {
-  font-size: 0.65rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 3px;
-  padding: 1px 2px;
-  outline: none;
-  color: #475569;
-  background: #fff;
-}
-
-.expr-router__remove-btn {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: transparent;
-  color: #94a3b8;
-  border: none;
-  font-size: 9px;
-  cursor: pointer;
-  padding: 0;
-  line-height: 14px;
-  text-align: center;
   flex-shrink: 0;
 }
-.expr-router__remove-btn:hover { color: #ef4444; }
 
 
-/* ─── Plugin config button ───────────────────────────────────────────────── */
-
-.plugin-node__config-btn {
-  font-size: 0.65rem;
-  padding: 2px 5px;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  background: #fff;
-  color: #475569;
-  cursor: pointer;
-  white-space: nowrap;
+.pipeline-inspector__kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--muted-foreground);
 }
-.plugin-node__config-btn:hover { background: #f1f5f9; border-color: #94a3b8; }
+.pipeline-inspector__kind--model { color: var(--primary); }
+.pipeline-inspector__kind--value { color: var(--chart-4); }
+.pipeline-inspector__kind--plugin { color: var(--chart-3); }
 
-/* ─── Plugin UI modal ────────────────────────────────────────────────────── */
-
-.plugin-modal-overlay {
-  /* Fills #pipeline-editor-root (position: relative) exactly */
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  padding: 16px;
-  display: flex;
-  align-items: stretch;
-  justify-content: stretch;
-  z-index: 9999;
+.pipeline-inspector__name {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  word-break: break-all;
 }
 
-.plugin-modal {
-  flex: 1;
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+.pipeline-inspector__body {
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Quand le nœud sélectionné apporte sa propre interface, c'est elle qui prend la
+   hauteur restante et qui défile ; le panneau, lui, ne défile plus. Les ports et
+   l'action de suppression restent visibles sous elle. */
+.pipeline-inspector__body--frame { overflow: hidden; }
+
+.pipeline-inspector__field { display: flex; flex-direction: column; gap: 5px; }
+
+.pipeline-inspector__label {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
+
+.pipeline-inspector__label-hint {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: var(--text-2xs);
+  color: var(--muted-foreground);
+}
+
+.pipeline-inspector__input {
+  width: 100%;
+  height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: var(--text-xs);
+  outline: none;
+}
+.pipeline-inspector__input:focus { border-color: var(--ring); }
+.pipeline-inspector__input:read-only,
+.pipeline-inspector__input:disabled {
+  background: var(--background);
+  color: var(--muted-foreground);
+  font-family: var(--font-mono);
+}
+
+.pipeline-inspector__hint {
+  margin: 0;
+  font-size: var(--text-2xs);
+  color: var(--muted-foreground);
+  line-height: 1.4;
+}
+.pipeline-inspector__hint code { font-family: var(--font-mono); }
+
+.pipeline-inspector__switch {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  cursor: pointer;
+}
+.pipeline-inspector__switch-label {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
+
+/* ─── Inspecteur : ports ─────────────────────────────────────────────────── */
+
+.pipeline-inspector__ports { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+
+.pipeline-inspector__port {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--text-2xs);
+}
+
+.pipeline-inspector__port-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.pipeline-inspector__port-name {
+  font-family: var(--font-mono);
+  color: var(--foreground);
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pipeline-inspector__port-type {
+  margin-left: auto;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.pipeline-inspector__port-badge {
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+/* Seul « requis » est coloré : c'est le seul badge qui signale une obligation,
+   les deux autres ne font que nommer le sens du port. */
+.pipeline-inspector__port-badge--requis {
+  background: var(--warning-tint);
+  color: var(--warning);
+}
+
+/* ─── Inspecteur : UI de plugin embarquée ────────────────────────────────── */
+
+.pipeline-inspector__plugin-ui {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
   min-height: 0;
 }
 
-.plugin-modal__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid #e2e8f0;
-  background: #f8fafc;
-  flex-shrink: 0;
-}
-
-.plugin-modal__title {
-  font-weight: 600;
-  font-size: 0.95rem;
-  color: #1e293b;
-}
-
-.plugin-modal__close {
-  background: none;
-  border: none;
-  font-size: 1rem;
-  color: #64748b;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-}
-.plugin-modal__close:hover { background: #f1f5f9; color: #1e293b; }
-
-.plugin-modal__body {
-  flex: 1;
-  overflow: hidden;
-}
-
-.plugin-modal__iframe {
+.pipeline-inspector__iframe {
   width: 100%;
-  height: 100%;
-  border: none;
+  /* L'UI est fournie par le plugin : sa hauteur naturelle est inconnue, donc
+     elle occupe ce que le panneau lui laisse et défile en interne. Une hauteur
+     fixe garantissait un ascenseur, quelle que soit la valeur choisie. */
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
 }
 
-.plugin-modal__loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: #64748b;
+.pipeline-inspector__delete {
+  flex-shrink: 0;
+  width: 100%;
+  padding: 7px;
+  border: 1px solid color-mix(in oklab, var(--destructive) 35%, transparent);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  color: var(--destructive);
+  font-family: inherit;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
 }
+.pipeline-inspector__delete:hover { background: var(--destructive-tint); }
 
-/* ─── Loading ────────────────────────────────────────────────────────────── */
+/* ─── Chargement ─────────────────────────────────────────────────────────── */
 
 .pipeline-loading {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 200px;
-  color: #64748b;
+  color: var(--muted-foreground);
 }

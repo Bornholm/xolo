@@ -1,0 +1,30 @@
+package component
+
+// PageHeaderProps configures the title block every screen opens with.
+type PageHeaderProps struct {
+	Title string
+	// Subtitle is the grey line under the title. The mockup uses it to carry the
+	// counts and the period a screen is scoped to ("4 tenants · 314 membres").
+	Subtitle string
+	Class    string
+}
+
+// PageHeader renders the standard screen header: title, optional subtitle and a
+// right-aligned action area fed by the children.
+//
+// Every screen of the mockup opens with this block, so it is a component rather
+// than a copied `<div class="flex items-center justify-between">` — which is the
+// shape the audit found duplicated across the admin, org and profile pages.
+templ PageHeader(props PageHeaderProps) {
+	<div class={ "mb-4 flex flex-wrap items-start gap-4", props.Class }>
+		<div class="min-w-0">
+			<h1 class="text-xl font-semibold tracking-tight">{ props.Title }</h1>
+			if props.Subtitle != "" {
+				<p class="mt-1 text-sm text-muted-foreground">{ props.Subtitle }</p>
+			}
+		</div>
+		<div class="ml-auto flex shrink-0 flex-wrap items-center gap-2">
+			{ children... }
+		</div>
+	</div>
+}

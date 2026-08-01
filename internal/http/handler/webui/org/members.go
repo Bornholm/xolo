@@ -27,8 +27,6 @@ func (h *Handler) getMembersPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	const membersPageSize = 20
 
 	page := 0
@@ -58,16 +56,16 @@ func (h *Handler) getMembersPage(w http.ResponseWriter, r *http.Request) {
 		PageSize:     membersPageSize,
 		TotalMembers: int(total),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-members",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-members",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Membres", Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 
@@ -121,8 +119,6 @@ func (h *Handler) getEditMemberPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	membership, err := h.orgStore.GetMembership(ctx, model.MembershipID(membershipID))
 	if err != nil {
 		if errors.Is(err, port.ErrNotFound) {
@@ -157,17 +153,17 @@ func (h *Handler) getEditMemberPage(w http.ResponseWriter, r *http.Request) {
 		OrgRoles:        orgRoles,
 		AssignedRoleIDs: assignedRoleIDs,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-members",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-members",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Membres", Href: "/orgs/" + orgSlug + "/admin/members"},
 				{Label: membership.User().Email(), Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 

@@ -1,15 +1,17 @@
 package component
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/bornholm/xolo/internal/core/model"
 	commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/pagination"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
-	"strconv"
+	"github.com/bornholm/xolo/internal/http/middleware/authz"
 )
 
 type UsersPageVModel struct {
@@ -18,124 +20,170 @@ type UsersPageVModel struct {
 	CurrentPage     int
 	PageSize        int
 	TotalUsers      int
+	// InactiveUsers counts the deactivated accounts, shown in the subtitle.
+	InactiveUsers int
+	// Search is the term the list is currently filtered by.
+	Search string
+	// OrgNames maps a user id onto the organisations they belong to.
+	OrgNames map[model.UserID][]string
 }
 
 templ UsersPage(vmodel UsersPageVModel) {
 	@commonComp.AppLayout(vmodel.AppLayoutVModel, commonComp.WithTitle("Utilisateurs")) {
-		<div class="space-y-6">
-			<!-- Header -->
-			<div class="flex items-center justify-between">
-				<div>
-					<h1 class="text-2xl font-semibold">Utilisateurs</h1>
-					<p class="text-sm text-muted-foreground">
-						{ strconv.Itoa(vmodel.TotalUsers) } utilisateur(s) au total
-					</p>
-				</div>
-			</div>
-			if len(vmodel.Users) == 0 {
-				<div class="rounded-lg border border-border p-6 text-center">
-					<div class="flex flex-col items-center gap-2">
-						@icon.Info(icon.Props{Class: "h-8 w-8 text-muted-foreground"})
-						<p class="text-muted-foreground">Aucun utilisateur trouvé.</p>
-					</div>
-				</div>
+		@commonComp.PageHeader(commonComp.PageHeaderProps{
+			Title:    "Utilisateurs",
+			Subtitle: usersSubtitle(vmodel),
+		}) {
+			@commonComp.SearchFilter(commonComp.SearchFilterProps{
+				Name:        "q",
+				Value:       vmodel.Search,
+				Placeholder: "Nom, e-mail, identifiant…",
+				Class:       "w-70",
+				Attributes: templ.Attributes{
+					"hx-get":     commonComp.BaseURLString(ctx, commonComp.WithPath("/admin/users")),
+					"hx-trigger": "input changed delay:250ms, search",
+					"hx-target":  "#users-results",
+					"hx-select":  "#users-results",
+					"hx-swap":    "outerHTML",
+					// The search term belongs in the URL: a reload, a bookmark or the
+					// back button must land on the same filtered list.
+					"hx-push-url": "true",
+					// <body> carries the boost defaults, which swap #content and pull
+					// the shell out of band. This request replaces one region only.
+					"hx-select-oob": "unset",
+					"autocomplete":  "off",
+				},
+			})
+		}
+		@usersResults(vmodel)
+	}
+}
+
+// usersResults holds everything the search replaces: the table and its
+// pagination, which both depend on the term.
+templ usersResults(vmodel UsersPageVModel) {
+	<div id="users-results">
+		if len(vmodel.Users) == 0 {
+			if vmodel.Search != "" {
+				@commonComp.EmptyState(commonComp.EmptyStateProps{
+					Icon:        icon.Search,
+					Title:       "Aucun utilisateur ne correspond",
+					Description: fmt.Sprintf("Aucun compte ne contient « %s » dans son nom, son e-mail ou son identifiant.", vmodel.Search),
+				}) {
+					@button.Button(button.Props{
+						Variant: button.VariantOutline,
+						Size:    button.SizeSm,
+						Href:    commonComp.BaseURLString(ctx, commonComp.WithPath("/admin/users")),
+					}) {
+						Effacer le filtre
+					}
+				}
 			} else {
-				@card.Card() {
-					@card.Content() {
-						@table.Table() {
-							@table.Header() {
-								@table.Head() {
-									Nom d'affichage
+				@commonComp.EmptyState(commonComp.EmptyStateProps{
+					Icon:        icon.Users,
+					Title:       "Aucun utilisateur",
+					Description: "Les comptes sont provisionnés à la première connexion via le fournisseur d'identité.",
+				})
+			}
+		} else {
+			@commonComp.Section() {
+				@table.Table() {
+					@table.Header() {
+						@table.Head() {
+							Utilisateur
+						}
+						@table.Head() {
+							Fournisseur d'identité
+						}
+						@table.Head() {
+							Organisations
+						}
+						@table.Head() {
+							Rôles plateforme
+						}
+						@table.Head(table.HeadProps{Class: "text-right"}) {
+							Coût 30 j
+						}
+						@table.Head() {
+							Statut
+						}
+						@table.Head(table.HeadProps{Class: "text-right"}) {
+							Actions
+						}
+					}
+					@table.Body() {
+						for _, user := range vmodel.Users {
+							@table.Row() {
+								@table.Cell() {
+									<div class="flex items-center gap-2.5">
+										@commonComp.PersonAvatar(user.DisplayName())
+										<div class="min-w-0">
+											<div class="truncate text-sm font-semibold">{ user.DisplayName() }</div>
+											@commonComp.Mono(user.Email())
+										</div>
+									</div>
 								}
-								@table.Head() {
-									Email
+								@table.Cell() {
+									@commonComp.Mono(user.Provider())
 								}
-								@table.Head() {
-									Fournisseur
+								@table.Cell(table.CellProps{Class: "text-xs text-muted-foreground"}) {
+									{ orgSummary(vmodel.OrgNames[user.ID()]) }
 								}
-								@table.Head() {
-									Rôles
+								@table.Cell() {
+									<div class="flex flex-wrap gap-1">
+										for _, role := range user.Roles() {
+											@commonComp.Badge(roleTone(role), roleLabel(role))
+										}
+									</div>
 								}
-								@table.Head() {
-									Statut
+								@table.Cell(table.CellProps{Class: "text-right"}) {
+									<!-- TODO(rework-ux): aucun agrégat d'usage par
+									utilisateur n'est exposé côté domaine ; la colonne
+									de la maquette reste en place mais sans valeur
+									(cf. lot 7 du plan). -->
+									@commonComp.PendingValue("Coût par utilisateur : bientôt disponible")
 								}
-								@table.Head() {
-									Actions
+								@table.Cell() {
+									if user.Active() {
+										@commonComp.Badge(commonComp.TonePositive, "Actif")
+									} else {
+										@commonComp.Badge(commonComp.ToneNegative, "Inactif")
+									}
 								}
-							}
-							@table.Body() {
-								for _, user := range vmodel.Users {
-									@table.Row() {
-										@table.Cell() {
-											{ user.DisplayName() }
-										}
-										@table.Cell() {
-											{ user.Email() }
-										}
-										@table.Cell() {
-											{ user.Provider() }
-										}
-										@table.Cell() {
-											<div class="flex flex-wrap gap-1">
-												for _, role := range user.Roles() {
-													@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
-														{ role }
-													}
-												}
-											</div>
-										}
-										@table.Cell() {
-											if user.Active() {
-												@badge.Badge(badge.Props{Variant: badge.VariantDefault}) {
-													<span>Actif</span>
-												}
-											} else {
-												@badge.Badge(badge.Props{Variant: badge.VariantDestructive}) {
-													<span>Inactif</span>
-												}
-											}
-										}
-										@table.Cell() {
-											@editUserButton(user)
-										}
+								@table.Cell(table.CellProps{Class: "text-right"}) {
+									@button.Button(button.Props{
+										Href:    commonComp.BaseURLString(ctx, commonComp.WithPath("/admin/users", string(user.ID()), "edit")),
+										Size:    button.SizeSm,
+										Variant: button.VariantOutline,
+									}) {
+										Modifier
 									}
 								}
 							}
 						}
 					}
 				}
-				@usersPagination(vmodel)
 			}
-		</div>
-	}
-}
-
-templ editUserButton(user model.User) {
-	@button.Button(button.Props{
-		Href:    string(commonComp.BaseURL(ctx, commonComp.WithPath("/admin/users", string(user.ID()), "edit"))),
-		Size:    button.SizeSm,
-		Variant: button.VariantDefault,
-	}) {
-		@icon.Pencil(icon.Props{Class: "h-4 w-4"})
-		<span>Modifier</span>
-	}
+			@usersPagination(vmodel)
+		}
+	</div>
 }
 
 templ usersPagination(vmodel UsersPageVModel) {
 	{{ totalPages := (vmodel.TotalUsers + vmodel.PageSize - 1) / vmodel.PageSize }}
 	if totalPages > 1 {
 		{{ paginator := pagination.CreatePagination(vmodel.CurrentPage, totalPages, 5) }}
-		@pagination.Pagination() {
+		@pagination.Pagination(pagination.Props{Class: "mt-3"}) {
 			@pagination.Content() {
 				@pagination.Previous(pagination.PreviousProps{
-					Href:     commonComp.BaseURLString(ctx, commonComp.WithPath("/admin/users"), commonComp.WithValues("page", strconv.Itoa(vmodel.CurrentPage-1))),
+					Href:     usersPageURL(ctx, vmodel, vmodel.CurrentPage-1),
 					Disabled: !paginator.HasPrevious,
 					Label:    "Précédent",
 				})
 				for _, page := range paginator.Pages {
 					@pagination.Item() {
 						@pagination.Link(pagination.LinkProps{
-							Href:     commonComp.BaseURLString(ctx, commonComp.WithPath("/admin/users"), commonComp.WithValues("page", strconv.Itoa(page))),
+							Href:     usersPageURL(ctx, vmodel, page),
 							IsActive: page == vmodel.CurrentPage,
 						}) {
 							{ strconv.Itoa(page) }
@@ -143,11 +191,57 @@ templ usersPagination(vmodel UsersPageVModel) {
 					}
 				}
 				@pagination.Next(pagination.NextProps{
-					Href:     commonComp.BaseURLString(ctx, commonComp.WithPath("/admin/users"), commonComp.WithValues("page", strconv.Itoa(vmodel.CurrentPage+1))),
+					Href:     usersPageURL(ctx, vmodel, vmodel.CurrentPage+1),
 					Disabled: !paginator.HasNext,
 					Label:    "Suivant",
 				})
 			}
 		}
 	}
+}
+
+// usersSubtitle states what the list holds, in the mockup's wording.
+func usersSubtitle(vmodel UsersPageVModel) string {
+	if vmodel.Search != "" {
+		return fmt.Sprintf("%d compte(s) correspondant à « %s » sur %d", len(vmodel.Users), vmodel.Search, vmodel.TotalUsers)
+	}
+	subtitle := fmt.Sprintf("%d compte(s) provisionné(s) à la connexion", vmodel.TotalUsers)
+	if vmodel.InactiveUsers > 0 {
+		subtitle += fmt.Sprintf(" · %d inactif(s)", vmodel.InactiveUsers)
+	}
+	return subtitle
+}
+
+// orgSummary condenses the organisations of a user into a table cell: the first
+// two by name, then a count.
+func orgSummary(names []string) string {
+	switch len(names) {
+	case 0:
+		return "—"
+	case 1, 2:
+		return strings.Join(names, ", ")
+	default:
+		return fmt.Sprintf("%s, +%d", strings.Join(names[:2], ", "), len(names)-2)
+	}
+}
+
+// roleLabel translates a platform role code into the wording of the interface.
+func roleLabel(role string) string {
+	switch role {
+	case authz.RoleAdmin:
+		return "Administrateur"
+	case authz.RoleUser:
+		return "Utilisateur"
+	default:
+		return role
+	}
+}
+
+// roleTone gives the platform administrator role the platform tint, as the
+// design system reserves that colour for the console.
+func roleTone(role string) commonComp.Tone {
+	if role == authz.RoleAdmin {
+		return commonComp.ToneInfo
+	}
+	return commonComp.ToneNeutral
 }

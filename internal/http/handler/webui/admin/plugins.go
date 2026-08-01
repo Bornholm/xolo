@@ -33,21 +33,14 @@ func (h *Handler) fillPluginsDiagnosticsPageViewModel(r *http.Request) (*compone
 
 	vmodel := &component.PluginsDiagnosticsPageVModel{
 		AppLayoutVModel: commonComp.AppLayoutVModel{
-			User:          user,
-			IsAdmin:       isAdmin,
-			SelectedItem:  "plugins",
-			HomeLink:      "/admin/",
-			AdminSubtitle: "Admin. plateforme",
+			User:         user,
+			IsAdmin:      isAdmin,
+			SelectedItem: "plugins",
 			Breadcrumbs: []commonComp.BreadcrumbItem{
 				{Label: "Plateforme", Href: "/admin/"},
 				{Label: "Plugins", Href: ""},
 			},
-			NavigationItems: func(vmodel commonComp.AppLayoutVModel) templ.Component {
-				return commonComp.AdminNavigationItems(vmodel)
-			},
-			FooterItems: func(vmodel commonComp.AppLayoutVModel) templ.Component {
-				return commonComp.AdminFooterItems(vmodel)
-			},
+			Context: commonComp.ContextPlatform,
 		},
 		Descriptors: h.pluginManager.List(),
 	}

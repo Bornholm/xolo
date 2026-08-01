@@ -51,21 +51,14 @@ func (h *Handler) fillExchangeRatesPageVModelAppLayout(ctx context.Context, vmod
 	isAdmin := slices.Contains(user.Roles(), authz.RoleAdmin)
 
 	vmodel.AppLayoutVModel = commonComp.AppLayoutVModel{
-		User:          user,
-		IsAdmin:       isAdmin,
-		SelectedItem:  "exchange-rates",
-		HomeLink:      "/admin/",
-		AdminSubtitle: "Admin. plateforme",
+		User:         user,
+		IsAdmin:      isAdmin,
+		SelectedItem: "exchange-rates",
 		Breadcrumbs: []commonComp.BreadcrumbItem{
 			{Label: "Plateforme", Href: "/admin/"},
 			{Label: "Taux de change", Href: ""},
 		},
-		NavigationItems: func(vmodel commonComp.AppLayoutVModel) templ.Component {
-			return commonComp.AdminNavigationItems(vmodel)
-		},
-		FooterItems: func(vmodel commonComp.AppLayoutVModel) templ.Component {
-			return commonComp.AdminFooterItems(vmodel)
-		},
+		Context: commonComp.ContextPlatform,
 	}
 
 	return nil

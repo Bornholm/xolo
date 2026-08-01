@@ -13,8 +13,10 @@ type LoginPageVModel struct {
 
 // LoginPage renders a centered card layout for token-based authentication (desktop app).
 templ LoginPage(vmodel LoginPageVModel) {
-	@component.Page(component.WithTitle("Authentification")) {
-		<div class="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+	// Écran hors coquille applicative, affiché dans une iframe par l'application
+	// de bureau : pas de navigation boostée.
+	@component.Page(component.WithTitle("Authentification"), component.WithBodyAttributes(templ.Attributes{"hx-boost": "false"})) {
+		<div id="content" class="flex min-h-screen items-center justify-center bg-muted/40 p-4">
 			@templuicard.Card(templuicard.Props{Class: "w-full max-w-sm"}) {
 				@templuicard.Header(templuicard.HeaderProps{Class: "text-center space-y-2"}) {
 					<div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">

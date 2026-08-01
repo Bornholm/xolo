@@ -1,0 +1,90 @@
+package component
+
+import "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
+
+type SectionProps struct {
+	ID         string
+	Class      string
+	Attributes templ.Attributes
+}
+
+type SectionHeaderProps struct {
+	ID         string
+	Class      string
+	Attributes templ.Attributes
+}
+
+type SectionBodyProps struct {
+	ID         string
+	Class      string
+	Attributes templ.Attributes
+}
+
+// Section is the framed content block of the design system: 9 px radius, header
+// of 11×14 px carrying a 13 px title, body of 14 px — or no padding at all when
+// the body is a table, which is why the padding lives on SectionBody rather than
+// on Section itself.
+//
+// It is built on card.Card so the framing keeps coming from the component
+// library. The paddings are passed here, once, rather than at each of the ~60
+// call sites: card ships p-6 (21 px at this spacing scale) where the mockup
+// wants 14 px, and the plan's rule is "no per-call `Class:` override" — which a
+// shared component satisfies, a copy in every page does not.
+//
+// `overflow-hidden` lets a flush table's first row sit under the rounded corner.
+templ Section(props ...SectionProps) {
+	{{ var p SectionProps }}
+	if len(props) > 0 {
+		{{ p = props[0] }}
+	}
+	@card.Card(card.Props{
+		ID:         p.ID,
+		Class:      "overflow-hidden " + p.Class,
+		Attributes: p.Attributes,
+	}) {
+		{ children... }
+	}
+}
+
+// SectionHeader renders the title bar of a section. Children are laid out on a
+// single row, so an action pushed with `ml-auto` lands on the right.
+templ SectionHeader(props ...SectionHeaderProps) {
+	{{ var p SectionHeaderProps }}
+	if len(props) > 0 {
+		{{ p = props[0] }}
+	}
+	<div
+		if p.ID != "" {
+			id={ p.ID }
+		}
+		class={ "flex flex-wrap items-center gap-3 border-b px-4 py-3", p.Class }
+		{ p.Attributes... }
+	>
+		{ children... }
+	</div>
+}
+
+// SectionTitle renders the 13 px semibold heading of a section header.
+templ SectionTitle() {
+	<h2 class="text-base font-semibold">
+		{ children... }
+	</h2>
+}
+
+// SectionBody wraps the padded content of a section. Omit it when the body is a
+// table: the table brings its own cell padding and must reach the section edges.
+templ SectionBody(props ...SectionBodyProps) {
+	{{ var p SectionBodyProps }}
+	if len(props) > 0 {
+		{{ p = props[0] }}
+	}
+	<div
+		if p.ID != "" {
+			id={ p.ID }
+		}
+		class={ "p-4", p.Class }
+		{ p.Attributes... }
+	>
+		{ children... }
+	</div>
+}

@@ -50,4 +50,9 @@ type QueryUsersOptions struct {
 
 	// Active/inactive users
 	Active *bool
+
+	// Search restricts the result to the users whose display name, email or
+	// subject contains the term, matched case-insensitively. Empty means no
+	// restriction.
+	Search string
 }

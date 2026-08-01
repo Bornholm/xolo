@@ -3,17 +3,20 @@ package templui
 import (
 	"github.com/bornholm/go-x/templx/form"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/checkbox"
+	// The domain form package is already bound to `form`, so the templui one is
+	// aliased rather than the other way around: `form.FieldContext` appears in
+	// every signature of this file.
+	uiform "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/form"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/label"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/textarea"
 )
 
 // Input renders a standard text input field using TemplUI components.
 templ Input(fieldCtx form.FieldContext) {
-	<div class="space-y-2">
+	@uiform.Item() {
 		if fieldCtx.Label != "" {
-			@label.Label(label.Props{}) {
+			@uiform.Label(uiform.LabelProps{For: fieldCtx.Name}) {
 				{ fieldCtx.Label }
 				if fieldCtx.Required {
 					<span class="text-destructive">*</span>
@@ -31,20 +34,15 @@ templ Input(fieldCtx form.FieldContext) {
 			HasError:    fieldCtx.Error != "",
 			Attributes:  extraAttrs(fieldCtx),
 		})
-		if fieldCtx.Description != "" && fieldCtx.Error == "" {
-			<p class="text-sm text-muted-foreground">{ fieldCtx.Description }</p>
-		}
-		if fieldCtx.Error != "" {
-			<p class="text-sm text-destructive">{ fieldCtx.Error }</p>
-		}
-	</div>
+		@fieldFeedback(fieldCtx)
+	}
 }
 
 // Textarea renders a textarea field using TemplUI components.
 templ Textarea(fieldCtx form.FieldContext) {
-	<div class="space-y-2">
+	@uiform.Item() {
 		if fieldCtx.Label != "" {
-			@label.Label(label.Props{}) {
+			@uiform.Label(uiform.LabelProps{For: fieldCtx.Name}) {
 				{ fieldCtx.Label }
 				if fieldCtx.Required {
 					<span class="text-destructive">*</span>
@@ -61,25 +59,16 @@ templ Textarea(fieldCtx form.FieldContext) {
 			AutoResize:  true,
 			Attributes:  extraAttrs(fieldCtx),
 		})
-		if fieldCtx.Description != "" && fieldCtx.Error == "" {
-			<p class="text-sm text-muted-foreground">{ fieldCtx.Description }</p>
-		}
-		if fieldCtx.Error != "" {
-			<p class="text-sm text-destructive">{ fieldCtx.Error }</p>
-		}
-	</div>
+		@fieldFeedback(fieldCtx)
+	}
 }
-
-var selectHandle = templ.NewOnceHandle()
 
 // Select renders a select dropdown using TemplUI components.
 templ Select(fieldCtx form.FieldContext) {
 	{{ _, isMultiple := fieldCtx.Attributes["multiple"] }}
-	<div class="space-y-2">
+	@uiform.Item() {
 		if fieldCtx.Label != "" {
-			@label.Label(label.Props{
-				For: fieldCtx.Name + "-trigger",
-			}) {
+			@uiform.Label(uiform.LabelProps{For: fieldCtx.Name + "-trigger"}) {
 				{ fieldCtx.Label }
 				if fieldCtx.Required {
 					<span class="text-destructive">*</span>
@@ -113,19 +102,14 @@ templ Select(fieldCtx form.FieldContext) {
 				}
 			}
 		}
-		if fieldCtx.Description != "" && fieldCtx.Error == "" {
-			<p class="text-sm text-muted-foreground">{ fieldCtx.Description }</p>
-		}
-		if fieldCtx.Error != "" {
-			<p class="text-sm text-destructive">{ fieldCtx.Error }</p>
-		}
-	</div>
+		@fieldFeedback(fieldCtx)
+	}
 }
 
 // Checkbox renders a checkbox field using TemplUI components.
 templ Checkbox(fieldCtx form.FieldContext) {
-	<div class="space-y-2">
-		<div class="flex items-center gap-2">
+	@uiform.Item() {
+		@uiform.ItemFlex() {
 			@checkbox.Checkbox(checkbox.Props{
 				ID:       fieldCtx.Name,
 				Name:     fieldCtx.Name,
@@ -133,24 +117,19 @@ templ Checkbox(fieldCtx form.FieldContext) {
 				Checked:  isChecked(fieldCtx),
 				Disabled: isDisabled(fieldCtx),
 			})
-			<label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+			@uiform.Label(uiform.LabelProps{For: fieldCtx.Name}) {
 				{ fieldCtx.Label }
-			</label>
-		</div>
-		if fieldCtx.Description != "" && fieldCtx.Error == "" {
-			<p class="text-sm text-muted-foreground">{ fieldCtx.Description }</p>
+			}
 		}
-		if fieldCtx.Error != "" {
-			<p class="text-sm text-destructive">{ fieldCtx.Error }</p>
-		}
-	</div>
+		@fieldFeedback(fieldCtx)
+	}
 }
 
 // FileInput renders a file input field using TemplUI components.
 templ FileInput(fieldCtx form.FieldContext) {
-	<div class="space-y-2">
+	@uiform.Item() {
 		if fieldCtx.Label != "" {
-			@label.Label(label.Props{}) {
+			@uiform.Label(uiform.LabelProps{For: fieldCtx.Name}) {
 				{ fieldCtx.Label }
 				if fieldCtx.Required {
 					<span class="text-destructive">*</span>
@@ -165,16 +144,26 @@ templ FileInput(fieldCtx form.FieldContext) {
 			HasError:   fieldCtx.Error != "",
 			Attributes: extraAttrs(fieldCtx),
 		})
-		if fieldCtx.Description != "" && fieldCtx.Error == "" {
-			<p class="text-sm text-muted-foreground">{ fieldCtx.Description }</p>
+		@fieldFeedback(fieldCtx)
+	}
+}
+
+// fieldFeedback renders the description or the validation error below a field.
+// The error takes precedence: a field in error shows what to fix, not what it is for.
+templ fieldFeedback(fieldCtx form.FieldContext) {
+	if fieldCtx.Error != "" {
+		@uiform.Message(uiform.MessageProps{Variant: uiform.MessageVariantError}) {
+			{ fieldCtx.Error }
 		}
-		if fieldCtx.Error != "" {
-			<p class="text-sm text-destructive">{ fieldCtx.Error }</p>
+	} else if fieldCtx.Description != "" {
+		@uiform.Description() {
+			{ fieldCtx.Description }
 		}
-	</div>
+	}
 }
 
 // Hidden renders a hidden input field.
+// No templui equivalent exists — a hidden input carries a value, it is not a control.
 templ Hidden(fieldCtx form.FieldContext) {
 	<input
 		type="hidden"

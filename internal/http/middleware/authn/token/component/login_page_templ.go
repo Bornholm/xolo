@@ -53,7 +53,7 @@ func LoginPage(vmodel LoginPageVModel) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex min-h-screen items-center justify-center bg-muted/40 p-4\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"content\" class=\"flex min-h-screen items-center justify-center bg-muted/40 p-4\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -170,7 +170,7 @@ func LoginPage(vmodel LoginPageVModel) templ.Component {
 					var templ_7745c5c3_Var8 templ.SafeURL
 					templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinURLErrs(component.CurrentURL(ctx))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/middleware/authn/token/component/login_page.templ`, Line: 31, Col: 62}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/middleware/authn/token/component/login_page.templ`, Line: 33, Col: 62}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 					if templ_7745c5c3_Err != nil {
@@ -183,7 +183,7 @@ func LoginPage(vmodel LoginPageVModel) templ.Component {
 					var templ_7745c5c3_Var9 string
 					templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(strings.Join(vmodel.AllowedOrigins, ","))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/middleware/authn/token/component/login_page.templ`, Line: 35, Col: 99}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/middleware/authn/token/component/login_page.templ`, Line: 37, Col: 99}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 					if templ_7745c5c3_Err != nil {
@@ -211,7 +211,7 @@ func LoginPage(vmodel LoginPageVModel) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = component.Page(component.WithTitle("Authentification")).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = component.Page(component.WithTitle("Authentification"), component.WithBodyAttributes(templ.Attributes{"hx-boost": "false"})).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -35,8 +35,6 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	page := 1
 	if p := r.URL.Query().Get("page"); p != "" {
 		if n, err := strconv.Atoi(p); err == nil && n > 0 {
@@ -383,7 +381,7 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 		MonthlyCost:           monthlyCost,
 		YearlyCost:            yearlyCost,
 		Currency:              orgCurrency,
-		ChartPerDay:           chartByDate(perDay),
+		ChartPerDay:           common.CostSeries(perDay, since, time.Now(), rangeParam),
 		ChartSharesPerModel:   common.ChartShares(common.TopNChartDataPoints(chartByValue(perModel), 5)),
 		ChartPerUser:          chartByValue(perUser),
 		ChartPerProvider:      chartByProvider(perProvider, providerNames),
@@ -391,16 +389,16 @@ func (h *Handler) getUsagePage(w http.ResponseWriter, r *http.Request) {
 		TotalEnergyWh:         totalEnergyWh,
 		TotalCO2GramsMid:      totalCO2GramsMid,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-usage",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-usage",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
-				{Label: "Usage", Href: ""},
+				{Label: "Tableau de bord", Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 
@@ -567,19 +565,6 @@ func chartByProvider(m map[model.ProviderID]int64, names map[model.ProviderID]st
 		pts = append(pts, component.ChartDataPoint{Label: label, Value: float64(cost) / 1_000_000})
 	}
 	sort.Slice(pts, func(i, j int) bool { return pts[i].Value > pts[j].Value })
-	return pts
-}
-
-func chartByDate(m map[string]int64) []component.ChartDataPoint {
-	dates := make([]string, 0, len(m))
-	for k := range m {
-		dates = append(dates, k)
-	}
-	sort.Strings(dates)
-	pts := make([]component.ChartDataPoint, 0, len(dates))
-	for _, date := range dates {
-		pts = append(pts, component.ChartDataPoint{Label: date, Value: float64(m[date]) / 1_000_000})
-	}
 	return pts
 }
 

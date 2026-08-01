@@ -46,6 +46,14 @@ func (s *Server) Run(ctx context.Context) error {
 			ctx = httpCtx.SetBaseURL(ctx, s.opts.BaseURL)
 			ctx = httpCtx.SetCurrentURL(ctx, r.URL)
 
+			// Le repli de la barre latérale est un choix de l'utilisateur, écrit
+			// en cookie par sidebar.min.js. La coquille n'étant rendue qu'au
+			// chargement complet, c'est ici qu'il faut le relire — sinon chaque
+			// rafraîchissement rouvre la barre.
+			if cookie, err := r.Cookie(httpCtx.SidebarCookie); err == nil {
+				ctx = httpCtx.SetSidebarExpanded(ctx, cookie.Value != "false")
+			}
+
 			r = r.WithContext(ctx)
 
 			next.ServeHTTP(w, r)

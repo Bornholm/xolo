@@ -3,128 +3,163 @@ package component
 import (
 	"strconv"
 
+	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/rbac"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/checkbox"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/label"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
+	switchcomp "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/switch"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/textarea"
 )
 
 templ MiddlewaresPage(vmodel MiddlewaresPageVModel) {
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Middlewares — "+vmodel.Org.Name())) {
-		<div class="space-y-6">
-			<div class="flex items-start justify-between gap-4">
-				<div>
-					<h1 class="text-2xl font-semibold">Middlewares</h1>
-					<p class="text-sm text-muted-foreground">Traitements (contrôle horaire, filtrage, garde-fous…) appliqués dynamiquement aux modèles de l'organisation.</p>
-				</div>
+		@common.PageHeader(common.PageHeaderProps{
+			Title:    "Middlewares",
+			Subtitle: "Traitements appliqués dynamiquement aux requêtes, dans l'ordre de priorité croissante.",
+		}) {
+			if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermMiddlewaresWrite) {
+				@button.Button(button.Props{
+					Size:  button.SizeSm,
+					Class: "gap-1.5",
+					Href:  common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/middlewares/new")),
+				}) {
+					@icon.Plus(icon.Props{Class: "size-3.5"})
+					Nouveau middleware
+				}
+			}
+		}
+		@common.FlashToast(vmodel.Success, "Le middleware")
+		@common.FlashError(vmodel.Error, "Un middleware")
+		if len(vmodel.Middlewares) == 0 {
+			@common.EmptyState(common.EmptyStateProps{
+				Icon:        icon.Layers,
+				Title:       "Aucun middleware",
+				Description: "Un middleware s'intercale entre une requête et le modèle : contrôle horaire, filtrage, garde-fous.",
+			}) {
 				if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermMiddlewaresWrite) {
 					@button.Button(button.Props{
 						Size: button.SizeSm,
 						Href: common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/middlewares/new")),
 					}) {
-						@icon.Plus(icon.Props{Class: "h-4 w-4 mr-2"})
 						Nouveau middleware
 					}
 				}
+			}
+		} else {
+			<div class="flex flex-col gap-2">
+				for _, mw := range vmodel.Middlewares {
+					@middlewareRow(vmodel, mw)
+				}
 			</div>
-			if vmodel.Success == "created" {
-				<div class="bg-green-50 border border-green-200 text-green-800 px-4 py-2 rounded-md">Middleware créé avec succès.</div>
+			@common.SectionNote() {
+				Plusieurs middlewares applicables au même modèle s'enchaînent par
+				priorité croissante : le plus petit numéro s'exécute en premier, donc
+				le plus à l'extérieur.
 			}
-			if vmodel.Success == "updated" {
-				<div class="bg-green-50 border border-green-200 text-green-800 px-4 py-2 rounded-md">Middleware mis à jour avec succès.</div>
-			}
-			if vmodel.Success == "deleted" {
-				<div class="bg-green-50 border border-green-200 text-green-800 px-4 py-2 rounded-md">Middleware supprimé avec succès.</div>
-			}
-			if vmodel.Error == "exists" {
-				<div class="bg-red-50 border border-red-200 text-red-800 px-4 py-2 rounded-md">Un middleware avec ce nom existe déjà.</div>
-			}
-			if vmodel.Error == "create_failed" {
-				<div class="bg-red-50 border border-red-200 text-red-800 px-4 py-2 rounded-md">Erreur lors de la création du middleware.</div>
-			}
-			if len(vmodel.Middlewares) == 0 {
-				<div class="rounded-lg border p-6 text-center text-muted-foreground">Aucun middleware configuré.</div>
-			} else {
-				<div class="flex flex-col gap-3">
-					for _, mw := range vmodel.Middlewares {
-						@card.Card() {
-							@card.Content(card.ContentProps{Class: "flex items-center gap-4"}) {
-								<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent">
-									@icon.Layers(icon.Props{Size: 20, Class: "text-primary"})
-								</div>
-								<div class="flex-1 min-w-0">
-									<div class="font-semibold truncate">{ mw.Name() }</div>
-									if mw.Description() != "" {
-										<div class="text-sm text-muted-foreground mt-0.5 truncate">{ mw.Description() }</div>
-									}
-								</div>
-								<div class="flex items-center gap-2 shrink-0">
-									if !mw.Enabled() {
-										@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
-											Désactivé
-										}
-									}
-									if mw.AppliesToAll() {
-										@badge.Badge(badge.Props{Variant: badge.VariantDefault}) {
-											Tous les modèles
-										}
-									} else {
-										@badge.Badge(badge.Props{Variant: badge.VariantOutline}) {
-											{ strconv.Itoa(len(mw.Targets())) } modèle(s)
-										}
-									}
-									@badge.Badge(badge.Props{Variant: badge.VariantOutline}) {
-										priorité { strconv.Itoa(mw.Priority()) }
-									}
-								</div>
-								<div class="flex gap-1 shrink-0">
-									if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermMiddlewaresRead) {
-										@button.Button(button.Props{
-											Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/middlewares/", string(mw.ID()), "/pipeline")),
-											Variant: button.VariantOutline,
-											Size:    button.SizeSm,
-										}) {
-											@icon.Workflow(icon.Props{Size: 14, Class: "mr-2"})
-											Pipeline
-										}
-									}
-									if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermMiddlewaresWrite) {
-										@button.Button(button.Props{
-											Href:       common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/middlewares/", string(mw.ID()), "/edit")),
-											Variant:    button.VariantGhost,
-											Size:       button.SizeIcon,
-											Attributes: templ.Attributes{"title": "Modifier"},
-										}) {
-											@icon.Pencil(icon.Props{Size: 15})
-										}
-										@button.Button(button.Props{
-											Variant: button.VariantGhost,
-											Size:    button.SizeIcon,
-											Class:   "text-destructive hover:text-destructive",
-											Attributes: templ.Attributes{
-												"type":     "button",
-												"title":    "Supprimer",
-												"data-url": common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/middlewares/", string(mw.ID()))),
-												"onclick":  "if(confirm('Supprimer ce middleware ?'))fetch(this.dataset.url,{method:'DELETE'}).then(r=>window.location.href=r.url)",
-											},
-										}) {
-											@icon.Trash2(icon.Props{Size: 15})
-										}
-									}
-								</div>
-							}
-						}
-					}
-				</div>
+		}
+	}
+}
+
+// middlewareRow renders one middleware as the mockup's dense row: priority,
+// identity, scope, then the enable switch and the pipeline shortcut.
+templ middlewareRow(vmodel MiddlewaresPageVModel, mw model.Middleware) {
+	{{ writable := common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermMiddlewaresWrite) }}
+	<div class={ "flex flex-wrap items-center gap-3 rounded-lg border bg-card px-3.5 py-2.5", templ.KV("opacity-60", !mw.Enabled()) }>
+		<span class="w-6 shrink-0 text-right font-mono text-xs text-muted-foreground" title="Priorité">
+			{ strconv.Itoa(mw.Priority()) }
+		</span>
+		@common.IconSquare(icon.Layers, middlewareTintClass(mw))
+		<div class="min-w-0 flex-1">
+			<div class="flex flex-wrap items-center gap-2">
+				<span class="text-sm font-semibold">{ mw.Name() }</span>
+				if plugin := middlewarePluginName(mw); plugin != "" {
+					@common.Mono(plugin)
+				}
+			</div>
+			if mw.Description() != "" {
+				<div class="mt-0.5 text-xs text-muted-foreground">{ mw.Description() }</div>
 			}
 		</div>
+		<span class="shrink-0">
+			if mw.AppliesToAll() {
+				@common.Badge(common.ToneInfo, "tous les modèles")
+			} else {
+				@common.Badge(common.ToneNeutral, Pluralize(len(mw.Targets()), "modèle", "modèles"))
+			}
+		</span>
+		<div class="w-24 shrink-0 text-right">
+			// TODO(rework-ux): la maquette compte les déclenchements par middleware.
+			// L'exécution d'un pipeline n'émet pas encore d'événement compté par
+			// entité (cf. lot 7 du plan).
+			@common.PendingValue("Les déclenchements ne sont pas encore comptés.")
+			<div class="text-2xs text-muted-foreground">déclenchements</div>
+		</div>
+		<div class="flex shrink-0 items-center gap-2">
+			@middlewareToggle(vmodel, mw, writable)
+			if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermMiddlewaresRead) {
+				@button.Button(button.Props{
+					Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/middlewares/", string(mw.ID()), "/pipeline")),
+					Variant: button.VariantOutline,
+					Size:    button.SizeSm,
+				}) {
+					Pipeline
+				}
+			}
+			if writable {
+				@button.Button(button.Props{
+					Href:       common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/middlewares/", string(mw.ID()), "/edit")),
+					Variant:    button.VariantGhost,
+					Size:       button.SizeIcon,
+					Class:      "size-7",
+					Attributes: templ.Attributes{"title": "Modifier"},
+				}) {
+					@icon.Pencil(icon.Props{Class: "size-3.5"})
+				}
+				@common.ConfirmDelete(common.ConfirmDeleteProps{
+					URL:         common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/middlewares/", string(mw.ID()))),
+					Tooltip:     "Supprimer",
+					Title:       "Supprimer ce middleware ?",
+					Description: "Il sera retiré du pipeline de toutes les requêtes qui le traversaient.",
+				})
+			}
+		</div>
+	</div>
+}
+
+// middlewareToggle renders the enable switch of a row.
+//
+// It posts to the edit endpoint the form page already uses, so toggling from the
+// list goes through the same validation as toggling from the editor; the switch
+// submits its own form to keep the row a link-and-form area rather than a script.
+templ middlewareToggle(vmodel MiddlewaresPageVModel, mw model.Middleware, writable bool) {
+	if writable {
+		<form
+			method="POST"
+			action={ templ.SafeURL(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/middlewares/", string(mw.ID()), "/toggle"))) }
+			class="flex items-center"
+		>
+			@switchcomp.Switch(switchcomp.Props{
+				ID:      "enabled-" + string(mw.ID()),
+				Name:    "enabled",
+				Value:   "1",
+				Checked: mw.Enabled(),
+				Attributes: templ.Attributes{
+					"data-xolo-submit-on-change": true,
+					"title":                      middlewareToggleTitle(mw),
+				},
+			})
+		</form>
+	} else {
+		if mw.Enabled() {
+			@common.Badge(common.TonePositive, "Activé")
+		} else {
+			@common.Badge(common.ToneNeutral, "Désactivé")
+		}
 	}
 }
 
@@ -135,12 +170,12 @@ templ MiddlewareFormPage(vmodel MiddlewareFormVModel) {
 		{{ title = "Modifier le middleware" }}
 		{{ action = common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/middlewares/", string(vmodel.Middleware.ID()), "/edit")) }}
 	}
-	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(title), common.WithScripts(common.Script{Name: "selectbox", Component: selectbox.Script()})) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(title)) {
 		<div class="space-y-6 max-w-2xl">
-			<h1 class="text-2xl font-semibold">{ title }</h1>
-			if vmodel.Error != "" {
-				<div class="bg-red-50 border border-red-200 text-red-800 px-4 py-2 rounded-md">{ vmodel.Error }</div>
-			}
+			@common.PageHeader(common.PageHeaderProps{
+				Title: title,
+			})
+			@common.FlashError(vmodel.Error, "Un middleware")
 			<form method="POST" action={ templ.SafeURL(action) } class="space-y-5">
 				<div class="space-y-2">
 					@label.Label(label.Props{For: "name"}) {

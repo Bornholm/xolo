@@ -1,0 +1,75 @@
+package component
+
+import (
+	commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+)
+
+type ProxyHealthPageVModel struct {
+	AppLayoutVModel commonComp.AppLayoutVModel
+}
+
+// ProxyHealthPage is the upstream health screen of the platform console.
+//
+// Every panel is a placeholder: see the TODO on getProxyHealthPage for what the
+// domain would have to expose. The sections are rendered anyway so the screen
+// keeps the shape of the mockup and the sidebar entry leads somewhere.
+templ ProxyHealthPage(vmodel ProxyHealthPageVModel) {
+	@commonComp.AppLayout(vmodel.AppLayoutVModel, commonComp.WithTitle("Santé du proxy")) {
+		@commonComp.PageHeader(commonComp.PageHeaderProps{
+			Title:    "Santé du proxy",
+			Subtitle: "État des endpoints amont, latence et erreurs · fenêtre 24 h",
+		}) {
+			@commonComp.ComingSoon()
+		}
+		<div class="grid gap-3.5 xl:grid-cols-2">
+			@healthPlaceholder(
+				"Endpoints amont",
+				icon.Server,
+				"Disponibilité par endpoint",
+				"La passerelle enregistre la consommation après coup, pas la disponibilité : "+
+					"aucune sonde ne teste les endpoints amont. Le panneau affichera l'état, la "+
+					"latence p95 et le taux d'erreur de chaque fournisseur dès qu'un moniteur "+
+					"périodique les relèvera.",
+			)
+			@healthPlaceholder(
+				"Codes de réponse · 24 h",
+				icon.ChartPie,
+				"Répartition des statuts",
+				"Les statuts de réponse ne sont pas comptabilisés : les enregistrements "+
+					"d'usage ne portent que les requêtes facturées. Un compteur roulant par code "+
+					"(200, 402, 403, 429, 5xx) est nécessaire.",
+			)
+		</div>
+		<div class="mt-3.5">
+			@healthPlaceholder(
+				"Incidents ouverts",
+				icon.TriangleAlert,
+				"Incidents de toutes les organisations",
+				"Les incidents existent par organisation, dans la section « Alertes & "+
+					"incidents ». Les regrouper ici demande une vue plateforme des incidents, "+
+					"ainsi que l'action « Acquitter » qui n'est pas encore implémentée.",
+			)
+		</div>
+	}
+}
+
+// healthPlaceholder renders one panel of the screen: its real title, and the
+// reason its body is empty.
+templ healthPlaceholder(title string, glyph func(...icon.Props) templ.Component, heading string, reason string) {
+	@commonComp.Section() {
+		@commonComp.SectionHeader() {
+			@commonComp.SectionTitle() {
+				{ title }
+			}
+			<span class="ml-auto">
+				@commonComp.ComingSoon()
+			</span>
+		}
+		@commonComp.SectionEmpty(commonComp.EmptyStateProps{
+			Icon:        glyph,
+			Title:       heading,
+			Description: reason,
+		})
+	}
+}

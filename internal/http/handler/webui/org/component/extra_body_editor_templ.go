@@ -48,7 +48,7 @@ func ExtraBodyEditor(rows []ExtraBodyRow, readonly bool) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"space-y-3\"><div id=\"extra-body-rows\" class=\"space-y-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"space-y-3\"><div id=\"extra-body-rows\" class=\"space-y-2\" data-xolo-rows data-rows-template=\"extra-body-tpl\" data-rows-count=\"extra-body-count\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -65,7 +65,7 @@ func ExtraBodyEditor(rows []ExtraBodyRow, readonly bool) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", len(rows)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/extra_body_editor.templ`, Line: 29, Col: 105}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/http/handler/webui/org/component/extra_body_editor.templ`, Line: 38, Col: 105}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -95,12 +95,10 @@ func ExtraBodyEditor(rows []ExtraBodyRow, readonly bool) templ.Component {
 				return nil
 			})
 			templ_7745c5c3_Err = button.Button(button.Props{
-				Type:    "button",
-				Variant: button.VariantOutline,
-				Attributes: templ.Attributes{
-					"onclick": "addExtraBodyRow()",
-					"class":   "w-full",
-				},
+				Type:       "button",
+				Variant:    button.VariantOutline,
+				Class:      "w-full",
+				Attributes: templ.Attributes{"data-xolo-row-add": "extra-body-rows"},
 			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var3), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -119,7 +117,7 @@ func ExtraBodyEditor(rows []ExtraBodyRow, readonly bool) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</template><script>\n\t\t(function () {\n\t\t\tfunction reindex() {\n\t\t\t\tvar rows = document.querySelectorAll('#extra-body-rows > [data-eb-row]');\n\t\t\t\trows.forEach(function (row, i) {\n\t\t\t\t\trow.querySelectorAll('[data-eb-name]').forEach(function (el) {\n\t\t\t\t\t\tel.name = el.dataset.ebName.replace(/{i}/g, i);\n\t\t\t\t\t});\n\t\t\t\t});\n\t\t\t\tdocument.getElementById('extra-body-count').value = rows.length;\n\t\t\t}\n\n\t\t\twindow.addExtraBodyRow = function () {\n\t\t\t\tvar tpl = document.getElementById('extra-body-tpl');\n\t\t\t\tdocument.getElementById('extra-body-rows').appendChild(tpl.content.cloneNode(true));\n\t\t\t\treindex();\n\t\t\t};\n\n\t\t\twindow.removeExtraBodyRow = function (btn) {\n\t\t\t\tbtn.closest('[data-eb-row]').remove();\n\t\t\t\treindex();\n\t\t\t};\n\t\t})();\n\t\t</script>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</template>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -157,7 +155,7 @@ func extraBodyRow(idx int, row ExtraBodyRow, readonly bool) templ.Component {
 		}
 		keyName := "extra_body_k" + idxKey + "_key"
 		valName := "extra_body_k" + idxKey + "_value"
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div data-eb-row class=\"flex items-start gap-2\"><div class=\"flex-1\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div data-xolo-row class=\"flex items-start gap-2\"><div class=\"flex-1\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -166,7 +164,7 @@ func extraBodyRow(idx int, row ExtraBodyRow, readonly bool) templ.Component {
 			Value:       row.Key,
 			Placeholder: "clé (ex : reasoning_split)",
 			Disabled:    readonly,
-			Attributes:  templ.Attributes{"data-eb-name": "extra_body_k{i}_key"},
+			Attributes:  templ.Attributes{"data-xolo-name": "extra_body_k{i}_key"},
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -180,7 +178,7 @@ func extraBodyRow(idx int, row ExtraBodyRow, readonly bool) templ.Component {
 			Value:       row.Value,
 			Placeholder: "valeur (ex : true, 40, auto)",
 			Disabled:    readonly,
-			Attributes:  templ.Attributes{"data-eb-name": "extra_body_k{i}_value"},
+			Attributes:  templ.Attributes{"data-xolo-name": "extra_body_k{i}_value"},
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -213,8 +211,8 @@ func extraBodyRow(idx int, row ExtraBodyRow, readonly bool) templ.Component {
 				Variant: button.VariantOutline,
 				Size:    button.SizeIcon,
 				Attributes: templ.Attributes{
-					"onclick": "removeExtraBodyRow(this)",
-					"title":   "Supprimer ce champ",
+					"data-xolo-row-remove": "",
+					"title":                "Supprimer ce champ",
 				},
 			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var5), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {

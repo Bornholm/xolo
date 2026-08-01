@@ -1,127 +1,346 @@
 @import "tailwindcss";
 
+/* Le produit est en thème clair uniquement : le bloc `.dark` a été supprimé.
+   Cette variante est conservée — et volontairement inatteignable, puisque
+   <html> porte toujours la classe `light` — pour neutraliser la variante `dark`
+   native de Tailwind v4, qui est adossée à `prefers-color-scheme` : sans elle,
+   les `dark:` résiduels des composants templui vendorisés se réactiveraient
+   chez les utilisateurs dont l'OS est en thème sombre. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-@theme inline {
+/* ---------------------------------------------------------------------------
+   Polices auto-hébergées (IBM Plex Sans / IBM Plex Mono)
+   Servies depuis common/assets/fonts/ via le //go:embed assets/* de
+   common/handler.go. Les URL sont relatives à cette feuille de style
+   (/assets/templui.css) : pas de CDN, le produit fonctionne hors ligne.
+   --------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/IBMPlexSans-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/IBMPlexSans-Medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/IBMPlexSans-SemiBold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/IBMPlexSans-Bold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/IBMPlexMono-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/IBMPlexMono-Medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/IBMPlexMono-SemiBold.woff2") format("woff2");
+}
+
+/* ---------------------------------------------------------------------------
+   Échelles : densité, typographie, points de rupture.
+   Bloc @theme non-inline : les variables sont aussi émises sur :root, ce qui
+   les rend consommables par le CSS du bundle React (frontend/src/style.css).
+   --------------------------------------------------------------------------- */
+
+@theme {
+  /* Densité. Tailwind v4 résout h-9 en calc(var(--spacing) * 9).
+     0.2222rem ⇒ h-9 = 32px, px-4 = 14px, p-2 = 7px, gap-2 = 7px. */
+  --spacing: 0.2222rem;
+
+  /* 10px capitales : en-têtes de table et libellés de KPI (design system §05).
+     En dessous de --text-xs, d'où le nom hors échelle Tailwind. */
+  --text-2xs: 10px;
+  --text-2xs--line-height: 1.5;
+  --text-xs: 11px;
+  --text-xs--line-height: 1.45;
+  --text-sm: 12.5px;
+  --text-sm--line-height: 1.55;
+  --text-base: 13px;
+  --text-base--line-height: 1.55;
+  --text-lg: 15px;
+  --text-lg--line-height: 1.4;
+  --text-xl: 19px;
+  --text-xl--line-height: 1.2;
+  --text-2xl: 21px;
+  --text-2xl--line-height: 1.2;
+
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Interlettrage des libellés en capitales (en-tête de table, libellé de KPI,
+     titre de groupe de la barre latérale). */
+  --tracking-caps: 0.07em;
+
   --breakpoint-3xl: 1600px;
   --breakpoint-4xl: 2000px;
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* ---------------------------------------------------------------------------
+   Couleurs et rayons : mappés en inline sur les variables de :root.
+   --------------------------------------------------------------------------- */
+
+@theme inline {
+  /* Rayons. templui utilise rounded-lg pour les cartes et rounded-md pour les
+     contrôles : on désolidarise les paliers au lieu du calc(--radius ± 2px). */
+  --radius-sm: calc(var(--radius) - 5px); /* 4px — badges */
+  --radius-md: calc(var(--radius) - 3px); /* 6px — contrôles */
+  --radius-lg: var(--radius); /*  9px — cartes, sections */
+  --radius-xl: calc(var(--radius) + 3px); /* 12px */
+
+  /* Neutres */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-rule: var(--rule);
+  --color-row-hover: var(--row-hover);
+  --color-icon-muted: var(--icon-muted);
+  --color-success-indicator: var(--success-indicator);
+  --color-warning-indicator: var(--warning-indicator);
+  --color-destructive-indicator: var(--destructive-indicator);
+
+  /* Couleurs de contexte */
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-tint: var(--primary-tint);
+  --color-platform: var(--platform);
+  --color-platform-foreground: var(--platform-foreground);
+  --color-platform-tint: var(--platform-tint);
+  --color-personal: var(--personal);
+  --color-personal-foreground: var(--personal-foreground);
+  --color-personal-tint: var(--personal-tint);
+
+  /* Couleurs sémantiques */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-tint: var(--success-tint);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-tint: var(--warning-tint);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-tint: var(--destructive-tint);
+
+  /* Séries de graphiques */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-included: var(--chart-included);
+
+  /* Barre latérale */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 }
 
 :root {
-  --background: oklch(98.5% 0.002 240);
-  --foreground: oklch(0.16 0.004 250);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.16 0.004 250);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.16 0.004 250);
-  --primary: oklch(48% 0.1 220);
-  --primary-foreground: oklch(0.98 0.005 220);
-  --secondary: oklch(0.955 0.005 240);
-  --secondary-foreground: oklch(0.25 0.005 250);
-  --muted: oklch(0.955 0.005 240);
-  --muted-foreground: oklch(0.55 0.015 250);
-  --accent: oklch(0.945 0.01 240);
-  --accent-foreground: oklch(0.25 0.005 250);
-  --destructive: oklch(0.57 0.22 25);
-  --border: oklch(0.91 0.005 250);
-  --input: oklch(0.91 0.005 250);
-  --ring: oklch(48% 0.1 220);
-  --radius: 0.625rem;
-  --chart-1: oklch(0.55 0.15 220);
-  --chart-2: oklch(0.62 0.12 165);
-  --chart-3: oklch(0.65 0.16 45);
-  --chart-4: oklch(0.58 0.14 300);
-  --chart-5: oklch(0.7 0.12 80);
-  --sidebar: oklch(0.975 0.003 240);
-  --sidebar-foreground: oklch(0.16 0.004 250);
-  --sidebar-primary: oklch(48% 0.1 220);
-  --sidebar-primary-foreground: oklch(0.98 0.005 220);
-  --sidebar-accent: oklch(0.935 0.006 240);
-  --sidebar-accent-foreground: oklch(0.25 0.005 250);
-  --sidebar-border: oklch(0.91 0.005 250);
-  --sidebar-ring: oklch(48% 0.1 220);
-  --selection: oklch(0.16 0.004 250);
-  --selection-foreground: oklch(1 0 0);
-}
+  --radius: 0.5625rem; /* 9px */
 
-.dark {
-  --background: oklch(0.155 0.008 250);
-  --foreground: oklch(0.97 0.003 240);
-  --card: oklch(0.2 0.008 250);
-  --card-foreground: oklch(0.97 0.003 240);
-  --popover: oklch(0.2 0.008 250);
-  --popover-foreground: oklch(0.97 0.003 240);
-  --primary: oklch(62% 0.12 220);
-  --primary-foreground: oklch(0.98 0.005 220);
-  --secondary: oklch(0.26 0.008 250);
-  --secondary-foreground: oklch(0.97 0.003 240);
-  --muted: oklch(0.26 0.008 250);
-  --muted-foreground: oklch(0.68 0.015 250);
-  --accent: oklch(0.28 0.01 250);
-  --accent-foreground: oklch(0.97 0.003 240);
-  --destructive: oklch(0.68 0.18 22);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 14%);
-  --ring: oklch(62% 0.12 220);
-  --radius: 0.625rem;
-  --chart-1: oklch(0.62 0.12 220);
-  --chart-2: oklch(0.68 0.14 165);
-  --chart-3: oklch(0.72 0.16 80);
-  --chart-4: oklch(0.63 0.15 300);
-  --chart-5: oklch(0.65 0.2 20);
-  --sidebar: oklch(0.185 0.008 250);
-  --sidebar-foreground: oklch(0.97 0.003 240);
-  --sidebar-primary: oklch(62% 0.12 220);
-  --sidebar-primary-foreground: oklch(0.98 0.005 220);
-  --sidebar-accent: oklch(0.28 0.008 250);
-  --sidebar-accent-foreground: oklch(0.97 0.003 240);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(62% 0.12 220);
-  --selection: oklch(0.91 0.005 250);
-  --selection-foreground: oklch(0.2 0.008 250);
+  /* Neutres */
+  --background: oklch(0.9759 0.0029 264.5); /* #f6f7f9 */
+  --foreground: oklch(0.212 0.0092 255.6); /* #16191d */
+  --card: oklch(1 0 0); /* #ffffff */
+  --card-foreground: var(--foreground);
+  --popover: oklch(1 0 0); /* #ffffff */
+  --popover-foreground: var(--foreground);
+  --secondary: oklch(0.9542 0.0034 247.9); /* #eef0f2 */
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(0.9542 0.0034 247.9); /* #eef0f2 */
+  --muted-foreground: oklch(0.4963 0.0188 254); /* #5b636d */
+  --accent: oklch(0.9542 0.0034 247.9); /* #eef0f2 */
+  --accent-foreground: var(--foreground);
+  --border: oklch(0.9265 0.0052 247.9); /* #e4e7ea */
+  --input: oklch(0.8798 0.0088 247.9); /* #d3d8dd */
+  --ring: var(--primary);
+  --rule: oklch(0.9662 0.0034 247.9); /* #f2f4f6 — filet de table */
+  /* Glyphes secondaires (chevrons, loupe) : la maquette les pose deux crans
+     plus clairs que --muted-foreground, qui reste la couleur du texte. */
+  --icon-muted: oklch(0.6438 0.0189 256.3); /* #868e99 */
+  --row-hover: oklch(0.9906 0.0017 247.8); /* #fbfcfd — survol de ligne */
+  --scrollbar: oklch(0.8488 0.0117 252.1); /* #c8ced5 */
+
+  /* Couleurs de contexte */
+  --primary: oklch(0.487 0.0973 236.2); /* #15678f — organisation */
+  --primary-foreground: oklch(1 0 0);
+  --primary-tint: oklch(0.9524 0.0134 233.7); /* #e7f1f7 */
+  --platform: oklch(0.4937 0.1458 298); /* #6d4aa8 — console plateforme */
+  --platform-foreground: oklch(1 0 0);
+  --platform-tint: oklch(0.9464 0.0222 302.9); /* #f0eafa */
+  --personal: oklch(0.4963 0.0188 254); /* #5b636d — espace personnel */
+  --personal-foreground: oklch(1 0 0);
+  --personal-tint: oklch(0.9542 0.0034 247.9); /* #eef0f2 */
+
+  /* Couleurs sémantiques */
+  /* Le design system distingue l'encre d'un libellé — qui doit tenir son
+     contraste sur une pastille teintée — du trait d'un signal : point d'état,
+     remplissage de jauge. Le second jeu est plus vif (§06). */
+  --success-indicator: oklch(0.6154 0.1419 155.3); /* #1f9d5e */
+  --warning-indicator: oklch(0.6799 0.1381 75.2); /* #c98a16 */
+  --destructive-indicator: oklch(0.5013 0.1783 28.7); /* #b3261e */
+  --success: oklch(0.5101 0.1146 156.6); /* #16794a */
+  --success-foreground: oklch(1 0 0);
+  --success-tint: oklch(0.9622 0.0157 160.6); /* #eaf6ef */
+  --warning: oklch(0.5081 0.1058 72.3); /* #8a5a08 */
+  --warning-foreground: oklch(1 0 0);
+  --warning-tint: oklch(0.9601 0.0299 78.8); /* #fdf0dc */
+  --destructive: oklch(0.4783 0.1701 28.6); /* #a8231c */
+  --destructive-foreground: oklch(1 0 0);
+  --destructive-tint: oklch(0.9372 0.0253 20.6); /* #fbe4e3 */
+
+  /* Séries de graphiques */
+  --chart-1: var(--primary); /* #15678f */
+  --chart-2: oklch(0.6304 0.1013 183); /* #2a9d8f */
+  --chart-3: oklch(0.5425 0.1143 301); /* #7b5ea7 */
+  --chart-4: oklch(0.7485 0.1343 73.5); /* #e09f3e */
+  --chart-5: oklch(0.5803 0.1674 12.8); /* #c9455e */
+  --chart-included: oklch(0.8417 0.0316 234.5); /* #b8cfdd — couvert par forfait */
+
+  /* Barre latérale : blanche comme la maquette, pas grisée. */
+  --sidebar: var(--card);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
 }
 
 @layer base {
   * {
     @apply border-border;
     scrollbar-width: thin;
-    scrollbar-color: var(--color-muted-foreground) transparent;
+    scrollbar-color: var(--scrollbar) transparent;
   }
   *::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 9px;
+    height: 9px;
   }
   *::-webkit-scrollbar-thumb {
-    background: var(--color-muted-foreground);
-    border-radius: 4px;
+    background: var(--scrollbar);
+    border-radius: 9999px;
   }
   *::-webkit-scrollbar-thumb:hover {
-    background: var(--color-foreground);
+    background: var(--muted-foreground);
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  ::selection {
+    background: var(--primary);
+    color: var(--primary-foreground);
+  }
+  /* Les tables sont massivement numériques : chiffres à chasse fixe partout,
+     la classe .tnum reste disponible pour les valeurs hors table. */
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@utility tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------
+   Densité des tables (design system §05) — écart résiduel du lot 0.
+
+   templui rend `h-10 px-2` sur <th> et `p-2` sur <td> : à 0.2222rem d'unité
+   d'espacement cela donne un en-tête de 35,5 px et des cellules de 7 px, là où
+   la maquette veut un en-tête de 10 px capitales sur --row-hover et des lignes
+   de 36 px. Ni les tokens seuls ni un `Class:` par appel ne peuvent le régler :
+   le lot 0 du plan prévoit précisément ce rattrapage « en ciblant la signature
+   de classes templui ».
+
+   Le bloc est en `@layer utilities`, pas `components` : les classes émises par
+   templui vivent dans la couche utilities, et une couche antérieure perdrait
+   quelle que soit sa spécificité. Dans la même couche c'est la spécificité qui
+   tranche, d'où le `[class]` — (0,1,2) l'emporte sur le (0,1,0) de `.h-10`.
+
+   Conséquence à connaître : ces règles gagnent aussi contre une classe posée à
+   l'appel. Les propriétés listées ci-dessous (hauteur, padding, taille et
+   graisse de police, interlettrage, casse, fond de l'en-tête) ne sont donc plus
+   surchargeables par un `Class:` — c'est voulu, la densité des tables est une
+   décision du design system, pas de l'écran. Tout le reste — alignement,
+   largeur de colonne, couleur, `whitespace` sur une cellule — reste libre.
+   --------------------------------------------------------------------------- */
+
+@layer utilities {
+  table thead th[class] {
+    height: auto;
+    padding: 7px;
+    font-size: var(--text-2xs);
+    line-height: var(--text-2xs--line-height);
+    font-weight: 600;
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    white-space: nowrap;
+    background-color: var(--row-hover);
+  }
+  table tbody td[class] {
+    padding: 8px 7px;
+  }
+  /* Gouttière de section : la première et la dernière colonne s'alignent sur le
+     padding horizontal de l'en-tête de section (14 px). */
+  table thead th[class]:first-child,
+  table tbody td[class]:first-child {
+    padding-left: 14px;
+  }
+  table thead th[class]:last-child,
+  table tbody td[class]:last-child {
+    padding-right: 14px;
+  }
+  /* Filet inter-lignes plus clair que la bordure de section. */
+  table tbody tr[class] {
+    border-color: var(--rule);
   }
 }
 

@@ -158,6 +158,7 @@ func NewHandler(
 	h.mux.Handle("POST /{orgSlug}/admin/roles", assertPerm(rbac.PermRolesWrite)(http.HandlerFunc(h.createRole)))
 	h.mux.Handle("GET /{orgSlug}/admin/roles/{roleID}/edit", assertPerm(rbac.PermRolesRead)(http.HandlerFunc(h.getEditRolePage)))
 	h.mux.Handle("POST /{orgSlug}/admin/roles/{roleID}/edit", assertPerm(rbac.PermRolesWrite)(http.HandlerFunc(h.updateRole)))
+	h.mux.Handle("POST /{orgSlug}/admin/roles/{roleID}/permissions", assertPerm(rbac.PermRolesWrite)(http.HandlerFunc(h.toggleRolePermission)))
 	h.mux.Handle("DELETE /{orgSlug}/admin/roles/{roleID}", assertPerm(rbac.PermRolesWrite)(http.HandlerFunc(h.deleteRole)))
 
 	h.mux.Handle("GET /{orgSlug}/admin/providers", assertPerm(rbac.PermProvidersRead)(http.HandlerFunc(h.getProvidersPage)))
@@ -204,6 +205,7 @@ func NewHandler(
 	h.mux.Handle("POST /{orgSlug}/admin/middlewares", assertPerm(rbac.PermMiddlewaresWrite)(http.HandlerFunc(h.createMiddleware)))
 	h.mux.Handle("GET /{orgSlug}/admin/middlewares/{middlewareID}/edit", assertPerm(rbac.PermMiddlewaresRead)(http.HandlerFunc(h.getEditMiddlewarePage)))
 	h.mux.Handle("POST /{orgSlug}/admin/middlewares/{middlewareID}/edit", assertPerm(rbac.PermMiddlewaresWrite)(http.HandlerFunc(h.updateMiddleware)))
+	h.mux.Handle("POST /{orgSlug}/admin/middlewares/{middlewareID}/toggle", assertPerm(rbac.PermMiddlewaresWrite)(http.HandlerFunc(h.toggleMiddleware)))
 	h.mux.Handle("DELETE /{orgSlug}/admin/middlewares/{middlewareID}", assertPerm(rbac.PermMiddlewaresWrite)(http.HandlerFunc(h.deleteMiddleware)))
 	h.mux.Handle("GET /{orgSlug}/admin/middlewares/{middlewareID}/pipeline", assertPerm(rbac.PermMiddlewaresRead)(http.HandlerFunc(h.getMiddlewarePipelineEditorPage)))
 

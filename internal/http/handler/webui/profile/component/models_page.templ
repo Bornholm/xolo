@@ -5,12 +5,9 @@ import (
 	"fmt"
 	"github.com/bornholm/xolo/internal/core/model"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/accordion"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/popover"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
 )
 
 const DefaultMaxDisplayedModels int = 3
@@ -26,52 +23,18 @@ type ModelsPageVModel struct {
 templ ModelsPage(vmodel ModelsPageVModel) {
 	@common.AppLayout(vmodel.AppLayoutVModel,
 		common.WithTitle("Modèles"),
-		common.WithScripts(
-			common.Script{
-				Name:      "popover",
-				Component: popover.Script(),
-			},
-			common.Script{
-				Name:      "selectbox",
-				Component: selectbox.Script(),
-			}),
 	) {
 		<div class="space-y-6">
 			<!-- Header + period selector -->
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-4">
 					@icon.BrainCircuit(icon.Props{Class: "h-8 w-8"})
-					<h1 class="text-2xl font-semibold">Modèles d'org.</h1>
+					@common.PageHeader(common.PageHeaderProps{
+						Title: "Modèles d'org.",
+					})
 				</div>
 				<form method="GET" class="flex items-center gap-2">
-					<label class="text-sm text-muted-foreground">Période :</label>
-					@selectbox.SelectBox(selectbox.Props{ID: "range", Class: "w-40"}) {
-						@selectbox.Trigger(selectbox.TriggerProps{
-							Name:       "range",
-							Attributes: templ.Attributes{"onchange": "this.form.submit()"},
-						}) {
-							@selectbox.Value(selectbox.ValueProps{Placeholder: "Période"})
-						}
-						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
-							@selectbox.Group() {
-								for _, opt := range []struct{ Value, Label string }{
-									{"1d", "Dernier jour"},
-									{"7d", "7 derniers jours"},
-									{"30d", "30 derniers jours"},
-									{"90d", "3 derniers mois"},
-									{"180d", "6 derniers mois"},
-									{"365d", "Dernière année"},
-								} {
-									@selectbox.Item(selectbox.ItemProps{
-										Value:    opt.Value,
-										Selected: vmodel.Range == opt.Value || (vmodel.Range == "" && opt.Value == "7d"),
-									}) {
-										{ opt.Label }
-									}
-								}
-							}
-						}
-					}
+					@common.RangeSelect(vmodel.Range)
 				</form>
 			</div>
 			<!-- Models list -->
@@ -111,22 +74,7 @@ templ ModelsPage(vmodel ModelsPageVModel) {
 						<!-- Base URL -->
 						<div class="space-y-1">
 							<p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">URL de base</p>
-							<div class="flex items-center gap-2">
-								<code class="flex-1 block bg-muted rounded-md px-3 py-2 text-sm font-mono break-all">{ common.BaseURLString(ctx, common.WithPath("/api/v1")) }</code>
-								@button.Button(button.Props{
-									Variant: button.VariantGhost,
-									Size:    button.SizeIcon,
-									Class:   "shrink-0",
-									Attributes: templ.Attributes{
-										"type":     "button",
-										"title":    "Copier",
-										"data-url": common.BaseURLString(ctx, common.WithPath("/api/v1")),
-										"onclick":  "navigator.clipboard.writeText(this.dataset.url)",
-									},
-								}) {
-									@icon.Copy(icon.Props{Class: "h-4 w-4"})
-								}
-							</div>
+							@common.InlineSnippet(common.BaseURLString(ctx, common.WithPath("/api/v1")))
 						</div>
 						<!-- Auth + model name -->
 						<div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
@@ -144,39 +92,42 @@ templ ModelsPage(vmodel ModelsPageVModel) {
 						<!-- Tool examples -->
 						<div class="space-y-2">
 							<p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Exemples d'utilisation</p>
-							<details class="group rounded-md border">
-								<summary class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium select-none">
+							@accordion.Accordion(accordion.Props{Class: "rounded-md border divide-y"}) {
+								@apiExample("bash", "curl", curlExample(common.BaseURLString(ctx, common.WithPath("/api/v1")))) {
 									@icon.Terminal(icon.Props{Class: "h-4 w-4 shrink-0"})
-									curl
-								</summary>
-								<pre class="overflow-x-auto border-t bg-muted px-4 py-3 text-xs font-mono leading-relaxed">{ curlExample(common.BaseURLString(ctx, common.WithPath("/api/v1"))) }</pre>
-							</details>
-							<details class="group rounded-md border">
-								<summary class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium select-none">
+								}
+								@apiExample("python", "Python · openai", pythonExample(common.BaseURLString(ctx, common.WithPath("/api/v1")))) {
 									@icon.Code(icon.Props{Class: "h-4 w-4 shrink-0"})
-									Python · openai
-								</summary>
-								<pre class="overflow-x-auto border-t bg-muted px-4 py-3 text-xs font-mono leading-relaxed">{ pythonExample(common.BaseURLString(ctx, common.WithPath("/api/v1"))) }</pre>
-							</details>
-							<details class="group rounded-md border">
-								<summary class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium select-none">
+								}
+								@apiExample("json", "OpenCode · ~/.config/opencode/config.json", openCodeConfigExample(common.BaseURLString(ctx, common.WithPath("/api/v1")), vmodel.AllModelUsages)) {
 									@icon.Code(icon.Props{Class: "h-4 w-4 shrink-0"})
-									OpenCode · ~/.config/opencode/config.json
-								</summary>
-								<pre class="overflow-x-auto border-t bg-muted px-4 py-3 text-xs font-mono leading-relaxed">{ openCodeConfigExample(common.BaseURLString(ctx, common.WithPath("/api/v1")), vmodel.AllModelUsages) }</pre>
-							</details>
-							<details class="group rounded-md border">
-								<summary class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium select-none">
+								}
+								@apiExample("bash", "Claude Code · variables d'environnement", claudeCodeExample(common.BaseURLString(ctx, common.WithPath("/api")))) {
 									@icon.Terminal(icon.Props{Class: "h-4 w-4 shrink-0"})
-									Claude Code · variables d'environnement
-								</summary>
-								<pre class="overflow-x-auto border-t bg-muted px-4 py-3 text-xs font-mono leading-relaxed">{ claudeCodeExample(common.BaseURLString(ctx, common.WithPath("/api"))) }</pre>
-							</details>
+								}
+							}
 						</div>
 					</div>
 				}
 			}
 		</div>
+	}
+}
+
+// apiExample renders one collapsible call example. The children are the icon
+// shown ahead of the title.
+templ apiExample(language, title, snippet string) {
+	@accordion.Item() {
+		@accordion.Trigger(accordion.TriggerProps{Class: "items-center gap-2 px-3 py-2"}) {
+			{ children... }
+			<!-- Le titre porte le `flex-1` : le trigger est un `justify-between`,
+			et un titre laissé en nœud de texte y devient un élément de flex
+			centré entre l'icône et le chevron. -->
+			<span class="flex-1 truncate">{ title }</span>
+		}
+		@accordion.Content(accordion.ContentProps{Class: "pb-0 border-t"}) {
+			@common.Snippet(language, snippet)
+		}
 	}
 }
 
@@ -200,23 +151,15 @@ templ modelCard(mu ModelUsage) {
 						}
 					</span>
 					if mu.Model.IsVirtual() {
-						@badge.Badge(badge.Props{Variant: badge.VariantOutline}) {
-							virtuel
-						}
+						@common.Badge(common.ToneInfo, "virtuel")
 					}
 					if mu.Model.Capabilities().Embeddings {
-						@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
-							embeddings
-						}
+						@common.Badge(common.ToneNeutral, "embeddings")
 					}
 					if mu.Provider != nil && mu.Provider.BillingMode() == model.BillingModeSubscription {
-						@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
-							abonnement
-						}
+						@common.Badge(common.ToneNeutral, "abonnement")
 					} else if mu.Provider != nil {
-						@badge.Badge(badge.Props{Variant: badge.VariantOutline}) {
-							pay-as-you-go
-						}
+						@common.Badge(common.ToneNeutral, "pay-as-you-go")
 					}
 				</div>
 				<div class="text-xs text-muted-foreground mt-0.5 truncate">
@@ -227,9 +170,7 @@ templ modelCard(mu ModelUsage) {
 						}
 					}
 					if mu.Org != nil {
-						@badge.Badge(badge.Props{Variant: badge.VariantSecondary, Class: "text-[0.7rem]"}) {
-							{ mu.Org.Name() }
-						}
+						@common.Badge(common.ToneNeutral, mu.Org.Name())
 					}
 				</div>
 			</div>

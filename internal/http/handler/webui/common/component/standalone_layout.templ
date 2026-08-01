@@ -3,9 +3,18 @@ package component
 // StandaloneLayout renders a centered, sidebar-less page shell used for
 // authentication-adjacent screens (invitations, "no organization" state, etc.).
 templ StandaloneLayout(funcs ...PageOptionFunc) {
+	{{
+		// Ces écrans vivent hors de la coquille applicative : un échange de
+		// #content seul y ferait atterrir le contenu d'une page d'application dans
+		// une page autonome, et inversement. On y navigue en rechargement complet.
+		funcs = append(funcs, WithBodyAttributes(templ.Attributes{"hx-boost": "false"}))
+	}}
 	@Page(funcs...) {
+		<!-- Liseré de marque, pendant du liseré de contexte de la coquille
+		applicative : ces écrans n'appartiennent à aucun des trois espaces. -->
+		<div class="fixed inset-x-0 top-0 z-50 h-[3px] bg-primary"></div>
 		<div class="flex min-h-screen items-center justify-center bg-background p-4">
-			<div class="w-full max-w-md space-y-6">
+			<div id="content" class="w-full max-w-md space-y-6">
 				<div class="flex flex-col items-center gap-3 text-center">
 					@Logo("h-12 w-12")
 					<h1 class="text-xl font-semibold">Xolo</h1>

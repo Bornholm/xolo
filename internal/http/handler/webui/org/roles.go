@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/a-h/templ"
@@ -28,8 +29,6 @@ func (h *Handler) getRolesPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nav, footer := orgAdminNav(org)
-
 	roles, err := h.roleStore.ListOrgRoles(ctx, org.ID())
 	if err != nil {
 		slog.ErrorContext(ctx, "could not list org roles", slogx.Error(err))
@@ -40,18 +39,20 @@ func (h *Handler) getRolesPage(w http.ResponseWriter, r *http.Request) {
 	vmodel := component.RolesPageVModel{
 		Org:     org,
 		Roles:   roles,
+		Query:   strings.TrimSpace(r.URL.Query().Get("q")),
+		RoleID:  r.URL.Query().Get("role"),
 		Success: r.URL.Query().Get("success"),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-roles",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-roles",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Rôles", Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 
@@ -197,6 +198,106 @@ func (h *Handler) updateRole(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/orgs/"+orgSlug+"/admin/roles?success=updated", http.StatusSeeOther)
 }
 
+// toggleRolePermission grants or revokes a single permission on a role, from the
+// permission matrix.
+//
+// It is a separate endpoint from updateRole rather than a reuse of it: the
+// matrix submits one checkbox, and updateRole rebuilds a role from the whole
+// form — reusing it would wipe every other permission and every model grant of
+// the role on each click.
+func (h *Handler) toggleRolePermission(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	orgSlug := r.PathValue("orgSlug")
+	roleID := r.PathValue("roleID")
+
+	org, err := h.orgFromSlug(ctx, orgSlug)
+	if err != nil {
+		http.Error(w, "Organization not found", http.StatusNotFound)
+		return
+	}
+
+	role, err := h.roleStore.GetRoleByID(ctx, model.RoleID(roleID))
+	if err != nil {
+		if errors.Is(err, port.ErrNotFound) {
+			http.Error(w, "Role not found", http.StatusNotFound)
+			return
+		}
+		slog.ErrorContext(ctx, "could not get role", slogx.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	if role.OrgID() != org.ID() {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	// The owner role bypasses all permission checks; its permission list is not
+	// what makes it powerful, so editing it would be misleading.
+	if role.BuiltinKind() == model.BuiltinKindOwner {
+		http.Error(w, "Ce rôle ne peut pas être modifié", http.StatusBadRequest)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form", http.StatusBadRequest)
+		return
+	}
+
+	code := rbac.Permission(r.FormValue("permission"))
+	if !rbac.IsKnown(string(code)) {
+		http.Error(w, "Permission inconnue", http.StatusBadRequest)
+		return
+	}
+
+	// An unchecked box submits nothing, which is what revokes the permission.
+	granted := r.FormValue("granted") != ""
+
+	updated := model.UpdateRole(role, model.WithRolePermissions(togglePermission(role.Permissions(), code, granted)))
+	if err := h.roleStore.SaveRole(ctx, updated); err != nil {
+		slog.ErrorContext(ctx, "could not save role", slogx.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	// The matrix is a filtered view; sending the user back to an unfiltered one
+	// would lose the rows they were working on.
+	target := url.URL{Path: "/orgs/" + orgSlug + "/admin/roles"}
+	query := url.Values{"success": {"updated"}}
+	if q := strings.TrimSpace(r.FormValue("q")); q != "" {
+		query.Set("q", q)
+	}
+	if filter := r.FormValue("role"); filter != "" {
+		query.Set("role", filter)
+	}
+	target.RawQuery = query.Encode()
+
+	http.Redirect(w, r, target.String(), http.StatusSeeOther)
+}
+
+// togglePermission adds or removes a code from a role's permission list,
+// preserving the order of the others so a save does not reshuffle the record.
+func togglePermission(current []string, code rbac.Permission, granted bool) []string {
+	out := make([]string, 0, len(current)+1)
+	var found bool
+
+	for _, existing := range current {
+		if existing == string(code) {
+			found = true
+			if !granted {
+				continue
+			}
+		}
+		out = append(out, existing)
+	}
+
+	if granted && !found {
+		out = append(out, string(code))
+	}
+
+	return out
+}
+
 func (h *Handler) deleteRole(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	orgSlug := r.PathValue("orgSlug")
@@ -241,7 +342,6 @@ func (h *Handler) renderRoleForm(w http.ResponseWriter, r *http.Request, org mod
 	ctx := r.Context()
 	user := httpCtx.User(ctx)
 	orgSlug := org.Slug()
-	nav, footer := orgAdminNav(org)
 
 	selected := map[string]bool{}
 	selectedModels := map[string]bool{}
@@ -277,17 +377,17 @@ func (h *Handler) renderRoleForm(w http.ResponseWriter, r *http.Request, org mod
 		SelectedMode: selectedModels,
 		ModelOptions: modelOptions,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "org-" + orgSlug + "-roles",
-			HomeLink:      "/orgs/" + orgSlug,
-			AdminSubtitle: "Admin. " + org.Name(),
+			User:         user,
+			SelectedItem: "org-" + orgSlug + "-roles",
+			Context:      common.ContextOrg,
+			ContextName:  org.Name(),
+			ContextSlug:  org.Slug(),
+			ContextOrgID: org.ID(),
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: org.Name(), Href: "/orgs/" + orgSlug + "/usage"},
 				{Label: "Rôles", Href: "/orgs/" + orgSlug + "/admin/roles"},
 				{Label: crumb, Href: ""},
 			},
-			NavigationItems: nav,
-			FooterItems:     footer,
 		},
 	}
 	_ = title

@@ -1,20 +1,33 @@
 package component
 
 import (
+	"fmt"
+
 	"github.com/bornholm/xolo/internal/core/model"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/checkbox"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/form"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
 )
 
 type OrgsPageVModel struct {
 	common.AppLayoutVModel
-	Orgs    []model.Organization
+
+	// Orgs are the rows matching the current filters, richest first.
+	Orgs []OverviewOrg
+	// Currency is the reference every cost is converted into.
+	Currency string
+	// TotalOrgs, TotalMembers describe the whole set, not the filtered one: the
+	// subtitle states what the platform holds.
+	TotalOrgs    int
+	TotalMembers int
+
+	Search string
+	// Status is the active segment: "", "active" or "inactive".
+	Status  string
 	Success string
 }
 
@@ -27,81 +40,211 @@ type OrgFormVModel struct {
 
 templ OrgsPage(vmodel OrgsPageVModel) {
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Organisations")) {
-		<div class="space-y-6">
-			<div class="flex items-center justify-between">
-				<h1 class="text-2xl font-semibold">Organisations</h1>
-				@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/admin/orgs/new"))}) {
-					Nouvelle organisation
-				}
+		@common.PageHeader(common.PageHeaderProps{
+			Title:    "Organisations",
+			Subtitle: fmt.Sprintf("%d organisation(s) · %d membre(s) · devise de référence %s", vmodel.TotalOrgs, vmodel.TotalMembers, vmodel.Currency),
+		}) {
+			@button.Button(button.Props{
+				Href:  common.BaseURLString(ctx, common.WithPath("/admin/orgs/new")),
+				Size:  button.SizeSm,
+				Class: "gap-1.5 bg-platform text-platform-foreground hover:bg-platform/90",
+			}) {
+				@icon.Plus(icon.Props{Class: "size-3.5"})
+				Nouvelle organisation
+			}
+		}
+		if vmodel.Success != "" {
+			<div class="mb-3.5">
+				@common.InfoBanner(common.TonePositive, orgsSuccessMessage(vmodel.Success))
 			</div>
-			if vmodel.Success != "" {
-				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-					@alert.Description() {
-						Opération réussie.
+		}
+		@common.FilterBar() {
+			@common.SearchFilter(common.SearchFilterProps{
+				Name:        "q",
+				Value:       vmodel.Search,
+				Placeholder: "Filtrer par nom ou slug…",
+				Attributes: templ.Attributes{
+					"hx-get":        common.BaseURLString(ctx, common.WithPath("/admin/orgs")),
+					"hx-trigger":    "input changed delay:250ms, search",
+					"hx-target":     "#orgs-results",
+					"hx-select":     "#orgs-results",
+					"hx-swap":       "outerHTML",
+					"hx-push-url":   "true",
+					"hx-include":    "[name='status']",
+					"hx-select-oob": "unset",
+					"autocomplete":  "off",
+				},
+			})
+			<!-- Le segment courant voyage avec la recherche : hx-include le lit ici
+			plutôt que de le recopier dans l'URL du champ. -->
+			<input type="hidden" name="status" value={ vmodel.Status }/>
+			@common.SegmentedNav(orgsSegments(ctx, vmodel))
+		}
+		@orgsResults(vmodel)
+	}
+}
+
+templ orgsResults(vmodel OrgsPageVModel) {
+	<div id="orgs-results">
+		if len(vmodel.Orgs) == 0 {
+			if vmodel.Search != "" || vmodel.Status != "" {
+				@common.EmptyState(common.EmptyStateProps{
+					Icon:        icon.Search,
+					Title:       "Aucune organisation ne correspond",
+					Description: "Aucun tenant ne satisfait le filtre courant.",
+				}) {
+					@button.Button(button.Props{
+						Variant: button.VariantOutline,
+						Size:    button.SizeSm,
+						Href:    common.BaseURLString(ctx, common.WithPath("/admin/orgs")),
+					}) {
+						Effacer les filtres
+					}
+				}
+			} else {
+				@common.EmptyState(common.EmptyStateProps{
+					Icon:        icon.Building2,
+					Title:       "Aucune organisation",
+					Description: "Une organisation regroupe des membres, des fournisseurs et un budget. Créez la première pour commencer.",
+				}) {
+					@button.Button(button.Props{
+						Size:  button.SizeSm,
+						Href:  common.BaseURLString(ctx, common.WithPath("/admin/orgs/new")),
+						Class: "bg-platform text-platform-foreground hover:bg-platform/90",
+					}) {
+						Nouvelle organisation
 					}
 				}
 			}
-			if len(vmodel.Orgs) == 0 {
-				<div class="rounded-lg border p-6 text-center text-muted-foreground">
-					Aucune organisation. Créez la première organisation pour commencer.
-				</div>
-			} else {
-				@card.Card() {
-					@card.Content() {
-						@table.Table() {
-							@table.Header() {
-								@table.Head() {
-									Nom 
+		} else {
+			@common.Section() {
+				@table.Table() {
+					@table.Header() {
+						@table.Head() {
+							Organisation
+						}
+						@table.Head(table.HeadProps{Class: "text-right"}) {
+							Membres
+						}
+						@table.Head(table.HeadProps{Class: "text-right"}) {
+							Applications
+						}
+						@table.Head(table.HeadProps{Class: "text-right"}) {
+							Coût 30 j
+						}
+						@table.Head(table.HeadProps{Class: "text-right"}) {
+							Tokens
+						}
+						@table.Head(table.HeadProps{Class: "text-right"}) {
+							Requêtes
+						}
+						@table.Head(table.HeadProps{Class: "w-38"}) {
+							Budget mensuel
+						}
+						@table.Head(table.HeadProps{Class: "text-right"}) {
+							Erreurs
+						}
+						@table.Head(table.HeadProps{Class: "text-right"}) {
+							p95
+						}
+						@table.Head() {
+							Statut
+						}
+						@table.Head(table.HeadProps{Class: "text-right"}) {
+							Actions
+						}
+					}
+					@table.Body() {
+						for _, org := range vmodel.Orgs {
+							@table.Row() {
+								@table.Cell() {
+									<div class="flex items-center gap-2.5">
+										@common.InitialSquare(org.Name)
+										<div class="min-w-0">
+											<div class="truncate text-sm font-semibold">{ org.Name }</div>
+											@common.Mono(org.Slug)
+										</div>
+									</div>
 								}
-								@table.Head() {
-									Slug 
+								@table.Cell(table.CellProps{Class: "text-right text-sm"}) {
+									{ fmt.Sprintf("%d", org.Members) }
 								}
-								@table.Head() {
-									Statut 
+								@table.Cell(table.CellProps{Class: "text-right"}) {
+									<!-- TODO(rework-ux): les applications M2M sont
+									déclarées par organisation et la console n'a pas de
+									store pour les compter hors contexte d'organisation
+									(cf. lot 7 du plan). -->
+									@common.PendingValue("Nombre d'applications : bientôt disponible")
 								}
-								@table.Head() {
-									Actions 
+								@table.Cell(table.CellProps{Class: "text-right text-sm font-semibold"}) {
+									{ common.FormatCostCompact(org.Cost, vmodel.Currency) }
 								}
-							}
-							@table.Body() {
-								for _, org := range vmodel.Orgs {
-									@table.Row() {
-										@table.Cell() {
-											{ org.Name() }
-										}
-										@table.Cell() {
-											{ org.Slug() }
-										}
-										@table.Cell() {
-											if org.Active() {
-												@badge.Badge(badge.Props{Variant: badge.VariantDefault}) {
-													Actif 
-												}
-											} else {
-												@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
-													Inactif 
-												}
-											}
-										}
-										@table.Cell() {
-											<div class="flex gap-2">
-												@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/orgs/", org.Slug(), "/usage")), Variant: button.VariantOutline, Size: button.SizeSm}) {
-													Usage
-												}
-												@button.Button(button.Props{Href: common.BaseURLString(ctx, common.WithPath("/admin/orgs/", string(org.ID()), "/edit")), Variant: button.VariantOutline, Size: button.SizeSm}) {
-													Modifier
-												}
-											</div>
-										}
+								@table.Cell(table.CellProps{Class: "text-right text-sm text-muted-foreground"}) {
+									{ common.FormatCount(org.Tokens) }
+								}
+								@table.Cell(table.CellProps{Class: "text-right text-sm text-muted-foreground"}) {
+									{ common.FormatCount(org.Requests) }
+								}
+								@table.Cell() {
+									<!-- TODO(rework-ux): les quotas vivent dans le store
+									de quotas de l'organisation ; la console ne le
+									consulte pas. La jauge de la maquette attend un
+									agrégat budget/consommation cross-organisation
+									(cf. lot 7 du plan). -->
+									@common.PendingValue("Budget mensuel : bientôt disponible")
+								}
+								@table.Cell(table.CellProps{Class: "text-right"}) {
+									<!-- TODO(rework-ux): aucun compteur de statuts de
+									réponse n'existe (cf. Santé du proxy, lot 7). -->
+									@common.PendingValue("Taux d'erreur : bientôt disponible")
+								}
+								@table.Cell(table.CellProps{Class: "text-right"}) {
+									<!-- TODO(rework-ux): aucun histogramme de latence
+									n'est collecté (cf. Santé du proxy, lot 7). -->
+									@common.PendingValue("Latence p95 : bientôt disponible")
+								}
+								@table.Cell() {
+									if org.Active {
+										@common.Badge(common.TonePositive, "Active")
+									} else {
+										@common.Badge(common.ToneNeutral, "Inactive")
 									}
+								}
+								@table.Cell(table.CellProps{Class: "text-right"}) {
+									<div class="flex items-center justify-end gap-1.5">
+										@button.Button(button.Props{
+											Href:    common.BaseURLString(ctx, common.WithPath("/orgs/", org.Slug, "/usage")),
+											Variant: button.VariantOutline,
+											Size:    button.SizeSm,
+										}) {
+											Ouvrir
+										}
+										@button.Button(button.Props{
+											Href:    common.BaseURLString(ctx, common.WithPath("/admin/orgs/", string(org.ID), "/edit")),
+											Variant: button.VariantGhost,
+											Size:    button.SizeIcon,
+											Class:   "size-7",
+											Attributes: templ.Attributes{
+												"title":      "Modifier",
+												"aria-label": "Modifier " + org.Name,
+											},
+										}) {
+											@icon.Pencil(icon.Props{Class: "size-3.5"})
+										}
+									</div>
 								}
 							}
 						}
 					}
 				}
 			}
-		</div>
-	}
+			@common.SectionNote() {
+				« Ouvrir » vous place dans le contexte de l'organisation ; si vous n'en êtes
+				pas membre, un bandeau d'accès admin plateforme le signale et l'action est
+				journalisée dans les événements de l'organisation.
+			}
+		}
+	</div>
 }
 
 templ OrgForm(vmodel OrgFormVModel) {
@@ -112,54 +255,74 @@ templ OrgForm(vmodel OrgFormVModel) {
 		{{ action = common.BaseURLString(ctx, common.WithPath("/admin/orgs/", string(vmodel.Org.ID()), "/edit")) }}
 	}
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(title)) {
-		<div class="space-y-6">
-			<h1 class="text-2xl font-semibold">{ title }</h1>
-				if vmodel.Error != "" {
-					@alert.Alert(alert.Props{Variant: alert.VariantDestructive}) {
-						@alert.Description() {
-							{ vmodel.Error }
+		<div class="max-w-2xl">
+			@common.PageHeader(common.PageHeaderProps{
+				Title:    title,
+				Subtitle: "Une organisation regroupe ses membres, ses fournisseurs et son budget.",
+			})
+			if vmodel.Error != "" {
+				<div class="mb-3.5">
+					@common.InfoBanner(common.ToneNegative, vmodel.Error)
+				</div>
+			}
+			<form method="POST" action={ templ.SafeURL(action) }>
+				@common.Section() {
+					@common.SectionBody(common.SectionBodyProps{Class: "space-y-3.5"}) {
+						@form.Item() {
+							@form.Label(form.LabelProps{For: "org-name"}) {
+								Nom
+							}
+							if !vmodel.IsNew && vmodel.Org != nil {
+								@input.Input(input.Props{ID: "org-name", Name: "name", Value: vmodel.Org.Name()})
+							} else {
+								@input.Input(input.Props{ID: "org-name", Name: "name", Placeholder: "Mon organisation"})
+							}
+						}
+						@form.Item() {
+							@form.Label(form.LabelProps{For: "org-slug"}) {
+								Slug (identifiant URL)
+							}
+							if !vmodel.IsNew && vmodel.Org != nil {
+								@input.Input(input.Props{ID: "org-slug", Name: "slug", Value: vmodel.Org.Slug(), Disabled: true})
+								@form.Description() {
+									Le slug est figé après création : il apparaît dans les URL et dans les clés d'API.
+								}
+							} else {
+								@input.Input(input.Props{ID: "org-slug", Name: "slug", Placeholder: "mon-organisation"})
+								@form.Description() {
+									Caractères alphanumériques et tirets uniquement.
+								}
+							}
+						}
+						@form.Item() {
+							@form.Label(form.LabelProps{For: "org-description"}) {
+								Description
+							}
+							if !vmodel.IsNew && vmodel.Org != nil {
+								@input.Input(input.Props{ID: "org-description", Name: "description", Value: vmodel.Org.Description()})
+							} else {
+								@input.Input(input.Props{ID: "org-description", Name: "description"})
+							}
+						}
+						if !vmodel.IsNew && vmodel.Org != nil {
+							<div class="flex items-center gap-2">
+								@checkbox.Checkbox(checkbox.Props{ID: "active", Name: "active", Checked: vmodel.Org.Active()})
+								@form.Label(form.LabelProps{For: "active"}) {
+									Active
+								}
+							</div>
 						}
 					}
-				}
-			<form method="POST" action={ templ.SafeURL(action) } class="space-y-4">
-				@card.Card() {
-					@card.Content() {
-						<div class="space-y-4 pt-4">
-							<div class="space-y-2">
-								<label class="text-sm font-medium">Nom</label>
-								if !vmodel.IsNew && vmodel.Org != nil {
-									@input.Input(input.Props{Name: "name", Value: vmodel.Org.Name()})
-								} else {
-									@input.Input(input.Props{Name: "name", Placeholder: "Mon organisation"})
-								}
-							</div>
-							<div class="space-y-2">
-								<label class="text-sm font-medium">Slug (identifiant URL)</label>
-								if !vmodel.IsNew && vmodel.Org != nil {
-									@input.Input(input.Props{Name: "slug", Value: vmodel.Org.Slug(), Disabled: true})
-								} else {
-									@input.Input(input.Props{Name: "slug", Placeholder: "mon-organisation"})
-								}
-							</div>
-							<div class="space-y-2">
-								<label class="text-sm font-medium">Description</label>
-								if !vmodel.IsNew && vmodel.Org != nil {
-									@input.Input(input.Props{Name: "description", Value: vmodel.Org.Description()})
-								} else {
-									@input.Input(input.Props{Name: "description"})
-								}
-							</div>
-							if !vmodel.IsNew && vmodel.Org != nil {
-								<div class="flex items-center gap-2">
-									@checkbox.Checkbox(checkbox.Props{ID: "active", Name: "active", Checked: vmodel.Org.Active()})
-									<label for="active" class="text-sm font-medium">Active</label>
-								</div>
-							}
-						</div>
-					}
-					@card.Footer() {
-						@button.Button(button.Props{Type: "submit"}) {
-							Enregistrer 
+					@common.SectionHeader(common.SectionHeaderProps{Class: "border-b-0 border-t"}) {
+						@button.Button(button.Props{Type: "submit", Size: button.SizeSm}) {
+							Enregistrer
+						}
+						@button.Button(button.Props{
+							Variant: button.VariantGhost,
+							Size:    button.SizeSm,
+							Href:    common.BaseURLString(ctx, common.WithPath("/admin/orgs")),
+						}) {
+							Annuler
 						}
 					}
 				}

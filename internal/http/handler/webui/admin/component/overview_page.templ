@@ -1,0 +1,255 @@
+package component
+
+import (
+	"fmt"
+
+	commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/chart"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
+)
+
+// OverviewPage is the landing screen of the platform console: the aggregated
+// consumption of every organisation over the last 30 days.
+templ OverviewPage(vmodel OverviewPageVModel) {
+	@commonComp.AppLayout(vmodel.AppLayoutVModel, commonComp.WithTitle("Vue d'ensemble")) {
+		@commonComp.PageHeader(commonComp.PageHeaderProps{
+			Title:    "Vue d'ensemble",
+			Subtitle: overviewSubtitle(vmodel),
+		}) {
+			<!-- TODO(rework-ux): la maquette propose 24 h / 7 j / 30 j / 12 m et un
+			export CSV plateforme. Seule la fenêtre de 30 jours est calculée, et
+			aucun export cross-organisation n'existe (cf. lot 7 du plan). -->
+			@commonComp.ComingSoon()
+		}
+		@overviewKPIs(vmodel)
+		<div class="mt-3.5 grid gap-3.5 xl:grid-cols-[1fr_340px]">
+			@overviewCostChart(vmodel)
+			@overviewProviderShare()
+		</div>
+		<div class="mt-3.5 grid gap-3.5 xl:grid-cols-[1fr_340px]">
+			@overviewOrgsTable(vmodel)
+			@overviewTodo()
+		</div>
+	}
+}
+
+templ overviewKPIs(vmodel OverviewPageVModel) {
+	@commonComp.KPIBand(commonComp.KPIBandProps{Class: "grid-cols-2 md:grid-cols-3 2xl:grid-cols-6"}) {
+		@commonComp.KPI(commonComp.KPIProps{
+			Label: "Coût total",
+			Value: commonComp.FormatCostCompact(vmodel.TotalCost, vmodel.Currency),
+			Note:  "Hors requêtes couvertes par un forfait",
+		})
+		@commonComp.KPI(commonComp.KPIProps{
+			Label: "Tokens",
+			Value: commonComp.FormatCount(vmodel.TotalTokens),
+		})
+		@commonComp.KPI(commonComp.KPIProps{
+			Label: "Requêtes",
+			Value: commonComp.FormatCount(vmodel.TotalRequests),
+		})
+		<!-- TODO(rework-ux): le taux d'erreur, la latence p95 et l'empreinte
+		carbone au niveau plateforme demandent respectivement un compteur de
+		statuts de réponse, un histogramme de latences et une agrégation
+		énergétique cross-organisation. Aucun n'existe côté domaine ; les
+		cellules gardent leur place dans la bande (cf. lot 7 du plan). -->
+		@commonComp.KPIPending("Taux d'erreur", "")
+		@commonComp.KPIPending("Latence p95", "")
+		@commonComp.KPIPending("Empreinte CO₂", "")
+	}
+}
+
+// overviewCostChart draws the stacked daily cost, one series per organisation.
+//
+// Same construction as the organisation dashboard — templui's chart, bars, y
+// grid, zero baseline — so the two screens are read the same way; only the
+// stacking is added, since the platform sums several organisations per day.
+templ overviewCostChart(vmodel OverviewPageVModel) {
+	{{ trueVal := true }}
+	@commonComp.Section() {
+		@commonComp.SectionHeader() {
+			@commonComp.SectionTitle() {
+				Coût par jour et par organisation
+			}
+			<!-- La légende est bâtie sur les séries tracées, jamais sur le tableau
+			des organisations : le graphique ne porte que le coût à l'usage, donc
+			une organisation entièrement en forfait a un coût dans le tableau et
+			rien à tracer ici. -->
+			<div class="ml-auto flex flex-wrap items-center gap-3">
+				for _, series := range vmodel.CostSeries.Series {
+					<span class="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
+						<span class={ "size-2 shrink-0 rounded-xs", series.ColorClass }></span>
+						{ series.OrgName }
+					</span>
+				}
+				<span class="shrink-0 whitespace-nowrap text-xs text-muted-foreground">Hors requêtes couvertes par un forfait</span>
+			</div>
+		}
+		if len(vmodel.CostSeries.Series) == 0 {
+			@commonComp.SectionEmpty(commonComp.EmptyStateProps{
+				Icon:        icon.ChartColumn,
+				Title:       "Aucune consommation à l'usage sur la période",
+				Description: "Les requêtes facturées à l'usage apparaîtront ici ; celles couvertes par un forfait ne sont pas ventilées par jour.",
+			})
+		} else {
+			@commonComp.SectionBody() {
+				@chart.Chart(chart.Props{
+					Variant:     chart.VariantBar,
+					ShowXLabels: true,
+					ShowYLabels: true,
+					ShowYGrid:   true,
+					ShowLegend:  false,
+					Stacked:     true,
+					BeginAtZero: &trueVal,
+					Class:       "h-64",
+					Data: chart.Data{
+						Labels:   vmodel.CostSeries.Labels,
+						Datasets: overviewDatasets(vmodel),
+					},
+				})
+			}
+		}
+	}
+}
+
+// overviewProviderShare is the per-provider breakdown of the mockup.
+templ overviewProviderShare() {
+	@commonComp.Section() {
+		@commonComp.SectionHeader() {
+			@commonComp.SectionTitle() {
+				Répartition par fournisseur
+			}
+			<span class="ml-auto">
+				@commonComp.ComingSoon()
+			</span>
+		}
+		@commonComp.SectionBody() {
+			<!-- TODO(rework-ux): AggregateCostByDimension sait grouper par
+			fournisseur, mais les fournisseurs sont déclarés par organisation et
+			la console n'a pas de store pour résoudre leurs noms hors d'un
+			contexte d'organisation. Il faudrait un index plateforme des
+			fournisseurs (cf. lot 7 du plan). -->
+			<p class="text-sm text-muted-foreground">
+				La répartition du coût par fournisseur amont n'est pas encore agrégée au
+				niveau de la plateforme. Elle reste disponible par organisation, dans son
+				tableau de bord.
+			</p>
+		}
+	}
+}
+
+templ overviewOrgsTable(vmodel OverviewPageVModel) {
+	@commonComp.Section() {
+		@commonComp.SectionHeader() {
+			@commonComp.SectionTitle() {
+				Organisations
+			}
+			@button.Button(button.Props{
+				Variant: button.VariantLink,
+				Size:    button.SizeSm,
+				Href:    commonComp.BaseURLString(ctx, commonComp.WithPath("/admin/orgs")),
+				Class:   "ml-auto h-auto p-0",
+			}) {
+				Tout voir
+				@icon.ArrowRight(icon.Props{Class: "size-3.5"})
+			}
+		}
+		if len(vmodel.Orgs) == 0 {
+			@commonComp.SectionEmpty(commonComp.EmptyStateProps{
+				Icon:        icon.Building2,
+				Title:       "Aucune organisation",
+				Description: "Créez la première organisation pour commencer.",
+			}) {
+				@button.Button(button.Props{
+					Size: button.SizeSm,
+					Href: commonComp.BaseURLString(ctx, commonComp.WithPath("/admin/orgs/new")),
+				}) {
+					Nouvelle organisation
+				}
+			}
+		} else {
+			@table.Table() {
+				@table.Header() {
+					@table.Head() {
+						Organisation
+					}
+					@table.Head(table.HeadProps{Class: "text-right"}) {
+						Coût 30 j
+					}
+					@table.Head(table.HeadProps{Class: "text-right"}) {
+						Tokens
+					}
+					@table.Head(table.HeadProps{Class: "text-right"}) {
+						Requêtes
+					}
+					@table.Head(table.HeadProps{Class: "text-right"}) {
+						Actions
+					}
+				}
+				@table.Body() {
+					for _, org := range vmodel.Orgs {
+						@table.Row() {
+							@table.Cell() {
+								<div class="flex items-center gap-2">
+									<!-- Pastille d'organisation standard, et non la couleur de série
+								de l'organisation : la légende du graphe au-dessus porte déjà
+								cette couleur, et §02 réserve la pastille au contexte. -->
+								@commonComp.InitialSquare(org.Name)
+									<div class="min-w-0">
+										<div class="truncate text-sm font-semibold">{ org.Name }</div>
+										@commonComp.Mono(fmt.Sprintf("%s · %d membre(s)", org.Slug, org.Members))
+									</div>
+								</div>
+							}
+							@table.Cell(table.CellProps{Class: "text-right text-sm font-medium"}) {
+								{ commonComp.FormatCostCompact(org.Cost, vmodel.Currency) }
+							}
+							@table.Cell(table.CellProps{Class: "text-right text-sm text-muted-foreground"}) {
+								{ commonComp.FormatCount(org.Tokens) }
+							}
+							@table.Cell(table.CellProps{Class: "text-right text-sm text-muted-foreground"}) {
+								{ commonComp.FormatCount(org.Requests) }
+							}
+							@table.Cell(table.CellProps{Class: "text-right"}) {
+								@button.Button(button.Props{
+									Variant: button.VariantOutline,
+									Size:    button.SizeSm,
+									Href:    commonComp.BaseURLString(ctx, commonComp.WithPath("/orgs/", org.Slug, "/usage")),
+								}) {
+									Ouvrir
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+// overviewTodo is the "À traiter" panel of the mockup.
+templ overviewTodo() {
+	@commonComp.Section() {
+		@commonComp.SectionHeader() {
+			@commonComp.SectionTitle() {
+				À traiter
+			}
+			<span class="ml-auto">
+				@commonComp.ComingSoon()
+			</span>
+		}
+		@commonComp.SectionBody() {
+			<!-- TODO(rework-ux): le panneau agrège des signaux qui vivent chacun
+			dans une organisation (incidents ouverts, budgets dépassés, clés
+			proches de l'expiration, fournisseurs en erreur). Il demande une file
+			d'événements plateforme, qui n'existe pas (cf. lot 7 du plan). -->
+			<p class="text-sm text-muted-foreground">
+				Les incidents, dépassements de budget et alertes des organisations seront
+				regroupés ici. En attendant, ils restent consultables dans chaque
+				organisation, section « Alertes &amp; incidents ».
+			</p>
+		}
+	}
+}

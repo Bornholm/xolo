@@ -217,8 +217,12 @@ templ Content(props ...ContentProps) {
 		Offset:     4,
 		MatchWidth: true,
 		DisableESC: !p.NoSearch,
+		// ÉCART AVEC TEMPLUI v1.5.0 : le `z-50` d'origine a été retiré. Il
+		// écrasait par TwMerge le `z-[9999]` de popover.Content, et un select
+		// ouvert depuis un autre popover (le panneau de filtres) passait alors
+		// *sous* lui — les deux vivent dans le même portail sur <body>.
 		Class: utils.TwMerge(
-			"p-1 select-content z-50 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md",
+			"p-1 select-content overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md",
 			"min-w-[var(--popover-trigger-width)] w-[var(--popover-trigger-width)]",
 			p.Class,
 		),

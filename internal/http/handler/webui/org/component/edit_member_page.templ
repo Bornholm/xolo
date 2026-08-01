@@ -5,7 +5,9 @@ import (
 	"github.com/bornholm/xolo/internal/core/rbac"
 	commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/checkbox"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/form"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/label"
 )
@@ -27,45 +29,58 @@ templ EditMemberPage(vmodel EditMemberPageVModel) {
 			<!-- Header with back button and title -->
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-4">
-					<a href={ commonComp.BaseURL(ctx, commonComp.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members")) } class="inline-flex items-center justify-center rounded-md border border-input bg-background px-2 py-2 text-sm font-medium shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 cursor-pointer">
+					@button.Button(button.Props{
+						Variant:    button.VariantOutline,
+						Size:       button.SizeIcon,
+						Href:       commonComp.BaseURLString(ctx, commonComp.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members")),
+						Attributes: templ.Attributes{"title": "Retour aux membres"},
+					}) {
 						@icon.ArrowLeft(icon.Props{Class: "h-4 w-4"})
-					</a>
-					<h1 class="text-2xl font-semibold">Modifier le membre</h1>
+					}
+					@commonComp.PageHeader(commonComp.PageHeaderProps{
+						Title: "Modifier le membre",
+					})
 				</div>
 			</div>
 			<!-- Member Info (read-only) -->
-			<div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-				<div class="flex flex-col space-y-1.5 p-6">
-					<h3 class="text-lg font-semibold">
+			@card.Card() {
+				@card.Header() {
+					@card.Title() {
 						@icon.User(icon.Props{Class: "h-4 w-4 inline mr-2"})
 						Informations membre
-					</h3>
-				</div>
-				<div class="p-6 pt-0 space-y-4">
+					}
+				}
+				@card.Content(card.ContentProps{Class: "space-y-4"}) {
 					<div class="space-y-2">
-						<label class="text-sm font-medium">Nom d'affichage</label>
+						@form.Label() {
+							Nom d'affichage
+						}
 						<div class="p-3 rounded-md border bg-muted/50">{ vmodel.Membership.User().DisplayName() }</div>
 					</div>
 					<div class="space-y-2">
-						<label class="text-sm font-medium">Email</label>
+						@form.Label() {
+							Email
+						}
 						<div class="p-3 rounded-md border bg-muted/50">{ vmodel.Membership.User().Email() }</div>
 					</div>
 					<div class="space-y-2">
-						<label class="text-sm font-medium">Membre depuis</label>
+						@form.Label() {
+							Membre depuis
+						}
 						<div class="p-3 rounded-md border bg-muted/50">{ vmodel.Membership.CreatedAt().Format("02/01/2006") }</div>
 					</div>
-				</div>
-			</div>
+				}
+			}
 			<!-- Edit Roles -->
-			<div class="rounded-lg border bg-card text-card-foreground shadow-sm">
-				<div class="flex flex-col space-y-1.5 p-6">
-					<h3 class="text-lg font-semibold">
+			@card.Card() {
+				@card.Header() {
+					@card.Title() {
 						@icon.Shield(icon.Props{Class: "h-4 w-4 inline mr-2"})
 						Rôles
-					</h3>
+					}
 					<p class="text-sm text-muted-foreground">Sélectionnez les rôles attribués à ce membre dans l'organisation.</p>
-				</div>
-				<div class="p-6 pt-0">
+				}
+				@card.Content() {
 					<form method="POST" action={ commonComp.BaseURL(ctx, commonComp.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/members/", string(vmodel.Membership.ID()), "/edit")) }>
 						<div class="space-y-4">
 							<div class="space-y-3">
@@ -103,8 +118,8 @@ templ EditMemberPage(vmodel EditMemberPageVModel) {
 							</div>
 						</div>
 					</form>
-				</div>
-			</div>
+				}
+			}
 		</div>
 	}
 }

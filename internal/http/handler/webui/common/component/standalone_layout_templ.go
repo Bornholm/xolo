@@ -31,6 +31,10 @@ func StandaloneLayout(funcs ...PageOptionFunc) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
+		// Ces écrans vivent hors de la coquille applicative : un échange de
+		// #content seul y ferait atterrir le contenu d'une page d'application dans
+		// une page autonome, et inversement. On y navigue en rechargement complet.
+		funcs = append(funcs, WithBodyAttributes(templ.Attributes{"hx-boost": "false"}))
 		templ_7745c5c3_Var2 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
@@ -43,7 +47,7 @@ func StandaloneLayout(funcs ...PageOptionFunc) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex min-h-screen items-center justify-center bg-background p-4\"><div class=\"w-full max-w-md space-y-6\"><div class=\"flex flex-col items-center gap-3 text-center\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!-- Liseré de marque, pendant du liseré de contexte de la coquille\n\t\tapplicative : ces écrans n'appartiennent à aucun des trois espaces. --> <div class=\"fixed inset-x-0 top-0 z-50 h-[3px] bg-primary\"></div><div class=\"flex min-h-screen items-center justify-center bg-background p-4\"><div id=\"content\" class=\"w-full max-w-md space-y-6\"><div class=\"flex flex-col items-center gap-3 text-center\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

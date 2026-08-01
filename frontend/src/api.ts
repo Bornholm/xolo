@@ -47,6 +47,26 @@ export function isReadonly(): boolean {
   return root?.dataset.readonly === 'true'
 }
 
+/**
+ * backLink is the way out of the editor: the list the edited entity belongs to.
+ *
+ * The same editor serves three kinds of pipeline-bearing entity, each reached
+ * through its own route, so the target cannot be a fixed relative path — from a
+ * middleware, "../../virtual-models" would land on a list that does not contain
+ * what you were editing.
+ */
+export function backLink(): { href: string; label: string } {
+  const base = getBase()
+
+  if (isPersonalContext()) {
+    return { href: `${base}/profile/personal-models`, label: 'Mes modèles' }
+  }
+  if (isMiddlewareContext()) {
+    return { href: `${base}/orgs/${orgSlug()}/admin/middlewares`, label: 'Middlewares' }
+  }
+  return { href: `${base}/orgs/${orgSlug()}/admin/virtual-models`, label: 'Modèles virtuels' }
+}
+
 export { vmId, orgSlug }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {

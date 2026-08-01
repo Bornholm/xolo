@@ -3,6 +3,8 @@ package admin
 import (
 	"log/slog"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/a-h/templ"
 	"github.com/bornholm/go-x/slogx"
@@ -25,28 +27,74 @@ func (h *Handler) getOrgsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	currency := model.DefaultCurrency
+	since := time.Now().Add(-overviewWindow)
+
+	// Usage is resolved for every organisation, then the rows are filtered: the
+	// subtitle reports on the platform as a whole, not on the current filter.
+	rows := h.overviewOrgs(ctx, orgs, since, currency)
+
 	vmodel := component.OrgsPageVModel{
-		Orgs:    orgs,
-		Success: r.URL.Query().Get("success"),
+		Currency:  currency,
+		TotalOrgs: len(rows),
+		Search:    strings.TrimSpace(r.URL.Query().Get("q")),
+		Status:    orgStatusFilter(r.URL.Query().Get("status")),
+		Success:   r.URL.Query().Get("success"),
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "orgs",
-			HomeLink:      "/admin/",
-			AdminSubtitle: "Admin. plateforme",
+			User:         user,
+			SelectedItem: "orgs",
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: "Plateforme", Href: "/admin/"},
 				{Label: "Organisations", Href: "/admin/orgs"},
 			},
-			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AdminNavigationItems(vmodel)
-			},
-			FooterItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AdminFooterItems(vmodel)
-			},
+			Context: common.ContextPlatform,
 		},
 	}
 
+	for _, row := range rows {
+		vmodel.TotalMembers += row.Members
+	}
+
+	vmodel.Orgs = filterOrgRows(rows, vmodel.Search, vmodel.Status)
+
 	templ.Handler(component.OrgsPage(vmodel)).ServeHTTP(w, r)
+}
+
+// orgStatusFilter keeps only the segment values the list knows how to apply.
+func orgStatusFilter(status string) string {
+	switch status {
+	case component.OrgStatusActive, component.OrgStatusInactive:
+		return status
+	default:
+		return ""
+	}
+}
+
+// filterOrgRows applies the search term and the status segment.
+//
+// The filtering happens in memory rather than in SQL: the console lists every
+// tenant of the platform, a set counted in tens, and the rows already had to be
+// fully materialised to carry their usage.
+func filterOrgRows(rows []component.OverviewOrg, search, status string) []component.OverviewOrg {
+	search = strings.ToLower(search)
+
+	filtered := make([]component.OverviewOrg, 0, len(rows))
+	for _, row := range rows {
+		if status == component.OrgStatusActive && !row.Active {
+			continue
+		}
+		if status == component.OrgStatusInactive && row.Active {
+			continue
+		}
+		if search != "" &&
+			!strings.Contains(strings.ToLower(row.Name), search) &&
+			!strings.Contains(strings.ToLower(row.Slug), search) {
+			continue
+		}
+		filtered = append(filtered, row)
+	}
+
+	return filtered
 }
 
 func (h *Handler) getNewOrgPage(w http.ResponseWriter, r *http.Request) {
@@ -56,21 +104,14 @@ func (h *Handler) getNewOrgPage(w http.ResponseWriter, r *http.Request) {
 	vmodel := component.OrgFormVModel{
 		IsNew: true,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "orgs",
-			HomeLink:      "/admin/",
-			AdminSubtitle: "Admin. plateforme",
+			User:         user,
+			SelectedItem: "orgs",
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: "Plateforme", Href: "/admin/"},
 				{Label: "Organisations", Href: "/admin/orgs"},
 				{Label: "Nouvelle organisation", Href: ""},
 			},
-			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AdminNavigationItems(vmodel)
-			},
-			FooterItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AdminFooterItems(vmodel)
-			},
+			Context: common.ContextPlatform,
 		},
 	}
 
@@ -130,21 +171,14 @@ func (h *Handler) getEditOrgPage(w http.ResponseWriter, r *http.Request) {
 		Org:   org,
 		IsNew: false,
 		AppLayoutVModel: common.AppLayoutVModel{
-			User:          user,
-			SelectedItem:  "orgs",
-			HomeLink:      "/admin/",
-			AdminSubtitle: "Admin. plateforme",
+			User:         user,
+			SelectedItem: "orgs",
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: "Plateforme", Href: "/admin/"},
 				{Label: "Organisations", Href: "/admin/orgs"},
 				{Label: org.Name(), Href: ""},
 			},
-			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AdminNavigationItems(vmodel)
-			},
-			FooterItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AdminFooterItems(vmodel)
-			},
+			Context: common.ContextPlatform,
 		},
 	}
 

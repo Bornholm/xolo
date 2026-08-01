@@ -1,0 +1,67 @@
+package component
+
+import (
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/code"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/copybutton"
+	"github.com/bornholm/xolo/internal/http/handler/webui/templui/utils"
+)
+
+// Snippet renders a copyable block of code.
+//
+// copybutton.CopyButton reads the text of the element named by TargetID, so the
+// two components have to agree on an id; generating it here is what lets callers
+// drop a snippet in without inventing one. `language` is a highlight.js language
+// name ("bash", "python", "json") — empty means no highlighting.
+//
+// The copy target is code.Code's own wrapper rather than an element inside it:
+// highlight.js rewrites the innerHTML of the <code> element to colour it, which
+// would take any nested marker with it. Copying the wrapper's textContent gives
+// the same characters and survives highlighting.
+templ Snippet(language, content string) {
+	{{ blockID := "snippet-" + utils.RandomID() }}
+	<div class="relative">
+		@code.Code(code.Props{
+			ID:        blockID,
+			Language:  language,
+			CodeClass: "px-3 py-2 pr-10",
+		}) {
+			{ content }
+		}
+		<div class="absolute top-1 right-1">
+			@copybutton.CopyButton(copybutton.Props{
+				TargetID: blockID,
+				Attrs:    templ.Attributes{"title": "Copier"},
+			})
+		</div>
+	</div>
+}
+
+// CopyValueButton copies a value that is not otherwise on screen — an invite
+// link behind a "Copier le lien" button, for instance.
+//
+// copybutton.CopyButton reads the text of the element it targets, so the value
+// has to exist in the DOM: it is carried by a `hidden` span, which screen
+// readers skip and which takes no space.
+templ CopyValueButton(value, label string) {
+	{{ valueID := "copyvalue-" + utils.RandomID() }}
+	<span id={ valueID } hidden>{ value }</span>
+	@copybutton.CopyButton(copybutton.Props{
+		TargetID: valueID,
+		Class:    "w-auto px-3 gap-2",
+		Attrs:    templ.Attributes{"title": label},
+	})
+}
+
+// InlineSnippet renders a single-line value (a base URL, an API key) next to its
+// copy button, without the block framing of Snippet.
+templ InlineSnippet(content string) {
+	{{ valueID := "snippet-" + utils.RandomID() }}
+	<div class="flex items-center gap-2">
+		<code id={ valueID } class="flex-1 block bg-muted rounded-md px-3 py-2 text-sm font-mono break-all">{ content }</code>
+		@copybutton.CopyButton(copybutton.Props{
+			TargetID: valueID,
+			Class:    "shrink-0",
+			Attrs:    templ.Attributes{"title": "Copier"},
+		})
+	</div>
+}

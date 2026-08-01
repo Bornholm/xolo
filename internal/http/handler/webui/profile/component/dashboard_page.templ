@@ -6,16 +6,11 @@ import (
 	"github.com/bornholm/xolo/internal/core/port"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
 	orgcomponent "github.com/bornholm/xolo/internal/http/handler/webui/org/component"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/badge"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/chart"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/pagination"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/popover"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/tooltip"
 )
 
 type OrgUsage struct {
@@ -56,6 +51,7 @@ type DashboardPageVModel struct {
 	Orgs                  map[model.OrgID]model.Organization
 	Range                 string
 	Page                  int
+	PageSize              int
 	HasNext               bool
 	SubscriptionProviders []orgcomponent.SubscriptionProviderUsage
 	ChartPerDay           []ProfileChartDataPoint
@@ -72,333 +68,192 @@ type ChartShare = common.ChartShare
 templ DashboardPage(vmodel DashboardPageVModel) {
 	@common.AppLayout(vmodel.AppLayoutVModel,
 		common.WithTitle("Usage"),
-		common.WithScripts(
-			common.Script{
-				Name:      "chart",
-				Component: chart.Script(),
-			},
-			common.Script{
-				Name:      "popover",
-				Component: popover.Script(),
-			},
-			common.Script{
-				Name:      "selectbox",
-				Component: selectbox.Script(),
-			},
-		),
 	) {
-		<div class="space-y-6">
-			<!-- Header: title + period selector + CSV export -->
-			<div class="flex items-center gap-4">
-				<h1 class="text-2xl font-semibold">Usage</h1>
-				<div class="flex-1"></div>
-				<form method="GET" class="flex items-center gap-2">
-					<label class="text-sm text-muted-foreground">Période :</label>
-					@selectbox.SelectBox(selectbox.Props{ID: "range", Class: "w-40"}) {
-						@selectbox.Trigger(selectbox.TriggerProps{
-							Name:       "range",
-							Attributes: templ.Attributes{"onchange": "this.form.submit()"},
-						}) {
-							@selectbox.Value(selectbox.ValueProps{Placeholder: "Période"})
-						}
-						@selectbox.Content(selectbox.ContentProps{NoSearch: true}) {
-							@selectbox.Group() {
-								for _, opt := range []struct{ Value, Label string }{
-									{"1d", "Dernier jour"},
-									{"7d", "7 derniers jours"},
-									{"30d", "30 derniers jours"},
-									{"90d", "3 derniers mois"},
-									{"180d", "6 derniers mois"},
-									{"365d", "Dernière année"},
-								} {
-									@selectbox.Item(selectbox.ItemProps{
-										Value:    opt.Value,
-										Selected: vmodel.Range == opt.Value || (vmodel.Range == "" && opt.Value == "7d"),
-									}) {
-										{ opt.Label }
-									}
-								}
-							}
-						}
-					}
-				</form>
+		<div class="space-y-3.5">
+			<!-- En-tête : mêmes contrôles que le tableau de bord d'organisation —
+			segments de période et export CSV — pour que les deux écrans d'usage se
+			pilotent de la même façon. -->
+			@common.PageHeader(common.PageHeaderProps{
+				Title:    "Mon usage",
+				Subtitle: personalDashboardMeta(vmodel),
+			}) {
+				@common.SegmentedNav(common.RangeSegments(vmodel.Range, func(r string) string {
+					return common.BaseURLString(ctx, common.WithPath("/usage"), common.WithValues("range", r))
+				}))
 				@button.Button(button.Props{
 					Variant: button.VariantOutline,
 					Size:    button.SizeSm,
+					Class:   "gap-1.5",
 					Href:    common.BaseURLString(ctx, common.WithPath("/usage"), common.WithValues("range", vmodel.Range, "format", "csv")),
 				}) {
-					@icon.Download(icon.Props{Class: "h-4 w-4"})
-					Export CSV
+					@icon.Download(icon.Props{Class: "size-3.5"})
+					CSV
 				}
-			</div>
-			<!-- Org quota cards -->
-			if len(vmodel.OrgUsages) > 0 {
-				<div class="space-y-3">
-				<h2 class="text-lg font-semibold">Budget Pay-as-you-go</h2>
-				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-					for _, ou := range vmodel.OrgUsages {
-						{{
-							orgName := string(ou.Membership.OrgID())
-							if ou.Membership.Org() != nil {
-								orgName = ou.Membership.Org().Name()
-							}
-							var budget *int64
-							var spent int64
-							periodLabel := "mensuel"
-							switch {
-							case ou.Quota != nil && ou.Quota.MonthlyBudget != nil:
-								budget = ou.Quota.MonthlyBudget
-								spent = ou.MonthlyCost
-								periodLabel = "mensuel"
-							case ou.Quota != nil && ou.Quota.YearlyBudget != nil:
-								budget = ou.Quota.YearlyBudget
-								spent = ou.YearlyCost
-								periodLabel = "annuel"
-							case ou.Quota != nil && ou.Quota.DailyBudget != nil:
-								budget = ou.Quota.DailyBudget
-								spent = ou.DailyCost
-								periodLabel = "journalier"
-							}
-							pct := common.UsagePercent(spent, budget)
-							barColor := "var(--chart-2)"
-							badgeVariant := badge.VariantSecondary
-							if pct > 90 {
-								barColor = "var(--destructive)"
-								badgeVariant = badge.VariantDestructive
-							} else if pct > 70 {
-								barColor = "var(--chart-3)"
-							}
-						}}
-						@card.Card() {
-							@card.Content() {
-								<div class="flex items-start justify-between gap-2 mb-3">
-									<div>
-										<div class="font-semibold">{ orgName }</div>
-										<div class="text-xs text-muted-foreground mt-1">
-											if budget != nil {
-												{ common.FormatCost(spent, ou.Currency) } / { common.FormatCost(*budget, ou.Currency) } · { fmt.Sprintf("%d%% du quota %s", pct, periodLabel) }
-											} else {
-												Aucun quota défini (utilisation illimitée)
-											}
-										</div>
-									</div>
-									if budget != nil {
-										@badge.Badge(badge.Props{Variant: badgeVariant}) {
-											{ fmt.Sprintf("%d%%", pct) }
-										}
-									} else {
-										@badge.Badge(badge.Props{Variant: badge.VariantOutline}) {
-											Illimité
-										}
-									}
-								</div>
-								if budget != nil {
-									<div class="h-1.5 rounded-full bg-muted overflow-hidden">
-										<div class="h-full rounded-full" style={ fmt.Sprintf("width: %d%%; background: %s", pct, barColor) }></div>
-									</div>
-								}
-								<div class="grid grid-cols-3 gap-4 mt-3.5 text-xs">
-									<div>
-										<div class="text-muted-foreground">Aujourd'hui</div>
-										<div class="font-semibold mt-0.5">{ common.FormatCost(ou.DailyCost, ou.Currency) }</div>
-									</div>
-									<div>
-										<div class="text-muted-foreground">Ce mois</div>
-										<div class="font-semibold mt-0.5">{ common.FormatCost(ou.MonthlyCost, ou.Currency) }</div>
-									</div>
-									<div>
-										<div class="text-muted-foreground">Cette année</div>
-										<div class="font-semibold mt-0.5">{ common.FormatCost(ou.YearlyCost, ou.Currency) }</div>
-									</div>
-								</div>
-							}
+			}
+			<!-- Budget par organisation : une seule section, comme la maquette
+			« Mon usage », et non une carte par organisation. -->
+			@common.Section() {
+				@common.SectionHeader() {
+					@common.SectionTitle() {
+						Mon budget par organisation
+					}
+				}
+				if len(vmodel.OrgUsages) > 0 {
+					@common.SectionBody(common.SectionBodyProps{Class: "space-y-3.5"}) {
+						for _, ou := range vmodel.OrgUsages {
+							@personalOrgBudget(ou)
 						}
 					}
-				</div>
-				</div>
+				} else {
+					@common.SectionEmpty(common.EmptyStateProps{
+						Icon:        icon.Building2,
+						Title:       "Aucune organisation",
+						Description: "Vos budgets apparaîtront ici dès que vous rejoindrez une organisation.",
+					})
+				}
 			}
 			<!-- Subscription providers plan usage -->
 			@orgcomponent.SubscriptionUsageSection(vmodel.SubscriptionProviders)
-			<!-- Summary cards -->
-			if vmodel.Aggregate != nil {
-				<div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-					@card.Card() {
-						@card.Content() {
-							<div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-								@icon.Send(icon.Props{Class: "h-4 w-4 text-primary"})
-								Requêtes
-							</div>
-							<p class="text-2xl font-bold mt-2">{ common.FormatCount(vmodel.Aggregate.TotalRequests) }</p>
-						}
-					}
-					@card.Card() {
-						@card.Content() {
-							<div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-								@icon.Coins(icon.Props{Class: "h-4 w-4", Color: "var(--chart-3)"})
-								Tokens
-							</div>
-							<p class="text-2xl font-bold mt-2">{ common.FormatCount(vmodel.Aggregate.TotalTokens) }</p>
-							if vmodel.Aggregate.CachedTokens > 0 && vmodel.Aggregate.PromptTokens > 0 {
-								<p class="text-xs text-muted-foreground mt-1">
-									{ fmt.Sprintf("dont %s en cache (%.0f%% des tokens prompt)", common.FormatCount(vmodel.Aggregate.CachedTokens), float64(vmodel.Aggregate.CachedTokens)/float64(vmodel.Aggregate.PromptTokens)*100) }
-								</p>
-							}
-						}
-					}
-					@card.Card() {
-						@card.Content() {
-							<div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-								@icon.Euro(icon.Props{Class: "h-4 w-4", Color: "var(--chart-2)"})
-								Coût total
-							</div>
-							if vmodel.Aggregate.TotalCost == 0 {
-								<p class="text-2xl font-bold mt-2">—</p>
-							} else {
-								<p class="text-2xl font-bold mt-2">{ common.FormatCostCompact(vmodel.Aggregate.TotalCost, vmodel.Aggregate.Currency) }</p>
-							}
-						}
-					}
-					if vmodel.TotalEnergyWh > 0 {
-						@card.Card() {
-							@card.Content() {
-								<div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-									@icon.Zap(icon.Props{Class: "h-4 w-4", Color: "var(--chart-4)"})
-									Énergie
-								</div>
-								<div class="flex items-center gap-2 mt-2">
-									<p class="text-2xl font-bold">{ common.FormatEnergyWh(vmodel.TotalEnergyWh) }</p>
-									{{ energyMessage := common.FormatEnergyToHuman(vmodel.TotalEnergyWh) }}
-									if energyMessage != "" {
-										{{ tooltipID := "energy-tooltip-" + fmt.Sprintf("%.0f", vmodel.TotalEnergyWh) }}
-										@tooltip.Tooltip() {
-											@tooltip.Trigger(tooltip.TriggerProps{For: tooltipID, Class: "cursor-help text-muted-foreground hover:text-foreground"}) {
-												@icon.CircleQuestionMark(icon.Props{Class: "h-5 w-5"})
-											}
-											@tooltip.Content(tooltip.ContentProps{ID: tooltipID, Position: tooltip.PositionRight, Class: "max-w-xs"}) {
-												<p>{ energyMessage }</p>
-											}
-										}
-									}
-								</div>
-								<p class="text-xs text-muted-foreground mt-1">estimation ±facteur ×3-5</p>
-							}
-						}
-					}
-					if vmodel.TotalCO2GramsMid > 0 {
-						@card.Card() {
-							@card.Content() {
-								<div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-									@icon.Leaf(icon.Props{Class: "h-4 w-4", Color: "oklch(0.55 0.15 140)"})
-									CO₂
-								</div>
-								<div class="flex items-center gap-2 mt-2">
-									<p class="text-2xl font-bold">{ common.FormatCO2Grams(vmodel.TotalCO2GramsMid) }</p>
-									{{ co2Message := common.FormatCO2ToCarKilometers(vmodel.TotalCO2GramsMid) }}
-									if co2Message != "" {
-										{{ tooltipID := "co2-tooltip-" + fmt.Sprintf("%.0f", vmodel.TotalCO2GramsMid) }}
-										@tooltip.Tooltip() {
-											@tooltip.Trigger(tooltip.TriggerProps{For: tooltipID, Class: "cursor-help text-muted-foreground hover:text-foreground"}) {
-												@icon.CircleQuestionMark(icon.Props{Class: "h-5 w-5"})
-											}
-											@tooltip.Content(tooltip.ContentProps{ID: tooltipID, Position: tooltip.PositionRight, Class: "max-w-xs"}) {
-												<p>{ co2Message }</p>
-											}
-										}
-									}
-								</div>
-								<p class="text-xs text-muted-foreground mt-1">estimation mix monde, ±facteur ×3-5</p>
-							}
-						}
-					}
-				</div>
+			<!-- Bande de KPI : mêmes cellules jointives que le tableau de bord
+			d'organisation, pour que les deux écrans se lisent de la même façon. Les
+			cellules d'estimation gardent leur place quand le calcul est impossible :
+			une cellule omise laisserait une piste de grille vide. -->
+			@common.KPIBand(common.KPIBandProps{Class: "grid-cols-2 md:grid-cols-3 2xl:grid-cols-5"}) {
+				@common.KPI(common.KPIProps{
+					Label: "Requêtes",
+					Value: common.FormatCount(personalRequests(vmodel.Aggregate)),
+				})
+				@common.KPI(common.KPIProps{
+					Label: "Tokens",
+					Value: common.FormatCount(personalTokens(vmodel.Aggregate)),
+					Note:  personalCachedTokensNote(vmodel.Aggregate),
+				})
+				@common.KPI(common.KPIProps{
+					Label: "Coût total",
+					Value: personalTotalCostValue(vmodel),
+				})
+				if vmodel.TotalEnergyWh > 0 {
+					@common.KPI(common.KPIProps{
+						Label: "Énergie",
+						Value: common.FormatEnergyWh(vmodel.TotalEnergyWh),
+						Note:  common.FormatEnergyToHuman(vmodel.TotalEnergyWh),
+					})
+				} else {
+					@common.KPIPending("Énergie", "Nécessite les paramètres actifs des modèles appelés")
+				}
+				if vmodel.TotalCO2GramsMid > 0 {
+					@common.KPI(common.KPIProps{
+						Label: "CO₂",
+						Value: common.FormatCO2Grams(vmodel.TotalCO2GramsMid),
+						Note:  common.FormatCO2ToCarKilometers(vmodel.TotalCO2GramsMid),
+					})
+				} else {
+					@common.KPIPending("CO₂", "Dérivé de l'estimation énergétique")
+				}
 			}
-			<!-- Bar charts: cost per day, model breakdown, and per provider -->
-			if len(vmodel.ChartPerDay) > 0 || len(vmodel.ChartSharesPerModel) > 0 || len(vmodel.ChartPerProvider) > 0 {
-				{{ trueVal := true }}
-				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+			<!-- Chaque bloc garde son cadre même sans donnée, comme le tableau de
+			bord d'organisation : un écran dont les sections disparaissent au gré du
+			contenu ne se lit plus comme un tableau de bord, et l'absence de chiffre
+			devient indiscernable d'un défaut de chargement.
+			Même grille que l'overview d'organisation : le coût par jour prend la
+			largeur restante, la répartition par modèle une colonne de 380 px. -->
+			{{ trueVal := true }}
+			<div class="grid grid-cols-1 gap-3.5 xl:grid-cols-[minmax(0,1fr)_380px]">
+				@common.Section() {
+					@common.SectionHeader() {
+						@common.SectionTitle() {
+							<!-- Le titre suit le pas du graphique : au-delà d'un
+							trimestre il agrège par mois. -->
+							{ common.CostSeriesTitle(vmodel.Range) }
+						}
+					}
 					if len(vmodel.ChartPerDay) > 0 {
-						@card.Card() {
-							@card.Header() {
-								@card.Title() {
-									Coût par jour
-								}
-							}
-							@card.Content() {
-								@chart.Chart(chart.Props{
-									Variant:     chart.VariantBar,
-									ShowXLabels: true,
-									ShowYLabels: true,
-									ShowYGrid:   true,
-									ShowLegend:  false,
-									BeginAtZero: &trueVal,
-									Class:       "h-64",
-									Data: chart.Data{
-										Labels: common.ChartLabels(vmodel.ChartPerDay),
-										Datasets: []chart.Dataset{{
-											Label:           "Coût",
-											Data:            common.ChartValues(vmodel.ChartPerDay),
-											BackgroundColor: "rgba(99,102,241,0.8)",
-										}},
-									},
-								})
-							}
+						@common.SectionBody() {
+							@chart.Chart(chart.Props{
+								Variant:     chart.VariantBar,
+								ShowXLabels: true,
+								ShowYLabels: true,
+								ShowYGrid:   true,
+								ShowLegend:  false,
+								BeginAtZero: &trueVal,
+								Class:       "h-64",
+								Data: chart.Data{
+									Labels: common.ChartLabels(vmodel.ChartPerDay),
+									Datasets: []chart.Dataset{{
+										Label:           personalCurrency(vmodel),
+										Data:            common.ChartValues(vmodel.ChartPerDay),
+										BackgroundColor: common.ChartColor(0),
+									}},
+								},
+							})
+						}
+					} else {
+						@common.SectionEmpty(common.EmptyStateProps{
+							Icon:        icon.ChartColumn,
+							Title:       "Aucune consommation sur la période",
+							Description: "Vos requêtes facturées apparaîtront ici dès votre premier appel.",
+						})
+					}
+				}
+				@common.Section() {
+					@common.SectionHeader() {
+						@common.SectionTitle() {
+							Répartition par modèle
 						}
 					}
 					if len(vmodel.ChartSharesPerModel) > 0 {
-						@card.Card() {
-							@card.Header() {
-								@card.Title() {
-									Répartition par modèle
-								}
-							}
-							@card.Content() {
-								for _, share := range vmodel.ChartSharesPerModel {
-									<div class="flex items-center gap-2.5 py-1.5">
-										<span class="w-2.5 h-2.5 rounded-xs shrink-0" style={ fmt.Sprintf("background: %s", share.Color) }></span>
-										<span class="text-sm font-mono text-foreground w-36 overflow-hidden text-ellipsis whitespace-nowrap">{ share.Label }</span>
-										<div class="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-											<div class="h-full rounded-full" style={ fmt.Sprintf("width: %d%%; background: %s", share.Pct, share.Color) }></div>
-										</div>
-										<span class="text-xs text-muted-foreground w-10 text-right">{ fmt.Sprintf("%d%%", share.Pct) }</span>
-									</div>
-								}
+						@common.SectionBody() {
+							for _, share := range vmodel.ChartSharesPerModel {
+								@common.ChartShareRow(share, "w-28")
 							}
 						}
+					} else {
+						@common.SectionEmpty(common.EmptyStateProps{
+							Icon:        icon.BrainCircuit,
+							Title:       "Aucun modèle appelé",
+							Description: "La répartition se remplit dès qu'une requête cite un modèle.",
+						})
 					}
-					if len(vmodel.ChartPerProvider) > 0 {
-						@card.Card() {
-							@card.Header() {
-								@card.Title() {
-									Coût par fournisseur
-								}
-							}
-							@card.Content() {
-								@chart.Chart(chart.Props{
-									Variant:     chart.VariantBar,
-									ShowXLabels: true,
-									ShowYLabels: true,
-									ShowYGrid:   true,
-									ShowLegend:  false,
-									BeginAtZero: &trueVal,
-									Class:       "h-64",
-									Data: chart.Data{
-										Labels: common.ChartLabels(vmodel.ChartPerProvider),
-										Datasets: []chart.Dataset{{
-											Label:           "Coût",
-											Data:            common.ChartValues(vmodel.ChartPerProvider),
-											BackgroundColor: "rgba(168,85,247,0.8)",
-										}},
-									},
-								})
-							}
+				}
+			</div>
+			<!-- Coût par fournisseur : liste classée, comme l'overview
+			d'organisation — un axe de catégories tronquerait les noms. -->
+			@common.Section() {
+				@common.SectionHeader() {
+					@common.SectionTitle() {
+						Coût par fournisseur
+					}
+				}
+				if len(vmodel.ChartPerProvider) > 0 {
+					@common.SectionBody() {
+						for _, row := range common.RankedRows(vmodel.ChartPerProvider) {
+							@common.RankedRow(row, common.RankedRowProps{
+								Mono:  true,
+								Value: common.FormatCost(int64(row.Value*1_000_000), personalCurrency(vmodel)),
+							})
 						}
 					}
-				</div>
+				} else {
+					@common.SectionEmpty(common.EmptyStateProps{
+						Icon:        icon.Server,
+						Title:       "Aucun fournisseur sollicité",
+						Description: "Le coût se ventile par fournisseur dès la première requête servie.",
+					})
+				}
 			}
-			<!-- Usage records table -->
-			if len(vmodel.Records) > 0 {
-				@card.Card() {
-					@card.Content() {
+			<!-- Requêtes récentes : le tableau garde son cadre et son en-tête même
+			vide, comme sur l'overview d'organisation. -->
+			@common.Section() {
+				@common.SectionHeader() {
+					@common.SectionTitle() {
+						Requêtes récentes
+					}
+					<span class="ml-auto font-mono text-2xs text-muted-foreground">
+						{ personalRecordsRangeLabel(vmodel) }
+					</span>
+				}
+				if len(vmodel.Records) > 0 {
+					<div class="overflow-x-auto">
 						@table.Table() {
 							@table.Header() {
 								@table.Head() {
@@ -434,13 +289,9 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 										}
 										@table.Cell() {
 											if org, ok := vmodel.Orgs[dr.Record.OrgID()]; ok {
-												@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
-													{ org.Name() }
-												}
+												@common.Badge(common.ToneNeutral, org.Name())
 											} else {
-												@badge.Badge(badge.Props{Variant: badge.VariantSecondary}) {
-													{ string(dr.Record.OrgID()) }
-												}
+												@common.Badge(common.ToneNeutral, string(dr.Record.OrgID()))
 											}
 										}
 										@table.Cell() {
@@ -506,8 +357,16 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 								}
 							}
 						}
-					}
+					</div>
+				} else {
+					@common.SectionEmpty(common.EmptyStateProps{
+						Icon:        icon.Receipt,
+						Title:       "Aucune requête sur la période",
+						Description: "Le détail de vos appels s'affichera ici, du plus récent au plus ancien.",
+					})
 				}
+			}
+			if len(vmodel.Records) > 0 {
 				@pagination.Pagination() {
 					@pagination.Content() {
 						@pagination.Previous(pagination.PreviousProps{
@@ -525,4 +384,27 @@ templ DashboardPage(vmodel DashboardPageVModel) {
 			}
 		</div>
 	}
+}
+
+// personalOrgBudget renders one line of « Mon budget par organisation » : le nom
+// de l'organisation, les rôles qu'on y tient, la dépense sur le plafond, puis la
+// jauge — la même que celle du tableau de bord d'organisation, donc les mêmes
+// seuils de couleur.
+templ personalOrgBudget(ou OrgUsage) {
+	{{ vm := newPersonalOrgBudget(ou) }}
+	<div>
+		<div class="mb-1.5 flex flex-wrap items-baseline gap-2">
+			<span class="text-sm font-semibold">{ vm.Name }</span>
+			if vm.Roles != "" {
+				<span class="text-xs text-muted-foreground">{ vm.Roles }</span>
+			}
+			if vm.Budget == nil {
+				@common.Badge(common.ToneNeutral, "Illimité")
+			}
+			<span class="ml-auto tnum text-xs text-muted-foreground">{ vm.SpentLabel() }</span>
+		</div>
+		if vm.Budget != nil {
+			@common.BudgetGauge(vm.Percent, 0, "")
+		}
+	</div>
 }

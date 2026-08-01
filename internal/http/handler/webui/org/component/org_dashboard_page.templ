@@ -12,12 +12,10 @@ import (
 templ OrgDashboard(vmodel OrgDashboardVModel) {
 	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle(vmodel.Org.Name())) {
 		<div class="space-y-6">
-			<div class="flex items-center justify-between">
-				<div>
-					<h1 class="text-2xl font-semibold">{ vmodel.Org.Name() }</h1>
-					<p class="text-sm text-muted-foreground">{ vmodel.Org.Description() }</p>
-				</div>
-			</div>
+			@common.PageHeader(common.PageHeaderProps{
+				Title:    vmodel.Org.Name(),
+				Subtitle: vmodel.Org.Description(),
+			})
 			@separator.Separator()
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 				@card.Card() {

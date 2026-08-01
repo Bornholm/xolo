@@ -73,6 +73,17 @@ var writeImplies = map[Permission]Permission{
 	PermEventsWrite:        PermEventsReadAll,
 }
 
+// Implies returns the permission that `code` grants implicitly, if any.
+//
+// The UI needs this to explain itself: a permission matrix that lets a role's
+// permissions be toggled must distinguish a permission that was granted from one
+// that comes along with another, or unchecking the latter would appear to do
+// nothing — NewPermissionSet re-derives it on the next read.
+func Implies(code Permission) (Permission, bool) {
+	implied, ok := writeImplies[code]
+	return implied, ok
+}
+
 // PermissionDef describes a single permission for display in the UI.
 type PermissionDef struct {
 	Code  Permission

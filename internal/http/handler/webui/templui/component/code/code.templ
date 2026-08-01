@@ -12,14 +12,13 @@ type Props struct {
 	CodeClass string
 }
 
+// Code renders a syntax-highlighted block.
+//
+// Upstream emits the highlight.js <link> and <script> here, once per block and
+// pointing at cdnjs. Both were moved to Script(): Xolo must run offline (see the
+// self-hosted fonts in templui.css), and Script() is registered once per page in
+// common.baseScripts() instead of being repeated for every block on the page.
 templ Code(props ...Props) {
-	// Highlight.js with theme switching
-	<link
-		id="highlight-theme"
-		href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css"
-		rel="stylesheet"
-	/>
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 	{{ var p Props }}
 	if len(props) > 0 {
 		{{ p = props[0] }}
@@ -52,5 +51,10 @@ templ Code(props ...Props) {
 }
 
 templ Script() {
+	// highlight.js is vendored under assets/vendor/ rather than pulled from a CDN.
+	// Only the light theme is served: the product is light-only, so code.min.js
+	// has no theme to switch.
+	<link id="highlight-theme" rel="stylesheet" href={ utils.ScriptURL("/assets/vendor/highlight-atom-one-light.min.css") }/>
+	<script defer nonce={ templ.GetNonce(ctx) } src={ utils.ScriptURL("/assets/vendor/highlight.min.js") }></script>
 	<script defer nonce={ templ.GetNonce(ctx) } src={ utils.ScriptURL("/assets/js/code.min.js") }></script>
 }

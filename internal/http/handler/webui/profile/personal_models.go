@@ -30,27 +30,39 @@ func (h *Handler) getPersonalModelsPage(w http.ResponseWriter, r *http.Request) 
 
 	vmodel := component.PersonalModelsPageVModel{
 		VirtualModels: vms,
+		Selected:      selectedPersonalModel(vms, r.URL.Query().Get("vm")),
 		BaseURL:       baseURL.String(),
 		Success:       r.URL.Query().Get("success"),
 		Error:         r.URL.Query().Get("error"),
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "personal-models",
-			HomeLink:     "/usage",
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: "Espace personnel", Href: "/usage"},
 				{Label: "Mes modèles", Href: ""},
 			},
-			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppNavigationItems(vmodel)
-			},
-			FooterItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppFooterItems(vmodel)
-			},
+			Context: common.ContextPersonal,
 		},
 	}
 
 	templ.Handler(component.PersonalModelsPage(vmodel)).ServeHTTP(w, r)
+}
+
+// selectedPersonalModel resolves the model the right pane previews: the one
+// named by `?vm=`, or the first of the list so the pane is never empty when
+// there is something to show.
+func selectedPersonalModel(vms []model.PersonalVirtualModel, id string) model.PersonalVirtualModel {
+	if len(vms) == 0 {
+		return nil
+	}
+
+	for _, vm := range vms {
+		if string(vm.ID()) == id {
+			return vm
+		}
+	}
+
+	return vms[0]
 }
 
 func (h *Handler) getNewPersonalModelPage(w http.ResponseWriter, r *http.Request) {
@@ -62,18 +74,12 @@ func (h *Handler) getNewPersonalModelPage(w http.ResponseWriter, r *http.Request
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "personal-models",
-			HomeLink:     "/usage",
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: "Espace personnel", Href: "/usage"},
 				{Label: "Mes modèles", Href: "/profile/personal-models"},
 				{Label: "Nouveau", Href: ""},
 			},
-			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppNavigationItems(vmodel)
-			},
-			FooterItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppFooterItems(vmodel)
-			},
+			Context: common.ContextPersonal,
 		},
 	}
 
@@ -142,18 +148,12 @@ func (h *Handler) getEditPersonalModelPage(w http.ResponseWriter, r *http.Reques
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "personal-models",
-			HomeLink:     "/usage",
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: "Espace personnel", Href: "/usage"},
 				{Label: "Mes modèles", Href: "/profile/personal-models"},
 				{Label: vm.Name(), Href: ""},
 			},
-			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppNavigationItems(vmodel)
-			},
-			FooterItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppFooterItems(vmodel)
-			},
+			Context: common.ContextPersonal,
 		},
 	}
 
@@ -267,19 +267,13 @@ func (h *Handler) getPersonalPipelineEditorPage(w http.ResponseWriter, r *http.R
 		AppLayoutVModel: common.AppLayoutVModel{
 			User:         user,
 			SelectedItem: "personal-models",
-			HomeLink:     "/usage",
 			FullBleed:    true,
 			Breadcrumbs: []common.BreadcrumbItem{
 				{Label: "Espace personnel", Href: "/usage"},
 				{Label: "Mes modèles", Href: "/profile/personal-models"},
 				{Label: vm.Name(), Href: ""},
 			},
-			NavigationItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppNavigationItems(vmodel)
-			},
-			FooterItems: func(vmodel common.AppLayoutVModel) templ.Component {
-				return common.AppFooterItems(vmodel)
-			},
+			Context: common.ContextPersonal,
 		},
 	}
 

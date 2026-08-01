@@ -6,7 +6,6 @@ import (
 	"github.com/bornholm/xolo/internal/core/model"
 	"github.com/bornholm/xolo/internal/core/rbac"
 	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/form"
 	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
@@ -25,23 +24,31 @@ func eventsMaxValue(vmodel OrgSettingsPageVModel) string {
 
 // ── Settings Page ─────────────────────────────────────────────────────────────
 templ OrgSettingsPage(vmodel OrgSettingsPageVModel) {
-	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Paramètres — "+vmodel.Org.Name()), common.WithScripts(common.Script{Name: "selectbox", Component: selectbox.Script()})) {
+	@common.AppLayout(vmodel.AppLayoutVModel, common.WithTitle("Paramètres — "+vmodel.Org.Name())) {
 		{{ readonly := !common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermSettingsWrite) }}
-		<div class="space-y-6">
-			<h1 class="text-2xl font-semibold">Paramètres</h1>
+		<div class="max-w-3xl">
+			@common.PageHeader(common.PageHeaderProps{
+				Title:    "Paramètres",
+				Subtitle: "Devise de facturation, partage du budget entre membres et rétention des événements.",
+			})
 			if vmodel.Success != "" {
-				@alert.Alert(alert.Props{Variant: alert.VariantDefault}) {
-					@alert.Description() {
-						Paramètres enregistrés.
-					}
-				}
+				<div class="mb-3.5">
+					@common.InfoBanner(common.TonePositive, "Paramètres enregistrés.")
+				</div>
 			}
-			<form method="POST" action={ templ.SafeURL(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/settings"))) } class="space-y-4">
-				<div class="bg-card shadow-xs w-full border text-card-foreground rounded-lg">
-					<div class="p-6">
-						<div class="space-y-4 pt-4">
-							<div class="space-y-2">
-								@form.Label(form.LabelProps{}) { Devise préférée }
+			<form method="POST" action={ templ.SafeURL(common.BaseURLString(ctx, common.WithPath("/orgs/", vmodel.Org.Slug(), "/admin/settings"))) }>
+				@common.Section() {
+					@common.SectionHeader() {
+						@common.SectionTitle() {
+							Général
+						}
+					}
+					@common.SectionBody() {
+						<div class="space-y-3.5">
+							@form.Item() {
+								@form.Label(form.LabelProps{}) {
+									Devise préférée 
+								}
 								@selectbox.SelectBox(selectbox.Props{ID: "org_currency"}) {
 									@selectbox.Trigger(selectbox.TriggerProps{Name: "currency", Disabled: readonly}) {
 										@selectbox.Value(selectbox.ValueProps{Placeholder: "Sélectionner une devise"})
@@ -56,16 +63,20 @@ templ OrgSettingsPage(vmodel OrgSettingsPageVModel) {
 										}
 									}
 								}
-								@form.Description() { Utilisée pour les quotas et l'affichage des coûts. }
-							</div>
-							<div class="space-y-2">
+								@form.Description() {
+									Utilisée pour les quotas et l'affichage des coûts.
+								}
+							}
+							@form.Item() {
 								@form.ItemFlex() {
 									@switchcomp.Switch(switchcomp.Props{ID: "share_quota_equally", Name: "share_quota_equally", Checked: vmodel.Org.ShareQuotaEqually(), Disabled: readonly})
 									@form.Label(form.LabelProps{For: "share_quota_equally"}) {
 										Répartir le budget de l'organisation équitablement entre les membres
 									}
 								}
-								@form.Description() { S'applique aux membres sans quota individuel défini. }
+								@form.Description() {
+									S'applique aux membres sans quota individuel défini. 
+								}
 								if vmodel.MemberCount > 0 {
 									@form.Description() {
 										Aperçu ({ strconv.Itoa(vmodel.MemberCount) } membres) :
@@ -80,9 +91,11 @@ templ OrgSettingsPage(vmodel OrgSettingsPageVModel) {
 										}
 									}
 								}
-							</div>
-							<div class="space-y-2">
-								@form.Label(form.LabelProps{For: "events_max"}) { Rétention des événements (nombre max conservé) }
+							}
+							@form.Item() {
+								@form.Label(form.LabelProps{For: "events_max"}) {
+									Rétention des événements (nombre max conservé) 
+								}
 								@input.Input(input.Props{
 									ID:          "events_max",
 									Name:        "events_max",
@@ -94,18 +107,59 @@ templ OrgSettingsPage(vmodel OrgSettingsPageVModel) {
 								@form.Description() {
 									Événements non épinglés conservés (fenêtre glissante). Vide = valeur par défaut ({ strconv.Itoa(vmodel.EventsDefault) }). Plafond global : { strconv.Itoa(vmodel.EventsGlobalCap) }.
 								}
-							</div>
-						</div>
-					</div>
-					if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermSettingsWrite) {
-						<div class="pt-0 flex items-center p-6">
-							@button.Button(button.Props{Type: button.TypeSubmit}) {
-								Enregistrer
 							}
 						</div>
 					}
-				</div>
+					if common.HasPermission(ctx, vmodel.Org.ID(), rbac.PermSettingsWrite) {
+						@common.SectionHeader(common.SectionHeaderProps{Class: "border-b-0 border-t"}) {
+							@button.Button(button.Props{Type: button.TypeSubmit, Size: button.SizeSm}) {
+								Enregistrer
+							}
+						}
+					}
+				}
 			</form>
+			@orgDangerZone(vmodel)
 		</div>
 	}
+}
+
+// orgDangerZone renders the destructive corner of the settings screen.
+//
+// TODO(rework-ux): the mockup offers deleting the organisation. No route exposes
+// port.OrgStore.DeleteOrg outside the platform console, and cascading it —
+// providers, virtual models, applications, usage records, quotas — has never
+// been specified. The card states what would happen and points at the console
+// (cf. lot 7 du plan).
+templ orgDangerZone(vmodel OrgSettingsPageVModel) {
+	<div class="mt-3.5">
+		@common.Section(common.SectionProps{Class: "border-destructive/40"}) {
+			@common.SectionHeader(common.SectionHeaderProps{Class: "border-destructive/40"}) {
+				@common.SectionTitle() {
+					Zone de danger
+				}
+				<span class="ml-auto">
+					@common.ComingSoon()
+				</span>
+			}
+			@common.SectionBody(common.SectionBodyProps{Class: "flex flex-wrap items-center gap-3.5"}) {
+				<p class="min-w-0 flex-1 text-sm text-muted-foreground">
+					La suppression de l'organisation emporterait ses membres, ses
+					fournisseurs, ses modèles virtuels, ses applications et son historique
+					d'usage. Elle n'est pas encore proposée ici : contactez un
+					administrateur de la plateforme.
+				</p>
+				@button.Button(button.Props{
+					Variant:  button.VariantDestructive,
+					Size:     button.SizeSm,
+					Disabled: true,
+					Attributes: templ.Attributes{
+						"title": "Bientôt disponible",
+					},
+				}) {
+					Supprimer l'organisation
+				}
+			}
+		}
+	</div>
 }

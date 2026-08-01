@@ -20,48 +20,46 @@ type LoginPageVModel struct {
 	APIDocURL string
 }
 
-// LoginPage renders a centered card layout for authentication.
+// LoginPage renders the authentication screen. It goes through the shared
+// standalone shell (brand, centred column, legal footer) instead of building its
+// own page chrome.
 templ LoginPage(vmodel LoginPageVModel) {
-	@component.Page(component.WithTitle("Authentification")) {
-		<div class="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-			@templuicard.Card(templuicard.Props{Class: "w-full max-w-sm"}) {
-				@templuicard.Header(templuicard.HeaderProps{Class: "text-center space-y-2"}) {
-					<div class="mx-auto flex h-18 w-18 items-center justify-center rounded-full bg-primary/5">
-						@component.Logo("h-14 w-14 text-primary", "height:80%")
-					</div>
-					@templuicard.Title() {
-						Xolo 
-					}
-					@templuicard.Description() {
-						Veuillez vous authentifier 
-					}
+	@component.StandaloneLayout(component.WithTitle("Authentification")) {
+		@templuicard.Card() {
+			@templuicard.Header(templuicard.HeaderProps{Class: "text-center"}) {
+				@templuicard.Title() {
+					Connexion
 				}
-				@templuicard.Content(templuicard.ContentProps{Class: "space-y-3"}) {
-					for _, p := range vmodel.Providers {
-						@templuibutton.Button(templuibutton.Props{
-							Variant:  templuibutton.VariantOutline,
-							Class:    "w-full justify-center gap-2",
-							Href:     fmt.Sprintf("/auth/oidc/providers/%s", p.ID),
-							Disabled: false,
-							Attributes: templ.Attributes{
-								"hx-boost": "false",
-							},
-						}) {
-							{{ providerIcon := p.Icon }}
-							if providerIcon == "" {
-								{{ providerIcon = "log-in" }}
-							}
-							@icon.Icon(providerIcon)(icon.Props{Class: "h-4 w-4"})
-							{ p.Label }
-						}
-					}
-				}
-				@templuicard.Footer(templuicard.FooterProps{Class: "justify-center"}) {
-					<p class="text-xs text-muted-foreground">
-						Xolo { vmodel.Version } - 2026
-					</p>
+				@templuicard.Description() {
+					Veuillez vous authentifier auprès de votre fournisseur d'identité.
 				}
 			}
-		</div>
+			@templuicard.Content(templuicard.ContentProps{Class: "space-y-3"}) {
+				for _, p := range vmodel.Providers {
+					@templuibutton.Button(templuibutton.Props{
+						Variant: templuibutton.VariantOutline,
+						Class:   "w-full justify-center gap-2",
+						Href:    fmt.Sprintf("/auth/oidc/providers/%s", p.ID),
+						// The provider hand-off leaves the application: a boosted swap
+						// would have nothing to put back into #content.
+						Attributes: templ.Attributes{
+							"hx-boost": "false",
+						},
+					}) {
+						{{ providerIcon := p.Icon }}
+						if providerIcon == "" {
+							{{ providerIcon = "log-in" }}
+						}
+						@icon.Icon(providerIcon)(icon.Props{Class: "h-4 w-4"})
+						{ p.Label }
+					}
+				}
+			}
+			if vmodel.Version != "" {
+				@templuicard.Footer(templuicard.FooterProps{Class: "justify-center"}) {
+					<p class="font-mono text-xs text-muted-foreground">{ vmodel.Version }</p>
+				}
+			}
+		}
 	}
 }

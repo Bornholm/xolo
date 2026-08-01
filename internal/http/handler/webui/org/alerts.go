@@ -75,13 +75,13 @@ func (h *Handler) getAlertsPage(w http.ResponseWriter, r *http.Request) {
 
 	personal := personalView(r)
 	vmodel := component.AlertsPageVModel{
-		Org:            org,
-		Alerts:         alerts,
-		CanWriteOrg:    canWriteOrg,
-		CanOwnAlerts:   canOwnAlerts,
-		View:           viewParam(personal),
-		Success:        r.URL.Query().Get("success"),
-		AppLayoutVModel: h.eventsLayout(org, user, personal, []common.BreadcrumbItem{{Label: "Alertes", Href: ""}}),
+		Org:             org,
+		Alerts:          alerts,
+		CanWriteOrg:     canWriteOrg,
+		CanOwnAlerts:    canOwnAlerts,
+		View:            viewParam(personal),
+		Success:         r.URL.Query().Get("success"),
+		AppLayoutVModel: h.eventsLayout(org, user, personal, eventsNavAlerts, []common.BreadcrumbItem{{Label: "Alertes", Href: ""}}),
 	}
 
 	templ.Handler(component.AlertsPage(vmodel)).ServeHTTP(w, r)
@@ -361,7 +361,7 @@ func (h *Handler) newAlertFormVModel(ctx context.Context, org model.Organization
 		FormComparator: string(model.ComparatorGT),
 		FormFor:        "0s",
 		FormEnabled:    true,
-		AppLayoutVModel: h.eventsLayout(org, user, personal, []common.BreadcrumbItem{
+		AppLayoutVModel: h.eventsLayout(org, user, personal, eventsNavAlerts, []common.BreadcrumbItem{
 			{Label: "Alertes", Href: "/orgs/" + orgSlug + "/events/alerts"},
 			{Label: label, Href: ""},
 		}),
