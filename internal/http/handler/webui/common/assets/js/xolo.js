@@ -45,18 +45,26 @@
   // le cas de la recherche du sélecteur de contexte, qui ne remplace que sa
   // propre liste de résultats. Le fermer reviendrait à faire disparaître le
   // champ sous les doigts de l'utilisateur à la première lettre saisie.
-  document.addEventListener("htmx:beforeSwap", function (event) {
-    if (!window.tui || !window.tui.popover) return;
-    var swapped = event.detail && event.detail.target;
-    document
-      .querySelectorAll('[data-tui-popover-open="true"][data-tui-popover-id]')
-      .forEach(function (surface) {
-        if (swapped && surface.contains(swapped)) return;
-        window.tui.popover.close(surface.id);
-      });
-  });
+  function attrValue(value) {
+    return value.replace(/["\\]/g, "\\$&");
+  }
 
-  // Purge du portail après un échange HTMX.
+  function portalContainer() {
+    return document.querySelector("[data-tui-popover-portal-container]");
+  }
+
+  function portaledSurfaces() {
+    var portal = portalContainer();
+    return portal ? portal.querySelectorAll("[data-tui-popover-id]") : [];
+  }
+
+  function triggerOf(surface) {
+    var id = surface.getAttribute("data-tui-popover-id");
+    if (!id) return null;
+    return document.querySelector('[data-tui-popover-trigger="' + attrValue(id) + '"]');
+  }
+
+  // Marque, *avant* l'échange, les surfaces dont la page d'origine part avec lui.
   //
   // Fermer ne suffit pas : `open` **déplace** le contenu du popover dans le
   // portail et `close` ne l'en ressort jamais. Le nœud survit donc à l'échange
@@ -73,58 +81,85 @@
   // surface visible ne se ferme plus. C'est le symptôme « après quelques clics,
   // le filtre ne se ferme ni ne sélectionne plus ».
   //
-  // Deux cas se règlent ici, et rien d'autre ne les distingue de façon fiable :
-  //   - un jumeau du même id existe hors du portail : le nœud portalisé est la
-  //     dépouille de la page précédente ;
-  //   - plus aucun déclencheur ne pointe vers l'id : la surface n'a plus de
-  //     page d'origine du tout (navigation vers un écran qui ne la rend pas, ou
-  //     selectbox à id aléatoire imbriqué dans un panneau lui-même purgé).
+  // Le critère est le déclencheur, pas la surface : une surface dont le
+  // déclencheur est dans la région échangée voit sa page disparaître, et le
+  // serveur en rend forcément un exemplaire neuf dans la réponse. Rien d'autre
+  // n'est retiré — surtout pas sur un simple « plus aucun déclencheur ne pointe
+  // vers cet id ». Les surfaces de la coquille (#context-switcher) ne vivent pas
+  // dans #content : elles ne sont jamais re-rendues, seulement rafraîchies hors
+  // bande, et hors bande ne sait que *remplacer* une cible existante. En
+  // supprimer une serait sans retour — le sélecteur de contexte resterait mort
+  // jusqu'au prochain rechargement complet.
   //
-  // Le balayage se répète tant qu'il retire quelque chose : purger un panneau
-  // orphelin retire aussi le déclencheur des surfaces qu'il contenait, ce qui
-  // ne les rend orphelines qu'au tour suivant.
-  function attrValue(value) {
-    return value.replace(/["\\]/g, "\\$&");
+  // Le marquage se répète tant qu'il progresse : un panneau condamné emporte le
+  // déclencheur des surfaces qu'il hébergeait (le selectbox du panneau de
+  // filtres de l'usage), qui ne deviennent condamnées qu'au tour suivant.
+  var DOOMED = "data-xolo-portal-doomed";
+
+  function markDoomed(swapped) {
+    if (!swapped) return;
+    var progressed;
+    do {
+      progressed = false;
+      Array.prototype.forEach.call(portaledSurfaces(), function (surface) {
+        if (surface.hasAttribute(DOOMED)) return;
+        var trigger = triggerOf(surface);
+        if (!trigger) return;
+        var doomedHost = trigger.closest("[" + DOOMED + "]");
+        if (!swapped.contains(trigger) && !doomedHost) return;
+        surface.setAttribute(DOOMED, "");
+        progressed = true;
+      });
+    } while (progressed);
   }
 
+  // Retire du portail ce qui est condamné, ou ce dont le remplaçant est déjà
+  // visible ailleurs dans le document — deux cas où la suppression ne peut pas
+  // laisser l'interface sans surface.
   function purgePortal() {
-    var portal = document.querySelector("[data-tui-popover-portal-container]");
+    var portal = portalContainer();
     if (!portal) return;
+    Array.prototype.forEach.call(portaledSurfaces(), function (surface) {
+      var id = surface.getAttribute("data-tui-popover-id");
+      if (!id) return;
 
-    var removed;
-    do {
-      removed = false;
-      portal.querySelectorAll("[data-tui-popover-id]").forEach(function (surface) {
-        var id = surface.getAttribute("data-tui-popover-id");
-        if (!id) return;
-
-        var stale = false;
+      var stale = surface.hasAttribute(DOOMED);
+      if (!stale) {
         document
           .querySelectorAll('[data-tui-popover-id="' + attrValue(id) + '"]')
           .forEach(function (twin) {
             if (twin !== surface && !portal.contains(twin)) stale = true;
           });
-        if (!stale) {
-          stale = !document.querySelector('[data-tui-popover-trigger="' + attrValue(id) + '"]');
-        }
-        if (!stale) return;
+      }
+      if (!stale) return;
 
-        // Passe par l'API du composant tant que le nœud est encore là : c'est
-        // elle qui libère la boucle de repositionnement enregistrée sous cet id.
-        if (window.tui && window.tui.popover) window.tui.popover.close(id, true);
-        surface.remove();
-        removed = true;
-      });
-    } while (removed);
+      // Passe par l'API du composant tant que le nœud est encore là : c'est elle
+      // qui libère la boucle de repositionnement enregistrée sous cet id.
+      if (window.tui && window.tui.popover) window.tui.popover.close(id, true);
+      surface.remove();
+    });
   }
+
+  document.addEventListener("htmx:beforeSwap", function (event) {
+    var swapped = event.detail && event.detail.target;
+    if (window.tui && window.tui.popover) {
+      document
+        .querySelectorAll('[data-tui-popover-open="true"][data-tui-popover-id]')
+        .forEach(function (surface) {
+          if (swapped && surface.contains(swapped)) return;
+          window.tui.popover.close(surface.id);
+        });
+    }
+    markDoomed(swapped);
+  });
 
   document.addEventListener("htmx:afterSwap", purgePortal);
 
   // La restauration d'historique ne passe par aucun échange : HTMX réécrit le
   // `innerHTML` de <body> — portail compris — depuis l'instantané pris avant la
   // navigation. Les surfaces qu'il contenait reviennent donc en double avec
-  // celles du #content restauré. Les fermer d'abord remet à zéro l'état ouvert
-  // figé dans l'instantané.
+  // celles du #content restauré, et c'est le doublon visible qui les départage.
+  // Les fermer d'abord remet à zéro l'état ouvert figé dans l'instantané.
   document.addEventListener("htmx:historyRestore", function () {
     if (window.tui && window.tui.popover) window.tui.popover.closeAll();
     purgePortal();
