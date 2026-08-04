@@ -241,30 +241,22 @@ claude`
 }
 
 func openCodeConfigExample(baseURL string, modelUsages []ModelUsage) string {
-	type modelLimit struct {
-		Context int64 `json:"context,omitempty"`
-		Output  int64 `json:"output,omitempty"`
-	}
-	type modelEntry struct {
-		Name  string      `json:"name"`
-		Limit *modelLimit `json:"limit,omitempty"`
-	}
 	type providerOptions struct {
 		BaseURL string `json:"baseURL"`
 		APIKey  string `json:"apiKey"`
 	}
 	type providerEntry struct {
-		NPM     string                `json:"npm"`
-		Name    string                `json:"name"`
-		Options providerOptions       `json:"options"`
-		Models  map[string]modelEntry `json:"models"`
+		NPM     string                         `json:"npm"`
+		Name    string                         `json:"name"`
+		Options providerOptions                `json:"options"`
+		Models  map[string]model.OpenCodeModelEntry `json:"models"`
 	}
 	type configRoot struct {
 		Schema   string                   `json:"$schema"`
 		Provider map[string]providerEntry `json:"provider"`
 	}
 
-	models := make(map[string]modelEntry)
+	models := make(map[string]model.OpenCodeModelEntry)
 	for _, mu := range modelUsages {
 		if mu.Model.Capabilities().Embeddings {
 			continue
@@ -276,20 +268,12 @@ func openCodeConfigExample(baseURL string, modelUsages []ModelUsage) string {
 			name = mu.Model.ProxyName()
 		}
 
-		entry := modelEntry{Name: name}
-
-		if ctx := mu.Model.ContextWindow(); ctx > 0 {
-			if entry.Limit == nil {
-				entry.Limit = &modelLimit{}
-			}
-			entry.Limit.Context = ctx
-		}
-		if out := mu.Model.OutputWindow(); out > 0 {
-			if entry.Limit == nil {
-				entry.Limit = &modelLimit{}
-			}
-			entry.Limit.Output = out
-		}
+		entry := model.OpenCodeEntry(
+			mu.Model.Capabilities(),
+			mu.Model.ContextWindow(),
+			mu.Model.OutputWindow(),
+		)
+		entry.Name = name
 
 		models[name] = entry
 	}
