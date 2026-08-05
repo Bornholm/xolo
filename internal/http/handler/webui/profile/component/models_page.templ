@@ -133,7 +133,7 @@ templ apiExample(language, title, snippet string) {
 
 templ modelCard(mu ModelUsage) {
 	@card.Card() {
-		@card.Content(card.ContentProps{Class: "flex items-center gap-4"}) {
+		@card.Content(card.ContentProps{Class: "flex items-start gap-4"}) {
 			<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent">
 				if mu.Model.IsVirtual() {
 					@icon.Network(icon.Props{Size: 20, Class: "text-primary"})
@@ -162,20 +162,19 @@ templ modelCard(mu ModelUsage) {
 						@common.Badge(common.ToneNeutral, "pay-as-you-go")
 					}
 				</div>
-				<div class="text-xs text-muted-foreground mt-0.5 truncate">
-					if mu.Model.Description() != "" {
+				if mu.Model.Description() != "" {
+					<p class="text-xs text-muted-foreground mt-0.5 whitespace-normal break-words [overflow-wrap:anywhere] line-clamp-3">
 						{ mu.Model.Description() }
-						if mu.Org != nil {
-							{ " · " }
-						}
-					}
-					if mu.Org != nil {
+					</p>
+				}
+				if mu.Org != nil {
+					<div class="mt-1">
 						@common.Badge(common.ToneNeutral, mu.Org.Name())
-					}
-				</div>
+					</div>
+				}
 			</div>
 			if mu.Aggregate != nil && mu.Aggregate.TotalRequests > 0 {
-				<div class="flex gap-4 shrink-0">
+				<div class="flex gap-4 shrink-0 self-start">
 					<div class="text-right">
 						<div class="text-sm font-semibold">{ fmt.Sprintf("%d", mu.Aggregate.TotalRequests) }</div>
 						<div class="text-xs text-muted-foreground">req.</div>
@@ -190,7 +189,7 @@ templ modelCard(mu ModelUsage) {
 					</div>
 				</div>
 			} else if !mu.Model.IsVirtual() {
-				<div class="flex gap-4 shrink-0">
+				<div class="flex gap-4 shrink-0 self-start">
 					<div class="text-right">
 						<div class="text-sm font-semibold">{ formatCostPerM(mu.Model.PromptCostPer1KTokens(), orgCurrency(mu.Org)) }</div>
 						<div class="text-xs text-muted-foreground">prompt / 1M</div>

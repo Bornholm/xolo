@@ -490,6 +490,12 @@
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 1;
   }
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
   .block {
     display: block;
   }
@@ -1158,6 +1164,9 @@
     border-top-style: var(--tw-border-style);
     border-top-width: calc(1px * var(--tw-divide-y-reverse));
     border-bottom-width: calc(1px * calc(1 - var(--tw-divide-y-reverse)));
+  }
+  .self-start {
+    align-self: flex-start;
   }
   .truncate {
     overflow: hidden;
@@ -1880,6 +1889,12 @@
   }
   .text-wrap {
     text-wrap: wrap;
+  }
+  .\[overflow-wrap\:anywhere\] {
+    overflow-wrap: anywhere;
+  }
+  .break-words {
+    overflow-wrap: break-word;
   }
   .break-all {
     word-break: break-all;
