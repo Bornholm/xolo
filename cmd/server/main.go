@@ -7,12 +7,12 @@ import (
 	"os/signal"
 
 	"github.com/bornholm/go-x/slogx"
-	"github.com/bornholm/xolo/internal/config"
-	"github.com/bornholm/xolo/internal/setup"
+	"github.com/xolo-gateway/xolo/internal/config"
+	"github.com/xolo-gateway/xolo/internal/setup"
 	"github.com/pkg/errors"
 
 	// Adapters
-	_ "github.com/bornholm/xolo/internal/adapter/memory"
+	_ "github.com/xolo-gateway/xolo/internal/adapter/memory"
 
 	_ "github.com/ncruces/go-sqlite3/driver"
 	_ "github.com/ncruces/go-sqlite3/embed"

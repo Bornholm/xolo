@@ -10,9 +10,9 @@ import (
 	"github.com/rs/cors"
 	sloghttp "github.com/samber/slog-http"
 
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
-	"github.com/bornholm/xolo/internal/http/middleware/colorscheme"
-	"github.com/bornholm/xolo/internal/http/middleware/httpmetrics"
+	httpCtx "github.com/xolo-gateway/xolo/internal/http/context"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/colorscheme"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/httpmetrics"
 )
 
 type Server struct {

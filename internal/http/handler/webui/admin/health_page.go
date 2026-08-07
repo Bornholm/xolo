@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/a-h/templ"
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
-	"github.com/bornholm/xolo/internal/http/handler/webui/admin/component"
-	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	httpCtx "github.com/xolo-gateway/xolo/internal/http/context"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/admin/component"
+	common "github.com/xolo-gateway/xolo/internal/http/handler/webui/common/component"
 )
 
 // getProxyHealthPage serves the proxy health screen.

@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/a-h/templ"
-	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	common "github.com/xolo-gateway/xolo/internal/http/handler/webui/common/component"
 )
 
 // getSwitcherFragment serves the filtered list of the context switcher. The

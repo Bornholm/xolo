@@ -1,4 +1,4 @@
-module github.com/bornholm/xolo
+module github.com/xolo-gateway/xolo
 
 go 1.25.5
 

@@ -3,9 +3,9 @@ package setup
 import (
 	"context"
 
-	"github.com/bornholm/xolo/internal/config"
-	"github.com/bornholm/xolo/internal/http/middleware/authn/oidc"
-	"github.com/bornholm/xolo/internal/http/middleware/authn/oidctoken"
+	"github.com/xolo-gateway/xolo/internal/config"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authn/oidc"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authn/oidctoken"
 )
 
 func getOIDCTokenAuthnHandlerFromConfig(ctx context.Context, conf *config.Config, oidcHandler *oidc.Handler) (*oidctoken.Handler, error) {

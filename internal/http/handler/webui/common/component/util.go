@@ -5,11 +5,11 @@ import (
 	"net/url"
 
 	"github.com/a-h/templ"
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/core/rbac"
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
-	"github.com/bornholm/xolo/internal/http/middleware/authz"
-	httpURL "github.com/bornholm/xolo/internal/http/url"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/rbac"
+	httpCtx "github.com/xolo-gateway/xolo/internal/http/context"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authz"
+	httpURL "github.com/xolo-gateway/xolo/internal/http/url"
 	"github.com/pkg/errors"
 )
 

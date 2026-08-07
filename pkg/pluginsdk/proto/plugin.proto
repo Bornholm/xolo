@@ -1,6 +1,6 @@
 syntax = "proto3";
 package xolo.plugin.v1;
-option go_package = "github.com/bornholm/xolo/pkg/pluginsdk/proto";
+option go_package = "github.com/xolo-gateway/xolo/pkg/pluginsdk/proto";
 
 service XoloPlugin {
   rpc Describe(DescribeRequest) returns (PluginDescriptor);

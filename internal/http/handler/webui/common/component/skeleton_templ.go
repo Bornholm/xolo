@@ -8,7 +8,7 @@ package component
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/skeleton"
+import "github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/skeleton"
 
 // LoadingIndicator marks the placeholder shown while an HTMX request is in
 // flight. `htmx-indicator` is htmx's own convention: it ships the rule that

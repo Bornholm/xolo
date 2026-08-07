@@ -3,7 +3,7 @@ package webui
 import (
 	"net/http"
 
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
+	httpCtx "github.com/xolo-gateway/xolo/internal/http/context"
 )
 
 // getPersonalEventsRedirect is the personal-menu entry point for events. It

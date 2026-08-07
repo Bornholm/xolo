@@ -8,8 +8,8 @@ import (
 	"time"
 
 	goanon "github.com/bornholm/go-anon"
-	"github.com/bornholm/xolo/pkg/pluginsdk"
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
+	"github.com/xolo-gateway/xolo/pkg/pluginsdk"
+	proto "github.com/xolo-gateway/xolo/pkg/pluginsdk/proto"
 )
 
 func TestInjectPlaceholderInstruction_NewSystemMessage(t *testing.T) {

@@ -3,9 +3,9 @@ package setup
 import (
 	"context"
 
-	"github.com/bornholm/xolo/internal/config"
-	"github.com/bornholm/xolo/internal/http/middleware/authn/oauth2token"
-	"github.com/bornholm/xolo/internal/http/middleware/authn/oidc"
+	"github.com/xolo-gateway/xolo/internal/config"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authn/oauth2token"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authn/oidc"
 )
 
 // getOAuth2TokenAuthnHandlerFromConfig builds the authenticator that validates

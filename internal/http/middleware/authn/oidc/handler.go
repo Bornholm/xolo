@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/bornholm/xolo/internal/http/middleware/authn/oauth2token"
-	"github.com/bornholm/xolo/internal/http/middleware/authn/oidctoken"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authn/oauth2token"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authn/oidctoken"
 	"github.com/gorilla/sessions"
 )
 

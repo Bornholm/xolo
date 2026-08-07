@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/model"
 )
 
 // GraphBuilder is a fluent builder for model.PipelineGraph, reducing the

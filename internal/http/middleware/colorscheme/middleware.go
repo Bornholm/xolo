@@ -3,7 +3,7 @@ package colorscheme
 import (
 	"net/http"
 
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
+	httpCtx "github.com/xolo-gateway/xolo/internal/http/context"
 )
 
 const colorSchemeHeader string = "Sec-CH-Prefers-Color-Scheme"

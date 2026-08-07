@@ -3,7 +3,7 @@ package webui
 import (
 	"net/http"
 
-	"github.com/bornholm/xolo/internal/http/handler/webui/common"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/common"
 )
 
 func (h *Handler) getInactiveUserPage(w http.ResponseWriter, r *http.Request) {

@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"strings"
 
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
+	proto "github.com/xolo-gateway/xolo/pkg/pluginsdk/proto"
 )
 
 const PluginName = "dummy-model"

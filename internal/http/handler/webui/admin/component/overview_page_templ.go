@@ -11,11 +11,11 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"fmt"
 
-	commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/chart"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
+	commonComp "github.com/xolo-gateway/xolo/internal/http/handler/webui/common/component"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/chart"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/table"
 )
 
 // OverviewPage is the landing screen of the platform console: the aggregated

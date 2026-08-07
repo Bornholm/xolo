@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bornholm/xolo/internal/core/port"
-	"github.com/bornholm/xolo/pkg/pluginsdk"
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
+	"github.com/xolo-gateway/xolo/internal/core/port"
+	"github.com/xolo-gateway/xolo/pkg/pluginsdk"
+	proto "github.com/xolo-gateway/xolo/pkg/pluginsdk/proto"
 	"github.com/hashicorp/go-hclog"
 	goplugin "github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"

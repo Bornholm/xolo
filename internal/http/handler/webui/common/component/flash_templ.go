@@ -9,8 +9,8 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/alert"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/toast"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/alert"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/toast"
 )
 
 // FlashToast renders the outcome of the previous request as a toast.

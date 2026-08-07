@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/core/port"
-	"github.com/bornholm/xolo/internal/core/rbac"
-	"github.com/bornholm/xolo/internal/http/middleware/authz"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/port"
+	"github.com/xolo-gateway/xolo/internal/core/rbac"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authz"
 )
 
 // stubRoleStore records which resolution path was taken and returns a fixed

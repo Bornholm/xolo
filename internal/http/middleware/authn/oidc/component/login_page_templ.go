@@ -10,10 +10,10 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
-	"github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	templuibutton "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
-	templuicard "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/common/component"
+	templuibutton "github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/button"
+	templuicard "github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/icon"
 )
 
 type Provider struct {

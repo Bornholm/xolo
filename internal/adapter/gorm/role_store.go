@@ -3,9 +3,9 @@ package gorm
 import (
 	"context"
 
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/core/port"
-	"github.com/bornholm/xolo/internal/core/rbac"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/port"
+	"github.com/xolo-gateway/xolo/internal/core/rbac"
 	"github.com/ncruces/go-sqlite3"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"

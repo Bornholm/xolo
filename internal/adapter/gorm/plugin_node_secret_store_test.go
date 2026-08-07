@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	xologorm "github.com/bornholm/xolo/internal/adapter/gorm"
+	xologorm "github.com/xolo-gateway/xolo/internal/adapter/gorm"
 	_ "github.com/ncruces/go-sqlite3/embed"
 	"github.com/ncruces/go-sqlite3/gormlite"
 	gormpkg "gorm.io/gorm"

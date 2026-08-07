@@ -8,10 +8,10 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/bornholm/go-x/slogx"
-	"github.com/bornholm/xolo/internal/core/model"
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
-	"github.com/bornholm/xolo/internal/http/handler/webui/profile/component"
-	"github.com/bornholm/xolo/internal/http/middleware/authz"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	httpCtx "github.com/xolo-gateway/xolo/internal/http/context"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/profile/component"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authz"
 )
 
 func (h *Handler) getNoOrgPage(w http.ResponseWriter, r *http.Request) {

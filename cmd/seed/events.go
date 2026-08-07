@@ -7,8 +7,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	gormadapter "github.com/bornholm/xolo/internal/adapter/gorm"
-	"github.com/bornholm/xolo/internal/core/model"
+	gormadapter "github.com/xolo-gateway/xolo/internal/adapter/gorm"
+	"github.com/xolo-gateway/xolo/internal/core/model"
 )
 
 func (s *seeder) seedEvents(ctx context.Context) error {

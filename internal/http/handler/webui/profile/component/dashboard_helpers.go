@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bornholm/xolo/internal/core/port"
-	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/xolo-gateway/xolo/internal/core/port"
+	common "github.com/xolo-gateway/xolo/internal/http/handler/webui/common/component"
 )
 
 // personalDashboardMeta builds the grey line under the title: what the figures

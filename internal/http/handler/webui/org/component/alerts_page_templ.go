@@ -11,11 +11,11 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"strconv"
 
-	"github.com/bornholm/xolo/internal/core/model"
-	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	common "github.com/xolo-gateway/xolo/internal/http/handler/webui/common/component"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/table"
 )
 
 func AlertsPage(vmodel AlertsPageVModel) templ.Component {

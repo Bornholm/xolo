@@ -9,9 +9,9 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	templuicard "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
-	templuiicon "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/common/component"
+	templuicard "github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/card"
+	templuiicon "github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/icon"
 	"strings"
 )
 

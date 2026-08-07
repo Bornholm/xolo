@@ -3,7 +3,7 @@ package component
 import (
 	"fmt"
 
-	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/model"
 )
 
 // lastSyncMessage states when the cache was last filled, from the freshest rate

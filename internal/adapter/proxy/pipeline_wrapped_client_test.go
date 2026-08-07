@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/bornholm/genai/llm"
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/pipeline"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/pipeline"
 )
 
 // rewriteExecutor is a test NodeExecutor whose Backward pass replaces a

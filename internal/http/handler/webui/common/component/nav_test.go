@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/core/rbac"
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
-	"github.com/bornholm/xolo/internal/http/middleware/authz"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/rbac"
+	httpCtx "github.com/xolo-gateway/xolo/internal/http/context"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authz"
 )
 
 // fakeMembership is a minimal model.Membership carrying a preloaded org, which

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/pipeline/pipelinetest"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/pipeline/pipelinetest"
 )
 
 // ─────────────────────────────────────────

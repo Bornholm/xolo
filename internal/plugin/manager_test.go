@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/bornholm/xolo/internal/plugin"
+	"github.com/xolo-gateway/xolo/internal/plugin"
 )
 
 func TestPluginManager_EmptyDir(t *testing.T) {

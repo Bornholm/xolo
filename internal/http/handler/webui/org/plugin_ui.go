@@ -7,7 +7,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 
-	"github.com/bornholm/xolo/internal/core/port"
+	"github.com/xolo-gateway/xolo/internal/core/port"
 	"github.com/pkg/errors"
 )
 

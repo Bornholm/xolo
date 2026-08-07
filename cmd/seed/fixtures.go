@@ -9,11 +9,11 @@ import (
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
 
-	gormadapter "github.com/bornholm/xolo/internal/adapter/gorm"
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/core/rbac"
-	"github.com/bornholm/xolo/internal/crypto"
-	"github.com/bornholm/xolo/internal/http/middleware/authz"
+	gormadapter "github.com/xolo-gateway/xolo/internal/adapter/gorm"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/rbac"
+	"github.com/xolo-gateway/xolo/internal/crypto"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authz"
 )
 
 // defaultSecretKey is the AES-GCM key used to encrypt the fake provider API

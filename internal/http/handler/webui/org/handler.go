@@ -3,11 +3,11 @@ package org
 import (
 	"net/http"
 
-	"github.com/bornholm/xolo/internal/core/port"
-	"github.com/bornholm/xolo/internal/core/rbac"
-	"github.com/bornholm/xolo/internal/core/service"
-	"github.com/bornholm/xolo/internal/http/middleware/authz"
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
+	"github.com/xolo-gateway/xolo/internal/core/port"
+	"github.com/xolo-gateway/xolo/internal/core/rbac"
+	"github.com/xolo-gateway/xolo/internal/core/service"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authz"
+	proto "github.com/xolo-gateway/xolo/pkg/pluginsdk/proto"
 )
 
 type pluginManagerIface interface {

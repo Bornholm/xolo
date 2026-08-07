@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bornholm/xolo/internal/http/middleware/authn"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authn"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/pkg/errors"
 )

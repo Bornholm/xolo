@@ -14,11 +14,11 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"context"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/sheet"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/tooltip"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/utils"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/sheet"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/tooltip"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/utils"
 )
 
 type contextKey string

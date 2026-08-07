@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
-	"github.com/bornholm/xolo/internal/http/middleware/authn"
+	httpCtx "github.com/xolo-gateway/xolo/internal/http/context"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authn"
 	"github.com/bornholm/go-x/slogx"
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"

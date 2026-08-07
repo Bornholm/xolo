@@ -3,7 +3,7 @@ package pipeline
 import (
 	"encoding/json"
 
-	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/model"
 )
 
 // ValueContext accumulates the output values produced by executed nodes.

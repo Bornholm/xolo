@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/bornholm/xolo/internal/config"
+	"github.com/xolo-gateway/xolo/internal/config"
 	"github.com/ncruces/go-sqlite3/gormlite"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"

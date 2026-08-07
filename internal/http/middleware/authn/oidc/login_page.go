@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/a-h/templ"
-	"github.com/bornholm/xolo/internal/build"
-	"github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	oidccomponent "github.com/bornholm/xolo/internal/http/middleware/authn/oidc/component"
+	"github.com/xolo-gateway/xolo/internal/build"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/common/component"
+	oidccomponent "github.com/xolo-gateway/xolo/internal/http/middleware/authn/oidc/component"
 )
 
 func (h *Handler) getLoginPage(w http.ResponseWriter, r *http.Request) {

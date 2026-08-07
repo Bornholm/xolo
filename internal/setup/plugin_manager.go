@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/bornholm/xolo/internal/config"
-	"github.com/bornholm/xolo/internal/plugin"
+	"github.com/xolo-gateway/xolo/internal/config"
+	"github.com/xolo-gateway/xolo/internal/plugin"
 )
 
 var (

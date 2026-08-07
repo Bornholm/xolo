@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	gorma "github.com/bornholm/xolo/internal/adapter/gorm"
-	"github.com/bornholm/xolo/internal/core/model"
+	gorma "github.com/xolo-gateway/xolo/internal/adapter/gorm"
+	"github.com/xolo-gateway/xolo/internal/core/model"
 )
 
 func TestJSONColumn_NilValue(t *testing.T) {

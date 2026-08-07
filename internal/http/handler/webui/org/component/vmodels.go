@@ -3,9 +3,9 @@ package component
 import (
 	"time"
 
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/core/port"
-	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/port"
+	common "github.com/xolo-gateway/xolo/internal/http/handler/webui/common/component"
 )
 
 type OrgDashboardVModel struct {

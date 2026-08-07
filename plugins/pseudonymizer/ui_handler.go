@@ -9,7 +9,7 @@ import (
 	"github.com/a-h/templ"
 	goanon "github.com/bornholm/go-anon"
 	"github.com/bornholm/go-anon/pkg/modelstore"
-	"github.com/bornholm/xolo/pkg/pluginsdk"
+	"github.com/xolo-gateway/xolo/pkg/pluginsdk"
 )
 
 type pluginUI struct {

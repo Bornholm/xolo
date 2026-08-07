@@ -4,7 +4,7 @@ import (
 	"context"
 	"strconv"
 
-	commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	commonComp "github.com/xolo-gateway/xolo/internal/http/handler/webui/common/component"
 )
 
 // usersPageURL builds the link of a pagination entry, carrying the search term

@@ -7,7 +7,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
+	httpCtx "github.com/xolo-gateway/xolo/internal/http/context"
 )
 
 // servePersonalPluginUI reverse-proxies plugin UI requests in the personal (no-org) context.

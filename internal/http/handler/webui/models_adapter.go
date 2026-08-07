@@ -3,7 +3,7 @@ package webui
 import (
 	"time"
 
-	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/model"
 )
 
 // virtualModelAsLLMModel wraps a VirtualModel to implement LLMModel interface

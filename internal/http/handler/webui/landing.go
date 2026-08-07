@@ -4,8 +4,8 @@ import (
 	"net/url"
 	"slices"
 
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/http/middleware/authz"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authz"
 )
 
 // landingWithoutOrg names where a user with no organisation belongs.

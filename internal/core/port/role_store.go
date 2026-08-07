@@ -3,8 +3,8 @@ package port
 import (
 	"context"
 
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/core/rbac"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/rbac"
 )
 
 type RoleStore interface {

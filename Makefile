@@ -3,8 +3,8 @@ SHELL := /bin/bash
 GIT_SHORT_VERSION ?= $(shell git describe --tags --abbrev=8 --always)
 GIT_LONG_VERSION ?= $(shell git describe --tags --abbrev=8 --dirty --always --long)
 LDFLAGS ?= -w -s \
-	-X 'github.com/bornholm/xolo/internal/build.ShortVersion=$(GIT_SHORT_VERSION)' \
-	-X 'github.com/bornholm/xolo/internal/build.LongVersion=$(GIT_LONG_VERSION)'
+	-X 'github.com/xolo-gateway/xolo/internal/build.ShortVersion=$(GIT_SHORT_VERSION)' \
+	-X 'github.com/xolo-gateway/xolo/internal/build.LongVersion=$(GIT_LONG_VERSION)'
 
 GCFLAGS ?= -trimpath=$(PWD)
 ASMFLAGS ?= -trimpath=$(PWD) \

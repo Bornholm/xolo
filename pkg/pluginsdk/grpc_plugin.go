@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/go-plugin"
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
+	proto "github.com/xolo-gateway/xolo/pkg/pluginsdk/proto"
 	"google.golang.org/grpc"
 )
 

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bornholm/xolo/internal/adapter/eventbus"
-	xologorm "github.com/bornholm/xolo/internal/adapter/gorm"
-	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/adapter/eventbus"
+	xologorm "github.com/xolo-gateway/xolo/internal/adapter/gorm"
+	"github.com/xolo-gateway/xolo/internal/core/model"
 	_ "github.com/ncruces/go-sqlite3/embed"
 	"github.com/ncruces/go-sqlite3/gormlite"
 	gormpkg "gorm.io/gorm"

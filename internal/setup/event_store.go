@@ -3,8 +3,8 @@ package setup
 import (
 	"context"
 
-	"github.com/bornholm/xolo/internal/config"
-	"github.com/bornholm/xolo/internal/core/port"
+	"github.com/xolo-gateway/xolo/internal/config"
+	"github.com/xolo-gateway/xolo/internal/core/port"
 	"github.com/pkg/errors"
 )
 

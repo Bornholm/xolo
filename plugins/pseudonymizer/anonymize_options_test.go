@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
+	proto "github.com/xolo-gateway/xolo/pkg/pluginsdk/proto"
 )
 
 // anonOptsHost est un faux host client minimal exposant uniquement GetSecret.

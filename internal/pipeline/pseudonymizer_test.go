@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/bornholm/go-anon/pkg/anonymizer"
-	"github.com/bornholm/xolo/internal/pipeline/pipelinetest"
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
+	"github.com/xolo-gateway/xolo/internal/pipeline/pipelinetest"
+	proto "github.com/xolo-gateway/xolo/pkg/pluginsdk/proto"
 )
 
 // pseudoState mirrors the JSON shape persisted as NodeState by the real

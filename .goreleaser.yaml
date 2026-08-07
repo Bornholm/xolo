@@ -13,7 +13,7 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -w -s -X 'github.com/bornholm/xolo/internal/build.ShortVersion={{ .Version }}' -X 'github.com/bornholm/xolo/internal/build.LongVersion={{ .Version }}'
+      - -w -s -X 'github.com/xolo-gateway/xolo/internal/build.ShortVersion={{ .Version }}' -X 'github.com/xolo-gateway/xolo/internal/build.LongVersion={{ .Version }}'
 
   - id: xolo-plugin-time-restriction
     targets: [go_first_class]

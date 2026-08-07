@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/a-h/templ"
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/icon"
 )
 
 // Context identifies which of the three product spaces the current page belongs

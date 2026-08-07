@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/bornholm/xolo/internal/config"
+	"github.com/xolo-gateway/xolo/internal/config"
 	"github.com/gorilla/sessions"
 	"github.com/pkg/errors"
 )

@@ -4,8 +4,8 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/http/middleware/authz"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authz"
 )
 
 // A platform administrator with no organisation is the state of a fresh install:

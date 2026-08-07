@@ -8,13 +8,13 @@ import (
 	"strings"
 
 	"github.com/bornholm/go-x/slogx"
-	proxyAdapter "github.com/bornholm/xolo/internal/adapter/proxy"
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/core/port"
-	"github.com/bornholm/xolo/internal/core/rbac"
-	"github.com/bornholm/xolo/internal/core/service"
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
+	proxyAdapter "github.com/xolo-gateway/xolo/internal/adapter/proxy"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/port"
+	"github.com/xolo-gateway/xolo/internal/core/rbac"
+	"github.com/xolo-gateway/xolo/internal/core/service"
+	httpCtx "github.com/xolo-gateway/xolo/internal/http/context"
+	proto "github.com/xolo-gateway/xolo/pkg/pluginsdk/proto"
 )
 
 type openRouterModel struct {

@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/bornholm/xolo/internal/core/port"
-	"github.com/bornholm/xolo/internal/setup"
+	"github.com/xolo-gateway/xolo/internal/core/port"
+	"github.com/xolo-gateway/xolo/internal/setup"
 	"github.com/pkg/errors"
 )
 

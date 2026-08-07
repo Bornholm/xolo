@@ -10,15 +10,15 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/core/port"
-	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	orgcomponent "github.com/bornholm/xolo/internal/http/handler/webui/org/component"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/chart"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/pagination"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/table"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/port"
+	common "github.com/xolo-gateway/xolo/internal/http/handler/webui/common/component"
+	orgcomponent "github.com/xolo-gateway/xolo/internal/http/handler/webui/org/component"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/chart"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/pagination"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/table"
 )
 
 type OrgUsage struct {

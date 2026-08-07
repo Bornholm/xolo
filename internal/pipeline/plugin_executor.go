@@ -6,8 +6,8 @@ import (
 	"log/slog"
 
 	"github.com/bornholm/genai/llm"
-	"github.com/bornholm/xolo/internal/core/model"
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	proto "github.com/xolo-gateway/xolo/pkg/pluginsdk/proto"
 	"github.com/pkg/errors"
 )
 

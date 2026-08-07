@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/core/rbac"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/rbac"
 )
 
 func TestRoleStore_BuiltinRolesAndResolution(t *testing.T) {

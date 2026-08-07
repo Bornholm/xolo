@@ -7,10 +7,10 @@ import (
 	"context"
 
 	"github.com/bornholm/genai/llm"
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/core/port"
-	"github.com/bornholm/xolo/internal/pipeline"
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/port"
+	"github.com/xolo-gateway/xolo/internal/pipeline"
+	proto "github.com/xolo-gateway/xolo/pkg/pluginsdk/proto"
 	"google.golang.org/grpc"
 )
 

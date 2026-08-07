@@ -8,11 +8,11 @@ import (
 	"sync"
 
 	"github.com/bornholm/go-x/slogx"
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/core/port"
-	"github.com/bornholm/xolo/internal/core/rbac"
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
-	"github.com/bornholm/xolo/internal/http/middleware/authz"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/port"
+	"github.com/xolo-gateway/xolo/internal/core/rbac"
+	httpCtx "github.com/xolo-gateway/xolo/internal/http/context"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authz"
 )
 
 // Middleware fetches the current user's org memberships and stores them in the

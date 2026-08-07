@@ -9,13 +9,13 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"github.com/bornholm/xolo/internal/core/model"
-	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/form"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/selectbox"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	common "github.com/xolo-gateway/xolo/internal/http/handler/webui/common/component"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/form"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/input"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/selectbox"
 )
 
 // ── Invite Form ───────────────────────────────────────────────────────────────

@@ -6,11 +6,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/core/port"
-	"github.com/bornholm/xolo/internal/core/rbac"
-	"github.com/bornholm/xolo/internal/http/handler/api"
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/port"
+	"github.com/xolo-gateway/xolo/internal/core/rbac"
+	"github.com/xolo-gateway/xolo/internal/http/handler/api"
+	httpCtx "github.com/xolo-gateway/xolo/internal/http/context"
 )
 
 // emptyPermissionResolver stands in for the resolver installed by the

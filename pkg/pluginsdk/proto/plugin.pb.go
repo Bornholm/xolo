@@ -2547,7 +2547,7 @@ const file_pkg_pluginsdk_proto_plugin_proto_rawDesc = "" +
 	"\tGetSecret\x12 .xolo.plugin.v1.GetSecretRequest\x1a!.xolo.plugin.v1.GetSecretResponse\x12P\n" +
 	"\tSetSecret\x12 .xolo.plugin.v1.SetSecretRequest\x1a!.xolo.plugin.v1.SetSecretResponse\x12Y\n" +
 	"\fDeleteSecret\x12#.xolo.plugin.v1.DeleteSecretRequest\x1a$.xolo.plugin.v1.DeleteSecretResponse\x12P\n" +
-	"\tEmitEvent\x12 .xolo.plugin.v1.EmitEventRequest\x1a!.xolo.plugin.v1.EmitEventResponseB.Z,github.com/bornholm/xolo/pkg/pluginsdk/protob\x06proto3"
+	"\tEmitEvent\x12 .xolo.plugin.v1.EmitEventRequest\x1a!.xolo.plugin.v1.EmitEventResponseB2Z0github.com/xolo-gateway/xolo/pkg/pluginsdk/protob\x06proto3"
 
 var (
 	file_pkg_pluginsdk_proto_plugin_proto_rawDescOnce sync.Once

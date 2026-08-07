@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/bornholm/xolo/internal/http/handler/webui/common"
-	"github.com/bornholm/xolo/internal/metrics"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/common"
+	"github.com/xolo-gateway/xolo/internal/metrics"
 	"github.com/pkg/errors"
 )
 

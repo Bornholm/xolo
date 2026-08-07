@@ -3,7 +3,7 @@ package token
 import (
 	"net/http"
 
-	"github.com/bornholm/xolo/internal/core/port"
+	"github.com/xolo-gateway/xolo/internal/core/port"
 	"github.com/gorilla/sessions"
 )
 

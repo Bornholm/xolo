@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bornholm/xolo/internal/core/model"
-	commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/chart"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	commonComp "github.com/xolo-gateway/xolo/internal/http/handler/webui/common/component"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/chart"
 )
 
 // OverviewPageVModel backs the platform overview, the landing screen of the

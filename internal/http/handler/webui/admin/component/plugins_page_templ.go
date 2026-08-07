@@ -9,11 +9,11 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
+	commonComp "github.com/xolo-gateway/xolo/internal/http/handler/webui/common/component"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/icon"
+	proto "github.com/xolo-gateway/xolo/pkg/pluginsdk/proto"
 )
 
 type PluginsDiagnosticsPageVModel struct {

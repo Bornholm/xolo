@@ -4,9 +4,9 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/bornholm/xolo/internal/adapter/eventbus"
-	"github.com/bornholm/xolo/internal/config"
-	"github.com/bornholm/xolo/internal/core/port"
+	"github.com/xolo-gateway/xolo/internal/adapter/eventbus"
+	"github.com/xolo-gateway/xolo/internal/config"
+	"github.com/xolo-gateway/xolo/internal/core/port"
 	"github.com/pkg/errors"
 )
 

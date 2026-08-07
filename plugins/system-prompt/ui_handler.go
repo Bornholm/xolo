@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/a-h/templ"
-	"github.com/bornholm/xolo/pkg/pluginsdk"
+	"github.com/xolo-gateway/xolo/pkg/pluginsdk"
 )
 
 func newUIHandler() http.Handler {

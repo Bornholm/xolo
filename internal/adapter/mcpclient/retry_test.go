@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/bornholm/xolo/internal/adapter/mcpclient"
+	"github.com/xolo-gateway/xolo/internal/adapter/mcpclient"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

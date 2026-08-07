@@ -6,7 +6,7 @@ import (
 
 	"github.com/bornholm/genai/llm"
 	genaiProxy "github.com/bornholm/genai/proxy"
-	"github.com/bornholm/xolo/internal/pipeline"
+	"github.com/xolo-gateway/xolo/internal/pipeline"
 )
 
 func TestApplyModifiedMessages_OpenAI(t *testing.T) {

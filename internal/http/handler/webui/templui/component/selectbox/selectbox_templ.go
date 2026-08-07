@@ -15,11 +15,11 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"context"
 	"fmt"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/popover"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/utils"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/input"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/popover"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/utils"
 	"strconv"
 )
 

@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	exchangerateAdapter "github.com/bornholm/xolo/internal/adapter/exchangerate"
-	gormAdapter "github.com/bornholm/xolo/internal/adapter/gorm"
-	"github.com/bornholm/xolo/internal/config"
-	"github.com/bornholm/xolo/internal/core/port"
-	"github.com/bornholm/xolo/internal/core/service"
+	exchangerateAdapter "github.com/xolo-gateway/xolo/internal/adapter/exchangerate"
+	gormAdapter "github.com/xolo-gateway/xolo/internal/adapter/gorm"
+	"github.com/xolo-gateway/xolo/internal/config"
+	"github.com/xolo-gateway/xolo/internal/core/port"
+	"github.com/xolo-gateway/xolo/internal/core/service"
 	"github.com/pkg/errors"
 )
 

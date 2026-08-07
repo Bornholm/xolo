@@ -3,7 +3,7 @@ package pipeline
 import (
 	"context"
 
-	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/model"
 )
 
 // GeneratorExecutor handles NodeTypeGenerator.

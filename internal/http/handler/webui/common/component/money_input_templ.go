@@ -8,7 +8,7 @@ package component
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/bornholm/xolo/internal/http/handler/webui/templui/component/input"
+import "github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/input"
 
 type MoneyInputProps struct {
 	ID          string

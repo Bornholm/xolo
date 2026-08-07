@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bornholm/xolo/pkg/pluginsdk"
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
+	"github.com/xolo-gateway/xolo/pkg/pluginsdk"
+	proto "github.com/xolo-gateway/xolo/pkg/pluginsdk/proto"
 )
 
 // fakeUIHost implémente pluginsdk.HostClient avec un store en mémoire.

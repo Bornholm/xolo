@@ -4,8 +4,8 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/bornholm/xolo/internal/adapter/eventeval"
-	"github.com/bornholm/xolo/internal/config"
+	"github.com/xolo-gateway/xolo/internal/adapter/eventeval"
+	"github.com/xolo-gateway/xolo/internal/config"
 	"github.com/pkg/errors"
 )
 

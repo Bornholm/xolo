@@ -63,7 +63,7 @@ func StandaloneLayout(funcs ...PageOptionFunc) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"text-center text-xs text-muted-foreground\">AGPL-3.0 · self-hosted · <a href=\"https://github.com/bornholm/xolo\" class=\"underline\" target=\"_blank\" rel=\"noreferrer\">En savoir plus</a></p></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"text-center text-xs text-muted-foreground\">AGPL-3.0 · self-hosted · <a href=\"https://github.com/xolo-gateway/xolo\" class=\"underline\" target=\"_blank\" rel=\"noreferrer\">En savoir plus</a></p></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

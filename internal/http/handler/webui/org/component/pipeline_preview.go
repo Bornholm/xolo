@@ -6,8 +6,8 @@ import (
 	"strconv"
 
 	"github.com/a-h/templ"
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/icon"
 )
 
 // graphNodeCount and graphEdgeCount count a possibly-nil graph: a virtual model

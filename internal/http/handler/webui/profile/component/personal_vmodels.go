@@ -1,8 +1,8 @@
 package component
 
 import (
-	"github.com/bornholm/xolo/internal/core/model"
-	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	common "github.com/xolo-gateway/xolo/internal/http/handler/webui/common/component"
 )
 
 type PersonalModelsPageVModel struct {

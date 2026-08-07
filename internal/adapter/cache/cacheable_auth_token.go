@@ -1,6 +1,6 @@
 package cache
 
-import "github.com/bornholm/xolo/internal/core/model"
+import "github.com/xolo-gateway/xolo/internal/core/model"
 
 type CacheableAuthToken struct {
 	model.AuthToken

@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/bornholm/xolo/internal/config"
-	"github.com/bornholm/xolo/internal/http/middleware/bridge"
+	"github.com/xolo-gateway/xolo/internal/config"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/bridge"
 	"github.com/pkg/errors"
 )
 

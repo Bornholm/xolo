@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/bornholm/genai/llm"
-	"github.com/bornholm/xolo/internal/pipeline"
+	"github.com/xolo-gateway/xolo/internal/pipeline"
 )
 
 // scriptedClient replays a fixed sequence of responses, one per

@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"slices"
 
-	"github.com/bornholm/xolo/internal/core/model"
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	httpCtx "github.com/xolo-gateway/xolo/internal/http/context"
 	"github.com/pkg/errors"
 )
 

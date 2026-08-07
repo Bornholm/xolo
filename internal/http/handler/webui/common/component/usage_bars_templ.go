@@ -11,7 +11,7 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"fmt"
 
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/progress"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/progress"
 )
 
 // BudgetBar renders the consumption bar of a budget, coloured by how close to

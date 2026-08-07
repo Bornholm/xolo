@@ -1,6 +1,6 @@
 package oidc
 
-import "github.com/bornholm/xolo/internal/http/middleware/authn/oidc/component"
+import "github.com/xolo-gateway/xolo/internal/http/middleware/authn/oidc/component"
 
 type Provider = component.Provider
 

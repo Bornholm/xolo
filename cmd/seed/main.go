@@ -23,8 +23,8 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
-	gormadapter "github.com/bornholm/xolo/internal/adapter/gorm"
-	"github.com/bornholm/xolo/internal/core/port"
+	gormadapter "github.com/xolo-gateway/xolo/internal/adapter/gorm"
+	"github.com/xolo-gateway/xolo/internal/core/port"
 
 	_ "github.com/ncruces/go-sqlite3/driver"
 	_ "github.com/ncruces/go-sqlite3/embed"

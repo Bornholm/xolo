@@ -3,7 +3,7 @@ package common
 import (
 	"net/http"
 
-	"github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/common/component"
 )
 
 type Error struct {

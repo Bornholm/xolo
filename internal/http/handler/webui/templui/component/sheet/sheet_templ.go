@@ -14,8 +14,8 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"context"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/dialog"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/utils"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/dialog"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/utils"
 )
 
 type contextKey string

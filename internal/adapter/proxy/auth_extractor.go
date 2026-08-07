@@ -6,9 +6,9 @@ import (
 	"net/http"
 
 	genaiProxy "github.com/bornholm/genai/proxy"
-	"github.com/bornholm/xolo/internal/core/model"
-	httpx "github.com/bornholm/xolo/internal/http/context"
-	authn "github.com/bornholm/xolo/internal/http/middleware/authn"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	httpx "github.com/xolo-gateway/xolo/internal/http/context"
+	authn "github.com/xolo-gateway/xolo/internal/http/middleware/authn"
 )
 
 type contextKey string

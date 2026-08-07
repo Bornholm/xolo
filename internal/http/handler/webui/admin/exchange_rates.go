@@ -6,11 +6,11 @@ import (
 	"slices"
 
 	"github.com/a-h/templ"
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
-	"github.com/bornholm/xolo/internal/http/handler/webui/admin/component"
-	"github.com/bornholm/xolo/internal/http/handler/webui/common"
-	commonComp "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	"github.com/bornholm/xolo/internal/http/middleware/authz"
+	httpCtx "github.com/xolo-gateway/xolo/internal/http/context"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/admin/component"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/common"
+	commonComp "github.com/xolo-gateway/xolo/internal/http/handler/webui/common/component"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authz"
 	"github.com/pkg/errors"
 )
 

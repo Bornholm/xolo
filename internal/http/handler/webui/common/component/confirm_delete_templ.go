@@ -12,9 +12,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/button"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/dialog"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/icon"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/button"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/dialog"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/icon"
 )
 
 // ConfirmDeleteProps configures a destructive action guarded by a dialog.

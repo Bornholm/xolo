@@ -12,10 +12,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bornholm/xolo/internal/core/model"
-	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/card"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/progress"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	common "github.com/xolo-gateway/xolo/internal/http/handler/webui/common/component"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/card"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/progress"
 )
 
 // SubscriptionUsageSection renders plan consumption for each subscription provider.

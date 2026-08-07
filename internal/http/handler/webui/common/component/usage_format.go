@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bornholm/xolo/internal/estimator/energy"
+	"github.com/xolo-gateway/xolo/internal/estimator/energy"
 )
 
 // ChartDataPoint represents a single labeled value for bar/pie charts.

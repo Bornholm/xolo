@@ -1,6 +1,6 @@
 package pipeline
 
-import "github.com/bornholm/xolo/internal/core/model"
+import "github.com/xolo-gateway/xolo/internal/core/model"
 
 // Registry maps node types to their executors.
 type Registry struct {

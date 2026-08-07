@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
+	proto "github.com/xolo-gateway/xolo/pkg/pluginsdk/proto"
 )
 
 type Plugin struct {

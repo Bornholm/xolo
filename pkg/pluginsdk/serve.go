@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/go-plugin"
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
+	proto "github.com/xolo-gateway/xolo/pkg/pluginsdk/proto"
 )
 
 // noopInitWrapper wraps any XoloPluginServer and adds a no-op Initialize

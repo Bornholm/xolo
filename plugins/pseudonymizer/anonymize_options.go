@@ -5,7 +5,7 @@ import (
 	"log/slog"
 
 	goanon "github.com/bornholm/go-anon"
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
+	proto "github.com/xolo-gateway/xolo/pkg/pluginsdk/proto"
 )
 
 const secretKeyHashHMAC = "hash_key"

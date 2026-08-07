@@ -8,7 +8,7 @@ package component
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+import common "github.com/xolo-gateway/xolo/internal/http/handler/webui/common/component"
 
 func PersonalModelEditorPage(vmodel PersonalModelEditorVModel) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {

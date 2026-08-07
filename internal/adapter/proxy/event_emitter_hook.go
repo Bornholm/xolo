@@ -5,8 +5,8 @@ import (
 	"strconv"
 
 	genaiProxy "github.com/bornholm/genai/proxy"
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/core/port"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/port"
 )
 
 // XoloEventEmitterHook is a PostResponseHook that emits a "proxy.request" event

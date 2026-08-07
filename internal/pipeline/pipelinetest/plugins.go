@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
+	proto "github.com/xolo-gateway/xolo/pkg/pluginsdk/proto"
 )
 
 // PreRequestDescriptor returns a PluginDescriptor with the PRE_REQUEST capability only.

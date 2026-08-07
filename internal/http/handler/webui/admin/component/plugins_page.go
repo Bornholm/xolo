@@ -3,7 +3,7 @@ package component
 import (
 	"strings"
 
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
+	proto "github.com/xolo-gateway/xolo/pkg/pluginsdk/proto"
 )
 
 // pluginCapabilityLabel turns a capability of the plugin protocol into the

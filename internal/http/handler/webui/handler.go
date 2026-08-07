@@ -4,14 +4,14 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/bornholm/xolo/internal/core/port"
-	"github.com/bornholm/xolo/internal/core/service"
-	"github.com/bornholm/xolo/internal/http/handler/webui/admin"
-	"github.com/bornholm/xolo/internal/http/handler/webui/join"
-	"github.com/bornholm/xolo/internal/http/handler/webui/org"
-	"github.com/bornholm/xolo/internal/http/handler/webui/profile"
-	"github.com/bornholm/xolo/internal/http/middleware/authz"
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
+	"github.com/xolo-gateway/xolo/internal/core/port"
+	"github.com/xolo-gateway/xolo/internal/core/service"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/admin"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/join"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/org"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/profile"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authz"
+	proto "github.com/xolo-gateway/xolo/pkg/pluginsdk/proto"
 )
 
 type pluginManagerIface interface {

@@ -8,7 +8,7 @@ package component
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+import common "github.com/xolo-gateway/xolo/internal/http/handler/webui/common/component"
 
 // PipelineEditorVModel drives the shared React Flow pipeline editor. It is used
 // for any org-scoped PipelineEntity (virtual models, middlewares). ContextType

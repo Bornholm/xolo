@@ -9,9 +9,9 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/code"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/component/copybutton"
-	"github.com/bornholm/xolo/internal/http/handler/webui/templui/utils"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/code"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/component/copybutton"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/utils"
 )
 
 // Snippet renders a copyable block of code.

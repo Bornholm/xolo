@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/core/port"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/port"
 	"github.com/pkg/errors"
 )
 

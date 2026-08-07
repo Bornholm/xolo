@@ -3,8 +3,8 @@ package setup
 import (
 	"context"
 
-	gormAdapter "github.com/bornholm/xolo/internal/adapter/gorm"
-	"github.com/bornholm/xolo/internal/config"
+	gormAdapter "github.com/xolo-gateway/xolo/internal/adapter/gorm"
+	"github.com/xolo-gateway/xolo/internal/config"
 	"github.com/pkg/errors"
 )
 

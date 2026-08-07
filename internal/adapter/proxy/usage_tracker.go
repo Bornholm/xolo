@@ -6,10 +6,10 @@ import (
 	"math"
 
 	genaiProxy "github.com/bornholm/genai/proxy"
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/core/port"
-	"github.com/bornholm/xolo/internal/core/service"
-	"github.com/bornholm/xolo/internal/metrics"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/port"
+	"github.com/xolo-gateway/xolo/internal/core/service"
+	"github.com/xolo-gateway/xolo/internal/metrics"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 )

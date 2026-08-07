@@ -6,7 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/bornholm/genai/llm"
-	"github.com/bornholm/xolo/internal/pipeline"
+	"github.com/xolo-gateway/xolo/internal/pipeline"
 )
 
 // PipelineWrappedClient wraps an llm.Client to run the pipeline's backward pass

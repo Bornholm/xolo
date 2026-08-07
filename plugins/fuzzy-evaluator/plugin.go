@@ -7,7 +7,7 @@ import (
 
 	fuzzy "github.com/bornholm/go-fuzzy"
 	"github.com/bornholm/go-fuzzy/dsl"
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
+	proto "github.com/xolo-gateway/xolo/pkg/pluginsdk/proto"
 )
 
 const PluginName = "fuzzy-evaluator"

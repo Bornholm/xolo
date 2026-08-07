@@ -3,7 +3,7 @@ package gorm
 import (
 	"time"
 
-	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/model"
 )
 
 type Quota struct {

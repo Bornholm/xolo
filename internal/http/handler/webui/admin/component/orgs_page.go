@@ -3,7 +3,7 @@ package component
 import (
 	"context"
 
-	common "github.com/bornholm/xolo/internal/http/handler/webui/common/component"
+	common "github.com/xolo-gateway/xolo/internal/http/handler/webui/common/component"
 )
 
 // OrgStatusActive and OrgStatusInactive are the values of the `status` query

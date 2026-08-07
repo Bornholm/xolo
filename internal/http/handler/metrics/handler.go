@@ -3,7 +3,7 @@ package metrics
 import (
 	"net/http"
 
-	"github.com/bornholm/xolo/internal/http/middleware/authz"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authz"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 

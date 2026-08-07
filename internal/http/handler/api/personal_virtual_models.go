@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/core/port"
-	"github.com/bornholm/xolo/internal/core/secretcleanup"
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/port"
+	"github.com/xolo-gateway/xolo/internal/core/secretcleanup"
+	httpCtx "github.com/xolo-gateway/xolo/internal/http/context"
 	"github.com/pkg/errors"
 )
 

@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"slices"
 
-	"github.com/bornholm/xolo/internal/core/model"
-	"github.com/bornholm/xolo/internal/core/port"
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
-	"github.com/bornholm/xolo/internal/http/handler/webui/common"
-	"github.com/bornholm/xolo/internal/http/middleware/authn"
-	"github.com/bornholm/xolo/internal/http/middleware/authz"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/port"
+	httpCtx "github.com/xolo-gateway/xolo/internal/http/context"
+	"github.com/xolo-gateway/xolo/internal/http/handler/webui/common"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authn"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authz"
 )
 
 func Middleware(userStore port.UserStore, emitter port.EventEmitter, activeByDefault bool, defaultAdmins ...string) func(http.Handler) http.Handler {

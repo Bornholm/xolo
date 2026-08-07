@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bornholm/xolo/internal/http/middleware/authn"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authn"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pkg/errors"
 )

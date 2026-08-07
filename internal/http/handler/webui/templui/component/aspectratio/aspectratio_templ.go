@@ -12,7 +12,7 @@ package aspectratio
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/bornholm/xolo/internal/http/handler/webui/templui/utils"
+import "github.com/xolo-gateway/xolo/internal/http/handler/webui/templui/utils"
 
 type Ratio string
 

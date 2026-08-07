@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bornholm/xolo/internal/core/model"
-	httpCtx "github.com/bornholm/xolo/internal/http/context"
-	"github.com/bornholm/xolo/internal/http/middleware/authz"
+	"github.com/xolo-gateway/xolo/internal/core/model"
+	httpCtx "github.com/xolo-gateway/xolo/internal/http/context"
+	"github.com/xolo-gateway/xolo/internal/http/middleware/authz"
 )
 
 // TestDashboardPageKeepsEveryBlockWhenEmpty pins the rule the org dashboard

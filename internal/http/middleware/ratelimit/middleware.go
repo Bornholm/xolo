@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bornholm/xolo/internal/metrics"
+	"github.com/xolo-gateway/xolo/internal/metrics"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"golang.org/x/time/rate"
 )

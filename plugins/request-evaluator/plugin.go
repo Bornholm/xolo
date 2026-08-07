@@ -6,10 +6,10 @@ import (
 	"math"
 	"strings"
 
-	"github.com/bornholm/xolo/internal/estimator"
-	proto "github.com/bornholm/xolo/pkg/pluginsdk/proto"
-	"github.com/bornholm/xolo/plugins/request-evaluator/complexity"
-	"github.com/bornholm/xolo/plugins/request-evaluator/complexity/data"
+	"github.com/xolo-gateway/xolo/internal/estimator"
+	proto "github.com/xolo-gateway/xolo/pkg/pluginsdk/proto"
+	"github.com/xolo-gateway/xolo/plugins/request-evaluator/complexity"
+	"github.com/xolo-gateway/xolo/plugins/request-evaluator/complexity/data"
 )
 
 const PluginName = "request-evaluator"

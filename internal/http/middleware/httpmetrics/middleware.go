@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bornholm/xolo/internal/metrics"
+	"github.com/xolo-gateway/xolo/internal/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

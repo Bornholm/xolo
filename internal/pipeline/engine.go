@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/bornholm/genai/llm"
-	"github.com/bornholm/xolo/internal/core/model"
+	"github.com/xolo-gateway/xolo/internal/core/model"
 	"github.com/pkg/errors"
 )
 
